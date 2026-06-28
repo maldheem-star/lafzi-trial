@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>لفظي - تجربة</title>
+<style>
+body{font-family:Arial,Tahoma,sans-serif;background:#f5f5f5;margin:0;padding:14px;line-height:1.7;color:#111}.box{background:#fff;border:1px solid #ddd;border-radius:14px;padding:16px;margin:10px auto;max-width:850px}button,input{font:inherit;padding:10px;margin:4px;border:1px solid #bbb;border-radius:8px}button{font-weight:bold;background:#fff}.primary{background:#111;color:#fff}.choice{display:block;width:100%;text-align:right;margin:8px 0;background:#fff}.sel{outline:3px solid #777}.good{background:#e9f8ee;border-color:#198754}.bad{background:#fff0f0;border-color:#b02a37}.passage{white-space:pre-wrap;background:#fafafa;border-right:4px solid #bbb;padding:10px;margin:10px 0}.hide{display:none}.stat{display:inline-block;background:#fafafa;border:1px solid #ddd;border-radius:10px;padding:8px;margin:4px;min-width:90px}.note{color:#666;font-size:13px}
+</style>
+</head>
+<body>
+<div class="box" id="home"><h1>لفظي</h1><p>تجربة رابط مباشر. اختر عدد الأسئلة ثم ابدأ.</p><label>عدد الأسئلة <input id="n" type="number" value="10" min="1" max="20"></label><button class="primary" onclick="start()">ابدأ</button><p class="note">نسخة تجريبية خفيفة لإثبات الفتح من الرابط. ليست البنك الكامل.</p></div>
+<div class="box hide" id="test"><div><span class="stat">السؤال <b id="pos"></b></span><span class="stat">المجاب <b id="ansn"></b></span></div><div id="qbox"></div><button onclick="prev()">السابق</button><button class="primary" onclick="next()">التالي</button><button onclick="finish()">النتيجة</button></div>
+<div class="box hide" id="res"><h2>النتيجة</h2><div><span class="stat">الصحيح <b id="ok"></b></span><span class="stat">الإجمالي <b id="tot"></b></span><span class="stat">النسبة <b id="pct"></b></span></div><button onclick="toggleReview()">المراجعة</button><button onclick="location.reload()">اختبار جديد</button><div id="review" class="hide"></div></div>
+<script>
+var DATA=[
+{s:172,q:10,t:'analogy',p:'',qt:'..... نافذة : منزل',c:{'أ':'سكن : مستأجر','ب':'رف : خزانة','ج':'البحر : الشاطئ','د':'كتاب : صفحة'},a:'ب'},
+{s:135,q:7,t:'analogy',p:'',qt:'ضيقة: واسعة',c:{'أ':'قريبة:بعيدة','ب':'طويلة: قصيرة','ج':'ناجح : متفوق','د':'بطئ : سير'},a:'أ'},
+{s:30,q:10,t:'contextual_error',p:'',qt:'كلما أوغل العلماء في ..... النفس البشرية، تقاصرت أطماعنا في شفاء كثير من الأمراض ..... .',c:{'أ':'سير-المستعصية','ب':'قياس-الجسدية','ج':'معرفة-النفسية','د':'أعماق-النفسية'},a:'ب'},
+{s:44,q:9,t:'reading',p:'زعم ناس أن الطبيب الحاذق يستحق مالا جسيما ولا يطمع ولا يخدع باليسير، فما أعطيت الطبيب فهو دون حقه.',qt:'معنى قوله: طبيب حاذق في النص:',c:{'أ':'صادق','ب':'ماهر','ج':'حاذر','د':'ماكر'},a:'ب'},
+{s:110,q:11,t:'analogy',p:'',qt:'فرس : حمحمة',c:{'أ':'الثور : خوار','ب':'طائرة : هدير','ج':'ماء: شخير','د':'غراب: سجع'},a:'أ'},
+{s:198,q:5,t:'reading',p:'وهكذا الحال في كل مظهر من مظاهر الكون، أليس يدل نظام الأرض والأفلاك وتعاقب الأجيال إلى وجود مدبر عليم وقوة حكيمة؟',qt:'علام تدل مظاهر الكون المذكورة؟',c:{'أ':'تطور الكائنات','ب':'استمرار الحياة','ج':'وجود خالق حكيم','د':'سرعة الزمن'},a:'ج'},
+{s:95,q:8,t:'analogy',p:'',qt:'سكين: حد',c:{'أ':'مرآة: ضوء','ب':'قماش: خيط','ج':'مقص: حدة','د':'أسنان: مضغ'},a:'ج'},
+{s:176,q:1,t:'reading',p:'أجرت شركة تقنية تجربة خفضت فيها أسبوع العمل إلى أربعة أيام مع الحفاظ على الرواتب. بعد ستة أشهر أظهرت البيانات ارتفاعا في الإنتاجية وانخفاضا في التغيب.',qt:'تدور الفقرة حول:',c:{'أ':'زيادة الرواتب','ب':'تقليل أيام العمل','ج':'خفض عدد الموظفين','د':'زيادة ساعات العمل'},a:'ب'},
+{s:120,q:2,t:'analogy',p:'',qt:'صرح: بنيان',c:{'أ':'حقل: نبات','ب':'مزرعة: شجر','ج':'غصن: شجرة','د':'منزل: مأوى'},a:'د'},
+{s:162,q:10,t:'completion',p:'',qt:'.......: مناصرة الولاء القبلي على الحق.',c:{'أ':'العصبية','ب':'القبلية','ج':'الشحناء','د':'النخوة'},a:'أ'},
+{s:190,q:4,t:'completion',p:'',qt:'التعليم ليس حفظا للمعلومات فحسب، بل هو بناء للقدرة على ..... والتحليل.',c:{'أ':'الحفظ','ب':'التقليد','ج':'التفكير','د':'التكرار'},a:'ج'},
+{s:7,q:2,t:'analogy',p:'',qt:'غابة : أشجار',c:{'أ':'فريق : لاعبون','ب':'كتاب : أوراق','ج':'مدينة : شوارع','د':'جسم : عظام'},a:'أ'},
+{s:156,q:8,t:'analogy',p:'',qt:'مقص: قطع',c:{'أ':'مصباح: ضوء','ب':'ميزان: وزن','ج':'قلم: كتابة','د':'باب: فتح'},a:'ج'},
+{s:49,q:9,t:'reading',p:'كان في القرية رجل بخيل، وكان له جار كريم يرسل إليه الطعام. فأرسل البخيل طبقا فارغا، فأعاده الجار مملوءا.',qt:'صفة الجار:',c:{'أ':'البخل','ب':'الكرم','ج':'الكسل','د':'الخوف'},a:'ب'},
+{s:25,q:7,t:'analogy',p:'',qt:'عقل : تفكير',c:{'أ':'قلم : كتابة','ب':'عين : إبصار','ج':'أذن : سماع','د':'قلب : نبض'},a:'أ'},
+{s:99,q:6,t:'reading',p:'الماء أساس الحياة، وندرة المياه من أكبر التحديات، لذلك تتجه الحكومات إلى ترشيد الاستهلاك وتحلية مياه البحر.',qt:'من حلول ندرة المياه المذكورة:',c:{'أ':'الإسراف في الماء','ب':'قطع الأشجار','ج':'تحلية مياه البحر','د':'زيادة التلوث'},a:'ج'},
+{s:26,q:8,t:'reading',p:'الرياضة ضرورة لصحة الإنسان الجسدية والنفسية، فهي تقوي العضلات وتساعد على التخلص من التوتر.',qt:'الفكرة الرئيسة للنص:',c:{'أ':'أضرار الرياضة','ب':'أهمية الرياضة','ج':'أنواع المدارس','د':'مخاطر الطعام'},a:'ب'},
+{s:160,q:7,t:'completion',p:'',qt:'الإسراف في استخدام الموارد يؤدي إلى ..... البيئة.',c:{'أ':'حماية','ب':'تنمية','ج':'استنزاف','د':'تجميل'},a:'ج'},
+{s:70,q:2,t:'analogy',p:'',qt:'قلم : كتابة',c:{'أ':'مفتاح: قفل','ب':'فرشاة: رسم','ج':'عين: نظر','د':'سيف: قطع'},a:'ب'},
+{s:187,q:7,t:'reading',p:'تعد الطاقة الشمسية من أهم مصادر الطاقة المتجددة لأنها تعتمد على ضوء الشمس ولا تسبب انبعاثات ضارة أثناء التشغيل.',qt:'من أهداف الاستثمار في الطاقة الشمسية:',c:{'أ':'زيادة التلوث','ب':'تقليل الاعتماد على الوقود الأحفوري','ج':'إغلاق مصادر الطاقة','د':'رفع الانبعاثات'},a:'ب'}
+];
+var quiz=[],answers={},i=0;
+function esc(x){return String(x||'').replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]})}
+function shuffle(a){a=a.slice();for(var j=a.length-1;j>0;j--){var k=Math.floor(Math.random()*(j+1));var t=a[j];a[j]=a[k];a[k]=t}return a}
+function start(){var n=parseInt(document.getElementById('n').value||10);n=Math.max(1,Math.min(n,DATA.length));quiz=shuffle(DATA).slice(0,n);answers={};i=0;document.getElementById('home').className='box hide';document.getElementById('test').className='box';draw()}
+function draw(){var r=quiz[i],c=r.c||{},sel=answers[i]||'';document.getElementById('pos').innerHTML=(i+1)+'/'+quiz.length;document.getElementById('ansn').innerHTML=Object.keys(answers).length;var passage=r.p?'<div class="passage">'+esc(r.p)+'</div>':'';var h='<p>القسم '+esc(r.s)+' — السؤال '+esc(r.q)+'</p>'+passage+'<h2>'+esc(r.qt)+'</h2>';['أ','ب','ج','د'].forEach(function(k){h+='<button class="choice '+(sel==k?'sel':'')+'" onclick="pick(\''+k+'\')">'+k+') '+esc(c[k])+'</button>'});document.getElementById('qbox').innerHTML=h}
+function pick(k){answers[i]=k;draw()}function next(){if(i<quiz.length-1){i++;draw()}else finish()}function prev(){if(i>0){i--;draw()}}
+function finish(){var ok=0;quiz.forEach(function(r,idx){if(answers[idx]==r.a)ok++});document.getElementById('test').className='box hide';document.getElementById('res').className='box';document.getElementById('ok').innerHTML=ok;document.getElementById('tot').innerHTML=quiz.length;document.getElementById('pct').innerHTML=Math.round(ok/quiz.length*100)+'%';makeReview()}
+function makeReview(){var h='';quiz.forEach(function(r,idx){var c=r.c||{},sel=answers[idx]||'لم يجب';h+='<div class="box"><p>#'+(idx+1)+' القسم '+esc(r.s)+' — السؤال '+esc(r.q)+'</p><h3>'+esc(r.qt)+'</h3>';['أ','ب','ج','د'].forEach(function(k){var cls='choice ';if(k==r.a)cls+='good ';if(k==sel&&k!=r.a)cls+='bad ';h+='<div class="'+cls+'">'+k+') '+esc(c[k])+'</div>'});h+='<p>اختيارك: '+esc(sel)+' — الصحيح: '+esc(r.a)+'</p></div>'});document.getElementById('review').innerHTML=h}
+function toggleReview(){var r=document.getElementById('review');r.className=r.className=='hide'?'':'hide'}
+</script>
+</body>
+</html>
