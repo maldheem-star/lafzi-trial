@@ -535,6 +535,78 @@ function renderFade(){
   <div class="card"><span class="tag" style="background:#FEF3C7;color:#D97706">تقوية المتتاليات · ${info.tag}</span>${body}</div>`;
 }
 
+// ===== تشخيص سريع: العمليات الأساسية (جمع/ضرب/قسمة) =====
+// كل بند: قيمة صحيحة + مموّهات، كل مموّه مربوط بفئة خطأ تشخيصية:
+//  slip = تسرّع/حفظ (طلاقة فقط) · no_carry = مشكلة حمل/قيمة مكانية · concept_confusion = خلط بين العمليات (الأخطر)
+const ARITH_DIAG=[
+  {op:"addition",level:"fact",q:"٧ + ٨ = ؟",correct:15,d:[{v:14,tag:"slip"},{v:16,tag:"slip"},{v:13,tag:"slip"}]},
+  {op:"addition",level:"regroup",q:"٤٧ + ٣٨ = ؟",correct:85,d:[{v:75,tag:"no_carry"},{v:715,tag:"no_carry"},{v:81,tag:"slip"}]},
+  {op:"multiplication",level:"fact",q:"٦ × ٧ = ؟",correct:42,d:[{v:36,tag:"slip"},{v:48,tag:"slip"},{v:13,tag:"concept_confusion"}]},
+  {op:"multiplication",level:"concept",q:"عند سالم ٤ صناديق، في كل صندوق ٥ تفاحات. كم تفاحة عند سالم؟",correct:20,d:[{v:9,tag:"concept_confusion"},{v:15,tag:"slip"},{v:24,tag:"slip"}]},
+  {op:"multiplication",level:"procedure",q:"٢٣ × ٤ = ؟",correct:92,d:[{v:82,tag:"no_carry"},{v:812,tag:"no_carry"},{v:89,tag:"slip"}]},
+  {op:"division",level:"fact",q:"٢٤ ÷ ٦ = ؟",correct:4,d:[{v:18,tag:"concept_confusion"},{v:144,tag:"concept_confusion"},{v:3,tag:"slip"}]},
+  {op:"division",level:"concept",q:"عند هند ١٢ حلوى، توزّعها بالتساوي على ٣ صديقات. كم حلوى تأخذ كل واحدة؟",correct:4,d:[{v:9,tag:"concept_confusion"},{v:36,tag:"concept_confusion"},{v:15,tag:"slip"}]}
+];
+const OP_NAMES={addition:"الجمع",multiplication:"الضرب",division:"القسمة"};
+function buildDiagItem(item){
+  const opts=shuffle([{v:item.correct,tag:""},...item.d]);
+  return{op:item.op,level:item.level,q:item.q,choices:opts.map(o=>toAr(o.v)),correctIndex:opts.findIndex(o=>o.v===item.correct),tags:opts.map(o=>o.tag)};
+}
+let diagQ=[],diagIdx=0,diagPicked=null,diagLocked=false,diagAnswers=[];
+function startArithDiag(){mode="arithdiag";diagQ=ARITH_DIAG.map(buildDiagItem);diagIdx=0;diagPicked=null;diagLocked=false;diagAnswers=[];window.scrollTo(0,0);render()}
+function diagChoose(i){if(diagLocked)return;diagPicked=i;diagLocked=true;diagAnswers.push({...diagQ[diagIdx],picked:i});render()}
+function diagNext(){if(diagIdx+1>=diagQ.length){mode="arithdiagResult";window.scrollTo(0,0)}else{diagIdx++;diagPicked=null;diagLocked=false}render()}
+function diagReport(){
+  const perOp={addition:{r:0,t:0},multiplication:{r:0,t:0},division:{r:0,t:0}};
+  const tagCount={slip:0,no_carry:0,concept_confusion:0};
+  diagAnswers.forEach(a=>{perOp[a.op].t++;const correct=a.picked===a.correctIndex;if(correct)perOp[a.op].r++;else{const tag=a.tags[a.picked];if(tag)tagCount[tag]++}});
+  return{perOp,tagCount};
+}
+function renderArithDiag(){
+  const item=diagQ[diagIdx];
+  const prog=diagQ.map((_,i)=>`<div class="seg" style="background:${i<diagIdx?'#0D9488':(i===diagIdx?'#0D9488':'#E2E8F0')};opacity:${i<=diagIdx?1:.5}"></div>`).join("");
+  const choices=item.choices.map((c,i)=>{
+    let bg="#fff",bd="#E2E8F0",col="#334155";
+    if(diagLocked){if(i===item.correctIndex){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(i===diagPicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}
+    return`<button class="choice" style="background:${bg};border-color:${bd};color:${col}" onclick="diagChoose(${i})" ${diagLocked?"disabled":""}><span class="letter">${L[i]}</span>${c}</button>`}).join("");
+  const btn=diagLocked?`<button class="btn" style="background:#0D9488" onclick="diagNext()">${diagIdx+1>=diagQ.length?"عرض النتيجة":"السؤال التالي ←"}</button>`:"";
+  app.innerHTML=`
+  <button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
+  <div class="bar">${prog}</div>
+  <div class="meta"><span>سؤال ${toAr(diagIdx+1)} من ${toAr(diagQ.length)}</span><span>تشخيص سريع</span></div>
+  <div class="card">
+    <span class="tag" style="background:#CCFBF1;color:#0D9488">${OP_NAMES[item.op]}</span>
+    <div class="q">${item.q}</div>
+    <div class="choices">${choices}</div>
+  </div>
+  ${btn}`;
+}
+function renderArithDiagResult(){
+  const{perOp,tagCount}=diagReport();
+  const opRows=Object.keys(perOp).map(k=>{const o=perOp[k];const pct=o.t?Math.round(o.r/o.t*100):0;const col=pct>=70?'#059669':pct>=40?'#D97706':'#DC2626';return`<div class="dom-row"><div class="dom-head"><span>${OP_NAMES[k]}</span><span>${toAr(o.r)}/${toAr(o.t)}</span></div><div class="track"><div class="fill" style="width:${pct}%;background:${col}"></div></div></div>`}).join("");
+  let findings="";
+  if(tagCount.concept_confusion>0){
+    findings+=`<div class="remedy"><div class="r-title">🔴 أولوية قصوى: خلط بين العمليات</div><div class="r-body">في ${toAr(tagCount.concept_confusion)} من الأسئلة، الإجابة المختارة تطابق استخدام عملية مختلفة عن المطلوبة (مثل الجمع بدل الضرب، أو الطرح/الضرب بدل القسمة). هذا يدل على ثغرة في فهم <b>معنى</b> العملية نفسها، لا في الحفظ فقط. الحل: العودة لأدوات محسوسة (مكعبات/مجموعات) قبل أي تدريب سريع — راجع نهج CRA.</div></div>`;
+  }
+  if(tagCount.no_carry>0){
+    findings+=`<div class="remedy" style="background:linear-gradient(135deg,#EFF6FF,#DBEAFE);border-color:#BFDBFE"><div class="r-title" style="color:#1D4ED8">🟡 صعوبة في الحمل والقيمة المكانية</div><div class="r-body" style="color:#1E3A5F">الأخطاء في الأسئلة متعددة الأرقام تدل على نسيان "الحمل" بين الخانات — يحتاج تدريباً مركّزاً على القيمة المكانية بالعدّادات أو المكعبات قبل التوسّع في أرقام أكبر.</div></div>`;
+  }
+  if(tagCount.slip>0&&tagCount.concept_confusion===0&&tagCount.no_carry===0){
+    findings+=`<div class="remedy" style="background:linear-gradient(135deg,#F0FDF4,#DCFCE7);border-color:#BBF7D0"><div class="r-title" style="color:#059669">🟢 الأساس سليم</div><div class="r-body" style="color:#14532D">لا يوجد خلط مفاهيمي ولا مشاكل حمل — الأخطاء القليلة تسرّع بسيط. يكفي تدريب طلاقة موزّع على أيام (لا حفظ دفعة واحدة).</div></div>`;
+  }
+  if(!tagCount.concept_confusion&&!tagCount.no_carry&&!tagCount.slip){
+    findings=`<div class="remedy" style="background:linear-gradient(135deg,#F0FDF4,#DCFCE7);border-color:#BBF7D0"><div class="r-title" style="color:#059669">🌟 ممتاز</div><div class="r-body" style="color:#14532D">كل الإجابات صحيحة — العمليات الأساسية سليمة تماماً؛ أي ضعف في قسم "الرياضي" مصدره الاستدلال لا الحساب.</div></div>`;
+  }
+  app.innerHTML=`
+  <div class="card">
+    <div style="font-weight:800;font-size:17px;margin-bottom:14px">نتيجة التشخيص السريع</div>
+    ${opRows}
+    ${findings}
+    <button class="btn" style="background:#1E293B;margin-top:14px" onclick="startArithDiag()">إعادة التشخيص</button>
+    <button class="link-btn" onclick="home()">→ الرئيسية</button>
+  </div>`;
+}
+
 // ===== الحالة والتدفّق =====
 function alias(){return (localStorage.getItem("mawhiba_alias")||"بنتي").trim()||"بنتي"}
 function saveAlias(v){localStorage.setItem("mawhiba_alias",v)}
@@ -609,7 +681,7 @@ function bumpStreak(){const st=getStreak();const t=todayStr();if(st.last===t)ret
 function growthMsg(modeKey,pct){try{const key="mawhiba_best_"+modeKey;const prev=parseInt(localStorage.getItem(key)||"-1");let msg="";if(prev<0){msg="أول محاولة في هذا القسم — انطلاقة موفّقة! 🌱"}else if(pct>prev){msg=`تحسّنتِ عن أفضل نتيجة سابقة (${toAr(prev)}%)! تقدّم رائع 📈`}else if(pct===prev){msg="ثبات على أفضل مستوى سابق 💪"}else{msg="واصلي، كل محاولة تبني مهارتك 🌟"}if(pct>prev)localStorage.setItem(key,String(pct));return msg}catch(e){return""}}
 
 // ===== العرض =====
-function render(){if(mode==="home")return renderHome();if(mode==="fade")return renderFade();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
+function render(){if(mode==="home")return renderHome();if(mode==="fade")return renderFade();if(mode==="arithdiag")return renderArithDiag();if(mode==="arithdiagResult")return renderArithDiagResult();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
 
 function renderHome(){
   app.innerHTML=`
@@ -628,6 +700,7 @@ function renderHome(){
     <button class="mode full" onclick="start('full')"><span class="m-name">🎯 محاكاة شاملة (٤٨ سؤالاً)</span><div class="m-sub">من كل المجالات — الأقرب للاختبار الحقيقي</div></button>
     <button class="mode" style="border-color:#FDE68A" onclick="startFade()"><span class="m-name">🎓 وضع التقوية (تلاشٍ تدريجي)</span><div class="m-sub">تدرّب خطوة بخطوة على المتتاليات — مبني على دراسات التعلّم</div></button>
     <button class="mode prog" onclick="loadProgress()"><span class="m-name">📈 متابعة التقدّم</span><div class="m-sub">نتائجك السابقة وتحليل المستوى لكل مجال</div></button>
+    <button class="mode" style="border-color:#99F6E4" onclick="startArithDiag()"><span class="m-name">🔍 تشخيص سريع: الجمع والضرب والقسمة</span><div class="m-sub">٧ أسئلة تحدّد أين بالضبط الصعوبة (حفظ، حمل، أو خلط مفاهيم)</div></button>
   </div>
   <div class="tips">
     <h3>💡 استراتيجيات موهبة</h3>
