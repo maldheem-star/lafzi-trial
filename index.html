@@ -1,50 +1,700 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>لفظي - تجربة</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>برنامج موهبة المكثّف — المستوى الثاني</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
 <style>
-body{font-family:Arial,Tahoma,sans-serif;background:#f5f5f5;margin:0;padding:14px;line-height:1.7;color:#111}.box{background:#fff;border:1px solid #ddd;border-radius:14px;padding:16px;margin:10px auto;max-width:850px}button,input{font:inherit;padding:10px;margin:4px;border:1px solid #bbb;border-radius:8px}button{font-weight:bold;background:#fff}.primary{background:#111;color:#fff}.choice{display:block;width:100%;text-align:right;margin:8px 0;background:#fff}.sel{outline:3px solid #777}.good{background:#e9f8ee;border-color:#198754}.bad{background:#fff0f0;border-color:#b02a37}.passage{white-space:pre-wrap;background:#fafafa;border-right:4px solid #bbb;padding:10px;margin:10px 0}.hide{display:none}.stat{display:inline-block;background:#fafafa;border:1px solid #ddd;border-radius:10px;padding:8px;margin:4px;min-width:90px}.note{color:#666;font-size:13px}textarea{width:100%;min-height:120px;margin-top:10px;direction:rtl}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Tajawal','Segoe UI',system-ui,sans-serif;background:#F5F7FB;color:#1E293B;min-height:100vh;padding:20px 14px;-webkit-tap-highlight-color:transparent}
+  .wrap{max-width:660px;margin:0 auto}
+  .hero{background:linear-gradient(135deg,#1E3A8A,#0F766E);color:#fff;border-radius:22px;padding:26px 22px;box-shadow:0 12px 34px rgba(15,23,42,.18)}
+  .hero h1{font-size:24px;font-weight:800;margin-bottom:6px}
+  .hero p{opacity:.92;font-size:15px;line-height:1.7}
+  .alias{margin-top:16px;display:flex;gap:8px;align-items:center;background:rgba(255,255,255,.15);border-radius:12px;padding:8px 12px}
+  .alias label{font-size:13px;white-space:nowrap}
+  .alias input{flex:1;background:transparent;border:none;color:#fff;font-family:inherit;font-size:15px;font-weight:700;outline:none}
+  .alias input::placeholder{color:rgba(255,255,255,.6)}
+  .section-title{font-size:16px;font-weight:800;color:#334155;margin:26px 4px 12px;display:flex;justify-content:space-between;align-items:center}
+  .link-plain{font-size:13px;color:#2563EB;font-weight:700;cursor:pointer}
+  .modes{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .mode{background:#fff;border:2px solid #E2E8F0;border-radius:16px;padding:16px;cursor:pointer;text-align:right;font-family:inherit;transition:.15s}
+  .mode:hover{border-color:#CBD5E1;transform:translateY(-1px)}
+  .mode .dot{width:12px;height:12px;border-radius:50%;display:inline-block;margin-inline-start:8px}
+  .mode .m-name{font-size:16px;font-weight:700;color:#1E293B}
+  .mode .m-sub{font-size:12px;color:#94A3B8;margin-top:4px}
+  .mode.full{grid-column:1/-1;background:#1E293B;border-color:#1E293B}
+  .mode.full .m-name{color:#fff}.mode.full .m-sub{color:#CBD5E1}
+  .mode.prog{grid-column:1/-1;background:#EFF6FF;border-color:#BFDBFE}
+  .mode.prog .m-name{color:#1D4ED8}
+  .plan{background:#fff;border-radius:18px;padding:8px 6px;box-shadow:0 8px 24px rgba(15,23,42,.06)}
+  .day{display:flex;gap:14px;padding:14px}
+  .day+.day{border-top:1px solid #F1F5F9}
+  .day-num{flex-shrink:0;width:40px;height:40px;border-radius:12px;background:#EFF6FF;color:#1D4ED8;display:grid;place-items:center;font-weight:800;font-size:15px}
+  .day.rest .day-num{background:#F0FDF4;color:#16A34A}.day.sim .day-num{background:#FEF3C7;color:#B45309}
+  .d-title{font-weight:700;font-size:15px;margin-bottom:2px}.d-desc{font-size:13px;color:#64748B;line-height:1.6}
+  .tips{background:#FFFBEB;border:1px solid #FDE68A;border-radius:16px;padding:18px 20px;margin-top:14px}
+  .tips h3{font-size:15px;color:#92400E;margin-bottom:10px}
+  .tips li{font-size:14px;color:#78350F;line-height:1.9;margin-inline-start:18px}
+  .ext{display:block;margin-top:14px;text-align:center;background:#fff;border:2px solid #E2E8F0;border-radius:14px;padding:14px;color:#1D4ED8;font-weight:700;text-decoration:none;font-size:15px}
+  .bar{display:flex;gap:6px;margin-top:6px}
+  .seg{flex:1;height:6px;border-radius:999px;background:#E2E8F0;transition:.3s}
+  .meta{display:flex;justify-content:space-between;margin-top:8px;font-size:13px;color:#64748B}
+  .card{background:#fff;border-radius:20px;padding:24px;box-shadow:0 10px 30px rgba(15,23,42,.08);margin-top:14px}
+  .tag{display:inline-block;font-size:12px;font-weight:800;padding:5px 12px;border-radius:999px;margin-bottom:16px}
+  .q{font-size:20px;font-weight:700;line-height:1.7;margin-bottom:20px}
+  .choices{display:grid;gap:10px}
+  .choice{text-align:right;padding:14px 16px;border-radius:14px;border:2px solid #E2E8F0;background:#fff;color:#334155;font-size:16px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;display:flex;align-items:center;gap:12px;width:100%}
+  .choice:hover:not(:disabled){border-color:#CBD5E1}.choice:disabled{cursor:default}
+  .letter{width:26px;height:26px;flex-shrink:0;border-radius:8px;background:#F1F5F9;color:#64748B;display:grid;place-items:center;font-size:13px;font-weight:800}
+  .explain{margin-top:18px;padding:16px;border-radius:14px;background:#F8FAFC;border-inline-start:4px solid #F59E0B}
+  .explain-title{font-weight:800;margin-bottom:6px}.explain-body{color:#475569;line-height:1.8;font-size:15px}
+  .btn{margin-top:14px;width:100%;padding:15px;border-radius:14px;border:none;color:#fff;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit}
+  .link-btn{margin-top:14px;width:100%;padding:13px;border-radius:14px;border:none;background:transparent;color:#64748B;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
+  .score-row{display:flex;align-items:baseline;gap:10px;margin-bottom:4px}
+  .score-big{font-size:52px;font-weight:800}.score-total{font-size:22px;color:#94A3B8}
+  .score-pct{margin-inline-start:auto;font-size:20px;font-weight:700;color:#2563EB}
+  .dom-row{margin-bottom:12px}
+  .dom-head{display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px;color:#475569}
+  .track{height:9px;background:#EEF2F7;border-radius:999px;overflow:hidden}
+  .fill{height:100%;border-radius:999px;transition:width .5s}
+  .save-note{margin-top:12px;font-size:13px;text-align:center;color:#64748B}
+  .remedy{margin-top:18px;padding:18px;border-radius:16px;background:linear-gradient(135deg,#FEF2F2,#FEF3C7);border:1px solid #FECACA}
+  .remedy .r-title{font-weight:800;color:#B91C1C;font-size:15px;margin-bottom:4px}
+  .remedy .r-body{font-size:14px;color:#7C2D12;line-height:1.7;margin-bottom:12px}
+  .attempt{display:flex;justify-content:space-between;align-items:center;padding:12px 4px;border-bottom:1px solid #F1F5F9;font-size:14px}
+  .attempt:last-child{border:none}
+  .att-date{color:#94A3B8;font-size:12px}.att-mode{font-weight:700}.att-score{font-weight:800}
+  .empty{text-align:center;color:#94A3B8;padding:30px 0;font-size:15px}
+  .copybtn{margin-top:10px;width:100%;padding:13px;border-radius:14px;border:2px solid #2563EB;background:#fff;color:#2563EB;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit}
+.spin{width:44px;height:44px;border:4px solid #E2E8F0;border-top-color:#0D9488;border-radius:50%;margin:0 auto;animation:sp 0.8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
-<div class="box" id="home"><h1>لفظي</h1><p>تجربة رابط مباشر. اختر عدد الأسئلة ثم ابدأ.</p><label>اسم الطالب <input id="student" placeholder="اختياري"></label><label>عدد الأسئلة <input id="n" type="number" value="10" min="1" max="20"></label><button class="primary" onclick="start()">ابدأ</button><p class="note">نسخة تجريبية خفيفة لإثبات الفتح من الرابط. ليست البنك الكامل.</p></div>
-<div class="box hide" id="test"><div><span class="stat">السؤال <b id="pos"></b></span><span class="stat">المجاب <b id="ansn"></b></span></div><div id="qbox"></div><button onclick="prev()">السابق</button><button class="primary" onclick="next()">التالي</button><button onclick="finish()">النتيجة</button></div>
-<div class="box hide" id="res"><h2>النتيجة</h2><div><span class="stat">الصحيح <b id="ok"></b></span><span class="stat">الإجمالي <b id="tot"></b></span><span class="stat">النسبة <b id="pct"></b></span></div><button onclick="copyResult()">نسخ النتيجة</button><button onclick="toggleReview()">المراجعة</button><button onclick="location.reload()">اختبار جديد</button><textarea id="resultText" readonly></textarea><div id="review" class="hide"></div></div>
+<div class="wrap" id="app"></div>
+
 <script>
-var DATA=[
-{s:172,q:10,t:'تناظر',p:'',qt:'..... نافذة : منزل',c:{'أ':'سكن : مستأجر','ب':'رف : خزانة','ج':'البحر : الشاطئ','د':'كتاب : صفحة'},a:'ب'},
-{s:135,q:7,t:'تناظر',p:'',qt:'ضيقة: واسعة',c:{'أ':'قريبة:بعيدة','ب':'طويلة: قصيرة','ج':'ناجح : متفوق','د':'بطئ : سير'},a:'أ'},
-{s:30,q:10,t:'خطأ سياقي',p:'',qt:'كلما أوغل العلماء في ..... النفس البشرية، تقاصرت أطماعنا في شفاء كثير من الأمراض ..... .',c:{'أ':'سير-المستعصية','ب':'قياس-الجسدية','ج':'معرفة-النفسية','د':'أعماق-النفسية'},a:'ب'},
-{s:44,q:9,t:'استيعاب',p:'زعم ناس أن الطبيب الحاذق يستحق مالا جسيما ولا يطمع ولا يخدع باليسير.',qt:'معنى قوله: طبيب حاذق في النص:',c:{'أ':'صادق','ب':'ماهر','ج':'حاذر','د':'ماكر'},a:'ب'},
-{s:110,q:11,t:'تناظر',p:'',qt:'فرس : حمحمة',c:{'أ':'الثور : خوار','ب':'طائرة : هدير','ج':'ماء: شخير','د':'غراب: سجع'},a:'أ'},
-{s:198,q:5,t:'استيعاب',p:'وهكذا الحال في كل مظهر من مظاهر الكون، أليس يدل نظام الأرض والأفلاك إلى وجود مدبر عليم؟',qt:'علام تدل مظاهر الكون المذكورة؟',c:{'أ':'تطور الكائنات','ب':'استمرار الحياة','ج':'وجود خالق حكيم','د':'سرعة الزمن'},a:'ج'},
-{s:95,q:8,t:'تناظر',p:'',qt:'سكين: حد',c:{'أ':'مرآة: ضوء','ب':'قماش: خيط','ج':'مقص: حدة','د':'أسنان: مضغ'},a:'ج'},
-{s:176,q:1,t:'استيعاب',p:'أجرت شركة تقنية تجربة خفضت فيها أسبوع العمل إلى أربعة أيام مع الحفاظ على الرواتب. بعد ستة أشهر أظهرت البيانات ارتفاعا في الإنتاجية.',qt:'تدور الفقرة حول:',c:{'أ':'زيادة الرواتب','ب':'تقليل أيام العمل','ج':'خفض عدد الموظفين','د':'زيادة ساعات العمل'},a:'ب'},
-{s:120,q:2,t:'تناظر',p:'',qt:'صرح: بنيان',c:{'أ':'حقل: نبات','ب':'مزرعة: شجر','ج':'غصن: شجرة','د':'منزل: مأوى'},a:'د'},
-{s:162,q:10,t:'إكمال',p:'',qt:'.......: مناصرة الولاء القبلي على الحق.',c:{'أ':'العصبية','ب':'القبلية','ج':'الشحناء','د':'النخوة'},a:'أ'},
-{s:190,q:4,t:'إكمال',p:'',qt:'التعليم ليس حفظا للمعلومات فحسب، بل هو بناء للقدرة على ..... والتحليل.',c:{'أ':'الحفظ','ب':'التقليد','ج':'التفكير','د':'التكرار'},a:'ج'},
-{s:7,q:2,t:'تناظر',p:'',qt:'غابة : أشجار',c:{'أ':'فريق : لاعبون','ب':'كتاب : أوراق','ج':'مدينة : شوارع','د':'جسم : عظام'},a:'أ'},
-{s:156,q:8,t:'تناظر',p:'',qt:'مقص: قطع',c:{'أ':'مصباح: ضوء','ب':'ميزان: وزن','ج':'قلم: كتابة','د':'باب: فتح'},a:'ج'},
-{s:49,q:9,t:'استيعاب',p:'كان في القرية رجل بخيل، وكان له جار كريم يرسل إليه الطعام.',qt:'صفة الجار:',c:{'أ':'البخل','ب':'الكرم','ج':'الكسل','د':'الخوف'},a:'ب'},
-{s:25,q:7,t:'تناظر',p:'',qt:'عقل : تفكير',c:{'أ':'قلم : كتابة','ب':'عين : إبصار','ج':'أذن : سماع','د':'قلب : نبض'},a:'أ'},
-{s:99,q:6,t:'استيعاب',p:'الماء أساس الحياة، وندرة المياه من أكبر التحديات، لذلك تتجه الحكومات إلى ترشيد الاستهلاك وتحلية مياه البحر.',qt:'من حلول ندرة المياه المذكورة:',c:{'أ':'الإسراف في الماء','ب':'قطع الأشجار','ج':'تحلية مياه البحر','د':'زيادة التلوث'},a:'ج'},
-{s:26,q:8,t:'استيعاب',p:'الرياضة ضرورة لصحة الإنسان الجسدية والنفسية، فهي تقوي العضلات وتساعد على التخلص من التوتر.',qt:'الفكرة الرئيسة للنص:',c:{'أ':'أضرار الرياضة','ب':'أهمية الرياضة','ج':'أنواع المدارس','د':'مخاطر الطعام'},a:'ب'},
-{s:160,q:7,t:'إكمال',p:'',qt:'الإسراف في استخدام الموارد يؤدي إلى ..... البيئة.',c:{'أ':'حماية','ب':'تنمية','ج':'استنزاف','د':'تجميل'},a:'ج'},
-{s:70,q:2,t:'تناظر',p:'',qt:'قلم : كتابة',c:{'أ':'مفتاح: قفل','ب':'فرشاة: رسم','ج':'عين: نظر','د':'سيف: قطع'},a:'ب'},
-{s:187,q:7,t:'استيعاب',p:'تعد الطاقة الشمسية من أهم مصادر الطاقة المتجددة لأنها تعتمد على ضوء الشمس ولا تسبب انبعاثات ضارة.',qt:'من أهداف الاستثمار في الطاقة الشمسية:',c:{'أ':'زيادة التلوث','ب':'تقليل الاعتماد على الوقود الأحفوري','ج':'إغلاق مصادر الطاقة','د':'رفع الانبعاثات'},a:'ب'}
+// ===== إعدادات =====
+const SB_URL="https://yzznkerweqkmhrtbidrl.supabase.co";
+const SB_KEY="sb_publishable_W9ijdHn1vHj3-rUDCx2U5Q_yq6ebbsI";
+const FN_URL=SB_URL+"/functions/v1/generate-question";
+const TBL="mawhiba_attempts";
+const DOMAINS={
+  verbal:{name:"الاستدلال اللغوي",color:"#2563EB",soft:"#DBEAFE"},
+  quant:{name:"الرياضي والمكاني",color:"#0D9488",soft:"#CCFBF1"},
+  science:{name:"الاستدلال العلمي",color:"#7C3AED",soft:"#EDE9FE"},
+  flex:{name:"المرونة والأنماط",color:"#D97706",soft:"#FEF3C7"},
+};
+const L=["أ","ب","ج","د"];
+const PER=12;
+const DAILY_CAP=80; // حد أقصى لطلبات الذكاء الاصطناعي يومياً (تحكّم بالتكلفة)
+
+// ===== أدوات =====
+const rand=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+const toAr=n=>String(n).replace(/[0-9]/g,d=>"٠١٢٣٤٥٦٧٨٩"[d]);
+function arSeq(a){return a.map(toAr).join(" ، ")}
+function mcNum(correct,cands){const opts=[correct];(cands||[]).forEach(x=>{x=Math.round(x);if(opts.length<4&&Number.isFinite(x)&&x>=0&&!opts.includes(x))opts.push(x)});let p=1;while(opts.length<4){[correct+p,correct-p].forEach(x=>{if(opts.length<4&&x>=0&&!opts.includes(x))opts.push(x)});p++;if(p>300)break}const sh=shuffle(opts);return{choices:sh.map(toAr),answer:sh.indexOf(correct)}}
+function qz(d,q,correct,cands,w){const m=mcNum(correct,cands);return{d,q,c:m.choices,a:m.answer,w}}
+
+// ===== مولّدات الرياضي =====
+function gArith(){const s=rand(2,9),a=rand(1,9);const q=[a];for(let i=0;i<3;i++)q.push(q[i]+s);const ans=q[3]+s;return qz("quant",`أكمل المتتالية: ${arSeq(q)} ، ...`,ans,[ans+s,ans-s,q[3]+1],`يزيد العدد ${toAr(s)} في كل مرة: ${toAr(q[3])} + ${toAr(s)} = ${toAr(ans)}.`)}
+function gGeo(){const r=pick([2,3]),a=rand(2,5);const q=[a];for(let i=0;i<3;i++)q.push(q[i]*r);const ans=q[3]*r;return qz("quant",`أكمل المتتالية: ${arSeq(q)} ، ...`,ans,[ans-a,q[3]+r,ans+a],`كل عدد = الذي قبله × ${toAr(r)}: ${toAr(q[3])} × ${toAr(r)} = ${toAr(ans)}.`)}
+function gPrice(){const per=rand(2,6),k=rand(2,4),m=rand(5,8);const ck=per*k;return qz("quant",`إذا كان ثمن ${toAr(k)} أقلام ${toAr(ck)} ريالاً، فكم ثمن ${toAr(m)} أقلام؟`,per*m,[per*m+per,per*m-per,per*(m+1)],`سعر القلم = ${toAr(ck)} ÷ ${toAr(k)} = ${toAr(per)}، إذن ${toAr(m)} × ${toAr(per)} = ${toAr(per*m)} ريالاً.`)}
+function gPerim(){if(pick([0,1])){const side=rand(3,12);return qz("quant",`محيط مربع طول ضلعه ${toAr(side)} سم. كم محيطه؟`,4*side,[4*side+4,4*side-4,side*3],`محيط المربع = ٤ × الضلع = ${toAr(4*side)} سم.`)}const per=4*rand(3,12);return qz("quant",`محيط مربع يساوي ${toAr(per)} سم. كم طول ضلعه؟`,per/4,[per/4+1,per/4-1,per/2],`الضلع = المحيط ÷ ٤ = ${toAr(per/4)} سم.`)}
+function gClock(){const names=["","الواحدة","الثانية","الثالثة","الرابعة","الخامسة","السادسة"];const h=rand(1,6),ang=30*h;return qz("quant",`عندما تشير الساعة إلى ${names[h]} تماماً، كم الزاوية بين عقربَيها؟`,ang,[ang+30,ang-30,ang+15],`كل ساعة = ٣٠°، وعند ${toAr(h)}:٠٠ الزاوية = ${toAr(ang)}°.`)}
+function gSides(){const sh=pick([["المثلث",3],["المربع",4],["الشكل الخماسي",5],["الشكل السداسي",6],["الشكل الثماني",8]]);return qz("quant",`كم عدد أضلاع ${sh[0]}؟`,sh[1],[sh[1]+1,sh[1]-1,sh[1]+2],`${sh[0]} له ${toAr(sh[1])} أضلاع.`)}
+// متقدّمة
+function gWorkers(){const w1=rand(3,6),f=rand(2,4),d2=rand(3,6);const total=w1*d2*f;const d1=total/w1;const w2=total/d2;return qz("quant",`يستطيع ${toAr(w1)} عمّال دهن بيت في ${toAr(d1)} يوماً. كم عاملاً يدهنون نفس البيت في ${toAr(d2)} أيام؟`,w2,[w2+1,w2-1,w1+d2],`العمل ثابت: العمّال × الأيام = ${toAr(total)}. العمّال = ${toAr(total)} ÷ ${toAr(d2)} = ${toAr(w2)}.`)}
+function gMedian(){const mid=rand(4,20),sum=5*mid;return qz("quant",`مجموع خمسة أعداد صحيحة متتالية يساوي ${toAr(sum)}. أوجد وسيطها.`,mid,[mid+1,mid-1,Math.round(sum/4)],`الوسيط = المجموع ÷ العدد = ${toAr(sum)} ÷ ٥ = ${toAr(mid)}.`)}
+function gCube(){const s=rand(2,5),v=s*s*s,nv=(2*s)**3;return qz("quant",`مكعّب حجمه ${toAr(v)} سم³. إذا ضاعفنا طول ضلعه، فما حجمه الجديد؟`,nv,[v*2,v*4,v*6],`مضاعفة الضلع تضاعف الحجم ٨ مرّات: ${toAr(v)} × ٨ = ${toAr(nv)} سم³.`)}
+function gPercent(){const rentP=pick([30,40,50]),expP=pick([20,30]),leftP=100-rentP-expP;if(leftP<=0)return gPercent();const salary=pick([6000,8000,9000,10000,12000]);const left=salary*leftP/100;if(!Number.isInteger(left))return gPercent();return qz("quant",`دفع سالم ${toAr(rentP)}% من راتبه إيجاراً و${toAr(expP)}% مصروفات، وتبقّى له ${toAr(left)} ريال. كم راتبه؟`,salary,[salary+1000,salary-1000,left*2],`المتبقّي = ${toAr(leftP)}% من الراتب. الراتب = ${toAr(left)} ÷ ${toAr(leftP)}% = ${toAr(salary)} ريال.`)}
+function gPaths(){const p=rand(2,4),q=rand(2,4);return qz("quant",`عدد الطرق من (أ) إلى (ب) ${toAr(p)}، ومن (ب) إلى (ج) ${toAr(q)}. كم عدد الطرق من (أ) إلى (ج)؟`,p*q,[p+q,p*q+1,p*q-1],`نضرب: ${toAr(p)} × ${toAr(q)} = ${toAr(p*q)} طريقاً.`)}
+
+// ===== مولّدات المرونة والأنماط =====
+function fDouble(){const a=pick([1,2,3]);const q=[a];for(let i=0;i<4;i++)q.push(q[i]*2);const ans=q[4]*2;return qz("flex",`أكمل النمط: ${arSeq(q)} ، ...`,ans,[ans-a,q[4]+2,ans+2],`كل عدد ضعف الذي قبله: ${toAr(q[4])} × ٢ = ${toAr(ans)}.`)}
+function fTriple(){const a=rand(1,3);const q=[a];for(let i=0;i<3;i++)q.push(q[i]*3);const ans=q[3]*3;return qz("flex",`أكمل النمط: ${arSeq(q)} ، ...`,ans,[ans-a,q[3]+3,ans+3],`كل عدد = الذي قبله × ٣: ${toAr(q[3])} × ٣ = ${toAr(ans)}.`)}
+function fFib(){let a=rand(1,4),b=rand(1,5);const q=[a,b];for(let i=0;i<4;i++)q.push(q[q.length-1]+q[q.length-2]);const ans=q[5]+q[4];return qz("flex",`أكمل النمط: ${arSeq(q)} ، ...`,ans,[ans+1,ans-1,q[5]*2],`كل عدد = مجموع العددين قبله: ${toAr(q[4])} + ${toAr(q[5])} = ${toAr(ans)}.`)}
+function fSq(){const c=pick([0,1]);const q=[];for(let n=1;n<=4;n++)q.push(n*n+c);const ans=25+c;return qz("flex",`أكمل النمط: ${arSeq(q)} ، ...`,ans,[ans+2,ans-2,ans+5],`مربعات الأعداد${c?" + ١":""}: والتالي ٥²${c?" + ١":""} = ${toAr(ans)}.`)}
+function fOpp(){const dict={"طويل":"قصير","كبير":"صغير","سريع":"بطيء","قوي":"ضعيف","مفتوح":"مغلق","صعب":"سهل","ثقيل":"خفيف","بعيد":"قريب","كثير":"قليل","النور":"الظلام","الفرح":"الحزن"};const keys=Object.keys(dict);const w=pick(keys);const correct=dict[w];const others=shuffle(keys.filter(k=>k!==w).map(k=>dict[k]).filter(v=>v!==correct)).slice(0,3);const opts=shuffle([correct,...others]);return{d:"flex",q:`ما ضدّ كلمة «${w}»؟`,c:opts,a:opts.indexOf(correct),w:`ضدّ «${w}» هو «${correct}».`}}
+// الهرم العددي (مُصلَح: c/a)
+function gPyramid(){const known=rand(2,12),other=rand(2,12),top=(known+other)*2;const m=mcNum(other,[other+2,other-2,Math.round(top/2)]);return{d:"flex",q:`هرم عددي: مجموع العددين السفليين × ٢ = العلوي. إذا كان العلوي ${toAr(top)} وأحد السفليين ${toAr(known)}، فما الآخر؟`,c:m.choices,a:m.answer,w:`العلوي ÷ ٢ = ${toAr(top/2)}، ثم ${toAr(top/2)} − ${toAr(known)} = ${toAr(other)}.`}}
+function gCircleNum(){const a=rand(2,15),b=rand(2,15);return qz("flex",`دائرة مقسومة: العلوي = مجموع السفليين. إذا كان السفليان ${toAr(a)} و ${toAr(b)}، فما العلوي؟`,a+b,[a+b+2,a+b-2,a*b],`العلوي = ${toAr(a)} + ${toAr(b)} = ${toAr(a+b)}.`)}
+function gShapeEq(){const star=rand(3,9),spiral=rand(2,8);const rowSum=star+2*spiral;return qz("flex",`لغز الأشكال: ★ + ● + ● = ${toAr(rowSum)}، وكانت ● = ${toAr(spiral)}. فما قيمة ★؟`,star,[star+1,star-1,spiral],`★ = ${toAr(rowSum)} − (٢ × ${toAr(spiral)}) = ${toAr(star)}.`)}
+// الترتيب التسلسلي
+const SEQS=[{n:"مراحل عمر الإنسان",it:["جنين","رضيع","طفل","صبي","شاب","كهل","شيخ"]},{n:"أيام الأسبوع",it:["السبت","الأحد","الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة"]},{n:"مراحل النبات",it:["بذرة","برعم","نبتة","شجرة"]},{n:"مراحل الفراشة",it:["بيضة","يرقة","شرنقة","فراشة"]},{n:"الأعداد الترتيبية",it:["الأول","الثاني","الثالث","الرابع","الخامس","السادس"]}];
+function gSeq(){const s=pick(SEQS);const maxStart=Math.max(0,s.it.length-4);const st=rand(0,maxStart);const shown=s.it.slice(st,st+3);const ans=s.it[st+3];const pool=s.it.filter(x=>!shown.includes(x)&&x!==ans);let dis=shuffle(pool).slice(0,3);if(dis.length<3){const o=pick(SEQS.filter(z=>z!==s));dis=dis.concat(shuffle(o.it).slice(0,3-dis.length))}const opts=shuffle([ans,...dis.slice(0,3)]);return{d:"flex",q:`ما الكلمة التالية في الترتيب؟  ${shown.join(" ← ")} ← ...`,c:opts,a:opts.indexOf(ans),w:`الترتيب حسب «${s.n}»: بعد «${shown[shown.length-1]}» يأتي «${ans}».`}}
+// النرد
+function gDice(){const faces=rand(1,6),opp=7-faces;return qz("flex",`في حجر النرد، مجموع النقاط على الوجهين المتقابلين ٧. إذا ظهر الوجه ${toAr(faces)}، فكم نقاط الوجه المقابل؟`,opp,[opp+1,opp-1,faces],`الوجه المقابل = ٧ − ${toAr(faces)} = ${toAr(opp)}.`)}
+
+
+// ===== مولّدات رياضية إضافية (من المرجع) =====
+function gCompound(){const m1=rand(2,5),h1=rand(2,6),rate=rand(2,5);const units1=m1*h1*rate;const m2=rand(2,6);const h2=units1/(m2*rate);if(!Number.isInteger(h2)||h2<1||h2>12)return gCompound();return qz("quant",`${toAr(m1)} آلات تنتج ${toAr(units1)} قطعة في ${toAr(h1)} ساعات. كم ساعة تحتاج ${toAr(m2)} آلات لإنتاج نفس الكمية؟`,h2,[h2+1,h2-1,h1],`الإنتاج ثابت: آلات×ساعات×معدّل = ${toAr(units1)}. الساعات = ${toAr(units1)} ÷ (${toAr(m2)}×${toAr(rate)}) = ${toAr(h2)}.`)}
+function gFraction(){const opts=pick([[[1,4],[1,3],"٥/١٢"],[[1,2],[1,4],"١/٤"],[[1,3],[1,6],"١/٢"],[[2,5],[1,5],"٢/٥"]]);const [[n1,d1],[n2,d2],correct]=opts;const distract=shuffle(["١/٣","٢/٣","٣/٤","١/٢","١/٤","٥/١٢","٧/١٢"].filter(x=>x!==correct)).slice(0,3);const all=shuffle([correct,...distract]);return {d:"quant",q:`قضى محمد ${toAr(n1)}/${toAr(d1)} من يومه في المدرسة، و${toAr(n2)}/${toAr(d2)} في النوم. ما الكسر المتبقّي من يومه؟`,c:all,a:all.indexOf(correct),w:`المتبقّي = ١ − ${toAr(n1)}/${toAr(d1)} − ${toAr(n2)}/${toAr(d2)} = ${correct}.`}}
+function gTrees(){const L=pick([12,18,24,30]),W=pick([6,9,12]);const perim=2*(L+W);const gap=pick([2,3,6]);if(perim%gap!==0)return gTrees();const trees=perim/gap;return qz("quant",`بستان مستطيل طوله ${toAr(L)}م وعرضه ${toAr(W)}م. زُرعت أشجار على حدوده كل ${toAr(gap)} أمتار. كم شجرة زُرعت؟`,trees,[trees+1,trees-1,perim],`المحيط = ٢×(${toAr(L)}+${toAr(W)}) = ${toAr(perim)}م. الأشجار = ${toAr(perim)} ÷ ${toAr(gap)} = ${toAr(trees)}.`)}
+function gCircleValue(){const rule=pick(["sum","prod"]);if(rule==="sum"){const a=rand(3,12),b=rand(3,12);return qz("quant",`في الدائرة: العلوي = مجموع السفليين. إذا كان العلوي ${toAr(a+b)} وأحد السفليين ${toAr(a)}، فما الآخر؟`,b,[b+2,b-2,a],`الآخر = ${toAr(a+b)} − ${toAr(a)} = ${toAr(b)}.`)}const a=rand(2,6),b=rand(2,6);return qz("quant",`في الدائرة: العلوي = حاصل ضرب السفليين. إذا كان العلوي ${toAr(a*b)} وأحد السفليين ${toAr(a)}، فما الآخر؟`,b,[b+1,b-1,a],`الآخر = ${toAr(a*b)} ÷ ${toAr(a)} = ${toAr(b)}.`)}
+function gConsec(){const count=pick([3,5]),mid=rand(5,20);const sum=count*mid;const first=mid-Math.floor(count/2);return qz("quant",`مجموع ${toAr(count)} أعداد صحيحة متتالية يساوي ${toAr(sum)}. ما العدد الأول (الأصغر)؟`,first,[first+1,first-1,mid],`الأوسط = ${toAr(sum)} ÷ ${toAr(count)} = ${toAr(mid)}. الأول = ${toAr(mid)} − ${toAr(Math.floor(count/2))} = ${toAr(first)}.`)}
+
+// ===== أدوات هندسية مشتركة (زوايا) =====
+// نقطة على بعد r من V باتجاه الزاوية phi (٠=يمين، ٩٠=أعلى)
+function vAngleDeg(V,r,phi){const rad=phi*Math.PI/180;return{x:V.x+r*Math.cos(rad),y:V.y-r*Math.sin(rad)}}
+function uDir(phi){const rad=phi*Math.PI/180;return{x:Math.cos(rad),y:-Math.sin(rad)}}
+function unitTo(V,P){const dx=P.x-V.x,dy=P.y-V.y;const m=Math.hypot(dx,dy)||1;return{x:dx/m,y:dy/m}}
+// نقطة منتصف الزاوية (منصّف) بين اتجاهين عند رأس V، تُستخدم لوضع رقم الزاوية داخلها
+function bisectorPoint(V,u1,u2,r){let bx=u1.x+u2.x,by=u1.y+u2.y,bm=Math.hypot(bx,by);if(bm<1e-6){bx=-u1.y;by=u1.x;bm=1}return{x:V.x+(bx/bm)*r,y:V.y+(by/bm)*r}}
+function arcPathBetween(V,u1,u2,r){const p1={x:V.x+u1.x*r,y:V.y+u1.y*r},p2={x:V.x+u2.x*r,y:V.y+u2.y*r};const cross=u1.x*u2.y-u1.y*u2.x;const sweep=cross>0?1:0;return`M ${p1.x.toFixed(1)} ${p1.y.toFixed(1)} A ${r} ${r} 0 0 ${sweep} ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`}
+// يرسم مروحة زوايا حول رأس O بدءاً من startPhi، بقيم values المتتابعة، مع تمييز الزاوية المجهولة برقم unknownIdx
+function renderSectorFan(O,startPhi,values,unknownIdx,extraSVG){
+  const rayLen=68,arcR=24,labR=38;
+  let phis=[startPhi];values.forEach(v=>phis.push(phis[phis.length-1]+v));
+  let rays="",arcs="",labels="";
+  phis.forEach(p=>{const pt=vAngleDeg(O,rayLen,p);rays+=`<line x1="${O.x}" y1="${O.y}" x2="${pt.x.toFixed(1)}" y2="${pt.y.toFixed(1)}" stroke="#1E293B" stroke-width="2.5"/>`});
+  for(let i=0;i<values.length;i++){
+    const u1=uDir(phis[i]),u2=uDir(phis[i+1]),isUnk=i===unknownIdx;
+    arcs+=`<path d="${arcPathBetween(O,u1,u2,arcR)}" fill="none" stroke="${isUnk?'#D97706':'#0D9488'}" stroke-width="2"/>`;
+    const lp=bisectorPoint(O,u1,u2,labR);
+    labels+=`<text x="${lp.x.toFixed(1)}" y="${lp.y.toFixed(1)}" font-size="14" font-weight="800" text-anchor="middle" dominant-baseline="middle" fill="${isUnk?'#D97706':'#0D9488'}">${isUnk?'ص':toAr(values[i])+'°'}</text>`;
+  }
+  return`<svg viewBox="0 0 200 200" width="200" height="200">${extraSVG||""}${rays}<circle cx="${O.x}" cy="${O.y}" r="3" fill="#1E293B"/>${arcs}${labels}</svg>`;
+}
+
+// ===== مولّدات الزوايا (بصرية) =====
+function gAngleTriangle(){
+  const a=rand(35,95),b=rand(35,95);
+  if(a+b>=150||a+b<=60)return gAngleTriangle();
+  const A={x:35,y:155},B={x:165,y:155},rad=Math.PI/180;
+  const t=(B.x-A.x)*Math.sin(b*rad)/Math.sin((a+b)*rad);
+  const C={x:A.x+t*Math.cos(a*rad),y:A.y-t*Math.sin(a*rad)};
+  if(C.y<15||C.y>172)return gAngleTriangle();
+  const ans=180-a-b;
+  const uAB=unitTo(A,B),uAC=unitTo(A,C),uBA=unitTo(B,A),uBC=unitTo(B,C),uCA=unitTo(C,A),uCB=unitTo(C,B);
+  const arcR=22,labR=32;
+  const lA=bisectorPoint(A,uAB,uAC,labR),lB=bisectorPoint(B,uBA,uBC,labR),lC=bisectorPoint(C,uCA,uCB,labR);
+  const svg=`<svg viewBox="0 0 200 200" width="200" height="200">
+    <polygon points="${A.x},${A.y} ${B.x},${B.y} ${C.x.toFixed(1)},${C.y.toFixed(1)}" fill="none" stroke="#1E293B" stroke-width="2.5"/>
+    <path d="${arcPathBetween(A,uAB,uAC,arcR)}" fill="none" stroke="#0D9488" stroke-width="2"/>
+    <path d="${arcPathBetween(B,uBA,uBC,arcR)}" fill="none" stroke="#0D9488" stroke-width="2"/>
+    <path d="${arcPathBetween(C,uCA,uCB,arcR)}" fill="none" stroke="#D97706" stroke-width="2"/>
+    <text x="${lA.x.toFixed(1)}" y="${lA.y.toFixed(1)}" font-size="14" font-weight="800" text-anchor="middle" dominant-baseline="middle" fill="#0D9488">${toAr(a)}°</text>
+    <text x="${lB.x.toFixed(1)}" y="${lB.y.toFixed(1)}" font-size="14" font-weight="800" text-anchor="middle" dominant-baseline="middle" fill="#0D9488">${toAr(b)}°</text>
+    <text x="${lC.x.toFixed(1)}" y="${lC.y.toFixed(1)}" font-size="14" font-weight="800" text-anchor="middle" dominant-baseline="middle" fill="#D97706">ص</text>
+  </svg>`;
+  const m=mcNum(ans,[ans+10,ans-10,180-ans]);
+  return{d:"quant",q:"في المثلث المجاور، ما قيمة الزاوية ص؟",c:m.choices.map(x=>x+"°"),a:m.answer,w:`مجموع زوايا المثلث ١٨٠°: ص = ١٨٠ − ${toAr(a)} − ${toAr(b)} = ${toAr(ans)}°.`,svg};
+}
+function gAngleLine(){
+  const k=pick([2,2,3]);
+  let values;
+  if(k===2){const v0=rand(35,145);values=[v0,180-v0]}
+  else{const v0=rand(25,90);const rem=180-v0;const v1=rand(25,rem-25);values=[v0,v1,rem-v1]}
+  const unknownIdx=rand(0,k-1);
+  const O={x:100,y:150};
+  const svg=renderSectorFan(O,0,values,unknownIdx);
+  const ans=values[unknownIdx];
+  const m=mcNum(ans,[ans+15,ans-15,180-ans]);
+  return{d:"quant",q:"الزوايا في الشكل واقعة على خط مستقيم (مجموعها ١٨٠°). ما قيمة الزاوية ص؟",c:m.choices.map(x=>x+"°"),a:m.answer,w:`مجموع الزوايا على المستقيم = ١٨٠°. ص = ١٨٠ − باقي الزوايا = ${toAr(ans)}°.`,svg};
+}
+function gAnglePoint(){
+  const k=pick([3,3,4]);
+  let values=[],remaining=360;
+  for(let i=0;i<k-1;i++){const maxV=remaining-25*(k-1-i);const v=rand(25,Math.max(25,maxV));values.push(v);remaining-=v}
+  values.push(remaining);
+  if(values.some(v=>v<20||v>250))return gAnglePoint();
+  const unknownIdx=rand(0,k-1);
+  const O={x:100,y:100};
+  const startPhi=rand(0,40);
+  const svg=renderSectorFan(O,startPhi,values,unknownIdx);
+  const ans=values[unknownIdx];
+  const m=mcNum(ans,[ans+20,ans-20,ans+40]);
+  return{d:"quant",q:"مجموع الزوايا حول نقطة واحدة ٣٦٠°. ما قيمة الزاوية ص في الشكل؟",c:m.choices.map(x=>x+"°"),a:m.answer,w:`مجموع الزوايا حول نقطة = ٣٦٠°. ص = ٣٦٠ − مجموع باقي الزوايا = ${toAr(ans)}°.`,svg};
+}
+function gAngleSquare(){
+  const g=rand(20,65),ans=90-g;
+  const O={x:55,y:45},side=95;
+  const square=`<polygon points="${O.x},${O.y} ${O.x+side},${O.y} ${O.x+side},${O.y+side} ${O.x},${O.y+side}" fill="none" stroke="#334155" stroke-width="2.5"/>`;
+  const unknownIdx=rand(0,1);
+  const values=unknownIdx===0?[ans,g]:[g,ans];
+  const svg=renderSectorFan(O,-90,values,unknownIdx,square);
+  const m=mcNum(ans,[ans+10,ans-10,90-ans]);
+  return{d:"quant",q:"زاوية المربّع القائمة مقسومة بخط إلى زاويتين كما في الشكل. ما قيمة الزاوية ص؟",c:m.choices.map(x=>x+"°"),a:m.answer,w:`زاوية المربّع القائمة = ٩٠°. ص = ٩٠ − ${toAr(g)} = ${toAr(ans)}°.`,svg};
+}
+function gAngleEqualRays(){
+  const k=pick([2,3,4]),part=rand(12,42),total=part*k;
+  if(total>160)return gAngleEqualRays();
+  const O={x:100,y:165},startPhi=(180-total)/2,rayLen=75,arcR=22,labR=34,outerR=80;
+  let phis=[startPhi];for(let i=0;i<k;i++)phis.push(phis[phis.length-1]+part);
+  let rays="",arcs="",labels="";
+  phis.forEach(p=>{const pt=vAngleDeg(O,rayLen,p);rays+=`<line x1="${O.x}" y1="${O.y}" x2="${pt.x.toFixed(1)}" y2="${pt.y.toFixed(1)}" stroke="#1E293B" stroke-width="2.5"/>`});
+  const unknownIdx=rand(0,k-1);
+  for(let i=0;i<k;i++){
+    const u1=uDir(phis[i]),u2=uDir(phis[i+1]),isUnk=i===unknownIdx;
+    arcs+=`<path d="${arcPathBetween(O,u1,u2,arcR)}" fill="none" stroke="${isUnk?'#D97706':'#0D9488'}" stroke-width="2"/>`;
+    const lp=bisectorPoint(O,u1,u2,labR);
+    labels+=isUnk?`<text x="${lp.x.toFixed(1)}" y="${lp.y.toFixed(1)}" font-size="15" font-weight="800" text-anchor="middle" dominant-baseline="middle" fill="#D97706">ص</text>`:`<text x="${lp.x.toFixed(1)}" y="${lp.y.toFixed(1)}" font-size="14" font-weight="800" text-anchor="middle" dominant-baseline="middle" fill="#0D9488">٭</text>`;
+  }
+  const uO1=uDir(phis[0]),uO2=uDir(phis[k]);
+  const outerLabel=bisectorPoint(O,uO1,uO2,outerR);
+  const outerArc=`<path d="${arcPathBetween(O,uO1,uO2,outerR-14)}" fill="none" stroke="#334155" stroke-width="1.5" stroke-dasharray="3 3"/>`;
+  const outerText=`<text x="${outerLabel.x.toFixed(1)}" y="${outerLabel.y.toFixed(1)}" font-size="12" font-weight="700" text-anchor="middle" fill="#334155">المجموع ${toAr(total)}°</text>`;
+  const svg=`<svg viewBox="0 0 200 200" width="200" height="200">${rays}<circle cx="${O.x}" cy="${O.y}" r="3" fill="#1E293B"/>${arcs}${labels}${outerArc}${outerText}</svg>`;
+  const m=mcNum(part,[part+8,part-8,total]);
+  return{d:"flex",q:`زاوية كبيرة قياسها ${toAr(total)}° مقسومة بأشعّة متساوية إلى ${toAr(k)} زوايا متطابقة (مُعلَّمة بـ ٭). ما قياس الزاوية ص؟`,c:m.choices.map(x=>x+"°"),a:m.answer,w:`الزوايا متساوية: كل زاوية = ${toAr(total)} ÷ ${toAr(k)} = ${toAr(part)}°.`,svg};
+}
+
+// ===== مصفوفة ريفن ٣×٣ =====
+function dotsMarkup(n){const pos=[[10,10],[25,10],[40,10],[10,25],[25,25],[40,25],[10,40],[25,40],[40,40]];let s="";for(let i=0;i<n&&i<9;i++)s+=`<circle cx="${pos[i][0]}" cy="${pos[i][1]}" r="5" fill="#1E293B"/>`;return s}
+function miniDots(n){return`<svg viewBox="0 0 50 50" width="50" height="50">${dotsMarkup(n)}</svg>`}
+function gridCell(x,y,inner){return`<rect x="${x}" y="${y}" width="55" height="55" fill="#fff" stroke="#CBD5E1" stroke-width="1.5"/><g transform="translate(${x+2.5},${y+2.5})">${inner}</g>`}
+function gridQCell(x,y){return`<rect x="${x}" y="${y}" width="55" height="55" fill="#F8FAFC" stroke="#94A3B8" stroke-width="2" stroke-dasharray="4 3"/><text x="${x+27}" y="${y+35}" font-size="26" font-weight="800" fill="#D97706" text-anchor="middle">؟</text>`}
+function gRavenCount(){
+  let cells="";
+  for(let r=0;r<3;r++)for(let c=0;c<3;c++){const i=r*3+c,x=c*65+5,y=r*65+5;cells+=(i===8)?gridQCell(x,y):gridCell(x,y,dotsMarkup(i+1))}
+  const svg=`<svg viewBox="0 0 200 200" width="200" height="200">${cells}</svg>`;
+  const ans=9,distract=shuffle([6,7,8]);
+  const choiceVals=shuffle([ans,...distract]);
+  const c=choiceVals.map(n=>miniDots(n));
+  return{d:"flex",q:"لاحظي عدد النقاط في كل خلية من الشبكة، ما الشكل المناسب لمكان علامة الاستفهام؟",c,a:choiceVals.indexOf(ans),w:`عدد النقاط يزيد بمقدار واحد من خلية لأخرى (١ إلى ٩)؛ الخلية الأخيرة = ${toAr(ans)} نقاط.`,svg};
+}
+const RAVEN_COLORS=["#0D9488","#7C3AED","#D97706"];
+function triMarkup(color,rot){return`<g transform="rotate(${rot} 25 25)"><polygon points="25,10 38,38 12,38" fill="${color}"/></g>`}
+function triSVG(color,rot){return`<svg viewBox="0 0 50 50" width="50" height="50">${triMarkup(color,rot)}</svg>`}
+function gRavenRotate(){
+  const rots=[0,90,180];
+  let cells="";
+  for(let r=0;r<3;r++)for(let c=0;c<3;c++){const x=c*65+5,y=r*65+5;if(r===2&&c===2){cells+=gridQCell(x,y)}else{cells+=gridCell(x,y,triMarkup(RAVEN_COLORS[r],rots[c]))}}
+  const svg=`<svg viewBox="0 0 200 200" width="200" height="200">${cells}</svg>`;
+  const correct={color:RAVEN_COLORS[2],rot:rots[2]};
+  const distract=[{color:RAVEN_COLORS[2],rot:rots[0]},{color:RAVEN_COLORS[0],rot:rots[2]},{color:RAVEN_COLORS[1],rot:rots[1]}];
+  const all=shuffle([correct,...distract]);
+  const c=all.map(o=>triSVG(o.color,o.rot));
+  return{d:"flex",q:"لاحظي أن اللون يتحدّد حسب الصف واتجاه المثلث يتحدّد حسب العمود، ما الشكل المناسب لمكان علامة الاستفهام؟",c,a:all.indexOf(correct),w:"اللون من الصف الثالث، والاتجاه من العمود الثالث (مثلث بلون الصف مُداراً ١٨٠°).",svg};
+}
+
+// ===== الرسوم البيانية (سرعة/زمن) =====
+function curveSVG(kind){
+  let path;
+  if(kind==="accel")path="M10,50 L80,10";else if(kind==="const")path="M10,30 L80,30";else if(kind==="decel")path="M10,10 L80,50";else path="M10,50 L80,50";
+  return`<svg viewBox="0 0 90 60" width="90" height="60"><line x1="10" y1="50" x2="85" y2="50" stroke="#94A3B8" stroke-width="1.5"/><line x1="10" y1="5" x2="10" y2="50" stroke="#94A3B8" stroke-width="1.5"/><path d="${path}" fill="none" stroke="#334155" stroke-width="3"/><text x="45" y="59" font-size="7" fill="#64748B" text-anchor="middle">الزمن</text><text x="3" y="11" font-size="7" fill="#64748B">السرعة</text></svg>`;
+}
+function gSpeedGraph(){
+  const kinds=[
+    {key:"accel",desc:"تنطلق السيارة من السكون وتزداد سرعتها باستمرار",exp:"خط مستقيم صاعد (السرعة تزداد بثبات)."},
+    {key:"const",desc:"تسير السيارة بسرعة ثابتة طوال الطريق",exp:"خط أفقي (السرعة لا تتغيّر)."},
+    {key:"decel",desc:"تتباطأ السيارة تدريجياً حتى تتوقف تماماً",exp:"خط مستقيم هابط حتى الصفر (السرعة تقل حتى التوقف)."},
+    {key:"stop",desc:"تبقى السيارة متوقفة في مكانها طوال الوقت",exp:"خط أفقي عند الصفر (لا حركة)."}
+  ];
+  const chosen=pick(kinds),order=shuffle(kinds);
+  const c=order.map(k=>curveSVG(k.key));
+  return{d:"quant",q:`أيّ الرسوم البيانية التالية (السرعة/الزمن) يمثّل الوصف: «${chosen.desc}»؟`,c,a:order.findIndex(k=>k.key===chosen.key),w:`الوصف يطابق النمط: ${chosen.exp}`};
+}
+
+// ===== تدوير الأشكال في تسلسل =====
+function rtriMarkup(rot){return`<g transform="rotate(${rot} 25 25)"><polygon points="8,42 42,42 8,8" fill="#0D9488"/></g>`}
+function rtriSVG(rot){return`<svg viewBox="0 0 50 50" width="50" height="50">${rtriMarkup(rot)}</svg>`}
+function gShapeRotateSeq(){
+  const step=pick([45,90]),start=0,rots=[0,1,2,3].map(i=>(start+i*step)%360),nextRot=(start+4*step)%360;
+  const svg=`<div style="display:flex;gap:10px;align-items:center;justify-content:center">${rots.map(r=>rtriSVG(r)).join("")}<span style="font-size:26px;font-weight:800;color:#D97706">؟</span></div>`;
+  const distractRots=[90,180,270].map(d=>(nextRot+d)%360);
+  const optsRots=shuffle([nextRot,...distractRots]);
+  const c=optsRots.map(r=>rtriSVG(r));
+  return{d:"flex",q:"لاحظي دوران الشكل في التسلسل (باتجاه عقارب الساعة)، ما الشكل التالي؟",c,a:optsRots.indexOf(nextRot),w:`الشكل يدور ${toAr(step)}° في كل مرة؛ بعد ${toAr(rots[3])}° يأتي ${toAr(nextRot)}°.`,svg};
+}
+
+// ===== نمط النرد =====
+const DIE_DOTS={1:[[25,25]],2:[[13,13],[37,37]],3:[[13,13],[25,25],[37,37]],4:[[13,13],[37,13],[13,37],[37,37]],5:[[13,13],[37,13],[25,25],[13,37],[37,37]],6:[[13,11],[37,11],[13,25],[37,25],[13,39],[37,39]]};
+function dieFaceSVG(n){const dots=DIE_DOTS[n].map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="4.5" fill="#1E293B"/>`).join("");return`<svg viewBox="0 0 50 50" width="50" height="50"><rect x="3" y="3" width="44" height="44" rx="7" fill="#fff" stroke="#94A3B8" stroke-width="2"/>${dots}</svg>`}
+function gDicePattern(){
+  const start=rand(1,2),seq=[start,start+1,start+2,start+3],ans=start+4;
+  if(ans>6)return gDicePattern();
+  const svg=`<div style="display:flex;gap:10px;align-items:center;justify-content:center">${seq.map(n=>dieFaceSVG(n)).join("")}<span style="font-size:26px;font-weight:800;color:#D97706">؟</span></div>`;
+  const distractVals=shuffle([1,2,3,4,5,6].filter(x=>x!==ans)).slice(0,3);
+  const optsVals=shuffle([ans,...distractVals]);
+  const c=optsVals.map(n=>dieFaceSVG(n));
+  return{d:"flex",q:"لاحظي عدد النقاط على أوجه النرد المتتالية، ما الوجه التالي؟",c,a:optsVals.indexOf(ans),w:`عدد النقاط يزيد بمقدار واحد في كل مرة: بعد ${toAr(seq[3])} يأتي ${toAr(ans)}.`,svg};
+}
+
+// ===== سلسلة أشكال هندسية (زيادة الأضلاع) =====
+function regularPolygon(n,color){
+  const cx=25,cy=27,r=18;let pts=[];
+  for(let i=0;i<n;i++){const ang=-Math.PI/2+i*2*Math.PI/n;pts.push(`${(cx+r*Math.cos(ang)).toFixed(1)},${(cy+r*Math.sin(ang)).toFixed(1)}`)}
+  return`<svg viewBox="0 0 50 50" width="50" height="50"><polygon points="${pts.join(" ")}" fill="${color}" fill-opacity="0.15" stroke="${color}" stroke-width="2.5"/></svg>`;
+}
+function gShapeSeries(){
+  const start=rand(3,4),seq=[start,start+1,start+2,start+3],ans=start+4;
+  if(ans>9)return gShapeSeries();
+  const svg=`<div style="display:flex;gap:10px;align-items:center;justify-content:center">${seq.map(n=>regularPolygon(n,"#0D9488")).join("")}<span style="font-size:26px;font-weight:800;color:#D97706">؟</span></div>`;
+  let distract=[ans-1,ans+1,ans-2].filter(x=>x>=3&&x!==ans);
+  while(distract.length<3){const x=rand(3,9);if(x!==ans&&!distract.includes(x))distract.push(x)}
+  const optsVals=shuffle([ans,...distract.slice(0,3)]);
+  const c=optsVals.map(n=>regularPolygon(n,"#7C3AED"));
+  return{d:"flex",q:"لاحظي عدد أضلاع الأشكال في السلسلة، ما الشكل التالي؟",c,a:optsVals.indexOf(ans),w:`عدد الأضلاع يزيد بمقدار واحد في كل مرة: بعد شكل بـ ${toAr(seq[3])} أضلاع يأتي شكل بـ ${toAr(ans)} أضلاع.`,svg};
+}
+
+// ===== مساحة الجزء المظلّل =====
+function gShadedArea(){
+  const S=pick([4,6,8,10,12]),ans=S*S/2;
+  const svg=`<svg viewBox="0 0 200 200" width="200" height="200">
+    <rect x="30" y="30" width="140" height="140" fill="none" stroke="#334155" stroke-width="2.5"/>
+    <polygon points="100,30 170,100 100,170 30,100" fill="#D97706" fill-opacity="0.35" stroke="#D97706" stroke-width="2.5"/>
+    <text x="100" y="22" font-size="13" text-anchor="middle" fill="#334155">${toAr(S)} سم</text>
+  </svg>`;
+  const m=mcNum(ans,[Math.round(ans/2),ans*2,S*S]);
+  return{d:"quant",q:`مربّع طول ضلعه ${toAr(S)} سم، ورُسم داخله مربّع آخر (المُظلّل) بتوصيل منتصفات أضلاعه كما في الشكل. ما مساحة الجزء المُظلّل؟`,c:m.choices.map(x=>x+" سم²"),a:m.answer,w:`مساحة المربع الكبير = ${toAr(S)}×${toAr(S)} = ${toAr(S*S)} سم². توصيل منتصفات الأضلاع يعطي مربّعاً مساحته نصف الكبير دائماً = ${toAr(ans)} سم².`,svg};
+}
+
+const QUANT_GENS=[gArith,gGeo,gPrice,gPerim,gClock,gSides,gWorkers,gMedian,gCube,gPercent,gPaths,gCompound,gFraction,gTrees,gCircleValue,gConsec,gAngleTriangle,gAngleLine,gAnglePoint,gAngleSquare,gSpeedGraph,gShadedArea];
+const FLEX_GENS=[fDouble,fTriple,fFib,fSq,fOpp,gPyramid,gCircleNum,gShapeEq,gSeq,gDice,gAngleEqualRays,gRavenCount,gRavenRotate,gShapeRotateSeq,gDicePattern,gShapeSeries];
+
+// ===== بنك اللغوي الاحتياطي =====
+const VERBAL=[
+ {d:"verbal",q:"الكتاب يوجد في المكتبة، فأين يوجد الدواء؟",c:["المستشفى","الصيدلية","المصنع","المخبز"],a:1,w:"الدواء يوجد في الصيدلية كما يوجد الكتاب في المكتبة."},
+ {d:"verbal",q:"ما مرادف كلمة «الوَجيز»؟",c:["الطويل","المختصر","الصعب","الجميل"],a:1,w:"«الوجيز» تعني المختصر القصير."},
+ {d:"verbal",q:"ما ضدّ كلمة «السخاء»؟",c:["الكرم","البخل","الشجاعة","الصدق"],a:1,w:"السخاء هو الكرم، وضدّه البخل."},
+ {d:"verbal",q:"أكمل المثل: «من جَدَّ ...»",c:["نام","وَجَد","خسر","تعب"],a:1,w:"المثل: «من جَدَّ وَجَد»."},
+ {d:"verbal",q:"القفاز يُلبَس في اليد، فماذا يُلبَس في القدم؟",c:["الرأس","الحذاء","الركبة","الكتف"],a:1,w:"القدم يُلبَس فيها الحذاء."},
+ {d:"verbal",q:"ما مرادف كلمة «بهيج»؟",c:["حزين","مُفرِح","غامض","بطيء"],a:1,w:"«بهيج» تعني مُفرِح وسارّ."},
+ {d:"verbal",q:"المعلم علاقته بالتعليم، فما علاقة الطبيب؟",c:["المرض","العلاج","المبنى","الدواء"],a:1,w:"عمل المعلم التعليم، وعمل الطبيب العلاج."},
+ {d:"verbal",q:"اقرأ: «النحل ينتج العسل وينقل حبوب اللقاح بين الأزهار فتنمو النباتات». ما الفائدة المزدوجة للنحل؟",c:["إنتاج العسل فقط","إنتاج العسل ونقل حبوب اللقاح","بناء الخلايا","الطيران"],a:1,w:"ذكر النص فائدتين: إنتاج العسل ونقل حبوب اللقاح."},
+ {d:"verbal",q:"الجندي ينتمي إلى الجيش، فإلى ماذا ينتمي اللاعب؟",c:["الملعب","الفريق","الكرة","الحكَم"],a:1,w:"اللاعب ينتمي إلى الفريق كما ينتمي الجندي إلى الجيش."},
+ {d:"verbal",q:"ما مرادف كلمة «الفِطنة»؟",c:["الكسل","الذكاء","القوة","الطول"],a:1,w:"الفطنة تعني الذكاء وسرعة الفهم."},
+ {d:"verbal",q:"ما ضدّ كلمة «التفاؤل»؟",c:["الأمل","التشاؤم","الفرح","الثقة"],a:1,w:"ضد التفاؤل التشاؤم."},
+ {d:"verbal",q:"أي كلمة لا تنتمي إلى المجموعة؟",c:["سعيد","فرِح","مسرور","غاضب"],a:3,w:"سعيد وفرِح ومسرور بمعنى الفرح، أما غاضب فعكسها."},
+ {d:"verbal",q:"الريش يغطّي الطائر، فماذا يغطّي الخروف؟",c:["الحراشف","الصوف","الفرو","القِشر"],a:1,w:"الخروف يغطّيه الصوف كما يغطّي الريش الطائر."},
+ {d:"verbal",q:"القلم أداة الكتابة، فما أداة الرسم؟",c:["الفرشاة","الورق","المسطرة","الحائط"],a:0,w:"القلم للكتابة، والفرشاة للرسم."},
+ {d:"verbal",q:"ما مرادف كلمة «شُجاع»؟",c:["جبان","جريء","كسول","بخيل"],a:1,w:"الشجاع هو الجريء المِقدام."},
+ {d:"verbal",q:"ما ضدّ كلمة «النجاح»؟",c:["الفوز","الفشل","التقدّم","الجهد"],a:1,w:"ضد النجاح الفشل."},
+ {d:"verbal",q:"أي كلمة لا تنتمي إلى المجموعة؟",c:["سيارة","طائرة","قطار","كتاب"],a:3,w:"سيارة وطائرة وقطار وسائل نقل، أما الكتاب فليس منها."},
+ {d:"verbal",q:"السمكة تعيش في الماء، فأين يحلّق الطائر؟",c:["الشجرة","السماء","العش","الأرض"],a:1,w:"السمكة تعيش في الماء، والطائر يحلّق في السماء."},
+ {d:"verbal",q:"ما ضدّ كلمة «الحقيقة»؟",c:["الصدق","الكذب","الواقع","اليقين"],a:1,w:"ضد الحقيقة الكذب أو الزيف."},
+ {d:"verbal",q:"أي كلمة لا تنتمي إلى المجموعة؟",c:["وردة","شجرة","عشب","حجر"],a:3,w:"وردة وشجرة وعشب نباتات، أما الحجر فجماد."},
+ {d:"verbal",q:"المعلم يتعامل مع الطالب، فمع من يتعامل الطبيب؟",c:["الدواء","المريض","المستشفى","الممرض"],a:1,w:"المعلم مع الطالب، والطبيب مع المريض."},
+ {d:"verbal",q:"ما مرادف كلمة «الفرح»؟",c:["الحزن","السرور","الخوف","الغضب"],a:1,w:"الفرح مرادفه السرور."},
+ {d:"verbal",q:"اقرأ: «الرياضة تقوّي الجسم وتصفّي الذهن وتحسّن المزاج». كم فائدة للرياضة ذكرها النص؟",c:["واحدة","اثنتان","ثلاث","أربع"],a:2,w:"ذكر النص ثلاث فوائد: تقوية الجسم، وتصفية الذهن، وتحسين المزاج."},
+ {d:"verbal",q:"ما ضدّ كلمة «الأمانة»؟",c:["الصدق","الخيانة","الوفاء","العدل"],a:1,w:"ضد الأمانة الخيانة."},
 ];
-var quiz=[],answers={},i=0,last='';
-function esc(x){return String(x||'').replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]})}
-function shuffle(a){a=a.slice();for(var j=a.length-1;j>0;j--){var k=Math.floor(Math.random()*(j+1));var t=a[j];a[j]=a[k];a[k]=t}return a}
-function start(){var n=parseInt(document.getElementById('n').value||10);n=Math.max(1,Math.min(n,DATA.length));quiz=shuffle(DATA).slice(0,n);answers={};i=0;document.getElementById('home').className='box hide';document.getElementById('test').className='box';draw()}
-function draw(){var r=quiz[i],c=r.c||{},sel=answers[i]||'';document.getElementById('pos').innerHTML=(i+1)+'/'+quiz.length;document.getElementById('ansn').innerHTML=Object.keys(answers).length;var passage=r.p?'<div class="passage">'+esc(r.p)+'</div>':'';var h='<p>القسم '+esc(r.s)+' — السؤال '+esc(r.q)+' — '+esc(r.t)+'</p>'+passage+'<h2>'+esc(r.qt)+'</h2>';['أ','ب','ج','د'].forEach(function(k){h+='<button class="choice '+(sel==k?'sel':'')+'" onclick="pick(\''+k+'\')">'+k+') '+esc(c[k])+'</button>'});document.getElementById('qbox').innerHTML=h}
-function pick(k){answers[i]=k;draw()}function next(){if(i<quiz.length-1){i++;draw()}else finish()}function prev(){if(i>0){i--;draw()}}
-function finish(){var ok=0,miss=0,wrong=[];quiz.forEach(function(r,idx){if(!answers[idx])miss++; if(answers[idx]==r.a)ok++; else wrong.push('#'+(idx+1)+' ق'+r.s+'/'+r.q+' اختار '+(answers[idx]||'لم يجب')+' الصحيح '+r.a)});var pct=Math.round(ok/quiz.length*100);document.getElementById('test').className='box hide';document.getElementById('res').className='box';document.getElementById('ok').innerHTML=ok;document.getElementById('tot').innerHTML=quiz.length;document.getElementById('pct').innerHTML=pct+'%';last='نتيجة لفظي\nالطالب: '+(document.getElementById('student').value||'-')+'\nالصحيح: '+ok+' من '+quiz.length+'\nالنسبة: '+pct+'%\nغير مجاب: '+miss+'\nالأخطاء:\n'+(wrong.length?wrong.join('\n'):'لا توجد');document.getElementById('resultText').value=last;makeReview()}
-function makeReview(){var h='';quiz.forEach(function(r,idx){var c=r.c||{},sel=answers[idx]||'لم يجب';h+='<div class="box"><p>#'+(idx+1)+' القسم '+esc(r.s)+' — السؤال '+esc(r.q)+'</p><h3>'+esc(r.qt)+'</h3>';['أ','ب','ج','د'].forEach(function(k){var cls='choice ';if(k==r.a)cls+='good ';if(k==sel&&k!=r.a)cls+='bad ';h+='<div class="'+cls+'">'+k+') '+esc(c[k])+'</div>'});h+='<p>اختيارك: '+esc(sel)+' — الصحيح: '+esc(r.a)+'</p></div>'});document.getElementById('review').innerHTML=h}
-function toggleReview(){var r=document.getElementById('review');r.className=r.className=='hide'?'':'hide'}
-function copyResult(){var t=document.getElementById('resultText');t.select();document.execCommand('copy');alert('تم نسخ النتيجة')}
+
+// ===== بنك العلمي الاحتياطي =====
+const SCIENCE=[
+ {d:"science",q:"أيٌّ مما يلي حالة من حالات المادة؟",c:["الحرارة","الضوء","الحالة الصلبة","الصوت"],a:2,w:"حالات المادة: الصلبة والسائلة والغازية. أما الحرارة والضوء والصوت فأشكال طاقة."},
+ {d:"science",q:"ما اسم عملية تحوّل الماء من سائل إلى بخار؟",c:["التجمّد","التكاثف","التبخّر","الانصهار"],a:2,w:"التبخّر هو تحوّل السائل إلى غاز عند التسخين."},
+ {d:"science",q:"ما القوة التي تجعل الأجسام تسقط نحو الأرض؟",c:["الاحتكاك","الجاذبية","المغناطيسية","الدفع"],a:1,w:"الجاذبية الأرضية تجذب الأجسام نحو مركز الأرض."},
+ {d:"science",q:"أيٌّ من هذه الكائنات يصنع غذاءه بنفسه؟",c:["الأسد","النبات","الإنسان","السمكة"],a:1,w:"النبات يصنع غذاءه بالبناء الضوئي."},
+ {d:"science",q:"أيٌّ مما يلي موصل جيد للكهرباء؟",c:["الخشب","النحاس","البلاستيك","الزجاج"],a:1,w:"النحاس موصل جيد، والبقية عوازل."},
+ {d:"science",q:"ما أقرب كوكب إلى الشمس؟",c:["الأرض","الزهرة","عطارد","المريخ"],a:2,w:"عطارد أقرب الكواكب إلى الشمس."},
+ {d:"science",q:"ما العضو المسؤول عن ضخ الدم في الجسم؟",c:["الرئة","القلب","الكبد","الكلية"],a:1,w:"القلب يضخّ الدم إلى الجسم."},
+ {d:"science",q:"ما الغاز الذي نحتاج إليه من الهواء للتنفّس؟",c:["النيتروجين","الأكسجين","ثاني أكسيد الكربون","الهيدروجين"],a:1,w:"نستنشق الأكسجين اللازم للحياة."},
+ {d:"science",q:"ما اسم تحوّل بخار الماء إلى قطرات سائلة؟",c:["التبخّر","التكاثف","التجمّد","الغليان"],a:1,w:"التكاثف تحوّل الغاز إلى سائل عند التبريد."},
+ {d:"science",q:"ما المصدر الرئيسي للطاقة والضوء على الأرض؟",c:["القمر","النجوم","الشمس","البراكين"],a:2,w:"الشمس المصدر الرئيسي للضوء والطاقة."},
+ {d:"science",q:"ما أكبر كوكب في المجموعة الشمسية؟",c:["الأرض","المشتري","المريخ","زُحل"],a:1,w:"المشتري أكبر الكواكب حجماً."},
+ {d:"science",q:"بأي عضو يتنفّس السمك في الماء؟",c:["الرئتين","الخياشيم","الجلد","الزعانف"],a:1,w:"يتنفّس السمك بالخياشيم."},
+ {d:"science",q:"أيٌّ مما يلي مصدر طاقة متجدّد؟",c:["الفحم","النفط","الشمس","الغاز"],a:2,w:"طاقة الشمس متجدّدة لا تنفد."},
+ {d:"science",q:"كم عدد أرجل الحشرة؟",c:["٤","٦","٨","١٠"],a:1,w:"لجميع الحشرات ٦ أرجل."},
+ {d:"science",q:"أي حاسة ترتبط بالأذن؟",c:["البصر","السمع","الشمّ","التذوّق"],a:1,w:"الأذن عضو حاسة السمع."},
+ {d:"science",q:"أيٌّ من هذه الكائنات من الثدييات؟",c:["السمكة","الحوت","التمساح","الضفدع"],a:1,w:"الحوت من الثدييات؛ يتنفّس بالرئتين ويرضع صغاره."},
+ {d:"science",q:"ما وحدة قياس القوة؟",c:["المتر","الثانية","النيوتن","اللتر"],a:2,w:"تُقاس القوة بالنيوتن."},
+ {d:"science",q:"ما الجزء من النبات الذي يمتص الماء من التربة؟",c:["الأوراق","الجذور","الأزهار","الثمار"],a:1,w:"الجذور تمتص الماء والأملاح."},
+ {d:"science",q:"ما حالة الماء عند درجة حرارة أقل من صفر مئوي؟",c:["سائل","صلب (جليد)","غاز","بخار"],a:1,w:"عند أقل من صفر يتجمّد الماء ويصبح صلباً."},
+ {d:"science",q:"أي كوكب يُعرف بالكوكب الأحمر؟",c:["الزهرة","المريخ","المشتري","عطارد"],a:1,w:"المريخ يُسمّى الكوكب الأحمر."},
+ {d:"science",q:"ما العملية التي تصنع بها النباتات غذاءها؟",c:["التنفّس","البناء الضوئي","الهضم","النتح"],a:1,w:"البناء الضوئي تصنع به النباتات غذاءها بضوء الشمس."},
+ {d:"science",q:"ما أقرب نجم إلى الأرض؟",c:["القمر","الشمس","الشِّعرى","النجم القطبي"],a:1,w:"الشمس أقرب نجم إلى الأرض."},
+ {d:"science",q:"ما الذي يغطّي معظم سطح الأرض؟",c:["اليابسة","الماء","الرمال","الجليد"],a:1,w:"الماء يغطّي نحو ثلثي سطح الأرض."},
+ {d:"science",q:"عند خلط اللون الأزرق مع الأصفر، ما اللون الناتج؟",c:["الأخضر","البرتقالي","البنفسجي","الرمادي"],a:0,w:"مزج الأزرق مع الأصفر ينتج الأخضر."},
+ {d:"science",q:"ما العضو الذي نفكّر ونتذكّر به؟",c:["القلب","المعدة","الدماغ","الرئة"],a:2,w:"الدماغ مركز التفكير والذاكرة."},
+ {d:"science",q:"كم عدد الحواس الأساسية للإنسان؟",c:["ثلاث","أربع","خمس","ست"],a:2,w:"للإنسان خمس حواس: البصر والسمع والشمّ والتذوّق واللمس."},
+ {d:"science",q:"ما الغاز الذي تطلقه النباتات نهاراً أثناء البناء الضوئي؟",c:["ثاني أكسيد الكربون","الأكسجين","النيتروجين","الهيدروجين"],a:1,w:"تطلق النباتات الأكسجين أثناء البناء الضوئي."},
+];
+
+
+// ===== محرّك الذكاء الاصطناعي (Gemini) + التحكّم بالتكلفة =====
+function todayKey(){return new Date().toISOString().slice(0,10)}
+function geminiUsage(){try{const u=JSON.parse(localStorage.getItem("gemini_day")||"{}");if(u.date!==todayKey())return{date:todayKey(),count:0};return u}catch(e){return{date:todayKey(),count:0}}}
+function bumpUsage(n){const u=geminiUsage();u.count+=n;localStorage.setItem("gemini_day",JSON.stringify(u))}
+function cacheGet(type){try{const c=JSON.parse(localStorage.getItem("gemini_cache")||"{}");return c[type]||[]}catch(e){return[]}}
+function cachePut(type,arr){try{const c=JSON.parse(localStorage.getItem("gemini_cache")||"{}");c[type]=((c[type]||[]).concat(arr)).slice(-40);localStorage.setItem("gemini_cache",JSON.stringify(c))}catch(e){}}
+
+// يجلب أسئلة من المحرّك، مع تخزين الفائض وإعادة الاستخدام، واحترام الحد اليومي
+async function fetchGemini(type,need){
+  const out=[];
+  // 1) استهلك من الكاش أولاً
+  let cache=cacheGet(type);
+  while(out.length<need && cache.length){out.push(cache.shift())}
+  cachePutReplace(type,cache);
+  if(out.length>=need)return out.map(tagAI(type));
+  // 2) تحقّق من الحد اليومي
+  if(geminiUsage().count>=DAILY_CAP)return out.map(tagAI(type)); // نكتفي بالمتاح
+  // 3) اطلب دفعة (3) لتقليل عدد النداءات
+  try{
+    const res=await fetch(FN_URL,{method:"POST",headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({type,count:3})});
+    if(res.ok){const data=await res.json();bumpUsage(1);const qs=(data.questions||[]).map(normAI(type));const take=qs.slice(0,need-out.length);out.push(...take);cachePut(type,qs.slice(take.length))}
+  }catch(e){}
+  return out.map(tagAI(type));
+}
+function cachePutReplace(type,arr){try{const c=JSON.parse(localStorage.getItem("gemini_cache")||"{}");c[type]=arr;localStorage.setItem("gemini_cache",JSON.stringify(c))}catch(e){}}
+function normAI(type){return q=>({d:aiDomain(type),q:q.q,c:q.choices,a:q.answer,w:q.why||""})}
+function tagAI(type){return q=>q}
+function aiDomain(type){return (type==="science")?"science":"verbal"}
+
+// أنواع لفظية وعلمية من المحرّك
+const AI_VERBAL=["reading","logic","analogy","vocabulary"];
+const AI_SCIENCE=["science"];
+
+// يبني مجموعة أسئلة لمجال، ممزوجة (محرّك + كود) مع احتياط
+async function buildDomain(domKey,n){
+  if(domKey==="quant")return Array.from({length:n},()=>pick(QUANT_GENS)());
+  if(domKey==="flex")return Array.from({length:n},()=>pick(FLEX_GENS)());
+  if(domKey==="verbal"){
+    const types=shuffle(AI_VERBAL);let qs=[];
+    for(const t of types){if(qs.length>=n)break;const got=await fetchGemini(t,Math.ceil(n/2));qs=qs.concat(got)}
+    // احتياط من البنك لو نقص
+    if(qs.length<n){qs=qs.concat(shuffle(VERBAL).slice(0,n-qs.length))}
+    return shuffle(qs).slice(0,n);
+  }
+  if(domKey==="science"){
+    let qs=await fetchGemini("science",n);
+    if(qs.length<n){qs=qs.concat(shuffle(SCIENCE).slice(0,n-qs.length))}
+    return shuffle(qs).slice(0,n);
+  }
+  return [];
+}
+async function buildFull(){
+  const per=12;
+  const [v,q,s,f]=await Promise.all([buildDomain("verbal",per),Promise.resolve(buildDomain("quant",per)),buildDomain("science",per),Promise.resolve(buildDomain("flex",per))]);
+  const qq=await Promise.resolve(q),ff=await Promise.resolve(f);
+  return shuffle([...(await v),...qq,...(await s),...ff]);
+}
+
+
+// ===== وضع التقوية: التلاشي التدريجي (المتتاليات) =====
+let fadeStage=1, fadeStreak=0, fadeCur=null, fadeLocked=false, fadePicked=-1;
+const FADE_REQ=2;
+function fadeMakeSeq(){
+  const kind=pick(["seq","seq","ratio"]); // متتاليات أكثر تكراراً
+  if(kind==="ratio"){
+    const per=rand(2,6),k=rand(2,4),m=rand(5,8);const ck=per*k,ans=per*m;
+    return {kind:"ratio",per,k,m,ck,ans,op:`${toAr(m)} × ${toAr(per)}`,
+      steps:[`سعر القلم الواحد = ${toAr(ck)} ÷ ${toAr(k)} = ${toAr(per)} ريال`,`ثمن ${toAr(m)} أقلام = ${toAr(m)} × ${toAr(per)} = ${toAr(ans)} ريال`],
+      rule:per, ruleTxt:`سعر القلم الواحد = ${toAr(per)} ريال`,
+      q:`إذا كان ثمن ${toAr(k)} أقلام ${toAr(ck)} ريالاً، فكم ثمن ${toAr(m)} أقلام؟`};
+  }
+  const type=pick(["add","mul"]);
+  if(type==="add"){const st=rand(2,9),a=rand(1,9);const q=[a];for(let i=0;i<4;i++)q.push(q[i]+st);return{kind:"seq",type,rule:st,ruleTxt:`نجمع ${toAr(st)} في كل مرة`,seq:q,ans:q[4]+st,op:`${toAr(q[4])} + ${toAr(st)}`}}
+  const r=pick([2,3]),a=rand(2,4);const q=[a];for(let i=0;i<4;i++)q.push(q[i]*r);return{kind:"seq",type,rule:r,ruleTxt:`نضرب في ${toAr(r)} في كل مرة`,seq:q,ans:q[4]*r,op:`${toAr(q[4])} × ${toAr(r)}`};
+}
+function fadeDedupe(correct,dist){const out=[];for(const d of dist){if(d!==correct&&!out.includes(d))out.push(d)}let p=1;while(out.length<3){[correct+p,correct-p].forEach(x=>{if(out.length<3&&x>0&&x!==correct&&!out.includes(x))out.push(x)});p++}return out.slice(0,3)}
+function fadePrep(){
+  if(fadeStage===1){fadeCur.opts=null;fadeCur.ai=-1;return}
+  let d;
+  if(fadeCur.kind==="ratio"){d=[fadeCur.ans+fadeCur.per,fadeCur.ans-fadeCur.per,fadeCur.ans+fadeStage];}
+  else{d=fadeCur.type==="add"?[fadeCur.ans+fadeCur.rule,fadeCur.ans-fadeCur.rule,fadeCur.ans+fadeStage]:[fadeCur.ans-fadeCur.seq[4],fadeCur.seq[4]+fadeCur.rule,fadeCur.ans+fadeCur.rule];}
+  const opts=shuffle([fadeCur.ans,...fadeDedupe(fadeCur.ans,d)]);fadeCur.opts=opts;fadeCur.ai=opts.indexOf(fadeCur.ans);
+}
+function fadeNew(){fadeCur=fadeMakeSeq();fadeLocked=false;fadePicked=-1;fadePrep();render()}
+function fadeChoose(i){if(fadeLocked)return;fadeLocked=true;fadePicked=i;if(i===fadeCur.ai)fadeStreak++;else fadeStreak=0;render()}
+function fadeStage1Next(){fadeStreak++;if(fadeStreak>=FADE_REQ){fadeStage=2;fadeStreak=0}fadeNew()}
+function fadeAdvance(){if(fadeStreak>=FADE_REQ&&fadeStage<4){fadeStage++;fadeStreak=0}fadeNew()}
+function startFade(){mode="fade";fadeStage=1;fadeStreak=0;window.scrollTo(0,0);fadeNew()}
+function fadeStageInfo(){return [
+  {label:"مرحلة ١: مثال محلول كامل (شاهدي الحل)",tag:"شاهدي"},
+  {label:"مرحلة ٢: احذف آخر خطوة (طبّقي القاعدة)",tag:"طبّقي"},
+  {label:"مرحلة ٣: اكتشفي القاعدة وطبّقيها",tag:"اكتشفي"},
+  {label:"مرحلة ٤: حلّ مستقل (بلا مساعدة)",tag:"مستقل"},
+][fadeStage-1]}
+function renderFade(){
+  const info=fadeStageInfo();const c=fadeCur;
+  const bar=[1,2,3,4].map(x=>`<div class="seg" style="flex:1;height:8px;border-radius:99px;background:${x<fadeStage?'#10B981':x===fadeStage?'#D97706':'#E2E8F0'}"></div>`).join("");
+  let seqBox;
+  if(c.kind==="ratio"){
+    seqBox=`<div style="font-size:17px;font-weight:700;text-align:center;background:#F8FAFC;border-radius:14px;padding:20px;margin-bottom:16px;line-height:1.8">${c.q}</div>`;
+  } else {
+    const seqShown=c.seq.map(toAr).join("  ،  ")+"  ،  <span style='color:#D97706;background:#FEF3C7;border-radius:8px;padding:0 10px'>؟</span>";
+    seqBox=`<div style="font-size:24px;font-weight:800;letter-spacing:2px;text-align:center;background:#F8FAFC;border-radius:14px;padding:20px;margin-bottom:16px;direction:ltr">${seqShown}</div>`;
+  }
+  let body="";
+  if(fadeStage===1){
+    body=`<div style="background:#EFF6FF;border-radius:14px;padding:16px;font-size:14px;line-height:1.8;color:#1E40AF;margin-bottom:16px">📘 هذا <b>مثال محلول</b>. اقرئي الحل خطوة بخطوة. ثم اضغطي «فهمت».</div>${seqBox}
+    ${c.kind==="ratio"
+      ? `<div style="background:#F0FDF4;border-inline-start:4px solid #10B981;border-radius:12px;padding:16px;margin-bottom:16px;font-size:15px;line-height:2"><div>١) ${c.steps[0]}.</div><div>٢) ${c.steps[1]}.</div></div>`
+      : `<div style="background:#F0FDF4;border-inline-start:4px solid #10B981;border-radius:12px;padding:16px;margin-bottom:16px;font-size:15px;line-height:2"><div>١) القاعدة: <b style="color:#059669">${c.ruleTxt}</b>.</div><div>٢) نطبّقها على آخر عدد: <b style="color:#059669">${c.op} = ${toAr(c.ans)}</b>.</div><div>٣) إذن الناقص هو <b style="color:#059669">${toAr(c.ans)}</b>.</div></div>`}
+    <button class="btn" style="background:#059669" onclick="fadeStage1Next()">فهمت، مثال آخر ←</button>
+    <div style="font-size:13px;color:#64748B;text-align:center;margin-top:10px">شاهدي مثالين للانتقال (${toAr(fadeStreak)}/${toAr(FADE_REQ)})</div>`;
+  } else {
+    const ch=c.opts.map((o,i)=>{let bg="#fff",bd="#E2E8F0",col="#334155";if(fadeLocked){if(i===c.ai){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(i===fadePicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}return `<button class="choice" style="background:${bg};border-color:${bd};color:${col};font-size:18px;font-weight:800" onclick="fadeChoose(${i})" ${fadeLocked?'disabled':''}>${toAr(o)}</button>`}).join("");
+    let hint="";
+    if(fadeStage===2)hint=`<div style="background:#F0FDF4;border-inline-start:4px solid #10B981;border-radius:12px;padding:14px;margin-bottom:14px;font-size:15px">القاعدة معطاة: <b>${c.ruleTxt}</b>. ${c.kind==="ratio"?"طبّقيها لإيجاد الثمن.":"طبّقيها لإيجاد الناقص."}</div>`;
+    else if(fadeStage===3)hint=`<div style="background:#FEF3C7;border-radius:12px;padding:14px;margin-bottom:14px;font-size:15px;color:#B45309"><b>اكتشفي القاعدة بنفسك</b> ثم طبّقيها.</div>`;
+    const why=fadeLocked?`<div class="why" style="margin-bottom:10px">${fadePicked===c.ai?"✓ "+(fadeStage===4?"حللتِها وحدك! 🌟":"أحسنتِ"):"الصحيحة بالأخضر"}: ${c.kind==="ratio"?c.steps[1]:(c.op+" = "+toAr(c.ans))}.</div><button class="btn" style="background:${fadeStage===4?'#059669':'#D97706'}" onclick="${fadeStage===4?'fadeNew()':'fadeAdvance()'}">${fadeStage===4?'سؤال جديد ←':'التالي ←'}</button>`:"";
+    const mtr=fadeStage<4?`<div style="font-size:13px;color:#64748B;text-align:center;margin-top:10px">جاوبي صح مرتين متتاليتين للانتقال (${toAr(fadeStreak)}/${toAr(FADE_REQ)})</div>`:`<div style="font-size:13px;color:#64748B;text-align:center;margin-top:10px">🎓 وصلتِ للحل المستقل — أحسنتِ!</div>`;
+    body=`${hint}${seqBox}<div class="q">${c.kind==="ratio"?"ما الثمن المطلوب؟":"ما العدد الناقص؟"}</div><div class="choices">${ch}</div>${why}${mtr}`;
+  }
+  app.innerHTML=`<button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
+  <div style="display:flex;gap:6px;margin-bottom:12px">${bar}</div>
+  <div style="font-size:12px;font-weight:800;color:#D97706;margin-bottom:12px">${info.label}</div>
+  <div class="card"><span class="tag" style="background:#FEF3C7;color:#D97706">تقوية المتتاليات · ${info.tag}</span>${body}</div>`;
+}
+
+// ===== الحالة والتدفّق =====
+function alias(){return (localStorage.getItem("mawhiba_alias")||"بنتي").trim()||"بنتي"}
+function saveAlias(v){localStorage.setItem("mawhiba_alias",v)}
+let mode="home",currentMode="full",filtered=[],idx=0,picked=null,locked=false,score=0,done=false,answered=[],attempts=[],loading=false;
+const app=document.getElementById("app");
+
+async function start(domKey){
+  currentMode=domKey;mode="quiz";idx=0;picked=null;locked=false;score=0;done=false;answered=[];
+  const needsAI=(domKey==="verbal"||domKey==="science"||domKey==="full");
+  if(needsAI){loading=true;render();}
+  if(domKey==="full"){filtered=await buildFull()}
+  else{filtered=await buildDomain(domKey,PER)}
+  loading=false;render();
+}
+async function home(){mode="home";window.scrollTo(0,0);render();await loadWeakness();if(mode==="home")render()}
+function choose(i){if(locked)return;picked=i;locked=true;if(i===filtered[idx].a)score++;answered[idx]=(i===filtered[idx].a);render()}
+function next(){if(idx+1>=filtered.length){done=true;window.scrollTo(0,0);saveAttempt()}else{idx++;picked=null;locked=false}render()}
+function domainStats(){const acc={};Object.keys(DOMAINS).forEach(k=>acc[k]={r:0,t:0});filtered.forEach((q,i)=>{if(acc[q.d]){acc[q.d].t++;if(answered[i])acc[q.d].r++}});return acc}
+function weakestOf(acc){let key=null,pct=101;Object.keys(DOMAINS).forEach(k=>{if(acc[k].t){const p=acc[k].r/acc[k].t*100;if(p<pct){pct=p;key=k}}});return{key,pct}}
+
+async function saveAttempt(){
+  const acc=domainStats();
+  const row={student_alias:alias(),mode:currentMode,score,total:filtered.length,
+    verbal_correct:acc.verbal.r,verbal_total:acc.verbal.t,quant_correct:acc.quant.r,quant_total:acc.quant.t,
+    science_correct:acc.science.r,science_total:acc.science.t,flex_correct:acc.flex.r,flex_total:acc.flex.t};
+  try{await fetch(`${SB_URL}/rest/v1/${TBL}`,{method:"POST",headers:{"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json","Prefer":"return-minimal"},body:JSON.stringify(row)})}catch(e){}
+}
+async function loadProgress(){mode="progress";attempts=null;window.scrollTo(0,0);render();try{const res=await fetch(`${SB_URL}/rest/v1/${TBL}?student_alias=eq.${encodeURIComponent(alias())}&order=created_at.asc&select=*`,{headers:{"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`}});attempts=res.ok?await res.json():[]}catch(e){attempts=[]}render()}
+
+
+
+
+// ===== التوجيه الذكي: اقتراح التقوية للأضعف =====
+let weakSuggestion=null; // {domKey, pct}
+async function loadWeakness(){
+  try{
+    const res=await fetch(`${SB_URL}/rest/v1/${TBL}?student_alias=eq.${encodeURIComponent(alias())}&order=created_at.desc&limit=12&select=*`,{headers:{"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`}});
+    if(!res.ok)return null;
+    const rows=await res.json();
+    const acc={verbal:{r:0,t:0},quant:{r:0,t:0},science:{r:0,t:0},flex:{r:0,t:0}};
+    rows.forEach(a=>{acc.verbal.r+=a.verbal_correct||0;acc.verbal.t+=a.verbal_total||0;acc.quant.r+=a.quant_correct||0;acc.quant.t+=a.quant_total||0;acc.science.r+=a.science_correct||0;acc.science.t+=a.science_total||0;acc.flex.r+=a.flex_correct||0;acc.flex.t+=a.flex_total||0});
+    let key=null,pct=101;
+    Object.keys(acc).forEach(k=>{if(acc[k].t>=6){const p=Math.round(acc[k].r/acc[k].t*100);if(p<pct){pct=p;key=k}}});
+    if(key&&pct<55){weakSuggestion={domKey:key,pct}}else{weakSuggestion=null}
+  }catch(e){weakSuggestion=null}
+}
+
+// ===== طبقة التشجيع (مبنية على إظهار النمو والكفاءة) =====
+function todayStr(){return new Date().toISOString().slice(0,10)}
+function getStreak(){try{return JSON.parse(localStorage.getItem("mawhiba_streak")||'{"days":0,"last":""}')}catch(e){return{days:0,last:""}}}
+function bumpStreak(){const st=getStreak();const t=todayStr();if(st.last===t)return st;const y=new Date(Date.now()-86400000).toISOString().slice(0,10);st.days=(st.last===y)?st.days+1:1;st.last=t;localStorage.setItem("mawhiba_streak",JSON.stringify(st));return st}
+// رسالة نمو: تقارن بأفضل نتيجة سابقة لنفس الوضع
+function growthMsg(modeKey,pct){try{const key="mawhiba_best_"+modeKey;const prev=parseInt(localStorage.getItem(key)||"-1");let msg="";if(prev<0){msg="أول محاولة في هذا القسم — انطلاقة موفّقة! 🌱"}else if(pct>prev){msg=`تحسّنتِ عن أفضل نتيجة سابقة (${toAr(prev)}%)! تقدّم رائع 📈`}else if(pct===prev){msg="ثبات على أفضل مستوى سابق 💪"}else{msg="واصلي، كل محاولة تبني مهارتك 🌟"}if(pct>prev)localStorage.setItem(key,String(pct));return msg}catch(e){return""}}
+
+// ===== العرض =====
+function render(){if(mode==="home")return renderHome();if(mode==="fade")return renderFade();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
+
+function renderHome(){
+  app.innerHTML=`
+  <div class="hero">
+    <h1>برنامج موهبة المكثّف</h1>
+    <p>تدريب ذكي على مقياس القدرات العقلية المتعددة — المستوى الثاني. أسئلة تتجدّد كل مرة، والاستدلال اللغوي والعلمي يولّدها الذكاء الاصطناعي.</p>
+    <div class="alias"><label>اسم المتدرّبة:</label><input id="aliasIn" value="${alias()}" placeholder="بنتي" oninput="saveAlias(this.value)"></div>
+  </div>
+  ${weakSuggestion?`<div style="background:linear-gradient(135deg,#FEF3C7,#FDE68A);border-radius:18px;padding:18px;margin-bottom:16px;box-shadow:0 6px 20px rgba(217,119,6,.15)"><div style="font-weight:800;font-size:15px;color:#92400E;margin-bottom:6px">🎯 اقتراح لكِ</div><div style="font-size:14px;color:#78350F;line-height:1.7;margin-bottom:12px">مستواكِ في «${DOMAINS[weakSuggestion.domKey].name}» يحتاج تقوية (${toAr(weakSuggestion.pct)}%). جرّبي وضع التقوية — يعلّمكِ خطوة بخطوة، أسهل من الاختبار المباشر.</div><button class="btn" style="background:#D97706;margin:0" onclick="startFade()">🎓 ابدئي التقوية خطوة بخطوة</button></div>`:""}
+  <div class="section-title"><span>ابدئي التدريب</span></div>
+  <div class="modes">
+    <button class="mode" onclick="start('verbal')"><span class="dot" style="background:#2563EB"></span><span class="m-name">الاستدلال اللغوي</span><div class="m-sub">فهم مقروء، تناظر، منطق — بالذكاء الاصطناعي</div></button>
+    <button class="mode" onclick="start('quant')"><span class="dot" style="background:#0D9488"></span><span class="m-name">الرياضي والمكاني</span><div class="m-sub">متتاليات، نسب، حجوم، مسارات</div></button>
+    <button class="mode" onclick="start('science')"><span class="dot" style="background:#7C3AED"></span><span class="m-name">الاستدلال العلمي</span><div class="m-sub">استنتاج علمي بمشهد — بالذكاء الاصطناعي</div></button>
+    <button class="mode" onclick="start('flex')"><span class="dot" style="background:#D97706"></span><span class="m-name">المرونة والأنماط</span><div class="m-sub">أنماط، هرم، نرد، ترتيب، ألغاز</div></button>
+    <button class="mode full" onclick="start('full')"><span class="m-name">🎯 محاكاة شاملة (٤٨ سؤالاً)</span><div class="m-sub">من كل المجالات — الأقرب للاختبار الحقيقي</div></button>
+    <button class="mode" style="border-color:#FDE68A" onclick="startFade()"><span class="m-name">🎓 وضع التقوية (تلاشٍ تدريجي)</span><div class="m-sub">تدرّب خطوة بخطوة على المتتاليات — مبني على دراسات التعلّم</div></button>
+    <button class="mode prog" onclick="loadProgress()"><span class="m-name">📈 متابعة التقدّم</span><div class="m-sub">نتائجك السابقة وتحليل المستوى لكل مجال</div></button>
+  </div>
+  <div class="tips">
+    <h3>💡 استراتيجيات موهبة</h3>
+    <ul>
+      <li>افهمي السؤال جيداً؛ فهم السؤال نصف الإجابة.</li>
+      <li>الرسوم ليست دقيقة على القياس — اعتمدي على المعطيات.</li>
+      <li>لا تقفي طويلاً عند الصعب؛ خمّني بذكاء ولا تتركي سؤالاً فارغاً.</li>
+      <li>استخدمي الورقة لرسم أو تلخيص المعطيات.</li>
+    </ul>
+  </div>`;
+}
+
+function renderLoading(){
+  const d=DOMAINS[currentMode]||{name:"المحاكاة الشاملة",color:"#1E293B"};
+  app.innerHTML=`
+  <button class="link-btn" onclick="home()">→ رجوع</button>
+  <div class="card" style="text-align:center;padding:48px 24px">
+    <div class="spin"></div>
+    <div style="font-size:18px;font-weight:800;margin-top:20px;color:${d.color}">نُحضّر أسئلة جديدة…</div>
+    <div style="font-size:14px;color:#64748B;margin-top:8px;line-height:1.7">الذكاء الاصطناعي يولّد أسئلة أصيلة متجدّدة خصيصاً لكِ.<br>لحظات من فضلك.</div>
+  </div>`;
+}
+
+function renderQuiz(){
+  const q=filtered[idx];if(!q){home();return}
+  const d=DOMAINS[q.d];
+  const prog=filtered.map((_,i)=>`<div class="seg" style="background:${i<idx?d.color:(i===idx?d.color:'#E2E8F0')};opacity:${i<=idx?1:.5}"></div>`).join("");
+  const choices=q.c.map((c,i)=>{
+    let bg="#fff",bd="#E2E8F0",col="#334155";
+    if(locked){if(i===q.a){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(i===picked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}
+    return `<button class="choice" style="background:${bg};border-color:${bd};color:${col}" onclick="choose(${i})" ${locked?"disabled":""}><span class="letter">${L[i]}</span>${c}</button>`}).join("");
+  const explain=locked?`<div class="explain"><div class="explain-title" style="color:${picked===q.a?'#059669':'#B45309'}">${picked===q.a?"✓ إجابة صحيحة":"الصحيحة بالأخضر"}</div><div class="explain-body">${q.w||""}</div></div>`:"";
+  const svg=q.svg?`<div class="svgbox" style="background:#F8FAFC;border-radius:14px;padding:16px;display:flex;justify-content:center;margin-bottom:16px">${q.svg}</div>`:"";
+  const btn=locked?`<button class="btn" style="background:${d.color}" onclick="next()">${idx+1>=filtered.length?"إنهاء ومشاهدة النتيجة":"السؤال التالي ←"}</button>`:"";
+  app.innerHTML=`
+  <button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
+  <div class="bar">${prog}</div>
+  <div class="meta"><span>سؤال ${toAr(idx+1)} من ${toAr(filtered.length)}</span><span>${d.name}</span></div>
+  <div class="card">
+    <span class="tag" style="background:${d.soft};color:${d.color}">${d.name}</span>
+    <div class="q">${q.q}</div>
+    ${svg}
+    <div class="choices">${choices}</div>
+    ${explain}
+  </div>
+  ${btn}`;
+}
+
+function renderResult(){
+  const pct=Math.round(score/filtered.length*100);
+  const acc=domainStats();
+  const doms=Object.keys(DOMAINS).filter(k=>acc[k].t).map(k=>{const d=DOMAINS[k];const p=Math.round(acc[k].r/acc[k].t*100);return `<div class="dom-row"><div class="dom-head"><span>${d.name}</span><span>${toAr(acc[k].r)}/${toAr(acc[k].t)} (${toAr(p)}%)</span></div><div class="track"><div class="fill" style="width:${p}%;background:${d.color}"></div></div></div>`}).join("");
+  const weak=weakestOf(acc);
+  let remedy="";
+  if(weak.key&&weak.pct<100){const wd=DOMAINS[weak.key];remedy=`<div class="remedy"><div class="r-title">🎯 لنقوِّ نقطة الضعف</div><div class="r-body">أضعف مجال كان «${wd.name}» (${toAr(Math.round(weak.pct))}%). تدرّبي عليه الآن بأسئلة جديدة.</div><button class="btn" style="background:${wd.color}" onclick="start('${weak.key}')">تدريب مركّز على ${wd.name}</button></div>`}
+  app.innerHTML=`
+  <div class="card">
+    <div class="score-row"><span class="score-big" style="color:${pct>=70?'#059669':pct>=50?'#D97706':'#DC2626'}">${toAr(score)}</span><span class="score-total">/ ${toAr(filtered.length)}</span><span class="score-pct">${toAr(pct)}%</span></div>
+    <div style="color:#64748B;font-size:15px;margin-bottom:14px">${pct>=85?"أداء ممتاز! 🌟":pct>=70?"جيد جداً، واصلي 💪":pct>=50?"جيد، وفيه مجال للتحسّن":"لا بأس، التدريب يصنع الفرق 🌱"}</div>
+    <div style="background:#FEF3C7;border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:14px;color:#92400E;font-weight:700">${growthMsg(currentMode,pct)}</div>
+    <div style="display:flex;align-items:center;gap:8px;justify-content:center;margin-bottom:18px;font-size:14px;color:#D97706;font-weight:800">🔥 سلسلة المواظبة: ${toAr(bumpStreak().days)} ${bumpStreak().days===1?"يوم":"أيام"}</div>
+    ${doms}
+    ${remedy}
+    <button class="btn" style="background:#1E293B;margin-top:18px" onclick="start('${currentMode==='full'?'full':currentMode}')">إعادة (أسئلة جديدة)</button>
+    <button class="link-btn" onclick="loadProgress()">📈 متابعة التقدّم</button>
+    <button class="link-btn" onclick="home()">→ الرئيسية</button>
+  </div>`;
+}
+
+function fmtDate(s){const d=new Date(s);return d.toLocaleDateString('ar-SA',{month:'numeric',day:'numeric'})+' '+d.toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'})}
+function renderProgress(){
+  if(attempts===null){app.innerHTML=`<button class="link-btn" onclick="home()">→ رجوع</button><div class="card"><div class="empty">جارٍ تحميل النتائج…</div></div>`;return}
+  if(!attempts.length){app.innerHTML=`<button class="link-btn" onclick="home()">→ رجوع</button><div class="card"><div class="empty">ما فيه نتائج بعد.<br>ابدئي أول تدريب وستظهر هنا. 🌱</div><button class="btn" style="background:#1E293B" onclick="home()">ابدئي الآن</button></div>`;return}
+  const acc={verbal:{r:0,t:0},quant:{r:0,t:0},science:{r:0,t:0},flex:{r:0,t:0}};
+  attempts.forEach(a=>{acc.verbal.r+=a.verbal_correct||0;acc.verbal.t+=a.verbal_total||0;acc.quant.r+=a.quant_correct||0;acc.quant.t+=a.quant_total||0;acc.science.r+=a.science_correct||0;acc.science.t+=a.science_total||0;acc.flex.r+=a.flex_correct||0;acc.flex.t+=a.flex_total||0});
+  const doms=Object.keys(DOMAINS).filter(k=>acc[k].t).map(k=>{const d=DOMAINS[k];const p=Math.round(acc[k].r/acc[k].t*100);return `<div class="dom-row"><div class="dom-head"><span>${d.name}</span><span>${toAr(p)}%</span></div><div class="track"><div class="fill" style="width:${p}%;background:${d.color}"></div></div></div>`}).join("");
+  const rows=attempts.slice().reverse().slice(0,12).map(a=>{const p=Math.round((a.score/a.total)*100);const mn=a.mode==="full"?"محاكاة شاملة":(DOMAINS[a.mode]?DOMAINS[a.mode].name:a.mode);return `<div class="attempt"><div><div class="att-mode">${mn}</div><div class="att-date">${fmtDate(a.created_at)}</div></div><div class="att-score" style="color:${p>=70?'#059669':p>=50?'#D97706':'#DC2626'}">${toAr(a.score)}/${toAr(a.total)} · ${toAr(p)}%</div></div>`}).join("");
+  app.innerHTML=`
+  <button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
+  <div class="section-title"><span>متابعة تقدّم ${alias()}</span></div>
+  <div class="card"><div style="font-weight:800;margin-bottom:14px">متوسّط المستوى لكل مجال</div>${doms}</div>
+  <div class="card"><div style="font-weight:800;margin-bottom:6px">آخر المحاولات</div>${rows}</div>`;
+}
+
+render();
+
 </script>
 </body>
 </html>
