@@ -541,17 +541,36 @@ function saveAlias(v){localStorage.setItem("mawhiba_alias",v)}
 let mode="home",currentMode="full",filtered=[],idx=0,picked=null,locked=false,score=0,done=false,answered=[],attempts=[],loading=false;
 const app=document.getElementById("app");
 
+// ===== إدارة الحمل المعرفي: كشف الإجابات السريعة المتتالية واقتراح استراحة (بحسب الجلسة الحالية فقط) =====
+let sessionAnswered=0,questionShownAt=0,recentAnswerTimes=[],rapidNudge=false,breakSuggest=false,breakShownFor=[];
+const BREAK_EVERY=20,RAPID_MS=2500,RAPID_STREAK=4;
+
 async function start(domKey){
   currentMode=domKey;mode="quiz";idx=0;picked=null;locked=false;score=0;done=false;answered=[];
+  recentAnswerTimes=[];rapidNudge=false;breakSuggest=false;
   const needsAI=(domKey==="verbal"||domKey==="science"||domKey==="full");
   if(needsAI){loading=true;render();}
   if(domKey==="full"){filtered=await buildFull()}
   else{filtered=await buildDomain(domKey,PER)}
-  loading=false;render();
+  loading=false;questionShownAt=Date.now();render();
 }
 async function home(){mode="home";window.scrollTo(0,0);render();await loadWeakness();if(mode==="home")render()}
-function choose(i){if(locked)return;picked=i;locked=true;if(i===filtered[idx].a)score++;answered[idx]=(i===filtered[idx].a);render()}
-function next(){if(idx+1>=filtered.length){done=true;window.scrollTo(0,0);saveAttempt()}else{idx++;picked=null;locked=false}render()}
+function choose(i){
+  if(locked)return;
+  picked=i;locked=true;
+  if(i===filtered[idx].a)score++;
+  answered[idx]=(i===filtered[idx].a);
+  const elapsed=Date.now()-questionShownAt;
+  recentAnswerTimes.push(elapsed);
+  if(recentAnswerTimes.length>RAPID_STREAK)recentAnswerTimes.shift();
+  sessionAnswered++;
+  rapidNudge=recentAnswerTimes.length===RAPID_STREAK&&recentAnswerTimes.every(t=>t<RAPID_MS);
+  if(rapidNudge)recentAnswerTimes=[];
+  breakSuggest=!rapidNudge&&sessionAnswered%BREAK_EVERY===0&&!breakShownFor.includes(sessionAnswered);
+  if(breakSuggest)breakShownFor.push(sessionAnswered);
+  render();
+}
+function next(){if(idx+1>=filtered.length){done=true;window.scrollTo(0,0);saveAttempt()}else{idx++;picked=null;locked=false;rapidNudge=false;breakSuggest=false;questionShownAt=Date.now()}render()}
 function domainStats(){const acc={};Object.keys(DOMAINS).forEach(k=>acc[k]={r:0,t:0});filtered.forEach((q,i)=>{if(acc[q.d]){acc[q.d].t++;if(answered[i])acc[q.d].r++}});return acc}
 function weakestOf(acc){let key=null,pct=101;Object.keys(DOMAINS).forEach(k=>{if(acc[k].t){const p=acc[k].r/acc[k].t*100;if(p<pct){pct=p;key=k}}});return{key,pct}}
 
@@ -642,6 +661,9 @@ function renderQuiz(){
     return `<button class="choice" style="background:${bg};border-color:${bd};color:${col}" onclick="choose(${i})" ${locked?"disabled":""}><span class="letter">${L[i]}</span>${c}</button>`}).join("");
   const explain=locked?`<div class="explain"><div class="explain-title" style="color:${picked===q.a?'#059669':'#B45309'}">${picked===q.a?"✓ إجابة صحيحة":"الصحيحة بالأخضر"}</div><div class="explain-body">${q.w||""}</div></div>`:"";
   const svg=q.svg?`<div class="svgbox" style="background:#F8FAFC;border-radius:14px;padding:16px;display:flex;justify-content:center;margin-bottom:16px">${q.svg}</div>`:"";
+  const banner=locked&&rapidNudge?`<div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:12px;padding:12px 14px;margin-top:10px;font-size:13px;color:#92400E;line-height:1.7">⏱️ لاحظنا إجابات سريعة متتالية — خذي وقتك في قراءة السؤال جيداً قبل الاختيار.</div>`
+    :locked&&breakSuggest?`<div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:12px;padding:12px 14px;margin-top:10px;font-size:13px;color:#1D4ED8;line-height:1.7">🌿 جاوبتِ على ${toAr(sessionAnswered)} سؤالاً في هذه الجلسة. استراحة قصيرة (٥ دقائق) تساعدك على التركيز أكثر — لا داعي للاستعجال.</div>`
+    :"";
   const btn=locked?`<button class="btn" style="background:${d.color}" onclick="next()">${idx+1>=filtered.length?"إنهاء ومشاهدة النتيجة":"السؤال التالي ←"}</button>`:"";
   app.innerHTML=`
   <button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
@@ -653,6 +675,7 @@ function renderQuiz(){
     ${svg}
     <div class="choices">${choices}</div>
     ${explain}
+    ${banner}
   </div>
   ${btn}`;
 }
