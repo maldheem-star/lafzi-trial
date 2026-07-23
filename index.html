@@ -618,6 +618,110 @@ function renderArithDiagResult(){
   </div>`;
 }
 
+// ===== تدريب الأساسيات: عائلات الحقائق (ضرب/قسمة) + الجمع بالحمل (عشرات/مئات) =====
+// نهج CRA (محسوس ← مرتبط بالرسم ← مجرّد بقاعدة ← مستقل)، نفس فلسفة وضع التقوية أعلاه
+const BASICS_REQ=2;
+let basicsSub="multdiv",basicsStage=1,basicsStreak=0,basicsCur=null,basicsLocked=false,basicsPicked=-1;
+
+function groupsVisual(n,m){
+  let groups="";
+  for(let g=0;g<n;g++){
+    let dots="";
+    for(let i=0;i<m;i++){const row=Math.floor(i/3),col=i%3;dots+=`<circle cx="${8+col*13}" cy="${8+row*13}" r="4.5" fill="#0D9488"/>`}
+    const h=Math.ceil(m/3)*13+8;
+    groups+=`<div style="background:#F0FDFA;border:1.5px solid #99F6E4;border-radius:9px;padding:3px;display:inline-block;margin:3px"><svg viewBox="0 0 39 ${h}" width="39" height="${h}">${dots}</svg></div>`;
+  }
+  return`<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:2px;max-width:320px;margin:0 auto">${groups}</div>`;
+}
+function placeValueVisual(n){
+  const hundreds=Math.floor(n/100),tens=Math.floor((n%100)/10),ones=n%10;
+  let h="";for(let i=0;i<hundreds;i++)h+=`<div style="background:#0D9488;width:32px;height:32px;border-radius:4px;display:grid;place-items:center;color:#fff;font-size:9px;font-weight:800">١٠٠</div>`;
+  let t="";for(let i=0;i<tens;i++)t+=`<div style="background:#2DD4BF;width:9px;height:32px;border-radius:2px"></div>`;
+  let o="";for(let i=0;i<ones;i++)o+=`<div style="background:#99F6E4;width:8px;height:8px;border-radius:2px"></div>`;
+  return`<div style="display:flex;gap:6px;align-items:flex-end;justify-content:center;min-height:38px">${h?`<div style="display:flex;gap:2px">${h}</div>`:""}${t?`<div style="display:flex;gap:2px;align-items:flex-end">${t}</div>`:""}${o?`<div style="display:flex;flex-wrap:wrap;gap:2px;width:36px;align-content:flex-end">${o}</div>`:""}</div>`;
+}
+function additionSteps(a,b){
+  const ad=String(a).split("").reverse().map(Number),bd=String(b).split("").reverse().map(Number);
+  const len=Math.max(ad.length,bd.length),placeNames=["الآحاد","العشرات","المئات"];
+  let carry=0,steps=[];
+  for(let i=0;i<len||carry;i++){
+    const da=ad[i]||0,db=bd[i]||0,s=da+db+carry,digit=s%10,newCarry=Math.floor(s/10);
+    steps.push(`${placeNames[i]||("خانة "+toAr(i+1))}: ${toAr(da)}+${toAr(db)}${carry?" + "+toAr(carry)+" (محمول)":""} = ${toAr(s)}${newCarry?` ← اكتبي ${toAr(digit)} واحملي ${toAr(newCarry)}`:` ← اكتبي ${toAr(digit)}`}`);
+    carry=newCarry;
+    if(i>=len&&!carry)break;
+  }
+  return steps;
+}
+function basicsMakeFamily(){const a=rand(2,9),b=rand(2,9);return{a,b,c:a*b}}
+function basicsMakeAddCarry(){const o1=rand(5,9),o2=rand(5,9),t1=rand(1,8),t2=rand(1,8);const a=t1*10+o1,b=t2*10+o2;return{a,b,c:a+b}}
+function basicsFamilyQ(f){
+  const kind=pick(["mul1","mul2","div1","div2"]);
+  if(kind==="mul1")return{text:`${toAr(f.a)} × ${toAr(f.b)} = ؟`,ans:f.c};
+  if(kind==="mul2")return{text:`${toAr(f.b)} × ${toAr(f.a)} = ؟`,ans:f.c};
+  if(kind==="div1")return{text:`${toAr(f.c)} ÷ ${toAr(f.a)} = ؟`,ans:f.b};
+  return{text:`${toAr(f.c)} ÷ ${toAr(f.b)} = ؟`,ans:f.a};
+}
+function basicsPrep(){
+  const f=basicsCur.fam;
+  if(basicsStage===1){basicsCur.opts=null;basicsCur.ai=-1;return}
+  let ans;
+  if(basicsSub==="multdiv"){const fq=basicsFamilyQ(f);basicsCur.qText=fq.text;ans=fq.ans}
+  else{ans=f.c;basicsCur.qText=`${toAr(f.a)} + ${toAr(f.b)} = ؟`}
+  const m=mcNum(ans,[ans+1,ans-1,ans+10]);
+  basicsCur.opts=m.choices;basicsCur.ai=m.answer;
+}
+function basicsNew(){basicsCur={fam:basicsSub==="multdiv"?basicsMakeFamily():basicsMakeAddCarry()};basicsLocked=false;basicsPicked=-1;basicsPrep();render()}
+function basicsChoose(i){if(basicsLocked)return;basicsLocked=true;basicsPicked=i;if(i===basicsCur.ai)basicsStreak++;else basicsStreak=0;render()}
+function basicsStage1Next(){basicsStreak++;if(basicsStreak>=BASICS_REQ){basicsStage=2;basicsStreak=0}basicsNew()}
+function basicsAdvance(){if(basicsStreak>=BASICS_REQ&&basicsStage<4){basicsStage++;basicsStreak=0}basicsNew()}
+function startBasics(sub){mode="basics";basicsSub=sub;basicsStage=1;basicsStreak=0;window.scrollTo(0,0);basicsNew()}
+function basicsStageInfo(){return[
+  {label:"مرحلة ١: مثال محلول كامل (شاهدي)",tag:"شاهدي"},
+  {label:"مرحلة ٢: مع الرسم والقاعدة (طبّقي)",tag:"طبّقي"},
+  {label:"مرحلة ٣: بدون رسم، والقاعدة مذكورة (اكتشفي)",tag:"اكتشفي"},
+  {label:"مرحلة ٤: حل مستقل تماماً (مستقل)",tag:"مستقل"}
+][basicsStage-1]}
+function renderBasics(){
+  const info=basicsStageInfo(),f=basicsCur.fam;
+  const bar=[1,2,3,4].map(x=>`<div class="seg" style="flex:1;height:8px;border-radius:99px;background:${x<basicsStage?'#10B981':x===basicsStage?'#0D9488':'#E2E8F0'}"></div>`).join("");
+  const showVisual=basicsStage<=2;
+  let visualBox="";
+  if(showVisual){
+    if(basicsSub==="multdiv")visualBox=`<div style="margin-bottom:14px">${groupsVisual(f.a,f.b)}</div>`;
+    else visualBox=`<div style="display:flex;gap:16px;align-items:center;justify-content:center;margin-bottom:14px"><div>${placeValueVisual(f.a)}<div style="text-align:center;font-size:12px;color:#64748B;margin-top:4px">${toAr(f.a)}</div></div><div style="font-size:22px;font-weight:800;color:#0D9488">+</div><div>${placeValueVisual(f.b)}<div style="text-align:center;font-size:12px;color:#64748B;margin-top:4px">${toAr(f.b)}</div></div></div>`;
+  }
+  let body="";
+  if(basicsStage===1){
+    let explain;
+    if(basicsSub==="multdiv")explain=`<div>١) ${toAr(f.a)} مجموعات، كل وحدة فيها ${toAr(f.b)} = المجموع ${toAr(f.c)}.</div><div>٢) إذن: ${toAr(f.a)}×${toAr(f.b)}=${toAr(f.c)} ، و${toAr(f.b)}×${toAr(f.a)}=${toAr(f.c)}.</div><div>٣) وبالعكس: ${toAr(f.c)}÷${toAr(f.a)}=${toAr(f.b)} ، و${toAr(f.c)}÷${toAr(f.b)}=${toAr(f.a)}.</div>`;
+    else{const steps=additionSteps(f.a,f.b);explain=steps.map((s,i)=>`<div>${toAr(i+1)}) ${s}.</div>`).join("")+`<div>النتيجة النهائية: ${toAr(f.a)}+${toAr(f.b)}=${toAr(f.c)}.</div>`}
+    body=`<div style="background:#EFF6FF;border-radius:14px;padding:16px;font-size:14px;line-height:1.8;color:#1E40AF;margin-bottom:16px">📘 هذا <b>مثال محلول</b>. اقرئي الحل خطوة بخطوة، ثم اضغطي «فهمت».</div>
+    ${visualBox}
+    <div style="background:#F0FDF4;border-inline-start:4px solid #10B981;border-radius:12px;padding:16px;margin-bottom:16px;font-size:15px;line-height:2">${explain}</div>
+    <button class="btn" style="background:#059669" onclick="basicsStage1Next()">فهمت، مثال آخر ←</button>
+    <div style="font-size:13px;color:#64748B;text-align:center;margin-top:10px">شاهدي مثالين للانتقال (${toAr(basicsStreak)}/${toAr(BASICS_REQ)})</div>`;
+  }else{
+    const ch=basicsCur.opts.map((o,i)=>{let bg="#fff",bd="#E2E8F0",col="#334155";if(basicsLocked){if(i===basicsCur.ai){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(i===basicsPicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}return`<button class="choice" style="background:${bg};border-color:${bd};color:${col};font-size:18px;font-weight:800" onclick="basicsChoose(${i})" ${basicsLocked?"disabled":""}>${o}</button>`}).join("");
+    let hint="";
+    const ruleText=basicsSub==="multdiv"
+      ?`القاعدة: الضرب والقسمة مرتبطان — ${toAr(f.a)}×${toAr(f.b)}=${toAr(f.c)}، فإذن ${toAr(f.c)}÷${toAr(f.a)}=${toAr(f.b)} و${toAr(f.c)}÷${toAr(f.b)}=${toAr(f.a)}.`
+      :`القاعدة: اجمعي كل خانة من اليمين (الآحاد ثم العشرات...)، ولو زاد المجموع عن ٩ اكتبي الآحاد واحملي الباقي للخانة التالية.`;
+    if(basicsStage===2)hint=`<div style="background:#F0FDF4;border-inline-start:4px solid #10B981;border-radius:12px;padding:14px;margin-bottom:14px;font-size:15px">${ruleText}</div>`;
+    else if(basicsStage===3)hint=`<div style="background:#FEF3C7;border-radius:12px;padding:14px;margin-bottom:14px;font-size:15px;color:#B45309"><b>تذكّري القاعدة:</b> ${ruleText}</div>`;
+    const why=basicsLocked?`<div class="why" style="margin-bottom:10px">${basicsPicked===basicsCur.ai?"✓ "+(basicsStage===4?"حللتِها وحدك! 🌟":"أحسنتِ"):"الصحيحة بالأخضر"}.</div><button class="btn" style="background:${basicsStage===4?'#059669':'#0D9488'}" onclick="${basicsStage===4?'basicsNew()':'basicsAdvance()'}">${basicsStage===4?'سؤال جديد ←':'التالي ←'}</button>`:"";
+    const mtr=basicsStage<4?`<div style="font-size:13px;color:#64748B;text-align:center;margin-top:10px">جاوبي صح مرتين متتاليتين للانتقال (${toAr(basicsStreak)}/${toAr(BASICS_REQ)})</div>`:`<div style="font-size:13px;color:#64748B;text-align:center;margin-top:10px">🎓 وصلتِ للحل المستقل — أحسنتِ!</div>`;
+    body=`${hint}${visualBox}<div class="q" style="text-align:center">${basicsCur.qText}</div><div class="choices">${ch}</div>${why}${mtr}`;
+  }
+  const subLabel=basicsSub==="multdiv"?"عائلات الضرب والقسمة":"الجمع بالحمل (عشرات/مئات)";
+  const otherSub=basicsSub==="multdiv"?"addcarry":"multdiv";
+  const otherLabel=basicsSub==="multdiv"?"الجمع بالحمل":"عائلات الضرب والقسمة";
+  app.innerHTML=`<button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
+  <div style="display:flex;gap:6px;margin-bottom:12px">${bar}</div>
+  <div style="font-size:12px;font-weight:800;color:#0D9488;margin-bottom:12px">${info.label}</div>
+  <div class="card"><span class="tag" style="background:#CCFBF1;color:#0D9488">تدريب الأساسيات · ${subLabel} · ${info.tag}</span>${body}</div>
+  <button class="link-btn" onclick="startBasics('${otherSub}')">🔁 بدّلي إلى ${otherLabel}</button>`;
+}
+
 // ===== الحالة والتدفّق =====
 function alias(){return (localStorage.getItem("mawhiba_alias")||"بنتي").trim()||"بنتي"}
 function saveAlias(v){localStorage.setItem("mawhiba_alias",v)}
@@ -692,7 +796,7 @@ function bumpStreak(){const st=getStreak();const t=todayStr();if(st.last===t)ret
 function growthMsg(modeKey,pct){try{const key="mawhiba_best_"+modeKey;const prev=parseInt(localStorage.getItem(key)||"-1");let msg="";if(prev<0){msg="أول محاولة في هذا القسم — انطلاقة موفّقة! 🌱"}else if(pct>prev){msg=`تحسّنتِ عن أفضل نتيجة سابقة (${toAr(prev)}%)! تقدّم رائع 📈`}else if(pct===prev){msg="ثبات على أفضل مستوى سابق 💪"}else{msg="واصلي، كل محاولة تبني مهارتك 🌟"}if(pct>prev)localStorage.setItem(key,String(pct));return msg}catch(e){return""}}
 
 // ===== العرض =====
-function render(){if(mode==="home")return renderHome();if(mode==="fade")return renderFade();if(mode==="arithdiag")return renderArithDiag();if(mode==="arithdiagResult")return renderArithDiagResult();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
+function render(){if(mode==="home")return renderHome();if(mode==="fade")return renderFade();if(mode==="basics")return renderBasics();if(mode==="arithdiag")return renderArithDiag();if(mode==="arithdiagResult")return renderArithDiagResult();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
 
 function renderHome(){
   app.innerHTML=`
@@ -712,6 +816,7 @@ function renderHome(){
     <button class="mode" style="border-color:#FDE68A" onclick="startFade()"><span class="m-name">🎓 وضع التقوية (تلاشٍ تدريجي)</span><div class="m-sub">تدرّب خطوة بخطوة على المتتاليات — مبني على دراسات التعلّم</div></button>
     <button class="mode prog" onclick="loadProgress()"><span class="m-name">📈 متابعة التقدّم</span><div class="m-sub">نتائجك السابقة وتحليل المستوى لكل مجال</div></button>
     <button class="mode" style="border-color:#99F6E4" onclick="startArithDiag()"><span class="m-name">🔍 تشخيص سريع: الجمع والضرب والقسمة</span><div class="m-sub">٧ أسئلة تحدّد أين بالضبط الصعوبة (حفظ، حمل، أو خلط مفاهيم)</div></button>
+    <button class="mode full" style="background:#0D9488;border-color:#0D9488" onclick="startBasics('multdiv')"><span class="m-name">🧱 تدريب الأساسيات: عائلات الحقائق</span><div class="m-sub">ضرب/قسمة مرتبطان + جمع بالحمل (عشرات/مئات) — مبني على نتيجة التشخيص</div></button>
   </div>
   <div class="tips">
     <h3>💡 استراتيجيات موهبة</h3>
