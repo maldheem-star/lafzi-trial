@@ -470,7 +470,8 @@ async function buildFull(){
 
 
 // ===== وضع التقوية: التلاشي التدريجي (المتتاليات) =====
-let fadeStage=1, fadeStreak=0, fadeCur=null, fadeLocked=false, fadePicked=-1, fadeMasteryStreak=0;
+let fadeStage=1, fadeStreak=0, fadeCur=null, fadeLocked=false, fadePicked=-1, fadeMasteryStreak=0, fadeStage4Support=false, fadeRecoveryStreak=0;
+const RECOVERY_REQ=2;
 const FADE_REQ=2, MASTERY_REQ=5;
 function fadeMakeSeq(){
   const kind=pick(["seq","seq","ratio"]); // متتاليات أكثر تكراراً
@@ -494,11 +495,21 @@ function fadePrep(){
   const opts=shuffle([fadeCur.ans,...fadeDedupe(fadeCur.ans,d)]);fadeCur.opts=opts;fadeCur.ai=opts.indexOf(fadeCur.ans);
 }
 function fadeNew(){fadeCur=fadeMakeSeq();fadeLocked=false;fadePicked=-1;fadePrep();render()}
-function fadeChoose(i){if(fadeLocked)return;fadeLocked=true;fadePicked=i;const ok=i===fadeCur.ai;if(ok)fadeStreak++;else fadeStreak=0;if(fadeStage===4){if(ok)fadeMasteryStreak++;else fadeMasteryStreak=0}render()}
+function fadeChoose(i){
+  if(fadeLocked)return;fadeLocked=true;fadePicked=i;
+  const ok=i===fadeCur.ai;
+  if(ok)fadeStreak++;else fadeStreak=0;
+  if(fadeStage===4){
+    if(!ok){fadeMasteryStreak=0;fadeStage4Support=true;fadeRecoveryStreak=0}
+    else if(fadeStage4Support){fadeRecoveryStreak++;if(fadeRecoveryStreak>=RECOVERY_REQ){fadeStage4Support=false;fadeRecoveryStreak=0}}
+    else{fadeMasteryStreak++}
+  }
+  render();
+}
 function fadeStage1Next(){fadeStreak++;if(fadeStreak>=FADE_REQ){fadeStage=2;fadeStreak=0}fadeNew()}
 function fadeAdvance(){if(fadeStreak>=FADE_REQ&&fadeStage<4){fadeStage++;fadeStreak=0}fadeNew()}
 function fadeStage4Next(){if(fadeMasteryStreak>=MASTERY_REQ){mode="fadeDone";window.scrollTo(0,0);render();return}fadeNew()}
-function startFade(){mode="fade";fadeStage=1;fadeStreak=0;fadeMasteryStreak=0;window.scrollTo(0,0);fadeNew()}
+function startFade(){mode="fade";fadeStage=1;fadeStreak=0;fadeMasteryStreak=0;fadeStage4Support=false;fadeRecoveryStreak=0;window.scrollTo(0,0);fadeNew()}
 function renderFadeDone(){
   app.innerHTML=`<div class="card" style="text-align:center">
     <div style="font-size:44px;margin-bottom:6px">🏆</div>
@@ -537,8 +548,11 @@ function renderFade(){
     let hint="";
     if(fadeStage===2)hint=`<div style="background:#F0FDF4;border-inline-start:4px solid #10B981;border-radius:12px;padding:14px;margin-bottom:14px;font-size:15px">القاعدة معطاة: <b>${c.ruleTxt}</b>. ${c.kind==="ratio"?"طبّقيها لإيجاد الثمن.":"طبّقيها لإيجاد الناقص."}</div>`;
     else if(fadeStage===3)hint=`<div style="background:#FEF3C7;border-radius:12px;padding:14px;margin-bottom:14px;font-size:15px;color:#B45309"><b>اكتشفي القاعدة بنفسك</b> ثم طبّقيها.</div>`;
+    else if(fadeStage===4&&fadeStage4Support)hint=`<div style="background:#FEF9C3;border-inline-start:4px solid #EAB308;border-radius:12px;padding:14px;margin-bottom:14px;font-size:15px;color:#854D0E">🌱 ما عليك، مراجعة سريعة: <b>${c.ruleTxt}</b>. جاوبي صح مرتين ليختفي التذكير.</div>`;
     const why=fadeLocked?`<div class="why" style="margin-bottom:10px">${fadePicked===c.ai?"✓ "+(fadeStage===4?"حللتِها وحدك! 🌟":"أحسنتِ"):"الصحيحة بالأخضر"}: ${c.kind==="ratio"?c.steps[1]:(c.op+" = "+toAr(c.ans))}.</div><button class="btn" style="background:${fadeStage===4?'#059669':'#D97706'}" onclick="${fadeStage===4?'fadeStage4Next()':'fadeAdvance()'}">${fadeStage===4?'سؤال جديد ←':'التالي ←'}</button>`:"";
-    const mtr=fadeStage<4?`<div style="font-size:13px;color:#64748B;text-align:center;margin-top:10px">جاوبي صح مرتين متتاليتين للانتقال (${toAr(fadeStreak)}/${toAr(FADE_REQ)})</div>`:`<div style="font-size:13px;color:#64748B;text-align:center;margin-top:10px">🎓 حل مستقل — (${toAr(fadeMasteryStreak)}/${toAr(MASTERY_REQ)}) متتالية لإتقان هذا النوع</div>`;
+    const mtr=fadeStage<4?`<div style="font-size:13px;color:#64748B;text-align:center;margin-top:10px">جاوبي صح مرتين متتاليتين للانتقال (${toAr(fadeStreak)}/${toAr(FADE_REQ)})</div>`
+      :fadeStage4Support?`<div style="font-size:13px;color:#854D0E;text-align:center;margin-top:10px">🌱 مراجعة: (${toAr(fadeRecoveryStreak)}/${toAr(RECOVERY_REQ)}) لإخفاء التذكير مرة أخرى</div>`
+      :`<div style="font-size:13px;color:#64748B;text-align:center;margin-top:10px">🎓 حل مستقل — (${toAr(fadeMasteryStreak)}/${toAr(MASTERY_REQ)}) متتالية لإتقان هذا النوع</div>`;
     body=`${hint}${seqBox}<div class="q">${c.kind==="ratio"?"ما الثمن المطلوب؟":"ما العدد الناقص؟"}</div><div class="choices">${ch}</div>${why}${mtr}`;
   }
   app.innerHTML=`<button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
@@ -632,7 +646,7 @@ function renderArithDiagResult(){
 // ===== تدريب الأساسيات: عائلات الحقائق (ضرب/قسمة) + الجمع بالحمل (عشرات/مئات) =====
 // نهج CRA (محسوس ← مرتبط بالرسم ← مجرّد بقاعدة ← مستقل)، نفس فلسفة وضع التقوية أعلاه
 const BASICS_REQ=2;
-let basicsSub="multdiv",basicsStage=1,basicsStreak=0,basicsCur=null,basicsLocked=false,basicsPicked=-1,basicsMasteryStreak=0;
+let basicsSub="multdiv",basicsStage=1,basicsStreak=0,basicsCur=null,basicsLocked=false,basicsPicked=-1,basicsMasteryStreak=0,basicsStage4Support=false,basicsRecoveryStreak=0;
 
 function groupsVisual(n,m){
   let groups="";
@@ -683,11 +697,22 @@ function basicsPrep(){
 }
 function basicsNew(){basicsCur={fam:basicsSub==="multdiv"?basicsMakeFamily():basicsMakeAddCarry()};basicsLocked=false;basicsPicked=-1;basicsPrep();render()}
 function logAnswer(domain,qtype,isCorrect){try{fetch(`${SB_URL}/rest/v1/${TBL_LOG}`,{method:"POST",headers:{"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json","Prefer":"return-minimal"},body:JSON.stringify({student_alias:alias(),domain,qtype,is_correct:isCorrect})})}catch(e){}}
-function basicsChoose(i){if(basicsLocked)return;basicsLocked=true;basicsPicked=i;const ok=i===basicsCur.ai;if(ok)basicsStreak++;else basicsStreak=0;if(basicsStage===4){if(ok)basicsMasteryStreak++;else basicsMasteryStreak=0}logAnswer("basics_"+basicsSub,"stage"+basicsStage,ok);render()}
+function basicsChoose(i){
+  if(basicsLocked)return;basicsLocked=true;basicsPicked=i;
+  const ok=i===basicsCur.ai;
+  if(ok)basicsStreak++;else basicsStreak=0;
+  if(basicsStage===4){
+    if(!ok){basicsMasteryStreak=0;basicsStage4Support=true;basicsRecoveryStreak=0}
+    else if(basicsStage4Support){basicsRecoveryStreak++;if(basicsRecoveryStreak>=RECOVERY_REQ){basicsStage4Support=false;basicsRecoveryStreak=0}}
+    else{basicsMasteryStreak++}
+  }
+  logAnswer("basics_"+basicsSub,"stage"+basicsStage,ok);
+  render();
+}
 function basicsStage1Next(){basicsStreak++;if(basicsStreak>=BASICS_REQ){basicsStage=2;basicsStreak=0}basicsNew()}
 function basicsAdvance(){if(basicsStreak>=BASICS_REQ&&basicsStage<4){basicsStage++;basicsStreak=0}basicsNew()}
 function basicsStage4Next(){if(basicsMasteryStreak>=MASTERY_REQ){mode="basicsDone";window.scrollTo(0,0);render();return}basicsNew()}
-function startBasics(sub){mode="basics";basicsSub=sub;basicsStage=1;basicsStreak=0;basicsMasteryStreak=0;window.scrollTo(0,0);basicsNew()}
+function startBasics(sub){mode="basics";basicsSub=sub;basicsStage=1;basicsStreak=0;basicsMasteryStreak=0;basicsStage4Support=false;basicsRecoveryStreak=0;window.scrollTo(0,0);basicsNew()}
 function renderBasicsDone(){
   const subLabel=basicsSub==="multdiv"?"عائلات الضرب والقسمة":"الجمع بالحمل (عشرات/مئات)";
   app.innerHTML=`<div class="card" style="text-align:center">
@@ -707,7 +732,7 @@ function basicsStageInfo(){return[
 function renderBasics(){
   const info=basicsStageInfo(),f=basicsCur.fam;
   const bar=[1,2,3,4].map(x=>`<div class="seg" style="flex:1;height:8px;border-radius:99px;background:${x<basicsStage?'#10B981':x===basicsStage?'#0D9488':'#E2E8F0'}"></div>`).join("");
-  const showVisual=basicsStage<=2;
+  const showVisual=basicsStage<=2||(basicsStage===4&&basicsStage4Support);
   let visualBox="";
   if(showVisual){
     if(basicsSub==="multdiv")visualBox=`<div style="margin-bottom:14px">${groupsVisual(f.a,f.b)}</div>`;
@@ -731,8 +756,11 @@ function renderBasics(){
       :`القاعدة: اجمعي كل خانة من اليمين (الآحاد ثم العشرات...)، ولو زاد المجموع عن ٩ اكتبي الآحاد واحملي الباقي للخانة التالية.`;
     if(basicsStage===2)hint=`<div style="background:#F0FDF4;border-inline-start:4px solid #10B981;border-radius:12px;padding:14px;margin-bottom:14px;font-size:15px">${ruleText}</div>`;
     else if(basicsStage===3)hint=`<div style="background:#FEF3C7;border-radius:12px;padding:14px;margin-bottom:14px;font-size:15px;color:#B45309"><b>تذكّري القاعدة:</b> ${ruleText}</div>`;
+    else if(basicsStage===4&&basicsStage4Support)hint=`<div style="background:#FEF9C3;border-inline-start:4px solid #EAB308;border-radius:12px;padding:14px;margin-bottom:14px;font-size:15px;color:#854D0E">🌱 ما عليك، مراجعة سريعة: ${ruleText} جاوبي صح مرتين ليختفي التذكير.</div>`;
     const why=basicsLocked?`<div class="why" style="margin-bottom:10px">${basicsPicked===basicsCur.ai?"✓ "+(basicsStage===4?"حللتِها وحدك! 🌟":"أحسنتِ"):"الصحيحة بالأخضر"}.</div><button class="btn" style="background:${basicsStage===4?'#059669':'#0D9488'}" onclick="${basicsStage===4?'basicsStage4Next()':'basicsAdvance()'}">${basicsStage===4?'سؤال جديد ←':'التالي ←'}</button>`:"";
-    const mtr=basicsStage<4?`<div style="font-size:13px;color:#64748B;text-align:center;margin-top:10px">جاوبي صح مرتين متتاليتين للانتقال (${toAr(basicsStreak)}/${toAr(BASICS_REQ)})</div>`:`<div style="font-size:13px;color:#64748B;text-align:center;margin-top:10px">🎓 حل مستقل — (${toAr(basicsMasteryStreak)}/${toAr(MASTERY_REQ)}) متتالية لإتقان هذا النوع</div>`;
+    const mtr=basicsStage<4?`<div style="font-size:13px;color:#64748B;text-align:center;margin-top:10px">جاوبي صح مرتين متتاليتين للانتقال (${toAr(basicsStreak)}/${toAr(BASICS_REQ)})</div>`
+      :basicsStage4Support?`<div style="font-size:13px;color:#854D0E;text-align:center;margin-top:10px">🌱 مراجعة: (${toAr(basicsRecoveryStreak)}/${toAr(RECOVERY_REQ)}) لإخفاء التذكير مرة أخرى</div>`
+      :`<div style="font-size:13px;color:#64748B;text-align:center;margin-top:10px">🎓 حل مستقل — (${toAr(basicsMasteryStreak)}/${toAr(MASTERY_REQ)}) متتالية لإتقان هذا النوع</div>`;
     body=`${hint}${visualBox}<div class="q" style="text-align:center">${basicsCur.qText}</div><div class="choices">${ch}</div>${why}${mtr}`;
   }
   const subLabel=basicsSub==="multdiv"?"عائلات الضرب والقسمة":"الجمع بالحمل (عشرات/مئات)";
