@@ -82,6 +82,7 @@ const SB_KEY="sb_publishable_W9ijdHn1vHj3-rUDCx2U5Q_yq6ebbsI";
 const FN_URL=SB_URL+"/functions/v1/generate-question";
 const TBL="mawhiba_attempts";
 const TBL_DIAG="mawhiba_arith_diag";
+const TBL_LOG="mawhiba_answer_log";
 const DOMAINS={
   verbal:{name:"الاستدلال اللغوي",color:"#2563EB",soft:"#DBEAFE"},
   quant:{name:"الرياضي والمكاني",color:"#0D9488",soft:"#CCFBF1"},
@@ -671,7 +672,8 @@ function basicsPrep(){
   basicsCur.opts=m.choices;basicsCur.ai=m.answer;
 }
 function basicsNew(){basicsCur={fam:basicsSub==="multdiv"?basicsMakeFamily():basicsMakeAddCarry()};basicsLocked=false;basicsPicked=-1;basicsPrep();render()}
-function basicsChoose(i){if(basicsLocked)return;basicsLocked=true;basicsPicked=i;if(i===basicsCur.ai)basicsStreak++;else basicsStreak=0;render()}
+function logAnswer(domain,qtype,isCorrect){try{fetch(`${SB_URL}/rest/v1/${TBL_LOG}`,{method:"POST",headers:{"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json","Prefer":"return-minimal"},body:JSON.stringify({student_alias:alias(),domain,qtype,is_correct:isCorrect})})}catch(e){}}
+function basicsChoose(i){if(basicsLocked)return;basicsLocked=true;basicsPicked=i;const ok=i===basicsCur.ai;if(ok)basicsStreak++;else basicsStreak=0;logAnswer("basics_"+basicsSub,"stage"+basicsStage,ok);render()}
 function basicsStage1Next(){basicsStreak++;if(basicsStreak>=BASICS_REQ){basicsStage=2;basicsStreak=0}basicsNew()}
 function basicsAdvance(){if(basicsStreak>=BASICS_REQ&&basicsStage<4){basicsStage++;basicsStreak=0}basicsNew()}
 function startBasics(sub){mode="basics";basicsSub=sub;basicsStage=1;basicsStreak=0;window.scrollTo(0,0);basicsNew()}
