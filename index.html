@@ -81,6 +81,7 @@ const SB_URL="https://yzznkerweqkmhrtbidrl.supabase.co";
 const SB_KEY="sb_publishable_W9ijdHn1vHj3-rUDCx2U5Q_yq6ebbsI";
 const FN_URL=SB_URL+"/functions/v1/generate-question";
 const TBL="mawhiba_attempts";
+const TBL_DIAG="mawhiba_arith_diag";
 const DOMAINS={
   verbal:{name:"الاستدلال اللغوي",color:"#2563EB",soft:"#DBEAFE"},
   quant:{name:"الرياضي والمكاني",color:"#0D9488",soft:"#CCFBF1"},
@@ -555,7 +556,17 @@ function buildDiagItem(item){
 let diagQ=[],diagIdx=0,diagPicked=null,diagLocked=false,diagAnswers=[];
 function startArithDiag(){mode="arithdiag";diagQ=ARITH_DIAG.map(buildDiagItem);diagIdx=0;diagPicked=null;diagLocked=false;diagAnswers=[];window.scrollTo(0,0);render()}
 function diagChoose(i){if(diagLocked)return;diagPicked=i;diagLocked=true;diagAnswers.push({...diagQ[diagIdx],picked:i});render()}
-function diagNext(){if(diagIdx+1>=diagQ.length){mode="arithdiagResult";window.scrollTo(0,0)}else{diagIdx++;diagPicked=null;diagLocked=false}render()}
+function diagNext(){if(diagIdx+1>=diagQ.length){mode="arithdiagResult";window.scrollTo(0,0);saveDiagAttempt()}else{diagIdx++;diagPicked=null;diagLocked=false}render()}
+async function saveDiagAttempt(){
+  const{perOp,tagCount}=diagReport();
+  const row={student_alias:alias(),
+    addition_correct:perOp.addition.r,addition_total:perOp.addition.t,
+    multiplication_correct:perOp.multiplication.r,multiplication_total:perOp.multiplication.t,
+    division_correct:perOp.division.r,division_total:perOp.division.t,
+    slip_count:tagCount.slip,no_carry_count:tagCount.no_carry,concept_confusion_count:tagCount.concept_confusion,
+    details:diagAnswers.map(a=>({op:a.op,level:a.level,correct:a.picked===a.correctIndex,tag:a.picked===a.correctIndex?"":a.tags[a.picked]}))};
+  try{await fetch(`${SB_URL}/rest/v1/${TBL_DIAG}`,{method:"POST",headers:{"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json","Prefer":"return-minimal"},body:JSON.stringify(row)})}catch(e){}
+}
 function diagReport(){
   const perOp={addition:{r:0,t:0},multiplication:{r:0,t:0},division:{r:0,t:0}};
   const tagCount={slip:0,no_carry:0,concept_confusion:0};
