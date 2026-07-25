@@ -1025,7 +1025,7 @@ function renderEnglish(){
   <div class="card">
     <span class="tag" style="background:#CFFAFE;color:#0891B2">🇬🇧 تعلّم الإنجليزية · مستوى A1</span>
     <div class="q">${q.q}</div>
-    ${q.listen?`<button type="button" onclick="speakEnglish(engFiltered[${engIdx}].listen)" style="background:#ECFEFF;border:1.5px solid #A5F3FC;color:#0891B2;border-radius:10px;padding:7px 16px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:16px;font-family:inherit">🔊 استمعي بصوت أمريكي</button>`:""}
+    ${q.listen?`<button type="button" onclick="speakEnglish(engFiltered[${engIdx}].listen)" style="background:#ECFEFF;border:1.5px solid #A5F3FC;color:#0891B2;border-radius:10px;padding:7px 16px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:16px;font-family:inherit">🔊 استمعي</button>`:""}
     <div class="choices">${choices}</div>
     ${explain}
   </div>
@@ -1105,6 +1105,80 @@ function renderDictationResult(){
   </div>`;
 }
 
+// ===== النطق: تحقّق أساسي من الكلمة عبر التعرّف على الصوت (تحقّق كلمة، وليس تقييم دقّة اللهجة) =====
+function getSpeechRecognition(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;return SR?new SR():null}
+let pronSession=[],pronIdx=0,pronResult=null,pronListening=false,pronScore=0,pronDone=false,pronUnsupported=false;
+function startPronunciation(){
+  mode="pron";pronSession=shuffle(DICTATION_A1).slice(0,8);pronIdx=0;pronResult=null;pronListening=false;pronScore=0;pronDone=false;
+  pronUnsupported=!getSpeechRecognition();
+  window.scrollTo(0,0);render();
+  if(!pronUnsupported)setTimeout(()=>speakEnglish(pronSession[0].w),300);
+}
+function pronListen(){
+  if(pronListening)return;
+  const rec=getSpeechRecognition();
+  if(!rec){pronUnsupported=true;render();return}
+  pronListening=true;pronResult=null;render();
+  rec.lang='en-US';rec.maxAlternatives=1;rec.continuous=false;rec.interimResults=false;
+  rec.onresult=(e)=>{
+    const heard=((e.results&&e.results[0]&&e.results[0][0]&&e.results[0][0].transcript)||"").trim().toLowerCase().replace(/[^a-z ]/g,"");
+    const target=pronSession[pronIdx].w.toLowerCase();
+    const ok=heard===target||heard.split(" ").includes(target);
+    pronResult={heard,ok};pronListening=false;
+    if(ok)pronScore++;
+    render();
+  };
+  rec.onerror=()=>{pronListening=false;pronResult={heard:"",ok:false,error:true};render()};
+  rec.onend=()=>{if(pronListening){pronListening=false;render()}};
+  try{rec.start()}catch(e){pronListening=false;pronResult={heard:"",ok:false,error:true};render()}
+}
+function pronNext(){
+  if(pronIdx+1>=pronSession.length){pronDone=true;window.scrollTo(0,0);render();return}
+  pronIdx++;pronResult=null;render();
+  setTimeout(()=>speakEnglish(pronSession[pronIdx].w),300);
+}
+function renderPron(){
+  if(pronDone)return renderPronResult();
+  const item=pronSession[pronIdx];
+  const prog=pronSession.map((_,i)=>`<div class="seg" style="background:${i<=pronIdx?'#7C3AED':'#E2E8F0'};opacity:${i<=pronIdx?1:.5}"></div>`).join("");
+  let inner;
+  if(pronUnsupported){
+    inner=`<div style="background:#FEF3C7;border-radius:12px;padding:16px;font-size:14px;color:#92400E;line-height:1.8">متصفحك الحالي لا يدعم التعرّف على الصوت. جرّبي متصفح Chrome على كمبيوتر أو أندرويد.</div>`;
+  }else{
+    const feedback=pronResult?(pronResult.error
+      ?`<div class="explain"><div class="explain-title" style="color:#B45309">تعذّر التعرّف على صوتك</div><div class="explain-body">تأكدي من السماح للميكروفون للمتصفح، وحاولي مرة أخرى.</div></div>`
+      :`<div class="explain"><div class="explain-title" style="color:${pronResult.ok?'#059669':'#B45309'}">${pronResult.ok?"✓ تم التعرّف على الكلمة الصحيحة":"لم يتم التعرّف على الكلمة المطلوبة"}</div><div class="explain-body">${pronResult.heard?`سمع المتصفح: <b style="direction:ltr;display:inline-block">"${pronResult.heard}"</b> — `:""}الكلمة المطلوبة: <b style="direction:ltr;display:inline-block">${item.w}</b> (${item.m}).${pronResult.ok?"":" استمعي وحاولي مرة أخرى."}</div></div>`
+    ):"";
+    const nextBtn=pronResult?`<button class="btn" style="background:#7C3AED" onclick="pronNext()">${pronIdx+1>=pronSession.length?"إنهاء ومشاهدة النتيجة":pronResult.error?"تخطّي هذه الكلمة ←":"الكلمة التالية ←"}</button>`:"";
+    inner=`
+    <div style="font-size:12px;color:#94A3B8;margin-bottom:14px">تحقّق أساسي: هل تعرّف المتصفح على الكلمة الصحيحة؟ (ليس تقييماً دقيقاً للهجة)</div>
+    <div style="display:flex;gap:12px;justify-content:center;align-items:center;margin:10px 0 18px">
+      <button type="button" onclick="speakEnglish(pronSession[${pronIdx}].w)" style="background:#ECFEFF;border:1.5px solid #A5F3FC;color:#0891B2;border-radius:50%;width:56px;height:56px;font-size:22px;cursor:pointer">🔊</button>
+      <button type="button" onclick="pronListen()" ${pronListening?"disabled":""} style="background:${pronListening?'#C4B5FD':'#7C3AED'};color:#fff;border:none;border-radius:50%;width:72px;height:72px;font-size:26px;cursor:pointer">${pronListening?"🎙️":"🎤"}</button>
+    </div>
+    <div style="font-size:13px;color:#64748B;margin-bottom:14px">${pronListening?"...أستمع، انطقي الكلمة الآن":"اضغطي 🔊 لتسمعي، ثم 🎤 وانطقي الكلمة"}</div>
+    ${feedback}${nextBtn}`;
+  }
+  app.innerHTML=`<button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
+  <div class="bar">${prog}</div>
+  <div class="meta"><span>كلمة ${toAr(pronIdx+1)} من ${toAr(pronSession.length)}</span><span>نطق · A1</span></div>
+  <div class="card" style="text-align:center">
+    <span class="tag" style="background:#EDE9FE;color:#7C3AED">🎤 تمرين النطق</span>
+    ${inner}
+  </div>`;
+}
+function renderPronResult(){
+  const pct=Math.round(pronScore/pronSession.length*100);
+  app.innerHTML=`
+  <div class="card">
+    <div class="score-row"><span class="score-big" style="color:${pct>=70?'#059669':pct>=50?'#D97706':'#DC2626'}">${toAr(pronScore)}</span><span class="score-total">/ ${toAr(pronSession.length)}</span><span class="score-pct">${toAr(pct)}%</span></div>
+    <div style="color:#64748B;font-size:15px;margin-bottom:14px">${pct>=85?"نطق واضح جداً! 🌟":pct>=60?"جيد، واصلي التمرين 💪":"لا بأس، الاستماع والتكرار يحسّنان النطق 🌱"}</div>
+    <div style="background:#EDE9FE;border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:14px;color:#6D28D9;font-weight:700">${growthMsg('pron_a1',pct)}</div>
+    <button class="btn" style="background:#7C3AED" onclick="startPronunciation()">إعادة (كلمات جديدة)</button>
+    <button class="link-btn" onclick="home()">→ الرئيسية</button>
+  </div>`;
+}
+
 // ===== الحالة والتدفّق =====
 function alias(){return (localStorage.getItem("mawhiba_alias")||"بنتي").trim()||"بنتي"}
 function saveAlias(v){localStorage.setItem("mawhiba_alias",v)}
@@ -1179,7 +1253,7 @@ function bumpStreak(){const st=getStreak();const t=todayStr();if(st.last===t)ret
 function growthMsg(modeKey,pct){try{const key="mawhiba_best_"+modeKey;const prev=parseInt(localStorage.getItem(key)||"-1");let msg="";if(prev<0){msg="أول محاولة في هذا القسم — انطلاقة موفّقة! 🌱"}else if(pct>prev){msg=`تحسّنتِ عن أفضل نتيجة سابقة (${toAr(prev)}%)! تقدّم رائع 📈`}else if(pct===prev){msg="ثبات على أفضل مستوى سابق 💪"}else{msg="واصلي، كل محاولة تبني مهارتك 🌟"}if(pct>prev)localStorage.setItem(key,String(pct));return msg}catch(e){return""}}
 
 // ===== العرض =====
-function render(){if(mode==="home")return renderHome();if(mode==="english")return renderEnglish();if(mode==="dictation")return renderDictation();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="arithdiag")return renderArithDiag();if(mode==="arithdiagResult")return renderArithDiagResult();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
+function render(){if(mode==="home")return renderHome();if(mode==="english")return renderEnglish();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="arithdiag")return renderArithDiag();if(mode==="arithdiagResult")return renderArithDiagResult();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
 
 function renderHome(){
   app.innerHTML=`
@@ -1201,7 +1275,8 @@ function renderHome(){
     <button class="mode" style="border-color:#99F6E4" onclick="startArithDiag()"><span class="m-name">🔍 تشخيص سريع: الجمع والضرب والقسمة</span><div class="m-sub">٧ أسئلة تحدّد أين بالضبط الصعوبة (حفظ، حمل، أو خلط مفاهيم)</div></button>
     <button class="mode full" style="background:#0D9488;border-color:#0D9488" onclick="startBasics('multdiv')"><span class="m-name">🧱 تدريب الأساسيات: عائلات الحقائق</span><div class="m-sub">ضرب/قسمة مرتبطان + جمع بالحمل (عشرات/مئات) — مبني على نتيجة التشخيص</div></button>
     <button class="mode full" style="background:#0891B2;border-color:#0891B2" onclick="startEnglish()"><span class="m-name">🇬🇧 تعلّم الإنجليزية · مستوى A1</span><div class="m-sub">مفردات وقواعد وقراءة، مع نطق بصوت أمريكي 🔊 — الخطوة الأولى نحو C2</div></button>
-    <button class="mode full" style="background:#0E7490;border-color:#0E7490" onclick="startDictation()"><span class="m-name">✍️ إملاء بالإنجليزية</span><div class="m-sub">استمعي للكلمة بصوت أمريكي، ثم اكتبيها — مستوى A1</div></button>
+    <button class="mode full" style="background:#0E7490;border-color:#0E7490" onclick="startDictation()"><span class="m-name">✍️ إملاء بالإنجليزية</span><div class="m-sub">استمعي للكلمة، ثم اكتبيها — مستوى A1</div></button>
+    <button class="mode full" style="background:#7C3AED;border-color:#7C3AED" onclick="startPronunciation()"><span class="m-name">🎤 تمرين النطق</span><div class="m-sub">تحقّق أساسي هل نطقتِ الكلمة صح (يحتاج ميكروفون) — وليس تصحيح لهجة دقيق</div></button>
   </div>
   <div class="tips">
     <h3>💡 استراتيجيات موهبة</h3>
