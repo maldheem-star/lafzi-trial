@@ -1111,8 +1111,44 @@ let pronSession=[],pronIdx=0,pronResult=null,pronListening=false,pronScore=0,pro
 function startPronunciation(){
   mode="pron";pronSession=shuffle(DICTATION_A1).slice(0,8);pronIdx=0;pronResult=null;pronListening=false;pronScore=0;pronDone=false;
   pronUnsupported=!getSpeechRecognition();
+  azureResult=null;azureBusy=false;azureRecording=false;
   window.scrollTo(0,0);render();
   if(!pronUnsupported)setTimeout(()=>speakEnglish(pronSession[0].w),300);
+}
+// ===== تقييم دقيق تجريبي عبر Azure AI Speech (اختياري، يحتاج مفتاحاً مُعدّاً في المشروع) =====
+const PRON_FN_URL=SB_URL+"/functions/v1/assess-pronunciation";
+let azureRecording=false,azureBusy=false,azureResult=null;
+function blobToBase64(blob){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onloadend=()=>resolve(String(reader.result).split(",")[1]||"");
+    reader.onerror=reject;
+    reader.readAsDataURL(blob);
+  });
+}
+async function azureAssess(){
+  if(azureBusy)return;
+  azureResult=null;azureBusy=true;azureRecording=true;render();
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    const chunks=[];
+    const rec=new MediaRecorder(stream);
+    rec.ondataavailable=(e)=>{if(e.data&&e.data.size>0)chunks.push(e.data)};
+    const stopped=new Promise(resolve=>{rec.onstop=resolve});
+    rec.start();
+    await new Promise(r=>setTimeout(r,2500));
+    rec.stop();
+    stream.getTracks().forEach(t=>t.stop());
+    await stopped;
+    azureRecording=false;render();
+    const blob=new Blob(chunks,{type:rec.mimeType||"audio/webm"});
+    const b64=await blobToBase64(blob);
+    const res=await fetch(PRON_FN_URL,{method:"POST",headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({audio:b64,mimeType:blob.type,referenceText:pronSession[pronIdx].w})});
+    azureResult=await res.json();
+  }catch(e){
+    azureResult={error:"client_error",message:String(e&&e.message||e)};
+  }
+  azureBusy=false;azureRecording=false;render();
 }
 function pronListen(){
   if(pronListening)return;
@@ -1133,6 +1169,7 @@ function pronListen(){
   try{rec.start()}catch(e){pronListening=false;pronResult={heard:"",ok:false,error:true};render()}
 }
 function pronNext(){
+  azureResult=null;azureBusy=false;azureRecording=false;
   if(pronIdx+1>=pronSession.length){pronDone=true;window.scrollTo(0,0);render();return}
   pronIdx++;pronResult=null;render();
   setTimeout(()=>speakEnglish(pronSession[pronIdx].w),300);
@@ -1150,6 +1187,25 @@ function renderPron(){
       :`<div class="explain"><div class="explain-title" style="color:${pronResult.ok?'#059669':'#B45309'}">${pronResult.ok?"✓ تم التعرّف على الكلمة الصحيحة":"لم يتم التعرّف على الكلمة المطلوبة"}</div><div class="explain-body">${pronResult.heard?`سمع المتصفح: <b style="direction:ltr;display:inline-block">"${pronResult.heard}"</b> — `:""}الكلمة المطلوبة: <b style="direction:ltr;display:inline-block">${item.w}</b> (${item.m}).${pronResult.ok?"":" استمعي وحاولي مرة أخرى."}</div></div>`
     ):"";
     const nextBtn=pronResult?`<button class="btn" style="background:#7C3AED" onclick="pronNext()">${pronIdx+1>=pronSession.length?"إنهاء ومشاهدة النتيجة":pronResult.error?"تخطّي هذه الكلمة ←":"الكلمة التالية ←"}</button>`:"";
+    let azureBody="";
+    if(azureResult){
+      const s=v=>(v==null?"—":toAr(Math.round(v)));
+      if(azureResult.ok){
+        azureBody=`<div style="margin-top:14px;background:#F5F3FF;border-radius:12px;padding:14px;text-align:center">
+          <div style="font-weight:800;margin-bottom:8px;color:#6D28D9">الدرجة الإجمالية: ${s(azureResult.pronScore)}/١٠٠</div>
+          <div style="font-size:13px;color:#4C1D95">الدقة: ${s(azureResult.accuracyScore)} · الطلاقة: ${s(azureResult.fluencyScore)} · الاكتمال: ${s(azureResult.completenessScore)}</div>
+        </div>`;
+      }else if(azureResult.error==="not_configured"){
+        azureBody=`<div style="margin-top:12px;font-size:13px;color:#94A3B8">التقييم الدقيق غير مفعّل بعد على هذا الحساب.</div>`;
+      }else{
+        azureBody=`<div style="margin-top:12px;font-size:13px;color:#B45309">تعذّر الحصول على تقييم دقيق الآن. جرّبي زر التحقّق الأساسي 🎤 بدلاً منه.</div>`;
+      }
+    }
+    const azureSection=`<div style="margin-top:18px;padding-top:16px;border-top:1px dashed #E2E8F0">
+      <div style="font-size:12px;color:#94A3B8;margin-bottom:10px">🌟 تقييم دقيق تجريبي (Azure) — يقيس دقّة النطق الفعلية، لا مجرد التعرّف على الكلمة</div>
+      <button type="button" onclick="azureAssess()" ${azureBusy?"disabled":""} style="background:${azureBusy?'#DDD6FE':'#7C3AED'};color:#fff;border:none;border-radius:12px;padding:10px 22px;font-size:14px;font-weight:700;cursor:pointer">${azureRecording?"🔴 يسجّل... انطقي الآن":azureBusy?"...جارٍ التقييم":"🌟 سجّلي للتقييم الدقيق"}</button>
+      ${azureBody}
+    </div>`;
     inner=`
     <div style="font-size:12px;color:#94A3B8;margin-bottom:14px">تحقّق أساسي: هل تعرّف المتصفح على الكلمة الصحيحة؟ (ليس تقييماً دقيقاً للهجة)</div>
     <div style="display:flex;gap:12px;justify-content:center;align-items:center;margin:10px 0 18px">
@@ -1157,7 +1213,8 @@ function renderPron(){
       <button type="button" onclick="pronListen()" ${pronListening?"disabled":""} style="background:${pronListening?'#C4B5FD':'#7C3AED'};color:#fff;border:none;border-radius:50%;width:72px;height:72px;font-size:26px;cursor:pointer">${pronListening?"🎙️":"🎤"}</button>
     </div>
     <div style="font-size:13px;color:#64748B;margin-bottom:14px">${pronListening?"...أستمع، انطقي الكلمة الآن":"اضغطي 🔊 لتسمعي، ثم 🎤 وانطقي الكلمة"}</div>
-    ${feedback}${nextBtn}`;
+    ${feedback}${nextBtn}
+    ${azureSection}`;
   }
   app.innerHTML=`<button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
   <div class="bar">${prog}</div>
