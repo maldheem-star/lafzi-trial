@@ -364,8 +364,42 @@ function gShadedArea(){
   return{d:"quant",q:`مربّع طول ضلعه ${toAr(S)} سم، ورُسم داخله مربّع آخر (المُظلّل) بتوصيل منتصفات أضلاعه كما في الشكل. ما مساحة الجزء المُظلّل؟`,c:m.choices.map(x=>x+" سم²"),a:m.answer,w:`مساحة المربع الكبير = ${toAr(S)}×${toAr(S)} = ${toAr(S*S)} سم². توصيل منتصفات الأضلاع يعطي مربّعاً مساحته نصف الكبير دائماً = ${toAr(ans)} سم².`,svg};
 }
 
-const QUANT_GENS=[gArith,gGeo,gPrice,gPerim,gClock,gSides,gWorkers,gMedian,gCube,gPercent,gPaths,gCompound,gFraction,gTrees,gCircleValue,gConsec,gAngleTriangle,gAngleLine,gAnglePoint,gAngleSquare,gSpeedGraph,gShadedArea];
-const FLEX_GENS=[fDouble,fTriple,fFib,fSq,fOpp,gPyramid,gCircleNum,gShapeEq,gSeq,gDice,gAngleEqualRays,gRavenCount,gRavenRotate,gShapeRotateSeq,gDicePattern,gShapeSeries];
+// ===== خط الأعداد (بصري) =====
+function gNumberLine(){
+  const start=rand(0,20),step=pick([1,2,5,10]),ticksCount=6;
+  const markIdx=rand(1,ticksCount-2);
+  const values=Array.from({length:ticksCount},(_,i)=>start+i*step);
+  const ans=values[markIdx];
+  const width=260,marginL=20,marginR=20,innerW=width-marginL-marginR;
+  const xAt=i=>marginL+i*(innerW/(ticksCount-1));
+  let ticks="",labels="";
+  for(let i=0;i<ticksCount;i++){
+    const x=xAt(i);
+    ticks+=`<line x1="${x.toFixed(1)}" y1="34" x2="${x.toFixed(1)}" y2="46" stroke="#334155" stroke-width="2"/>`;
+    if(i!==markIdx)labels+=`<text x="${x.toFixed(1)}" y="66" font-size="13" text-anchor="middle" fill="#334155">${toAr(values[i])}</text>`;
+  }
+  const mx=xAt(markIdx);
+  const marker=`<circle cx="${mx.toFixed(1)}" cy="40" r="6" fill="#D97706"/><text x="${mx.toFixed(1)}" y="66" font-size="15" font-weight="800" text-anchor="middle" fill="#D97706">؟</text>`;
+  const svg=`<svg viewBox="0 0 ${width} 80" width="${width}" height="80"><line x1="${marginL}" y1="40" x2="${width-marginR}" y2="40" stroke="#94A3B8" stroke-width="2"/>${ticks}${labels}${marker}</svg>`;
+  const m=mcNum(ans,[ans+step,ans-step,ans+2*step]);
+  return{d:"quant",q:"خط الأعداد مقسوم إلى أجزاء متساوية. ما العدد الذي تشير إليه النقطة؟",c:m.choices,a:m.answer,w:`الفرق بين كل علامتين متتاليتين ثابت = ${toAr(step)}. النقطة = ${toAr(ans)}.`,svg};
+}
+
+// ===== الانعكاس المرآتي (بصري) =====
+function mirrorFlagMarkup(color){return`<polygon points="-15,-18 -15,18 -3,18 -3,4 12,4 12,-6 -3,-6 -3,-18" fill="${color}"/>`}
+function mirrorFlagSVG(transformExtra,color){return`<svg viewBox="0 0 50 50" width="50" height="50"><g transform="translate(25,25) ${transformExtra}">${mirrorFlagMarkup(color||'#0D9488')}</g></svg>`}
+function gMirrorReflect(){
+  const color="#0D9488";
+  const mainSVG=`<svg viewBox="0 0 140 90" width="140" height="90"><line x1="70" y1="5" x2="70" y2="85" stroke="#94A3B8" stroke-width="2" stroke-dasharray="4 4"/><g transform="translate(95,45) scale(0.9,0.9)">${mirrorFlagMarkup(color)}</g></svg>`;
+  const correct={t:"scale(-0.9,0.9)"};
+  const distract=[{t:"scale(0.9,0.9)"},{t:"scale(0.9,-0.9)"},{t:"rotate(180) scale(0.9,0.9)"}];
+  const all=shuffle([correct,...distract]);
+  const c=all.map(o=>mirrorFlagSVG(o.t,color));
+  return{d:"flex",q:"الشكل يقع على يمين الخط المتقطّع (خط الانعكاس). ما انعكاسه المرآتي الصحيح على الجانب الآخر من الخط؟",c,a:all.indexOf(correct),w:"الانعكاس المرآتي يقلب الشكل أفقياً (يمين ↔ يسار) حول خط الانعكاس، دون تدويره أو قلبه رأسياً.",svg:mainSVG};
+}
+
+const QUANT_GENS=[gArith,gGeo,gPrice,gPerim,gClock,gSides,gWorkers,gMedian,gCube,gPercent,gPaths,gCompound,gFraction,gTrees,gCircleValue,gConsec,gAngleTriangle,gAngleLine,gAnglePoint,gAngleSquare,gSpeedGraph,gShadedArea,gNumberLine];
+const FLEX_GENS=[fDouble,fTriple,fFib,fSq,fOpp,gPyramid,gCircleNum,gShapeEq,gSeq,gDice,gAngleEqualRays,gRavenCount,gRavenRotate,gShapeRotateSeq,gDicePattern,gShapeSeries,gMirrorReflect];
 
 // ===== بنك اللغوي الاحتياطي =====
 const VERBAL=[
@@ -460,20 +494,38 @@ function aiDomain(type){return (type==="science")?"science":"verbal"}
 const AI_VERBAL=["reading","logic","analogy","vocabulary"];
 const AI_SCIENCE=["science"];
 
-// يبني مجموعة أسئلة لمجال، ممزوجة (محرّك + كود) مع احتياط
+// ===== منع تكرار نص السؤال داخل الجلسة الحالية =====
+// يتذكّر نصوص الأسئلة التي عُرضت فعلاً منذ فتح الصفحة (كل الأوضاع)، ويتجنّب إعادتها
+const sessionSeenQuestions=new Set();
+function markSeen(q){if(q&&q.q)sessionSeenQuestions.add(q.q);return q}
+function isSeen(q){return !!(q&&sessionSeenQuestions.has(q.q))}
+// يولّد من قائمة مولّدات عشوائياً حتى يجد نصاً لم يُعرض من قبل (بحد أقصى من المحاولات تفادياً لحلقة لا نهائية)
+function uniqueFromGens(gens,maxTries){
+  maxTries=maxTries||50;
+  for(let i=0;i<maxTries;i++){const q=pick(gens)();if(!isSeen(q))return markSeen(q)}
+  return markSeen(pick(gens)()); // البنك التوليدي نفد تنويعاً؛ نقبل الأحدث كحل أخير
+}
+// يفلتر قائمة أسئلة (من الذكاء الاصطناعي أو البنك) مبقياً على غير المعروض فقط
+function dedupeList(arr){const out=[];(arr||[]).forEach(q=>{if(!isSeen(q)){out.push(q);markSeen(q)}});return out}
+// يأخذ أول "need" سؤالاً غير معروض من قائمة (تُستخدم لتعبئة النقص من البنك الاحتياطي)
+function takeUniqueFrom(arr,need){const out=[];for(const q of (arr||[])){if(out.length>=need)break;if(!isSeen(q)){out.push(q);markSeen(q)}}return out}
+
+// يبني مجموعة أسئلة لمجال، ممزوجة (محرّك + كود) مع احتياط، وبلا تكرار لنص سبق عرضه في هذه الجلسة
 async function buildDomain(domKey,n){
-  if(domKey==="quant")return Array.from({length:n},()=>pick(QUANT_GENS)());
-  if(domKey==="flex")return Array.from({length:n},()=>pick(FLEX_GENS)());
+  if(domKey==="quant")return Array.from({length:n},()=>uniqueFromGens(QUANT_GENS));
+  if(domKey==="flex")return Array.from({length:n},()=>uniqueFromGens(FLEX_GENS));
   if(domKey==="verbal"){
     const types=shuffle(AI_VERBAL);let qs=[];
-    for(const t of types){if(qs.length>=n)break;const got=await fetchGemini(t,Math.ceil(n/2));qs=qs.concat(got)}
-    // احتياط من البنك لو نقص
-    if(qs.length<n){qs=qs.concat(shuffle(VERBAL).slice(0,n-qs.length))}
+    for(const t of types){if(qs.length>=n)break;const got=await fetchGemini(t,Math.ceil(n/2));qs=qs.concat(dedupeList(got))}
+    // احتياط من البنك لو نقص، مع تفادي تكرار ما سبق عرضه
+    if(qs.length<n){qs=qs.concat(takeUniqueFrom(shuffle(VERBAL),n-qs.length))}
+    if(qs.length<n){qs=qs.concat(shuffle(VERBAL).slice(0,n-qs.length))} // البنك نفد تنويعاً؛ حل أخير
     return shuffle(qs).slice(0,n);
   }
   if(domKey==="science"){
-    let qs=await fetchGemini("science",n);
-    if(qs.length<n){qs=qs.concat(shuffle(SCIENCE).slice(0,n-qs.length))}
+    let qs=dedupeList(await fetchGemini("science",n));
+    if(qs.length<n){qs=qs.concat(takeUniqueFrom(shuffle(SCIENCE),n-qs.length))}
+    if(qs.length<n){qs=qs.concat(shuffle(SCIENCE).slice(0,n-qs.length))} // البنك نفد تنويعاً؛ حل أخير
     return shuffle(qs).slice(0,n);
   }
   return [];
@@ -487,14 +539,21 @@ async function buildFull(){
 
 
 // ===== وضع التقوية: التلاشي التدريجي (المتتاليات) =====
-let fadeStage=1, fadeStreak=0, fadeCur=null, fadeLocked=false, fadePicked=-1, fadeMasteryStreak=0, fadeStage4Support=false, fadeRecoveryStreak=0;
+let fadeStage=1, fadeStreak=0, fadeCur=null, fadeLocked=false, fadePicked=-1, fadeMasteryStreak=0, fadeStage4Support=false, fadeRecoveryStreak=0, fadeTopic="seq";
 const RECOVERY_REQ=2;
 const FADE_REQ=2, MASTERY_REQ=5;
+const FADE_TOPICS=[
+  {key:"seq",icon:"🔢",label:"المتتاليات والنسبة",sub:"متتاليات عددية + نسبة تناسبية"},
+  {key:"median",icon:"📊",label:"الوسيط",sub:"وسيط أعداد صحيحة متتالية"},
+  {key:"percent",icon:"٪",label:"النسبة المئوية",sub:"مسائل الراتب والنسب المئوية"},
+  {key:"cube",icon:"🧊",label:"حجم المكعّب",sub:"أثر مضاعفة الضلع على الحجم"},
+  {key:"pyramid",icon:"🔺",label:"الهرم العددي",sub:"إيجاد العدد الناقص في الهرم"},
+];
 function fadeMakeSeq(){
   const kind=pick(["seq","seq","ratio"]); // متتاليات أكثر تكراراً
   if(kind==="ratio"){
     const per=rand(2,6),k=rand(2,4),m=rand(5,8);const ck=per*k,ans=per*m;
-    return {kind:"ratio",per,k,m,ck,ans,op:`${toAr(m)} × ${toAr(per)}`,
+    return {kind:"ratio",per,k,m,ck,ans,op:`${toAr(m)} × ${toAr(per)}`,prompt:"ما الثمن المطلوب؟",
       steps:[`سعر القلم الواحد = ${toAr(ck)} ÷ ${toAr(k)} = ${toAr(per)} ريال`,`ثمن ${toAr(m)} أقلام = ${toAr(m)} × ${toAr(per)} = ${toAr(ans)} ريال`],
       rule:per, ruleTxt:`سعر القلم الواحد = ${toAr(per)} ريال`,
       q:`إذا كان ثمن ${toAr(k)} أقلام ${toAr(ck)} ريالاً، فكم ثمن ${toAr(m)} أقلام؟`};
@@ -503,15 +562,61 @@ function fadeMakeSeq(){
   if(type==="add"){const st=rand(2,9),a=rand(1,9);const q=[a];for(let i=0;i<4;i++)q.push(q[i]+st);return{kind:"seq",type,rule:st,ruleTxt:`نجمع ${toAr(st)} في كل مرة`,seq:q,ans:q[4]+st,op:`${toAr(q[4])} + ${toAr(st)}`}}
   const r=pick([2,3]),a=rand(2,4);const q=[a];for(let i=0;i<4;i++)q.push(q[i]*r);return{kind:"seq",type,rule:r,ruleTxt:`نضرب في ${toAr(r)} في كل مرة`,seq:q,ans:q[4]*r,op:`${toAr(q[4])} × ${toAr(r)}`};
 }
+// ===== أنواع إضافية لوضع التقوية: الوسيط، النسبة المئوية، حجم المكعّب، الهرم العددي =====
+function fadeMakeMedian(){
+  const mid=rand(4,20),sum=5*mid,ans=mid;
+  return{kind:"median",ans,prompt:"ما الوسيط؟",
+    steps:[`المجموع = ${toAr(sum)}، وعدد الأعداد = ٥`,`لأنها متتالية، الوسيط = المجموع ÷ عددها = ${toAr(sum)} ÷ ٥ = ${toAr(mid)}`],
+    ruleTxt:`الوسيط لأعداد صحيحة متتالية = المجموع ÷ عددها`,
+    distractors:[mid+1,mid-1,Math.round(sum/4)],
+    q:`مجموع خمسة أعداد صحيحة متتالية يساوي ${toAr(sum)}. ما وسيطها؟`};
+}
+function fadeMakePercent(){
+  const rentP=pick([30,40,50]),expP=pick([20,30]),leftP=100-rentP-expP;
+  if(leftP<=0)return fadeMakePercent();
+  const salary=pick([6000,8000,9000,10000,12000]);
+  const left=salary*leftP/100;
+  if(!Number.isInteger(left))return fadeMakePercent();
+  const ans=salary;
+  return{kind:"percent",ans,prompt:"كم راتبه؟",
+    steps:[`المتبقّي = ١٠٠٪ − ${toAr(rentP)}٪ − ${toAr(expP)}٪ = ${toAr(leftP)}٪ من الراتب`,`الراتب = المتبقّي ÷ نسبته = ${toAr(left)} ÷ ${toAr(leftP)}٪ = ${toAr(salary)} ريال`],
+    ruleTxt:`إذا عرفنا قيمة نسبة من الكل، فالكل = القيمة ÷ النسبة`,
+    distractors:[salary+1000,salary-1000,left*2],
+    q:`دفع سالم ${toAr(rentP)}٪ من راتبه إيجاراً و${toAr(expP)}٪ مصروفات، وتبقّى له ${toAr(left)} ريال. كم راتبه؟`};
+}
+function fadeMakeCube(){
+  const s=rand(2,5),v=s*s*s,ns=2*s,nv=ns*ns*ns,ans=nv;
+  return{kind:"cube",ans,prompt:"ما الحجم الجديد؟",
+    steps:[`الحجم الأصلي = ${toAr(s)}×${toAr(s)}×${toAr(s)} = ${toAr(v)} سم³`,`الضلع الجديد = ٢×${toAr(s)} = ${toAr(ns)}، والحجم الجديد = ${toAr(ns)}×${toAr(ns)}×${toAr(ns)} = ${toAr(nv)} سم³`],
+    ruleTxt:`مضاعفة ضلع المكعّب تجعل حجمه الجديد = الحجم القديم × ٨`,
+    distractors:[v*2,v*4,v*6],
+    q:`مكعّب حجمه ${toAr(v)} سم³. إذا ضاعفنا طول ضلعه، فما حجمه الجديد؟`};
+}
+function fadeMakePyramid(){
+  const known=rand(2,12),other=rand(2,12),top=(known+other)*2,ans=other;
+  return{kind:"pyramid",ans,prompt:"ما العدد الآخر؟",
+    steps:[`نصف القمّة = ${toAr(top)} ÷ ٢ = ${toAr(top/2)} (مجموع العددين السفليين)`,`العدد الناقص = ${toAr(top/2)} − ${toAr(known)} = ${toAr(other)}`],
+    ruleTxt:`القمّة = مجموع العددين السفليين × ٢، إذن مجموعهما = القمّة ÷ ٢`,
+    distractors:[other+2,other-2,Math.round(top/2)],
+    q:`هرم عددي: مجموع العددين السفليين × ٢ = العلوي. إذا كان العلوي ${toAr(top)} وأحد السفليين ${toAr(known)}، فما الآخر؟`};
+}
+function fadeMakeQuestion(){
+  if(fadeTopic==="median")return fadeMakeMedian();
+  if(fadeTopic==="percent")return fadeMakePercent();
+  if(fadeTopic==="cube")return fadeMakeCube();
+  if(fadeTopic==="pyramid")return fadeMakePyramid();
+  return fadeMakeSeq();
+}
 function fadeDedupe(correct,dist){const out=[];for(const d of dist){if(d!==correct&&!out.includes(d))out.push(d)}let p=1;while(out.length<3){[correct+p,correct-p].forEach(x=>{if(out.length<3&&x>0&&x!==correct&&!out.includes(x))out.push(x)});p++}return out.slice(0,3)}
 function fadePrep(){
   if(fadeStage===1){fadeCur.opts=null;fadeCur.ai=-1;return}
   let d;
   if(fadeCur.kind==="ratio"){d=[fadeCur.ans+fadeCur.per,fadeCur.ans-fadeCur.per,fadeCur.ans+fadeStage];}
-  else{d=fadeCur.type==="add"?[fadeCur.ans+fadeCur.rule,fadeCur.ans-fadeCur.rule,fadeCur.ans+fadeStage]:[fadeCur.ans-fadeCur.seq[4],fadeCur.seq[4]+fadeCur.rule,fadeCur.ans+fadeCur.rule];}
+  else if(fadeCur.kind==="seq"){d=fadeCur.type==="add"?[fadeCur.ans+fadeCur.rule,fadeCur.ans-fadeCur.rule,fadeCur.ans+fadeStage]:[fadeCur.ans-fadeCur.seq[4],fadeCur.seq[4]+fadeCur.rule,fadeCur.ans+fadeCur.rule];}
+  else{d=fadeCur.distractors;} // الوسيط/النسبة المئوية/المكعّب/الهرم: مموّهات محسوبة عند الإنشاء
   const opts=shuffle([fadeCur.ans,...fadeDedupe(fadeCur.ans,d)]);fadeCur.opts=opts;fadeCur.ai=opts.indexOf(fadeCur.ans);
 }
-function fadeNew(){fadeCur=fadeMakeSeq();fadeLocked=false;fadePicked=-1;fadePrep();render()}
+function fadeNew(){fadeCur=fadeMakeQuestion();fadeLocked=false;fadePicked=-1;fadePrep();render()}
 function fadeChoose(i){
   if(fadeLocked)return;fadeLocked=true;fadePicked=i;
   const ok=i===fadeCur.ai;
@@ -526,13 +631,21 @@ function fadeChoose(i){
 function fadeStage1Next(){fadeStreak++;if(fadeStreak>=FADE_REQ){fadeStage=2;fadeStreak=0}fadeNew()}
 function fadeAdvance(){if(fadeStreak>=FADE_REQ&&fadeStage<4){fadeStage++;fadeStreak=0}fadeNew()}
 function fadeStage4Next(){if(fadeMasteryStreak>=MASTERY_REQ){mode="fadeDone";window.scrollTo(0,0);render();return}fadeNew()}
-function startFade(){mode="fade";fadeStage=1;fadeStreak=0;fadeMasteryStreak=0;fadeStage4Support=false;fadeRecoveryStreak=0;window.scrollTo(0,0);fadeNew()}
+function startFade(topic){mode="fade";fadeTopic=topic||fadeTopic||"seq";fadeStage=1;fadeStreak=0;fadeMasteryStreak=0;fadeStage4Support=false;fadeRecoveryStreak=0;window.scrollTo(0,0);fadeNew()}
+function goFadeMenu(){mode="fadeMenu";window.scrollTo(0,0);render()}
+function renderFadeMenu(){
+  const cards=FADE_TOPICS.map(t=>`<button class="mode" style="text-align:center" onclick="startFade('${t.key}')"><div style="font-size:26px;margin-bottom:6px">${t.icon}</div><div class="m-name">${t.label}</div><div class="m-sub">${t.sub}</div></button>`).join("");
+  app.innerHTML=`<button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
+  <div class="section-title"><span>🎓 اختاري نوع التقوية</span></div>
+  <div class="modes">${cards}</div>`;
+}
 function renderFadeDone(){
+  const topicLabel=FADE_TOPICS.find(t=>t.key===fadeTopic).label;
   app.innerHTML=`<div class="card" style="text-align:center">
     <div style="font-size:44px;margin-bottom:6px">🏆</div>
-    <div style="font-weight:800;font-size:19px;margin-bottom:8px">أتقنتِ الحل المستقل!</div>
+    <div style="font-weight:800;font-size:19px;margin-bottom:8px">أتقنتِ ${topicLabel}!</div>
     <div style="color:#64748B;font-size:14px;line-height:1.8;margin-bottom:18px">جاوبتِ ${toAr(MASTERY_REQ)} أسئلة صحيحة متتالية بدون أي مساعدة — هذا يعني إتقاناً حقيقياً لهذا النوع.</div>
-    <button class="btn" style="background:#059669" onclick="startFade()">🔁 تدريب نوع آخر</button>
+    <button class="btn" style="background:#059669" onclick="goFadeMenu()">🔁 تدريب نوع آخر</button>
     <button class="link-btn" onclick="home()">→ الرئيسية</button>
   </div>`;
 }
@@ -546,36 +659,38 @@ function renderFade(){
   const info=fadeStageInfo();const c=fadeCur;
   const bar=[1,2,3,4].map(x=>`<div class="seg" style="flex:1;height:8px;border-radius:99px;background:${x<fadeStage?'#10B981':x===fadeStage?'#D97706':'#E2E8F0'}"></div>`).join("");
   let seqBox;
-  if(c.kind==="ratio"){
-    seqBox=`<div style="font-size:17px;font-weight:700;text-align:center;background:#F8FAFC;border-radius:14px;padding:20px;margin-bottom:16px;line-height:1.8">${c.q}</div>`;
-  } else {
+  if(c.kind==="seq"){
     const seqShown=c.seq.map(toAr).join("  ،  ")+"  ،  <span style='color:#D97706;background:#FEF3C7;border-radius:8px;padding:0 10px'>؟</span>";
     seqBox=`<div style="font-size:24px;font-weight:800;letter-spacing:2px;text-align:center;background:#F8FAFC;border-radius:14px;padding:20px;margin-bottom:16px;direction:ltr">${seqShown}</div>`;
+  } else {
+    seqBox=`<div style="font-size:17px;font-weight:700;text-align:center;background:#F8FAFC;border-radius:14px;padding:20px;margin-bottom:16px;line-height:1.8">${c.q}</div>`;
   }
   let body="";
   if(fadeStage===1){
     body=`<div style="background:#EFF6FF;border-radius:14px;padding:16px;font-size:14px;line-height:1.8;color:#1E40AF;margin-bottom:16px">📘 هذا <b>مثال محلول</b>. اقرئي الحل خطوة بخطوة. ثم اضغطي «فهمت».</div>${seqBox}
-    ${c.kind==="ratio"
-      ? `<div style="background:#F0FDF4;border-inline-start:4px solid #10B981;border-radius:12px;padding:16px;margin-bottom:16px;font-size:15px;line-height:2"><div>١) ${c.steps[0]}.</div><div>٢) ${c.steps[1]}.</div></div>`
-      : `<div style="background:#F0FDF4;border-inline-start:4px solid #10B981;border-radius:12px;padding:16px;margin-bottom:16px;font-size:15px;line-height:2"><div>١) القاعدة: <b style="color:#059669">${c.ruleTxt}</b>.</div><div>٢) نطبّقها على آخر عدد: <b style="color:#059669">${c.op} = ${toAr(c.ans)}</b>.</div><div>٣) إذن الناقص هو <b style="color:#059669">${toAr(c.ans)}</b>.</div></div>`}
+    ${c.kind==="seq"
+      ? `<div style="background:#F0FDF4;border-inline-start:4px solid #10B981;border-radius:12px;padding:16px;margin-bottom:16px;font-size:15px;line-height:2"><div>١) القاعدة: <b style="color:#059669">${c.ruleTxt}</b>.</div><div>٢) نطبّقها على آخر عدد: <b style="color:#059669">${c.op} = ${toAr(c.ans)}</b>.</div><div>٣) إذن الناقص هو <b style="color:#059669">${toAr(c.ans)}</b>.</div></div>`
+      : `<div style="background:#F0FDF4;border-inline-start:4px solid #10B981;border-radius:12px;padding:16px;margin-bottom:16px;font-size:15px;line-height:2">${c.steps.map((s,i)=>`<div>${toAr(i+1)}) ${s}.</div>`).join("")}</div>`}
     <button class="btn" style="background:#059669" onclick="fadeStage1Next()">فهمت، مثال آخر ←</button>
     <div style="font-size:13px;color:#64748B;text-align:center;margin-top:10px">شاهدي مثالين للانتقال (${toAr(fadeStreak)}/${toAr(FADE_REQ)})</div>`;
   } else {
     const ch=c.opts.map((o,i)=>{let bg="#fff",bd="#E2E8F0",col="#334155";if(fadeLocked){if(i===c.ai){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(i===fadePicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}return `<button class="choice" style="background:${bg};border-color:${bd};color:${col};font-size:18px;font-weight:800" onclick="fadeChoose(${i})" ${fadeLocked?'disabled':''}>${toAr(o)}</button>`}).join("");
     let hint="";
-    if(fadeStage===2)hint=`<div style="background:#F0FDF4;border-inline-start:4px solid #10B981;border-radius:12px;padding:14px;margin-bottom:14px;font-size:15px">القاعدة معطاة: <b>${c.ruleTxt}</b>. ${c.kind==="ratio"?"طبّقيها لإيجاد الثمن.":"طبّقيها لإيجاد الناقص."}</div>`;
+    if(fadeStage===2)hint=`<div style="background:#F0FDF4;border-inline-start:4px solid #10B981;border-radius:12px;padding:14px;margin-bottom:14px;font-size:15px">القاعدة معطاة: <b>${c.ruleTxt}</b>. طبّقيها لإيجاد الإجابة.</div>`;
     else if(fadeStage===3)hint=`<div style="background:#FEF3C7;border-radius:12px;padding:14px;margin-bottom:14px;font-size:15px;color:#B45309"><b>اكتشفي القاعدة بنفسك</b> ثم طبّقيها.</div>`;
     else if(fadeStage===4&&fadeStage4Support)hint=`<div style="background:#FEF9C3;border-inline-start:4px solid #EAB308;border-radius:12px;padding:14px;margin-bottom:14px;font-size:15px;color:#854D0E">🌱 ما عليك، مراجعة سريعة: <b>${c.ruleTxt}</b>. جاوبي صح مرتين ليختفي التذكير.</div>`;
-    const why=fadeLocked?`<div class="why" style="margin-bottom:10px">${fadePicked===c.ai?"✓ "+(fadeStage===4?"حللتِها وحدك! 🌟":"أحسنتِ"):"الصحيحة بالأخضر"}: ${c.kind==="ratio"?c.steps[1]:(c.op+" = "+toAr(c.ans))}.</div><button class="btn" style="background:${fadeStage===4?'#059669':'#D97706'}" onclick="${fadeStage===4?'fadeStage4Next()':'fadeAdvance()'}">${fadeStage===4?'سؤال جديد ←':'التالي ←'}</button>`:"";
+    const why=fadeLocked?`<div class="why" style="margin-bottom:10px">${fadePicked===c.ai?"✓ "+(fadeStage===4?"حللتِها وحدك! 🌟":"أحسنتِ"):"الصحيحة بالأخضر"}: ${c.kind==="seq"?(c.op+" = "+toAr(c.ans)):c.steps[c.steps.length-1]}.</div><button class="btn" style="background:${fadeStage===4?'#059669':'#D97706'}" onclick="${fadeStage===4?'fadeStage4Next()':'fadeAdvance()'}">${fadeStage===4?'سؤال جديد ←':'التالي ←'}</button>`:"";
     const mtr=fadeStage<4?`<div style="font-size:13px;color:#64748B;text-align:center;margin-top:10px">جاوبي صح مرتين متتاليتين للانتقال (${toAr(fadeStreak)}/${toAr(FADE_REQ)})</div>`
       :fadeStage4Support?`<div style="font-size:13px;color:#854D0E;text-align:center;margin-top:10px">🌱 مراجعة: (${toAr(fadeRecoveryStreak)}/${toAr(RECOVERY_REQ)}) لإخفاء التذكير مرة أخرى</div>`
       :`<div style="font-size:13px;color:#64748B;text-align:center;margin-top:10px">🎓 حل مستقل — (${toAr(fadeMasteryStreak)}/${toAr(MASTERY_REQ)}) متتالية لإتقان هذا النوع</div>`;
-    body=`${hint}${seqBox}<div class="q">${c.kind==="ratio"?"ما الثمن المطلوب؟":"ما العدد الناقص؟"}</div><div class="choices">${ch}</div>${why}${mtr}`;
+    body=`${hint}${seqBox}<div class="q">${c.kind==="seq"?"ما العدد الناقص؟":c.prompt}</div><div class="choices">${ch}</div>${why}${mtr}`;
   }
+  const topicLabel=FADE_TOPICS.find(t=>t.key===fadeTopic).label;
   app.innerHTML=`<button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
   <div style="display:flex;gap:6px;margin-bottom:12px">${bar}</div>
   <div style="font-size:12px;font-weight:800;color:#D97706;margin-bottom:12px">${info.label}</div>
-  <div class="card"><span class="tag" style="background:#FEF3C7;color:#D97706">تقوية المتتاليات · ${info.tag}</span>${body}</div>`;
+  <div class="card"><span class="tag" style="background:#FEF3C7;color:#D97706">تقوية ${topicLabel} · ${info.tag}</span>${body}</div>
+  <button class="link-btn" onclick="goFadeMenu()">🔁 غيّري نوع التقوية</button>`;
 }
 
 // ===== تشخيص سريع: العمليات الأساسية (جمع/ضرب/قسمة) =====
@@ -864,7 +979,7 @@ function bumpStreak(){const st=getStreak();const t=todayStr();if(st.last===t)ret
 function growthMsg(modeKey,pct){try{const key="mawhiba_best_"+modeKey;const prev=parseInt(localStorage.getItem(key)||"-1");let msg="";if(prev<0){msg="أول محاولة في هذا القسم — انطلاقة موفّقة! 🌱"}else if(pct>prev){msg=`تحسّنتِ عن أفضل نتيجة سابقة (${toAr(prev)}%)! تقدّم رائع 📈`}else if(pct===prev){msg="ثبات على أفضل مستوى سابق 💪"}else{msg="واصلي، كل محاولة تبني مهارتك 🌟"}if(pct>prev)localStorage.setItem(key,String(pct));return msg}catch(e){return""}}
 
 // ===== العرض =====
-function render(){if(mode==="home")return renderHome();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="arithdiag")return renderArithDiag();if(mode==="arithdiagResult")return renderArithDiagResult();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
+function render(){if(mode==="home")return renderHome();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="arithdiag")return renderArithDiag();if(mode==="arithdiagResult")return renderArithDiagResult();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
 
 function renderHome(){
   app.innerHTML=`
@@ -873,7 +988,7 @@ function renderHome(){
     <p>تدريب ذكي على مقياس القدرات العقلية المتعددة — المستوى الثاني. أسئلة تتجدّد كل مرة، والاستدلال اللغوي والعلمي يولّدها الذكاء الاصطناعي.</p>
     <div class="alias"><label>اسم المتدرّبة:</label><input id="aliasIn" value="${alias()}" placeholder="بنتي" oninput="saveAlias(this.value)"></div>
   </div>
-  ${weakSuggestion?`<div style="background:linear-gradient(135deg,#FEF3C7,#FDE68A);border-radius:18px;padding:18px;margin-bottom:16px;box-shadow:0 6px 20px rgba(217,119,6,.15)"><div style="font-weight:800;font-size:15px;color:#92400E;margin-bottom:6px">🎯 اقتراح لكِ</div><div style="font-size:14px;color:#78350F;line-height:1.7;margin-bottom:12px">مستواكِ في «${DOMAINS[weakSuggestion.domKey].name}» يحتاج تقوية (${toAr(weakSuggestion.pct)}%). جرّبي وضع التقوية — يعلّمكِ خطوة بخطوة، أسهل من الاختبار المباشر.</div><button class="btn" style="background:#D97706;margin:0" onclick="startFade()">🎓 ابدئي التقوية خطوة بخطوة</button></div>`:""}
+  ${weakSuggestion?`<div style="background:linear-gradient(135deg,#FEF3C7,#FDE68A);border-radius:18px;padding:18px;margin-bottom:16px;box-shadow:0 6px 20px rgba(217,119,6,.15)"><div style="font-weight:800;font-size:15px;color:#92400E;margin-bottom:6px">🎯 اقتراح لكِ</div><div style="font-size:14px;color:#78350F;line-height:1.7;margin-bottom:12px">مستواكِ في «${DOMAINS[weakSuggestion.domKey].name}» يحتاج تقوية (${toAr(weakSuggestion.pct)}%). جرّبي وضع التقوية — يعلّمكِ خطوة بخطوة، أسهل من الاختبار المباشر.</div><button class="btn" style="background:#D97706;margin:0" onclick="goFadeMenu()">🎓 ابدئي التقوية خطوة بخطوة</button></div>`:""}
   <div class="section-title"><span>ابدئي التدريب</span></div>
   <div class="modes">
     <button class="mode" onclick="start('verbal')"><span class="dot" style="background:#2563EB"></span><span class="m-name">الاستدلال اللغوي</span><div class="m-sub">فهم مقروء، تناظر، منطق — بالذكاء الاصطناعي</div></button>
@@ -881,7 +996,7 @@ function renderHome(){
     <button class="mode" onclick="start('science')"><span class="dot" style="background:#7C3AED"></span><span class="m-name">الاستدلال العلمي</span><div class="m-sub">استنتاج علمي بمشهد — بالذكاء الاصطناعي</div></button>
     <button class="mode" onclick="start('flex')"><span class="dot" style="background:#D97706"></span><span class="m-name">المرونة والأنماط</span><div class="m-sub">أنماط، هرم، نرد، ترتيب، ألغاز</div></button>
     <button class="mode full" onclick="start('full')"><span class="m-name">🎯 محاكاة شاملة (٤٨ سؤالاً)</span><div class="m-sub">من كل المجالات — الأقرب للاختبار الحقيقي</div></button>
-    <button class="mode" style="border-color:#FDE68A" onclick="startFade()"><span class="m-name">🎓 وضع التقوية (تلاشٍ تدريجي)</span><div class="m-sub">تدرّب خطوة بخطوة على المتتاليات — مبني على دراسات التعلّم</div></button>
+    <button class="mode" style="border-color:#FDE68A" onclick="goFadeMenu()"><span class="m-name">🎓 وضع التقوية (تلاشٍ تدريجي)</span><div class="m-sub">اختاري مهارة وتدرّبي عليها خطوة بخطوة — مبني على دراسات التعلّم</div></button>
     <button class="mode prog" onclick="loadProgress()"><span class="m-name">📈 متابعة التقدّم</span><div class="m-sub">نتائجك السابقة وتحليل المستوى لكل مجال</div></button>
     <button class="mode" style="border-color:#99F6E4" onclick="startArithDiag()"><span class="m-name">🔍 تشخيص سريع: الجمع والضرب والقسمة</span><div class="m-sub">٧ أسئلة تحدّد أين بالضبط الصعوبة (حفظ، حمل، أو خلط مفاهيم)</div></button>
     <button class="mode full" style="background:#0D9488;border-color:#0D9488" onclick="startBasics('multdiv')"><span class="m-name">🧱 تدريب الأساسيات: عائلات الحقائق</span><div class="m-sub">ضرب/قسمة مرتبطان + جمع بالحمل (عشرات/مئات) — مبني على نتيجة التشخيص</div></button>
