@@ -98,7 +98,6 @@ const SB_URL="https://yzznkerweqkmhrtbidrl.supabase.co";
 const SB_KEY="sb_publishable_W9ijdHn1vHj3-rUDCx2U5Q_yq6ebbsI";
 const FN_URL=SB_URL+"/functions/v1/generate-question";
 const TBL="mawhiba_attempts";
-const TBL_DIAG="mawhiba_arith_diag";
 const TBL_LOG="mawhiba_answer_log";
 const DOMAINS={
   verbal:{name:"الاستدلال اللغوي",color:"#2563EB",soft:"#DBEAFE"},
@@ -704,91 +703,14 @@ function renderFade(){
   <button class="link-btn" onclick="goFadeMenu()">🔁 غيّري نوع التقوية</button>`;
 }
 
-// ===== تشخيص سريع: العمليات الأساسية (جمع/ضرب/قسمة) =====
-// كل بند: قيمة صحيحة + مموّهات، كل مموّه مربوط بفئة خطأ تشخيصية:
-//  slip = تسرّع/حفظ (طلاقة فقط) · no_carry = مشكلة حمل/قيمة مكانية · concept_confusion = خلط بين العمليات (الأخطر)
-const ARITH_DIAG=[
-  {op:"addition",level:"fact",q:"٧ + ٨ = ؟",correct:15,d:[{v:14,tag:"slip"},{v:16,tag:"slip"},{v:13,tag:"slip"}]},
-  {op:"addition",level:"regroup",q:"٤٧ + ٣٨ = ؟",correct:85,d:[{v:75,tag:"no_carry"},{v:715,tag:"no_carry"},{v:81,tag:"slip"}]},
-  {op:"multiplication",level:"fact",q:"٦ × ٧ = ؟",correct:42,d:[{v:36,tag:"slip"},{v:48,tag:"slip"},{v:13,tag:"concept_confusion"}]},
-  {op:"multiplication",level:"concept",q:"عند سالم ٤ صناديق، في كل صندوق ٥ تفاحات. كم تفاحة عند سالم؟",correct:20,d:[{v:9,tag:"concept_confusion"},{v:15,tag:"slip"},{v:24,tag:"slip"}]},
-  {op:"multiplication",level:"procedure",q:"٢٣ × ٤ = ؟",correct:92,d:[{v:82,tag:"no_carry"},{v:812,tag:"no_carry"},{v:89,tag:"slip"}]},
-  {op:"division",level:"fact",q:"٢٤ ÷ ٦ = ؟",correct:4,d:[{v:18,tag:"concept_confusion"},{v:144,tag:"concept_confusion"},{v:3,tag:"slip"}]},
-  {op:"division",level:"concept",q:"عند هند ١٢ حلوى، توزّعها بالتساوي على ٣ صديقات. كم حلوى تأخذ كل واحدة؟",correct:4,d:[{v:9,tag:"concept_confusion"},{v:36,tag:"concept_confusion"},{v:15,tag:"slip"}]}
-];
-const OP_NAMES={addition:"الجمع",multiplication:"الضرب",division:"القسمة"};
-function buildDiagItem(item){
-  const opts=shuffle([{v:item.correct,tag:""},...item.d]);
-  return{op:item.op,level:item.level,q:item.q,choices:opts.map(o=>toAr(o.v)),correctIndex:opts.findIndex(o=>o.v===item.correct),tags:opts.map(o=>o.tag)};
-}
-let diagQ=[],diagIdx=0,diagPicked=null,diagLocked=false,diagAnswers=[];
-function startArithDiag(){mode="arithdiag";diagQ=ARITH_DIAG.map(buildDiagItem);diagIdx=0;diagPicked=null;diagLocked=false;diagAnswers=[];window.scrollTo(0,0);render()}
-function diagChoose(i){if(diagLocked)return;diagPicked=i;diagLocked=true;diagAnswers.push({...diagQ[diagIdx],picked:i});render()}
-function diagNext(){if(diagIdx+1>=diagQ.length){mode="arithdiagResult";window.scrollTo(0,0);saveDiagAttempt()}else{diagIdx++;diagPicked=null;diagLocked=false}render()}
-async function saveDiagAttempt(){
-  const{perOp,tagCount}=diagReport();
-  const row={student_alias:alias(),
-    addition_correct:perOp.addition.r,addition_total:perOp.addition.t,
-    multiplication_correct:perOp.multiplication.r,multiplication_total:perOp.multiplication.t,
-    division_correct:perOp.division.r,division_total:perOp.division.t,
-    slip_count:tagCount.slip,no_carry_count:tagCount.no_carry,concept_confusion_count:tagCount.concept_confusion,
-    details:diagAnswers.map(a=>({op:a.op,level:a.level,correct:a.picked===a.correctIndex,tag:a.picked===a.correctIndex?"":a.tags[a.picked]}))};
-  try{await fetch(`${SB_URL}/rest/v1/${TBL_DIAG}`,{method:"POST",headers:{"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json","Prefer":"return-minimal"},body:JSON.stringify(row)})}catch(e){}
-}
-function diagReport(){
-  const perOp={addition:{r:0,t:0},multiplication:{r:0,t:0},division:{r:0,t:0}};
-  const tagCount={slip:0,no_carry:0,concept_confusion:0};
-  diagAnswers.forEach(a=>{perOp[a.op].t++;const correct=a.picked===a.correctIndex;if(correct)perOp[a.op].r++;else{const tag=a.tags[a.picked];if(tag)tagCount[tag]++}});
-  return{perOp,tagCount};
-}
-function renderArithDiag(){
-  const item=diagQ[diagIdx];
-  const prog=diagQ.map((_,i)=>`<div class="seg" style="background:${i<diagIdx?'#0D9488':(i===diagIdx?'#0D9488':'#E2E8F0')};opacity:${i<=diagIdx?1:.5}"></div>`).join("");
-  const choices=item.choices.map((c,i)=>{
-    let bg="#fff",bd="#E2E8F0",col="#334155";
-    if(diagLocked){if(i===item.correctIndex){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(i===diagPicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}
-    return`<button class="choice" style="background:${bg};border-color:${bd};color:${col}" onclick="diagChoose(${i})" ${diagLocked?"disabled":""}><span class="letter">${L[i]}</span>${c}</button>`}).join("");
-  const btn=diagLocked?`<button class="btn" style="background:#0D9488" onclick="diagNext()">${diagIdx+1>=diagQ.length?"عرض النتيجة":"السؤال التالي ←"}</button>`:"";
-  app.innerHTML=`
-  <button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
-  <div class="bar">${prog}</div>
-  <div class="meta"><span>سؤال ${toAr(diagIdx+1)} من ${toAr(diagQ.length)}</span><span>تشخيص سريع</span></div>
-  <div class="card">
-    <span class="tag" style="background:#CCFBF1;color:#0D9488">${OP_NAMES[item.op]}</span>
-    <div class="q">${item.q}</div>
-    <div class="choices">${choices}</div>
-  </div>
-  ${btn}`;
-}
-function renderArithDiagResult(){
-  const{perOp,tagCount}=diagReport();
-  const opRows=Object.keys(perOp).map(k=>{const o=perOp[k];const pct=o.t?Math.round(o.r/o.t*100):0;const col=pct>=70?'#059669':pct>=40?'#D97706':'#DC2626';return`<div class="dom-row"><div class="dom-head"><span>${OP_NAMES[k]}</span><span>${toAr(o.r)}/${toAr(o.t)}</span></div><div class="track"><div class="fill" style="width:${pct}%;background:${col}"></div></div></div>`}).join("");
-  let findings="";
-  if(tagCount.concept_confusion>0){
-    findings+=`<div class="remedy"><div class="r-title">🔴 أولوية قصوى: خلط بين العمليات</div><div class="r-body">في ${toAr(tagCount.concept_confusion)} من الأسئلة، الإجابة المختارة تطابق استخدام عملية مختلفة عن المطلوبة (مثل الجمع بدل الضرب، أو الطرح/الضرب بدل القسمة). هذا يدل على ثغرة في فهم <b>معنى</b> العملية نفسها، لا في الحفظ فقط. الحل: العودة لأدوات محسوسة (مكعبات/مجموعات) قبل أي تدريب سريع — راجع نهج CRA.</div></div>`;
-  }
-  if(tagCount.no_carry>0){
-    findings+=`<div class="remedy" style="background:linear-gradient(135deg,#EFF6FF,#DBEAFE);border-color:#BFDBFE"><div class="r-title" style="color:#1D4ED8">🟡 صعوبة في الحمل والقيمة المكانية</div><div class="r-body" style="color:#1E3A5F">الأخطاء في الأسئلة متعددة الأرقام تدل على نسيان "الحمل" بين الخانات — يحتاج تدريباً مركّزاً على القيمة المكانية بالعدّادات أو المكعبات قبل التوسّع في أرقام أكبر.</div></div>`;
-  }
-  if(tagCount.slip>0&&tagCount.concept_confusion===0&&tagCount.no_carry===0){
-    findings+=`<div class="remedy" style="background:linear-gradient(135deg,#F0FDF4,#DCFCE7);border-color:#BBF7D0"><div class="r-title" style="color:#059669">🟢 الأساس سليم</div><div class="r-body" style="color:#14532D">لا يوجد خلط مفاهيمي ولا مشاكل حمل — الأخطاء القليلة تسرّع بسيط. يكفي تدريب طلاقة موزّع على أيام (لا حفظ دفعة واحدة).</div></div>`;
-  }
-  if(!tagCount.concept_confusion&&!tagCount.no_carry&&!tagCount.slip){
-    findings=`<div class="remedy" style="background:linear-gradient(135deg,#F0FDF4,#DCFCE7);border-color:#BBF7D0"><div class="r-title" style="color:#059669">🌟 ممتاز</div><div class="r-body" style="color:#14532D">كل الإجابات صحيحة — العمليات الأساسية سليمة تماماً؛ أي ضعف في قسم "الرياضي" مصدره الاستدلال لا الحساب.</div></div>`;
-  }
-  app.innerHTML=`
-  <div class="card">
-    <div style="font-weight:800;font-size:17px;margin-bottom:14px">نتيجة التشخيص السريع</div>
-    ${opRows}
-    ${findings}
-    <button class="btn" style="background:#1E293B;margin-top:14px" onclick="startArithDiag()">إعادة التشخيص</button>
-    <button class="link-btn" onclick="home()">→ الرئيسية</button>
-  </div>`;
-}
-
-// ===== تدريب الأساسيات: عائلات الحقائق (ضرب/قسمة) + الجمع بالحمل (عشرات/مئات) =====
+// ===== تدريب الأساسيات: عائلات الحقائق (ضرب/قسمة) + الجمع بالحمل + الطرح بالاستلاف (عشرات/مئات) =====
 // نهج CRA (محسوس ← مرتبط بالرسم ← مجرّد بقاعدة ← مستقل)، نفس فلسفة وضع التقوية أعلاه
 const BASICS_REQ=2;
+const BASICS_SUBS={
+  multdiv:{label:"عائلات الضرب والقسمة",short:"عائلات الضرب والقسمة"},
+  addcarry:{label:"الجمع بالحمل (عشرات/مئات)",short:"الجمع بالحمل"},
+  subborrow:{label:"الطرح بالاستلاف (عشرات/مئات)",short:"الطرح بالاستلاف"}
+};
 let basicsSub="multdiv",basicsStage=1,basicsStreak=0,basicsCur=null,basicsLocked=false,basicsPicked=-1,basicsMasteryStreak=0,basicsStage4Support=false,basicsRecoveryStreak=0;
 
 function groupsVisual(n,m){
@@ -820,8 +742,26 @@ function additionSteps(a,b){
   }
   return steps;
 }
+function subtractionSteps(a,b){
+  const ad=String(a).split("").reverse().map(Number),bd=String(b).split("").reverse().map(Number);
+  const len=Math.max(ad.length,bd.length),placeNames=["الآحاد","العشرات","المئات"];
+  let borrow=0,steps=[];
+  for(let i=0;i<len;i++){
+    const rawA=ad[i]||0,db=bd[i]||0,da=rawA-borrow;
+    const borrowedNote=borrow?` (بعد الاستلاف: ${toAr(rawA)}-١=${toAr(da)})`:"";
+    if(da<db){
+      steps.push(`${placeNames[i]||("خانة "+toAr(i+1))}: ${toAr(da)}${borrowedNote} أصغر من ${toAr(db)}، فنستلف ١ من الخانة التالية: ${toAr(da+10)} - ${toAr(db)} = ${toAr(da+10-db)}`);
+      borrow=1;
+    }else{
+      steps.push(`${placeNames[i]||("خانة "+toAr(i+1))}: ${toAr(da)}${borrowedNote} - ${toAr(db)} = ${toAr(da-db)}`);
+      borrow=0;
+    }
+  }
+  return steps;
+}
 function basicsMakeFamily(){const a=rand(2,9),b=rand(2,9);return{a,b,c:a*b}}
 function basicsMakeAddCarry(){const o1=rand(5,9),o2=rand(5,9),t1=rand(1,8),t2=rand(1,8);const a=t1*10+o1,b=t2*10+o2;return{a,b,c:a+b}}
+function basicsMakeSubBorrow(){const o2=rand(2,9),o1=rand(0,o2-1),t2=rand(1,7),t1=rand(t2+1,9);const a=t1*10+o1,b=t2*10+o2;return{a,b,c:a-b}}
 function basicsFamilyQ(f){
   const kind=pick(["mul1","mul2","div1","div2"]);
   if(kind==="mul1")return{text:`${toAr(f.a)} × ${toAr(f.b)} = ؟`,ans:f.c};
@@ -834,11 +774,15 @@ function basicsPrep(){
   if(basicsStage===1){basicsCur.opts=null;basicsCur.ai=-1;return}
   let ans;
   if(basicsSub==="multdiv"){const fq=basicsFamilyQ(f);basicsCur.qText=fq.text;ans=fq.ans}
-  else{ans=f.c;basicsCur.qText=`${toAr(f.a)} + ${toAr(f.b)} = ؟`}
+  else if(basicsSub==="addcarry"){ans=f.c;basicsCur.qText=`${toAr(f.a)} + ${toAr(f.b)} = ؟`}
+  else{ans=f.c;basicsCur.qText=`${toAr(f.a)} - ${toAr(f.b)} = ؟`}
   const m=mcNum(ans,[ans+1,ans-1,ans+10]);
   basicsCur.opts=m.choices;basicsCur.ai=m.answer;
 }
-function basicsNew(){basicsCur={fam:basicsSub==="multdiv"?basicsMakeFamily():basicsMakeAddCarry()};basicsLocked=false;basicsPicked=-1;basicsPrep();render()}
+function basicsNew(){
+  const gen=basicsSub==="multdiv"?basicsMakeFamily:basicsSub==="addcarry"?basicsMakeAddCarry:basicsMakeSubBorrow;
+  basicsCur={fam:gen()};basicsLocked=false;basicsPicked=-1;basicsPrep();render();
+}
 function logAnswer(domain,qtype,isCorrect){try{fetch(`${SB_URL}/rest/v1/${TBL_LOG}`,{method:"POST",headers:{"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json","Prefer":"return-minimal"},body:JSON.stringify({student_alias:alias(),domain,qtype,is_correct:isCorrect})})}catch(e){}}
 function basicsChoose(i){
   if(basicsLocked)return;basicsLocked=true;basicsPicked=i;
@@ -857,12 +801,13 @@ function basicsAdvance(){if(basicsStreak>=BASICS_REQ&&basicsStage<4){basicsStage
 function basicsStage4Next(){if(basicsMasteryStreak>=MASTERY_REQ){mode="basicsDone";window.scrollTo(0,0);render();return}basicsNew()}
 function startBasics(sub){mode="basics";basicsSub=sub;basicsStage=1;basicsStreak=0;basicsMasteryStreak=0;basicsStage4Support=false;basicsRecoveryStreak=0;window.scrollTo(0,0);basicsNew()}
 function renderBasicsDone(){
-  const subLabel=basicsSub==="multdiv"?"عائلات الضرب والقسمة":"الجمع بالحمل (عشرات/مئات)";
+  const subLabel=BASICS_SUBS[basicsSub].label;
+  const otherBtns=Object.keys(BASICS_SUBS).filter(k=>k!==basicsSub).map(k=>`<button class="btn" style="background:#059669" onclick="startBasics('${k}')">🔁 دربي على ${BASICS_SUBS[k].short}</button>`).join("");
   app.innerHTML=`<div class="card" style="text-align:center">
     <div style="font-size:44px;margin-bottom:6px">🏆</div>
     <div style="font-weight:800;font-size:19px;margin-bottom:8px">أتقنتِ ${subLabel}!</div>
     <div style="color:#64748B;font-size:14px;line-height:1.8;margin-bottom:18px">جاوبتِ ${toAr(MASTERY_REQ)} أسئلة صحيحة متتالية بدون أي مساعدة — إتقان حقيقي.</div>
-    <button class="btn" style="background:#059669" onclick="startBasics('${basicsSub==='multdiv'?'addcarry':'multdiv'}')">🔁 دربي على ${basicsSub==='multdiv'?'الجمع بالحمل':'عائلات الضرب والقسمة'}</button>
+    ${otherBtns}
     <button class="link-btn" onclick="home()">→ الرئيسية</button>
   </div>`;
 }
@@ -879,13 +824,17 @@ function renderBasics(){
   let visualBox="";
   if(showVisual){
     if(basicsSub==="multdiv")visualBox=`<div style="margin-bottom:14px">${groupsVisual(f.a,f.b)}</div>`;
-    else visualBox=`<div style="display:flex;gap:16px;align-items:center;justify-content:center;margin-bottom:14px"><div>${placeValueVisual(f.a)}<div style="text-align:center;font-size:12px;color:#64748B;margin-top:4px">${toAr(f.a)}</div></div><div style="font-size:22px;font-weight:800;color:#0D9488">+</div><div>${placeValueVisual(f.b)}<div style="text-align:center;font-size:12px;color:#64748B;margin-top:4px">${toAr(f.b)}</div></div></div>`;
+    else{
+      const sign=basicsSub==="addcarry"?"+":"−";
+      visualBox=`<div style="display:flex;gap:16px;align-items:center;justify-content:center;margin-bottom:14px"><div>${placeValueVisual(f.a)}<div style="text-align:center;font-size:12px;color:#64748B;margin-top:4px">${toAr(f.a)}</div></div><div style="font-size:22px;font-weight:800;color:#0D9488">${sign}</div><div>${placeValueVisual(f.b)}<div style="text-align:center;font-size:12px;color:#64748B;margin-top:4px">${toAr(f.b)}</div></div></div>`;
+    }
   }
   let body="";
   if(basicsStage===1){
     let explain;
     if(basicsSub==="multdiv")explain=`<div>١) ${toAr(f.a)} مجموعات، كل وحدة فيها ${toAr(f.b)} = المجموع ${toAr(f.c)}.</div><div>٢) إذن: ${toAr(f.a)}×${toAr(f.b)}=${toAr(f.c)} ، و${toAr(f.b)}×${toAr(f.a)}=${toAr(f.c)}.</div><div>٣) وبالعكس: ${toAr(f.c)}÷${toAr(f.a)}=${toAr(f.b)} ، و${toAr(f.c)}÷${toAr(f.b)}=${toAr(f.a)}.</div>`;
-    else{const steps=additionSteps(f.a,f.b);explain=steps.map((s,i)=>`<div>${toAr(i+1)}) ${s}.</div>`).join("")+`<div>النتيجة النهائية: ${toAr(f.a)}+${toAr(f.b)}=${toAr(f.c)}.</div>`}
+    else if(basicsSub==="addcarry"){const steps=additionSteps(f.a,f.b);explain=steps.map((s,i)=>`<div>${toAr(i+1)}) ${s}.</div>`).join("")+`<div>النتيجة النهائية: ${toAr(f.a)}+${toAr(f.b)}=${toAr(f.c)}.</div>`}
+    else{const steps=subtractionSteps(f.a,f.b);explain=steps.map((s,i)=>`<div>${toAr(i+1)}) ${s}.</div>`).join("")+`<div>النتيجة النهائية: ${toAr(f.a)}-${toAr(f.b)}=${toAr(f.c)}.</div>`}
     body=`<div style="background:#EFF6FF;border-radius:14px;padding:16px;font-size:14px;line-height:1.8;color:#1E40AF;margin-bottom:16px">📘 هذا <b>مثال محلول</b>. اقرئي الحل خطوة بخطوة، ثم اضغطي «فهمت».</div>
     ${visualBox}
     <div style="background:#F0FDF4;border-inline-start:4px solid #10B981;border-radius:12px;padding:16px;margin-bottom:16px;font-size:15px;line-height:2">${explain}</div>
@@ -896,7 +845,9 @@ function renderBasics(){
     let hint="";
     const ruleText=basicsSub==="multdiv"
       ?`القاعدة: الضرب والقسمة مرتبطان — ${toAr(f.a)}×${toAr(f.b)}=${toAr(f.c)}، فإذن ${toAr(f.c)}÷${toAr(f.a)}=${toAr(f.b)} و${toAr(f.c)}÷${toAr(f.b)}=${toAr(f.a)}.`
-      :`القاعدة: اجمعي كل خانة من اليمين (الآحاد ثم العشرات...)، ولو زاد المجموع عن ٩ اكتبي الآحاد واحملي الباقي للخانة التالية.`;
+      :basicsSub==="addcarry"
+      ?`القاعدة: اجمعي كل خانة من اليمين (الآحاد ثم العشرات...)، ولو زاد المجموع عن ٩ اكتبي الآحاد واحملي الباقي للخانة التالية.`
+      :`القاعدة: اطرحي كل خانة من اليمين. لو رقم الأعلى في خانة أصغر من رقم الأسفل، استلفي ١ من الخانة التالية (تنقص ١) وأضيفي ١٠ للخانة الحالية قبل الطرح.`;
     if(basicsStage===2)hint=`<div style="background:#F0FDF4;border-inline-start:4px solid #10B981;border-radius:12px;padding:14px;margin-bottom:14px;font-size:15px">${ruleText}</div>`;
     else if(basicsStage===3)hint=`<div style="background:#FEF3C7;border-radius:12px;padding:14px;margin-bottom:14px;font-size:15px;color:#B45309"><b>تذكّري القاعدة:</b> ${ruleText}</div>`;
     else if(basicsStage===4&&basicsStage4Support)hint=`<div style="background:#FEF9C3;border-inline-start:4px solid #EAB308;border-radius:12px;padding:14px;margin-bottom:14px;font-size:15px;color:#854D0E">🌱 ما عليك، مراجعة سريعة: ${ruleText} جاوبي صح مرتين ليختفي التذكير.</div>`;
@@ -906,27 +857,39 @@ function renderBasics(){
       :`<div style="font-size:13px;color:#64748B;text-align:center;margin-top:10px">🎓 حل مستقل — (${toAr(basicsMasteryStreak)}/${toAr(MASTERY_REQ)}) متتالية لإتقان هذا النوع</div>`;
     body=`${hint}${visualBox}<div class="q" style="text-align:center">${basicsCur.qText}</div><div class="choices">${ch}</div>${why}${mtr}`;
   }
-  const subLabel=basicsSub==="multdiv"?"عائلات الضرب والقسمة":"الجمع بالحمل (عشرات/مئات)";
-  const otherSub=basicsSub==="multdiv"?"addcarry":"multdiv";
-  const otherLabel=basicsSub==="multdiv"?"الجمع بالحمل":"عائلات الضرب والقسمة";
+  const subLabel=BASICS_SUBS[basicsSub].label;
+  const switchBtns=Object.keys(BASICS_SUBS).filter(k=>k!==basicsSub).map(k=>`<button class="link-btn" onclick="startBasics('${k}')">🔁 بدّلي إلى ${BASICS_SUBS[k].short}</button>`).join("");
   app.innerHTML=`<button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
   <div style="display:flex;gap:6px;margin-bottom:12px">${bar}</div>
   <div style="font-size:12px;font-weight:800;color:#0D9488;margin-bottom:12px">${info.label}</div>
   <div class="card"><span class="tag" style="background:#CCFBF1;color:#0D9488">تدريب الأساسيات · ${subLabel} · ${info.tag}</span>${body}</div>
-  <button class="link-btn" onclick="startBasics('${otherSub}')">🔁 بدّلي إلى ${otherLabel}</button>`;
+  ${switchBtns}`;
 }
 
 // ===== نطق إنجليزي بصوت أمريكي عبر خاصية المتصفح المدمجة (بلا أي خدمة خارجية) =====
 function speakEnglish(text){
   try{
     if(!text||!('speechSynthesis' in window))return;
-    window.speechSynthesis.cancel();
-    const u=new SpeechSynthesisUtterance(text);
-    u.lang='en-US';u.rate=0.85;
-    const voices=window.speechSynthesis.getVoices();
-    const usVoice=voices.find(v=>v.lang==='en-US')||voices.find(v=>v.lang&&v.lang.startsWith('en'));
-    if(usVoice)u.voice=usVoice;
-    window.speechSynthesis.speak(u);
+    const synth=window.speechSynthesis;
+    let done=false;
+    const doSpeak=()=>{
+      if(done)return;done=true;
+      synth.cancel();
+      const u=new SpeechSynthesisUtterance(text);
+      u.lang='en-US';u.rate=0.85;
+      const voices=synth.getVoices();
+      const usVoice=voices.find(v=>v.lang==='en-US')||voices.find(v=>v.lang&&v.lang.startsWith('en'));
+      if(usVoice)u.voice=usVoice;
+      synth.resume();
+      synth.speak(u);
+    };
+    // بعض متصفحات أندرويد تحمّل قائمة الأصوات بشكل غير متزامن؛ النطق قبل اكتمالها يُتجاهل بصمت
+    if(synth.getVoices().length>0){
+      doSpeak();
+    }else{
+      synth.addEventListener('voiceschanged',doSpeak,{once:true});
+      setTimeout(doSpeak,300);
+    }
   }catch(e){}
 }
 
@@ -1327,7 +1290,7 @@ function bumpStreak(){const st=getStreak();const t=todayStr();if(st.last===t)ret
 function growthMsg(modeKey,pct){try{const key="mawhiba_best_"+modeKey;const prev=parseInt(localStorage.getItem(key)||"-1");let msg="";if(prev<0){msg="أول محاولة في هذا القسم — انطلاقة موفّقة! 🌱"}else if(pct>prev){msg=`تحسّنتِ عن أفضل نتيجة سابقة (${toAr(prev)}%)! تقدّم رائع 📈`}else if(pct===prev){msg="ثبات على أفضل مستوى سابق 💪"}else{msg="واصلي، كل محاولة تبني مهارتك 🌟"}if(pct>prev)localStorage.setItem(key,String(pct));return msg}catch(e){return""}}
 
 // ===== العرض =====
-function render(){if(mode==="home")return renderHome();if(mode==="english")return renderEnglish();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="arithdiag")return renderArithDiag();if(mode==="arithdiagResult")return renderArithDiagResult();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
+function render(){if(mode==="home")return renderHome();if(mode==="english")return renderEnglish();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
 
 function renderHome(){
   app.innerHTML=`
@@ -1346,8 +1309,7 @@ function renderHome(){
     <button class="mode full" onclick="start('full')"><span class="m-name">🎯 محاكاة شاملة (٤٨ سؤالاً)</span><div class="m-sub">من كل المجالات — الأقرب للاختبار الحقيقي</div></button>
     <button class="mode" style="border-color:#FDE68A" onclick="goFadeMenu()"><span class="m-name">🎓 وضع التقوية (تلاشٍ تدريجي)</span><div class="m-sub">اختاري مهارة وتدرّبي عليها خطوة بخطوة — مبني على دراسات التعلّم</div></button>
     <button class="mode prog" onclick="loadProgress()"><span class="m-name">📈 متابعة التقدّم</span><div class="m-sub">نتائجك السابقة وتحليل المستوى لكل مجال</div></button>
-    <button class="mode" style="border-color:#99F6E4" onclick="startArithDiag()"><span class="m-name">🔍 تشخيص سريع: الجمع والضرب والقسمة</span><div class="m-sub">٧ أسئلة تحدّد أين بالضبط الصعوبة (حفظ، حمل، أو خلط مفاهيم)</div></button>
-    <button class="mode full" style="background:#0D9488;border-color:#0D9488" onclick="startBasics('multdiv')"><span class="m-name">🧱 تدريب الأساسيات: عائلات الحقائق</span><div class="m-sub">ضرب/قسمة مرتبطان + جمع بالحمل (عشرات/مئات) — مبني على نتيجة التشخيص</div></button>
+    <button class="mode full" style="background:#0D9488;border-color:#0D9488" onclick="startBasics('multdiv')"><span class="m-name">🧱 تدريب الأساسيات: عائلات الحقائق</span><div class="m-sub">ضرب/قسمة مرتبطان + جمع بالحمل + طرح بالاستلاف (عشرات/مئات)</div></button>
     <button class="mode full" style="background:#0891B2;border-color:#0891B2" onclick="startEnglish()"><span class="m-name">🇬🇧 تعلّم الإنجليزية · مستوى A1</span><div class="m-sub">مفردات وقواعد وقراءة، مع نطق بصوت أمريكي 🔊 — الخطوة الأولى نحو C2</div></button>
     <button class="mode full" style="background:#0E7490;border-color:#0E7490" onclick="startDictation()"><span class="m-name">✍️ إملاء بالإنجليزية</span><div class="m-sub">استمعي للكلمة، ثم اكتبيها — مستوى A1</div></button>
     <button class="mode full" style="background:#7C3AED;border-color:#7C3AED" onclick="startPronunciation()"><span class="m-name">🎤 تمرين النطق</span><div class="m-sub">تحقّق أساسي هل نطقتِ الكلمة صح (يحتاج ميكروفون) — وليس تصحيح لهجة دقيق</div></button>
