@@ -988,13 +988,13 @@ const ENGLISH_A1=[
  // أيام
  {q:'ما ترجمة "الاثنين"؟',c:["Monday","Sunday","Tuesday","Friday"],a:0,w:'"Monday" تعني الاثنين.',listen:"Monday"},
  {q:'ما ترجمة "الجمعة"؟',c:["Friday","Saturday","Thursday","Monday"],a:0,w:'"Friday" تعني الجمعة.',listen:"Friday"},
- // قراءة قصيرة
- {q:'اقرئي: "My name is Sara. I am ten years old. I have a small brown dog." — كم عمر سارة؟',c:["عشر سنوات","تسع سنوات","إحدى عشرة سنة","ثماني سنوات"],a:0,w:'النص يقول "ten years old" أي عشر سنوات.',listen:"My name is Sara. I am ten years old. I have a small brown dog."},
- {q:'اقرئي: "Tom likes apples, but he doesn\'t like bananas." — ماذا يحب توم؟',c:["التفاح","الموز","كليهما","لا شيء"],a:0,w:'النص يقول "likes apples" أي يحب التفاح.',listen:"Tom likes apples, but he doesn't like bananas."},
- {q:'اقرئي: "It is Monday. Lina goes to school by bus every day." — كيف تذهب لينا إلى المدرسة؟',c:["بالحافلة","بالسيارة","سيراً","بالدراجة"],a:0,w:'"by bus" تعني بالحافلة.',listen:"It is Monday. Lina goes to school by bus every day."},
- {q:'اقرئي: "This is my family. I have one sister and two brothers." — كم أخاً عند المتحدث؟',c:["أخوان","أخ واحد","ثلاثة إخوة","لا يوجد"],a:0,w:'"two brothers" تعني أخوان.',listen:"This is my family. I have one sister and two brothers."},
- {q:'اقرئي: "The weather is cold today. I am wearing a warm coat." — كيف الطقس اليوم؟',c:["بارد","حار","ممطر","مشمس"],a:0,w:'"cold" تعني بارد.',listen:"The weather is cold today. I am wearing a warm coat."},
- {q:'اقرئي: "Ali has a red bike. He rides it every weekend." — متى يركب علي دراجته؟',c:["في نهاية الأسبوع","كل يوم","في المدرسة","في الليل"],a:0,w:'"every weekend" تعني في نهاية كل أسبوع.',listen:"Ali has a red bike. He rides it every weekend."},
+ // قراءة قصيرة (النص إنجليزي منفصل بفقرة، والسؤال عربي بفقرة تحته)
+ {passage:"My name is Sara. I am ten years old. I have a small brown dog.",q:'كم عمر سارة؟',c:["عشر سنوات","تسع سنوات","إحدى عشرة سنة","ثماني سنوات"],a:0,w:'النص يقول "ten years old" أي عشر سنوات.',listen:"My name is Sara. I am ten years old. I have a small brown dog."},
+ {passage:"Tom likes apples, but he doesn't like bananas.",q:'ماذا يحب توم؟',c:["التفاح","الموز","كليهما","لا شيء"],a:0,w:'النص يقول "likes apples" أي يحب التفاح.',listen:"Tom likes apples, but he doesn't like bananas."},
+ {passage:"It is Monday. Lina goes to school by bus every day.",q:'كيف تذهب لينا إلى المدرسة؟',c:["بالحافلة","بالسيارة","سيراً","بالدراجة"],a:0,w:'"by bus" تعني بالحافلة.',listen:"It is Monday. Lina goes to school by bus every day."},
+ {passage:"This is my family. I have one sister and two brothers.",q:'كم أخاً عند المتحدث؟',c:["أخوان","أخ واحد","ثلاثة إخوة","لا يوجد"],a:0,w:'"two brothers" تعني أخوان.',listen:"This is my family. I have one sister and two brothers."},
+ {passage:"The weather is cold today. I am wearing a warm coat.",q:'كيف الطقس اليوم؟',c:["بارد","حار","ممطر","مشمس"],a:0,w:'"cold" تعني بارد.',listen:"The weather is cold today. I am wearing a warm coat."},
+ {passage:"Ali has a red bike. He rides it every weekend.",q:'متى يركب علي دراجته؟',c:["في نهاية الأسبوع","كل يوم","في المدرسة","في الليل"],a:0,w:'"every weekend" تعني في نهاية كل أسبوع.',listen:"Ali has a red bike. He rides it every weekend."},
 ];
 function buildEnglishSession(n){
   const chosen=takeUniqueFrom(shuffle(ENGLISH_A1),n);
@@ -1024,6 +1024,7 @@ function renderEnglish(){
   <div class="meta"><span>سؤال ${toAr(engIdx+1)} من ${toAr(engFiltered.length)}</span><span>English · A1</span></div>
   <div class="card">
     <span class="tag" style="background:#CFFAFE;color:#0891B2">🇬🇧 تعلّم الإنجليزية · مستوى A1</span>
+    ${q.passage?`<div style="background:#F0FDFA;border:1px solid #99F6E4;border-radius:12px;padding:14px;margin-bottom:12px;font-size:16px;line-height:1.7;direction:ltr;text-align:left;color:#0F766E;font-family:Georgia,serif">${q.passage}</div>`:""}
     <div class="q">${q.q}</div>
     ${q.listen?`<button type="button" onclick="speakEnglish(engFiltered[${engIdx}].listen)" style="background:#ECFEFF;border:1.5px solid #A5F3FC;color:#0891B2;border-radius:10px;padding:7px 16px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:16px;font-family:inherit">🔊 استمعي</button>`:""}
     <div class="choices">${choices}</div>
