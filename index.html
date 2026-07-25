@@ -989,30 +989,42 @@ const ENGLISH_A1=[
  {q:'ما ترجمة "الاثنين"؟',c:["Monday","Sunday","Tuesday","Friday"],a:0,w:'"Monday" تعني الاثنين.',listen:"Monday"},
  {q:'ما ترجمة "الجمعة"؟',c:["Friday","Saturday","Thursday","Monday"],a:0,w:'"Friday" تعني الجمعة.',listen:"Friday"},
  // قراءة قصيرة (النص إنجليزي منفصل بفقرة، والسؤال عربي بفقرة تحته)
- {passage:"My name is Sara. I am ten years old. I have a small brown dog.",q:'كم عمر سارة؟',c:["عشر سنوات","تسع سنوات","إحدى عشرة سنة","ثماني سنوات"],a:0,w:'النص يقول "ten years old" أي عشر سنوات.',listen:"My name is Sara. I am ten years old. I have a small brown dog."},
- {passage:"Tom likes apples, but he doesn't like bananas.",q:'ماذا يحب توم؟',c:["التفاح","الموز","كليهما","لا شيء"],a:0,w:'النص يقول "likes apples" أي يحب التفاح.',listen:"Tom likes apples, but he doesn't like bananas."},
- {passage:"It is Monday. Lina goes to school by bus every day.",q:'كيف تذهب لينا إلى المدرسة؟',c:["بالحافلة","بالسيارة","سيراً","بالدراجة"],a:0,w:'"by bus" تعني بالحافلة.',listen:"It is Monday. Lina goes to school by bus every day."},
- {passage:"This is my family. I have one sister and two brothers.",q:'كم أخاً عند المتحدث؟',c:["أخوان","أخ واحد","ثلاثة إخوة","لا يوجد"],a:0,w:'"two brothers" تعني أخوان.',listen:"This is my family. I have one sister and two brothers."},
- {passage:"The weather is cold today. I am wearing a warm coat.",q:'كيف الطقس اليوم؟',c:["بارد","حار","ممطر","مشمس"],a:0,w:'"cold" تعني بارد.',listen:"The weather is cold today. I am wearing a warm coat."},
- {passage:"Ali has a red bike. He rides it every weekend.",q:'متى يركب علي دراجته؟',c:["في نهاية الأسبوع","كل يوم","في المدرسة","في الليل"],a:0,w:'"every weekend" تعني في نهاية كل أسبوع.',listen:"Ali has a red bike. He rides it every weekend."},
+ // cEn: نفس الخيارات بالإنجليزي بنفس ترتيب c — تُستخدم تدريجياً بعد إتقان أولي بالعربي (انظر readingLevel)
+ {passage:"My name is Sara. I am ten years old. I have a small brown dog.",q:'كم عمر سارة؟',c:["عشر سنوات","تسع سنوات","إحدى عشرة سنة","ثماني سنوات"],cEn:["ten years old","nine years old","eleven years old","eight years old"],a:0,w:'النص يقول "ten years old" أي عشر سنوات.',listen:"My name is Sara. I am ten years old. I have a small brown dog."},
+ {passage:"Tom likes apples, but he doesn't like bananas.",q:'ماذا يحب توم؟',c:["التفاح","الموز","كليهما","لا شيء"],cEn:["apples","bananas","both","nothing"],a:0,w:'النص يقول "likes apples" أي يحب التفاح.',listen:"Tom likes apples, but he doesn't like bananas."},
+ {passage:"It is Monday. Lina goes to school by bus every day.",q:'كيف تذهب لينا إلى المدرسة؟',c:["بالحافلة","بالسيارة","سيراً","بالدراجة"],cEn:["by bus","by car","on foot","by bike"],a:0,w:'"by bus" تعني بالحافلة.',listen:"It is Monday. Lina goes to school by bus every day."},
+ {passage:"This is my family. I have one sister and two brothers.",q:'كم أخاً عند المتحدث؟',c:["أخوان","أخ واحد","ثلاثة إخوة","لا يوجد"],cEn:["two brothers","one brother","three brothers","none"],a:0,w:'"two brothers" تعني أخوان.',listen:"This is my family. I have one sister and two brothers."},
+ {passage:"The weather is cold today. I am wearing a warm coat.",q:'كيف الطقس اليوم؟',c:["بارد","حار","ممطر","مشمس"],cEn:["cold","hot","rainy","sunny"],a:0,w:'"cold" تعني بارد.',listen:"The weather is cold today. I am wearing a warm coat."},
+ {passage:"Ali has a red bike. He rides it every weekend.",q:'متى يركب علي دراجته؟',c:["في نهاية الأسبوع","كل يوم","في المدرسة","في الليل"],cEn:["on the weekend","every day","at school","at night"],a:0,w:'"every weekend" تعني في نهاية كل أسبوع.',listen:"Ali has a red bike. He rides it every weekend."},
 ];
 function buildEnglishSession(n){
   const chosen=takeUniqueFrom(shuffle(ENGLISH_A1),n);
   if(chosen.length<n)chosen.push(...fillAvoidingBatchDupes(chosen,ENGLISH_A1,n-chosen.length)); // البنك نفد تنويعاً؛ حل أخير
   return chosen.map(item=>{
     const order=shuffle([0,1,2,3]); // نعيد ترتيب الخيارات في كل جلسة حتى لا يُحفظ موضع الإجابة
-    return{q:item.q,c:order.map(i=>item.c[i]),a:order.indexOf(item.a),w:item.w,listen:item.listen};
+    return{q:item.q,passage:item.passage,c:order.map(i=>item.c[i]),cEn:item.cEn?order.map(i=>item.cEn[i]):null,a:order.indexOf(item.a),w:item.w,listen:item.listen};
   });
 }
+// تدرّج خيارات أسئلة القراءة: عربي بالبداية، ثم إنجليزي تلقائياً بعد عدد إجابات صحيحة كافٍ (طلب صريح)
+const READING_ARABIC_STREAK=4;
+function readingCorrectCount(){try{return parseInt(localStorage.getItem("mawhiba_reading_correct")||"0")}catch(e){return 0}}
+function bumpReadingCorrect(){try{localStorage.setItem("mawhiba_reading_correct",String(readingCorrectCount()+1))}catch(e){}}
 let engFiltered=[],engIdx=0,engPicked=null,engLocked=false,engScore=0,engDone=false,engAnswered=[];
 function startEnglish(){mode="english";engFiltered=buildEnglishSession(12);engIdx=0;engPicked=null;engLocked=false;engScore=0;engDone=false;engAnswered=[];window.scrollTo(0,0);render()}
-function engChoose(i){if(engLocked)return;engPicked=i;engLocked=true;if(i===engFiltered[engIdx].a)engScore++;engAnswered[engIdx]=(i===engFiltered[engIdx].a);render()}
+function engChoose(i){
+  if(engLocked)return;engPicked=i;engLocked=true;
+  const item=engFiltered[engIdx],ok=i===item.a;
+  if(ok){engScore++;if(item.passage)bumpReadingCorrect()}
+  engAnswered[engIdx]=ok;render();
+}
 function engNext(){if(engIdx+1>=engFiltered.length){engDone=true;window.scrollTo(0,0)}else{engIdx++;engPicked=null;engLocked=false}render()}
 function renderEnglish(){
   if(engDone)return renderEnglishResult();
   const q=engFiltered[engIdx];
   const prog=engFiltered.map((_,i)=>`<div class="seg" style="background:${i<=engIdx?'#0891B2':'#E2E8F0'};opacity:${i<=engIdx?1:.5}"></div>`).join("");
-  const choices=q.c.map((c,i)=>{
+  const useEnglishChoices=q.passage&&q.cEn&&readingCorrectCount()>=READING_ARABIC_STREAK;
+  const displayChoices=useEnglishChoices?q.cEn:q.c;
+  const choices=displayChoices.map((c,i)=>{
     let bg="#fff",bd="#E2E8F0",col="#334155";
     if(engLocked){if(i===q.a){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(i===engPicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}
     return `<button class="choice" style="background:${bg};border-color:${bd};color:${col}" onclick="engChoose(${i})" ${engLocked?"disabled":""}><span class="letter">${L[i]}</span>${c}</button>`}).join("");
