@@ -1105,12 +1105,13 @@ function renderDictationResult(){
   </div>`;
 }
 
-// ===== النطق: تحقّق أساسي من الكلمة عبر التعرّف على الصوت (تحقّق كلمة، وليس تقييم دقّة اللهجة) =====
-function getSpeechRecognition(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;return SR?new SR():null}
+// ===== النطق: تحقّق أساسي عبر تسجيل الصوت + Groq Whisper (يعمل على كل الأجهزة، بما فيها آيفون؛ تحقّق كلمة لا تقييم دقّة اللهجة) =====
+function micSupported(){return !!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia&&window.MediaRecorder)}
+const PRON_GROQ_FN_URL=SB_URL+"/functions/v1/assess-pronunciation-groq";
 let pronSession=[],pronIdx=0,pronResult=null,pronListening=false,pronScore=0,pronDone=false,pronUnsupported=false;
 function startPronunciation(){
   mode="pron";pronSession=shuffle(DICTATION_A1).slice(0,8);pronIdx=0;pronResult=null;pronListening=false;pronScore=0;pronDone=false;
-  pronUnsupported=!getSpeechRecognition();
+  pronUnsupported=!micSupported();
   azureResult=null;azureBusy=false;azureRecording=false;
   window.scrollTo(0,0);render();
   if(!pronUnsupported)setTimeout(()=>speakEnglish(pronSession[0].w),300);
@@ -1150,23 +1151,37 @@ async function azureAssess(){
   }
   azureBusy=false;azureRecording=false;render();
 }
-function pronListen(){
+async function pronListen(){
   if(pronListening)return;
-  const rec=getSpeechRecognition();
-  if(!rec){pronUnsupported=true;render();return}
+  if(!micSupported()){pronUnsupported=true;render();return}
   pronListening=true;pronResult=null;render();
-  rec.lang='en-US';rec.maxAlternatives=1;rec.continuous=false;rec.interimResults=false;
-  rec.onresult=(e)=>{
-    const heard=((e.results&&e.results[0]&&e.results[0][0]&&e.results[0][0].transcript)||"").trim().toLowerCase().replace(/[^a-z ]/g,"");
-    const target=pronSession[pronIdx].w.toLowerCase();
-    const ok=heard===target||heard.split(" ").includes(target);
-    pronResult={heard,ok};pronListening=false;
-    if(ok)pronScore++;
-    render();
-  };
-  rec.onerror=()=>{pronListening=false;pronResult={heard:"",ok:false,error:true};render()};
-  rec.onend=()=>{if(pronListening){pronListening=false;render()}};
-  try{rec.start()}catch(e){pronListening=false;pronResult={heard:"",ok:false,error:true};render()}
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    const chunks=[];
+    const rec=new MediaRecorder(stream);
+    rec.ondataavailable=(e)=>{if(e.data&&e.data.size>0)chunks.push(e.data)};
+    const stopped=new Promise(resolve=>{rec.onstop=resolve});
+    rec.start();
+    await new Promise(r=>setTimeout(r,2200));
+    rec.stop();
+    stream.getTracks().forEach(t=>t.stop());
+    await stopped;
+    const blob=new Blob(chunks,{type:rec.mimeType||"audio/webm"});
+    const b64=await blobToBase64(blob);
+    const res=await fetch(PRON_GROQ_FN_URL,{method:"POST",headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({audio:b64,mimeType:blob.type,referenceText:pronSession[pronIdx].w})});
+    const data=await res.json();
+    if(data&&data.ok){
+      pronResult={heard:data.heard,ok:data.matched};
+      if(data.matched)pronScore++;
+    }else if(data&&data.error==="not_configured"){
+      pronResult={heard:"",ok:false,error:true,notConfigured:true};
+    }else{
+      pronResult={heard:"",ok:false,error:true};
+    }
+  }catch(e){
+    pronResult={heard:"",ok:false,error:true};
+  }
+  pronListening=false;render();
 }
 function pronNext(){
   azureResult=null;azureBusy=false;azureRecording=false;
@@ -1180,11 +1195,13 @@ function renderPron(){
   const prog=pronSession.map((_,i)=>`<div class="seg" style="background:${i<=pronIdx?'#7C3AED':'#E2E8F0'};opacity:${i<=pronIdx?1:.5}"></div>`).join("");
   let inner;
   if(pronUnsupported){
-    inner=`<div style="background:#FEF3C7;border-radius:12px;padding:16px;font-size:14px;color:#92400E;line-height:1.8">متصفحك الحالي لا يدعم التعرّف على الصوت. جرّبي متصفح Chrome على كمبيوتر أو أندرويد.</div>`;
+    inner=`<div style="background:#FEF3C7;border-radius:12px;padding:16px;font-size:14px;color:#92400E;line-height:1.8">متصفحك الحالي لا يدعم تسجيل الصوت. جرّبي متصفح حديث (Safari على آيفون أو Chrome).</div>`;
   }else{
     const feedback=pronResult?(pronResult.error
-      ?`<div class="explain"><div class="explain-title" style="color:#B45309">تعذّر التعرّف على صوتك</div><div class="explain-body">تأكدي من السماح للميكروفون للمتصفح، وحاولي مرة أخرى.</div></div>`
-      :`<div class="explain"><div class="explain-title" style="color:${pronResult.ok?'#059669':'#B45309'}">${pronResult.ok?"✓ تم التعرّف على الكلمة الصحيحة":"لم يتم التعرّف على الكلمة المطلوبة"}</div><div class="explain-body">${pronResult.heard?`سمع المتصفح: <b style="direction:ltr;display:inline-block">"${pronResult.heard}"</b> — `:""}الكلمة المطلوبة: <b style="direction:ltr;display:inline-block">${item.w}</b> (${item.m}).${pronResult.ok?"":" استمعي وحاولي مرة أخرى."}</div></div>`
+      ?(pronResult.notConfigured
+        ?`<div class="explain"><div class="explain-title" style="color:#B45309">التحقّق غير مفعّل حالياً</div><div class="explain-body">هذه الميزة تحتاج إعداداً من طرفنا. جرّبي لاحقاً.</div></div>`
+        :`<div class="explain"><div class="explain-title" style="color:#B45309">تعذّر تسجيل صوتك</div><div class="explain-body">تأكدي من السماح للميكروفون للمتصفح، وحاولي مرة أخرى.</div></div>`)
+      :`<div class="explain"><div class="explain-title" style="color:${pronResult.ok?'#059669':'#B45309'}">${pronResult.ok?"✓ نطقتِ الكلمة الصحيحة":"لم يُسمع نطق الكلمة المطلوبة"}</div><div class="explain-body">${pronResult.heard?`سمعنا: <b style="direction:ltr;display:inline-block">"${pronResult.heard}"</b> — `:""}الكلمة المطلوبة: <b style="direction:ltr;display:inline-block">${item.w}</b> (${item.m}).${pronResult.ok?"":" استمعي وحاولي مرة أخرى."}</div></div>`
     ):"";
     const nextBtn=pronResult?`<button class="btn" style="background:#7C3AED" onclick="pronNext()">${pronIdx+1>=pronSession.length?"إنهاء ومشاهدة النتيجة":pronResult.error?"تخطّي هذه الكلمة ←":"الكلمة التالية ←"}</button>`:"";
     let azureBody="";
@@ -1207,7 +1224,7 @@ function renderPron(){
       ${azureBody}
     </div>`;
     inner=`
-    <div style="font-size:12px;color:#94A3B8;margin-bottom:14px">تحقّق أساسي: هل تعرّف المتصفح على الكلمة الصحيحة؟ (ليس تقييماً دقيقاً للهجة)</div>
+    <div style="font-size:12px;color:#94A3B8;margin-bottom:14px">تحقّق أساسي: هل نطقتِ الكلمة الصحيحة؟ (ليس تقييماً دقيقاً للهجة)</div>
     <div style="display:flex;gap:12px;justify-content:center;align-items:center;margin:10px 0 18px">
       <button type="button" onclick="speakEnglish(pronSession[${pronIdx}].w)" style="background:#ECFEFF;border:1.5px solid #A5F3FC;color:#0891B2;border-radius:50%;width:56px;height:56px;font-size:22px;cursor:pointer">🔊</button>
       <button type="button" onclick="pronListen()" ${pronListening?"disabled":""} style="background:${pronListening?'#C4B5FD':'#7C3AED'};color:#fff;border:none;border-radius:50%;width:72px;height:72px;font-size:26px;cursor:pointer">${pronListening?"🎙️":"🎤"}</button>
