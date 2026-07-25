@@ -509,6 +509,17 @@ function uniqueFromGens(gens,maxTries){
 function dedupeList(arr){const out=[];(arr||[]).forEach(q=>{if(!isSeen(q)){out.push(q);markSeen(q)}});return out}
 // يأخذ أول "need" سؤالاً غير معروض من قائمة (تُستخدم لتعبئة النقص من البنك الاحتياطي)
 function takeUniqueFrom(arr,need){const out=[];for(const q of (arr||[])){if(out.length>=need)break;if(!isSeen(q)){out.push(q);markSeen(q)}}return out}
+// حل أخير عند نفاد البنك عالمياً: يكمل من pool متفادياً تكرار نص موجود مسبقاً في نفس الدفعة (existing)،
+// حتى لو تجاوزنا حدود التتبّع العالمي لهذه الجلسة
+function fillAvoidingBatchDupes(existing,pool,need){
+  const seenQ=new Set(existing.map(q=>q.q));
+  const out=[];
+  for(const item of shuffle(pool)){
+    if(out.length>=need)break;
+    if(!seenQ.has(item.q)){out.push(item);seenQ.add(item.q)}
+  }
+  return out;
+}
 
 // يبني مجموعة أسئلة لمجال، ممزوجة (محرّك + كود) مع احتياط، وبلا تكرار لنص سبق عرضه في هذه الجلسة
 async function buildDomain(domKey,n){
@@ -519,13 +530,13 @@ async function buildDomain(domKey,n){
     for(const t of types){if(qs.length>=n)break;const got=await fetchGemini(t,Math.ceil(n/2));qs=qs.concat(dedupeList(got))}
     // احتياط من البنك لو نقص، مع تفادي تكرار ما سبق عرضه
     if(qs.length<n){qs=qs.concat(takeUniqueFrom(shuffle(VERBAL),n-qs.length))}
-    if(qs.length<n){qs=qs.concat(shuffle(VERBAL).slice(0,n-qs.length))} // البنك نفد تنويعاً؛ حل أخير
+    if(qs.length<n){qs=qs.concat(fillAvoidingBatchDupes(qs,VERBAL,n-qs.length))} // البنك نفد تنويعاً؛ حل أخير
     return shuffle(qs).slice(0,n);
   }
   if(domKey==="science"){
     let qs=dedupeList(await fetchGemini("science",n));
     if(qs.length<n){qs=qs.concat(takeUniqueFrom(shuffle(SCIENCE),n-qs.length))}
-    if(qs.length<n){qs=qs.concat(shuffle(SCIENCE).slice(0,n-qs.length))} // البنك نفد تنويعاً؛ حل أخير
+    if(qs.length<n){qs=qs.concat(fillAvoidingBatchDupes(qs,SCIENCE,n-qs.length))} // البنك نفد تنويعاً؛ حل أخير
     return shuffle(qs).slice(0,n);
   }
   return [];
@@ -905,78 +916,92 @@ function renderBasics(){
   <button class="link-btn" onclick="startBasics('${otherSub}')">🔁 بدّلي إلى ${otherLabel}</button>`;
 }
 
+// ===== نطق إنجليزي بصوت أمريكي عبر خاصية المتصفح المدمجة (بلا أي خدمة خارجية) =====
+function speakEnglish(text){
+  try{
+    if(!text||!('speechSynthesis' in window))return;
+    window.speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(text);
+    u.lang='en-US';u.rate=0.85;
+    const voices=window.speechSynthesis.getVoices();
+    const usVoice=voices.find(v=>v.lang==='en-US')||voices.find(v=>v.lang&&v.lang.startsWith('en'));
+    if(usVoice)u.voice=usVoice;
+    window.speechSynthesis.speak(u);
+  }catch(e){}
+}
+
 // ===== تعلّم الإنجليزية: مستوى A1 (مفردات، قواعد أساسية، قراءة قصيرة) =====
-// كل بند: تعليمات بالعربي + خيارات (إنجليزية أو عربية حسب ما يُختبر) + شرح بالعربي
+// كل بند: تعليمات بالعربي + خيارات (إنجليزية أو عربية حسب ما يُختبر) + شرح بالعربي + listen: الجملة/الكلمة الصحيحة كاملة للنطق
 const ENGLISH_A1=[
  // مفردات
- {q:'ما ترجمة كلمة "قطة"؟',c:["cat","dog","book","sun"],a:0,w:'"cat" تعني قطة.'},
- {q:'ما ترجمة كلمة "كتاب"؟',c:["book","pen","table","door"],a:0,w:'"book" تعني كتاب.'},
- {q:'ما ترجمة كلمة "بيت"؟',c:["house","car","school","tree"],a:0,w:'"house" تعني بيت أو منزل.'},
- {q:'ما ترجمة كلمة "شمس"؟',c:["sun","moon","star","sky"],a:0,w:'"sun" تعني شمس.'},
- {q:'ما ترجمة كلمة "ماء"؟',c:["water","milk","juice","bread"],a:0,w:'"water" تعني ماء.'},
- {q:'ما ترجمة كلمة "كرسي"؟',c:["chair","table","bed","door"],a:0,w:'"chair" تعني كرسي.'},
- {q:'ما ترجمة كلمة "مدرسة"؟',c:["school","hospital","market","park"],a:0,w:'"school" تعني مدرسة.'},
- {q:'ما ترجمة كلمة "سيارة"؟',c:["car","bus","bike","train"],a:0,w:'"car" تعني سيارة.'},
- {q:'ما ترجمة كلمة "أم"؟',c:["mother","father","sister","brother"],a:0,w:'"mother" تعني أم.'},
- {q:'ما ترجمة كلمة "شجرة"؟',c:["tree","flower","grass","leaf"],a:0,w:'"tree" تعني شجرة.'},
- {q:'ما ترجمة كلمة "كلب"؟',c:["dog","cat","bird","fish"],a:0,w:'"dog" تعني كلب.'},
- {q:'ما ترجمة كلمة "قلم"؟',c:["pen","pencil","book","bag"],a:0,w:'"pen" تعني قلم حبر.'},
- {q:'ما ترجمة كلمة "باب"؟',c:["door","window","wall","roof"],a:0,w:'"door" تعني باب.'},
- {q:'ما ترجمة كلمة "طعام"؟',c:["food","drink","fruit","meat"],a:0,w:'"food" تعني طعام.'},
- {q:'ما ترجمة كلمة "صديق"؟',c:["friend","family","teacher","neighbor"],a:0,w:'"friend" تعني صديق.'},
+ {q:'ما ترجمة كلمة "قطة"؟',c:["cat","dog","book","sun"],a:0,w:'"cat" تعني قطة.',listen:"cat"},
+ {q:'ما ترجمة كلمة "كتاب"؟',c:["book","pen","table","door"],a:0,w:'"book" تعني كتاب.',listen:"book"},
+ {q:'ما ترجمة كلمة "بيت"؟',c:["house","car","school","tree"],a:0,w:'"house" تعني بيت أو منزل.',listen:"house"},
+ {q:'ما ترجمة كلمة "شمس"؟',c:["sun","moon","star","sky"],a:0,w:'"sun" تعني شمس.',listen:"sun"},
+ {q:'ما ترجمة كلمة "ماء"؟',c:["water","milk","juice","bread"],a:0,w:'"water" تعني ماء.',listen:"water"},
+ {q:'ما ترجمة كلمة "كرسي"؟',c:["chair","table","bed","door"],a:0,w:'"chair" تعني كرسي.',listen:"chair"},
+ {q:'ما ترجمة كلمة "مدرسة"؟',c:["school","hospital","market","park"],a:0,w:'"school" تعني مدرسة.',listen:"school"},
+ {q:'ما ترجمة كلمة "سيارة"؟',c:["car","bus","bike","train"],a:0,w:'"car" تعني سيارة.',listen:"car"},
+ {q:'ما ترجمة كلمة "أم"؟',c:["mother","father","sister","brother"],a:0,w:'"mother" تعني أم.',listen:"mother"},
+ {q:'ما ترجمة كلمة "شجرة"؟',c:["tree","flower","grass","leaf"],a:0,w:'"tree" تعني شجرة.',listen:"tree"},
+ {q:'ما ترجمة كلمة "كلب"؟',c:["dog","cat","bird","fish"],a:0,w:'"dog" تعني كلب.',listen:"dog"},
+ {q:'ما ترجمة كلمة "قلم"؟',c:["pen","pencil","book","bag"],a:0,w:'"pen" تعني قلم حبر.',listen:"pen"},
+ {q:'ما ترجمة كلمة "باب"؟',c:["door","window","wall","roof"],a:0,w:'"door" تعني باب.',listen:"door"},
+ {q:'ما ترجمة كلمة "طعام"؟',c:["food","drink","fruit","meat"],a:0,w:'"food" تعني طعام.',listen:"food"},
+ {q:'ما ترجمة كلمة "صديق"؟',c:["friend","family","teacher","neighbor"],a:0,w:'"friend" تعني صديق.',listen:"friend"},
  // فعل to be
- {q:'اختاري الصحيح: "I ___ a student."',c:["am","is","are","be"],a:0,w:'مع "I" نستخدم "am".'},
- {q:'اختاري الصحيح: "She ___ happy."',c:["am","is","are","be"],a:1,w:'مع "she/he/it" نستخدم "is".'},
- {q:'اختاري الصحيح: "They ___ at school."',c:["am","is","are","be"],a:2,w:'مع "they/we/you" نستخدم "are".'},
- {q:'اختاري الصحيح: "It ___ a small cat."',c:["am","is","are","be"],a:1,w:'مع "it" نستخدم "is".'},
- {q:'اختاري الصحيح: "We ___ friends."',c:["am","is","are","be"],a:2,w:'مع "we" نستخدم "are".'},
- {q:'اختاري الصحيح: "He ___ my brother."',c:["am","is","are","be"],a:1,w:'مع "he" نستخدم "is".'},
+ {q:'اختاري الصحيح: "I ___ a student."',c:["am","is","are","be"],a:0,w:'مع "I" نستخدم "am".',listen:"I am a student."},
+ {q:'اختاري الصحيح: "She ___ happy."',c:["am","is","are","be"],a:1,w:'مع "she/he/it" نستخدم "is".',listen:"She is happy."},
+ {q:'اختاري الصحيح: "They ___ at school."',c:["am","is","are","be"],a:2,w:'مع "they/we/you" نستخدم "are".',listen:"They are at school."},
+ {q:'اختاري الصحيح: "It ___ a small cat."',c:["am","is","are","be"],a:1,w:'مع "it" نستخدم "is".',listen:"It is a small cat."},
+ {q:'اختاري الصحيح: "We ___ friends."',c:["am","is","are","be"],a:2,w:'مع "we" نستخدم "are".',listen:"We are friends."},
+ {q:'اختاري الصحيح: "He ___ my brother."',c:["am","is","are","be"],a:1,w:'مع "he" نستخدم "is".',listen:"He is my brother."},
  // الجمع
- {q:'ما جمع كلمة "book"؟',c:["books","bookes","bookies","book"],a:0,w:'نضيف "s" فقط: books.'},
- {q:'ما جمع كلمة "box"؟',c:["boxes","boxs","boxies","box"],a:0,w:'الكلمات المنتهية بـ x تأخذ "es": boxes.'},
- {q:'ما جمع كلمة "cat"؟',c:["cats","cates","catses","cat"],a:0,w:'نضيف "s" فقط: cats.'},
- {q:'ما جمع كلمة "child"؟',c:["children","childs","childes","child"],a:0,w:'جمع غير منتظم: child ← children.'},
- {q:'ما جمع كلمة "bus"؟',c:["buses","bus","busies","buss"],a:0,w:'الكلمات المنتهية بـ s تأخذ "es": buses.'},
+ {q:'ما جمع كلمة "book"؟',c:["books","bookes","bookies","book"],a:0,w:'نضيف "s" فقط: books.',listen:"books"},
+ {q:'ما جمع كلمة "box"؟',c:["boxes","boxs","boxies","box"],a:0,w:'الكلمات المنتهية بـ x تأخذ "es": boxes.',listen:"boxes"},
+ {q:'ما جمع كلمة "cat"؟',c:["cats","cates","catses","cat"],a:0,w:'نضيف "s" فقط: cats.',listen:"cats"},
+ {q:'ما جمع كلمة "child"؟',c:["children","childs","childes","child"],a:0,w:'جمع غير منتظم: child ← children.',listen:"children"},
+ {q:'ما جمع كلمة "bus"؟',c:["buses","bus","busies","buss"],a:0,w:'الكلمات المنتهية بـ s تأخذ "es": buses.',listen:"buses"},
  // المضارع البسيط
- {q:'اختاري الصحيح: "She ___ football every day."',c:["plays","play","playing","played"],a:0,w:'مع "she/he/it" نضيف "s" للفعل: plays.'},
- {q:'اختاري الصحيح: "My father ___ in a hospital."',c:["works","work","working","worked"],a:0,w:'مع "he/she/it" نضيف "s" للفعل: works.'},
- {q:'اختاري الصحيح: "I ___ apples."',c:["like","likes","liking","liked"],a:0,w:'مع "I" لا نضيف "s" للفعل: like.'},
- {q:'اختاري الصحيح: "The sun ___ in the east."',c:["rises","rise","rising","rised"],a:0,w:'"the sun" مفرد (it) فنضيف "s": rises.'},
- {q:'اختاري الصحيح: "We ___ to school every morning."',c:["go","goes","going","went"],a:0,w:'مع "we" لا نضيف "s" للفعل: go.'},
+ {q:'اختاري الصحيح: "She ___ football every day."',c:["plays","play","playing","played"],a:0,w:'مع "she/he/it" نضيف "s" للفعل: plays.',listen:"She plays football every day."},
+ {q:'اختاري الصحيح: "My father ___ in a hospital."',c:["works","work","working","worked"],a:0,w:'مع "he/she/it" نضيف "s" للفعل: works.',listen:"My father works in a hospital."},
+ {q:'اختاري الصحيح: "I ___ apples."',c:["like","likes","liking","liked"],a:0,w:'مع "I" لا نضيف "s" للفعل: like.',listen:"I like apples."},
+ {q:'اختاري الصحيح: "The sun ___ in the east."',c:["rises","rise","rising","rised"],a:0,w:'"the sun" مفرد (it) فنضيف "s": rises.',listen:"The sun rises in the east."},
+ {q:'اختاري الصحيح: "We ___ to school every morning."',c:["go","goes","going","went"],a:0,w:'مع "we" لا نضيف "s" للفعل: go.',listen:"We go to school every morning."},
  // حروف الجر
- {q:'أكملي: "The cat is ___ the box." (داخل الصندوق)',c:["in","on","under","behind"],a:0,w:'"in" تعني داخل.'},
- {q:'أكملي: "The book is ___ the table." (فوق الطاولة)',c:["on","in","under","behind"],a:0,w:'"on" تعني فوق/على السطح.'},
- {q:'أكملي: "The ball is ___ the bed." (تحت السرير)',c:["under","on","in","behind"],a:0,w:'"under" تعني تحت.'},
- {q:'أكملي: "The picture is ___ the wall." (على الحائط)',c:["on","in","under","at"],a:0,w:'"on" تُستخدم أيضاً مع الأسطح الرأسية كالحائط.'},
+ {q:'أكملي: "The cat is ___ the box." (داخل الصندوق)',c:["in","on","under","behind"],a:0,w:'"in" تعني داخل.',listen:"The cat is in the box."},
+ {q:'أكملي: "The book is ___ the table." (فوق الطاولة)',c:["on","in","under","behind"],a:0,w:'"on" تعني فوق/على السطح.',listen:"The book is on the table."},
+ {q:'أكملي: "The ball is ___ the bed." (تحت السرير)',c:["under","on","in","behind"],a:0,w:'"under" تعني تحت.',listen:"The ball is under the bed."},
+ {q:'أكملي: "The picture is ___ the wall." (على الحائط)',c:["on","in","under","at"],a:0,w:'"on" تُستخدم أيضاً مع الأسطح الرأسية كالحائط.',listen:"The picture is on the wall."},
  // أدوات التنكير a/an
- {q:'اختاري الصحيح: "I have ___ apple."',c:["an","a","the","—"],a:0,w:'"apple" تبدأ بصوت حرف علّة فنستخدم "an".'},
- {q:'اختاري الصحيح: "She has ___ dog."',c:["a","an","the","—"],a:0,w:'"dog" تبدأ بصوت ساكن فنستخدم "a".'},
- {q:'اختاري الصحيح: "He is ___ engineer."',c:["an","a","the","—"],a:0,w:'"engineer" تبدأ بصوت حرف علّة فنستخدم "an".'},
+ {q:'اختاري الصحيح: "I have ___ apple."',c:["an","a","the","—"],a:0,w:'"apple" تبدأ بصوت حرف علّة فنستخدم "an".',listen:"I have an apple."},
+ {q:'اختاري الصحيح: "She has ___ dog."',c:["a","an","the","—"],a:0,w:'"dog" تبدأ بصوت ساكن فنستخدم "a".',listen:"She has a dog."},
+ {q:'اختاري الصحيح: "He is ___ engineer."',c:["an","a","the","—"],a:0,w:'"engineer" تبدأ بصوت حرف علّة فنستخدم "an".',listen:"He is an engineer."},
  // أرقام
- {q:'ما معنى "seven"؟',c:["٧","٦","٨","٥"],a:0,w:'"seven" تعني سبعة.'},
- {q:'ما معنى "eleven"؟',c:["١١","١٠","١٢","٩"],a:0,w:'"eleven" تعني أحد عشر.'},
- {q:'ما معنى "twenty"؟',c:["٢٠","٢","١٢","٢٢"],a:0,w:'"twenty" تعني عشرين.'},
+ {q:'ما معنى "seven"؟',c:["٧","٦","٨","٥"],a:0,w:'"seven" تعني سبعة.',listen:"seven"},
+ {q:'ما معنى "eleven"؟',c:["١١","١٠","١٢","٩"],a:0,w:'"eleven" تعني أحد عشر.',listen:"eleven"},
+ {q:'ما معنى "twenty"؟',c:["٢٠","٢","١٢","٢٢"],a:0,w:'"twenty" تعني عشرين.',listen:"twenty"},
  // ألوان
- {q:'ما معنى كلمة "red"؟',c:["أحمر","أزرق","أخضر","أصفر"],a:0,w:'"red" تعني أحمر.'},
- {q:'ما معنى كلمة "green"؟',c:["أخضر","أحمر","أسود","أبيض"],a:0,w:'"green" تعني أخضر.'},
- {q:'ما معنى كلمة "yellow"؟',c:["أصفر","بنفسجي","وردي","بني"],a:0,w:'"yellow" تعني أصفر.'},
+ {q:'ما معنى كلمة "red"؟',c:["أحمر","أزرق","أخضر","أصفر"],a:0,w:'"red" تعني أحمر.',listen:"red"},
+ {q:'ما معنى كلمة "green"؟',c:["أخضر","أحمر","أسود","أبيض"],a:0,w:'"green" تعني أخضر.',listen:"green"},
+ {q:'ما معنى كلمة "yellow"؟',c:["أصفر","بنفسجي","وردي","بني"],a:0,w:'"yellow" تعني أصفر.',listen:"yellow"},
  // أيام
- {q:'ما ترجمة "الاثنين"؟',c:["Monday","Sunday","Tuesday","Friday"],a:0,w:'"Monday" تعني الاثنين.'},
- {q:'ما ترجمة "الجمعة"؟',c:["Friday","Saturday","Thursday","Monday"],a:0,w:'"Friday" تعني الجمعة.'},
+ {q:'ما ترجمة "الاثنين"؟',c:["Monday","Sunday","Tuesday","Friday"],a:0,w:'"Monday" تعني الاثنين.',listen:"Monday"},
+ {q:'ما ترجمة "الجمعة"؟',c:["Friday","Saturday","Thursday","Monday"],a:0,w:'"Friday" تعني الجمعة.',listen:"Friday"},
  // قراءة قصيرة
- {q:'اقرئي: "My name is Sara. I am ten years old. I have a small brown dog." — كم عمر سارة؟',c:["عشر سنوات","تسع سنوات","إحدى عشرة سنة","ثماني سنوات"],a:0,w:'النص يقول "ten years old" أي عشر سنوات.'},
- {q:'اقرئي: "Tom likes apples, but he doesn\'t like bananas." — ماذا يحب توم؟',c:["التفاح","الموز","كليهما","لا شيء"],a:0,w:'النص يقول "likes apples" أي يحب التفاح.'},
- {q:'اقرئي: "It is Monday. Lina goes to school by bus every day." — كيف تذهب لينا إلى المدرسة؟',c:["بالحافلة","بالسيارة","سيراً","بالدراجة"],a:0,w:'"by bus" تعني بالحافلة.'},
- {q:'اقرئي: "This is my family. I have one sister and two brothers." — كم أخاً عند المتحدث؟',c:["أخوان","أخ واحد","ثلاثة إخوة","لا يوجد"],a:0,w:'"two brothers" تعني أخوان.'},
- {q:'اقرئي: "The weather is cold today. I am wearing a warm coat." — كيف الطقس اليوم؟',c:["بارد","حار","ممطر","مشمس"],a:0,w:'"cold" تعني بارد.'},
- {q:'اقرئي: "Ali has a red bike. He rides it every weekend." — متى يركب علي دراجته؟',c:["في نهاية الأسبوع","كل يوم","في المدرسة","في الليل"],a:0,w:'"every weekend" تعني في نهاية كل أسبوع.'},
+ {q:'اقرئي: "My name is Sara. I am ten years old. I have a small brown dog." — كم عمر سارة؟',c:["عشر سنوات","تسع سنوات","إحدى عشرة سنة","ثماني سنوات"],a:0,w:'النص يقول "ten years old" أي عشر سنوات.',listen:"My name is Sara. I am ten years old. I have a small brown dog."},
+ {q:'اقرئي: "Tom likes apples, but he doesn\'t like bananas." — ماذا يحب توم؟',c:["التفاح","الموز","كليهما","لا شيء"],a:0,w:'النص يقول "likes apples" أي يحب التفاح.',listen:"Tom likes apples, but he doesn't like bananas."},
+ {q:'اقرئي: "It is Monday. Lina goes to school by bus every day." — كيف تذهب لينا إلى المدرسة؟',c:["بالحافلة","بالسيارة","سيراً","بالدراجة"],a:0,w:'"by bus" تعني بالحافلة.',listen:"It is Monday. Lina goes to school by bus every day."},
+ {q:'اقرئي: "This is my family. I have one sister and two brothers." — كم أخاً عند المتحدث؟',c:["أخوان","أخ واحد","ثلاثة إخوة","لا يوجد"],a:0,w:'"two brothers" تعني أخوان.',listen:"This is my family. I have one sister and two brothers."},
+ {q:'اقرئي: "The weather is cold today. I am wearing a warm coat." — كيف الطقس اليوم؟',c:["بارد","حار","ممطر","مشمس"],a:0,w:'"cold" تعني بارد.',listen:"The weather is cold today. I am wearing a warm coat."},
+ {q:'اقرئي: "Ali has a red bike. He rides it every weekend." — متى يركب علي دراجته؟',c:["في نهاية الأسبوع","كل يوم","في المدرسة","في الليل"],a:0,w:'"every weekend" تعني في نهاية كل أسبوع.',listen:"Ali has a red bike. He rides it every weekend."},
 ];
 function buildEnglishSession(n){
   const chosen=takeUniqueFrom(shuffle(ENGLISH_A1),n);
-  if(chosen.length<n)chosen.push(...shuffle(ENGLISH_A1).slice(0,n-chosen.length)); // البنك نفد تنويعاً؛ حل أخير
+  if(chosen.length<n)chosen.push(...fillAvoidingBatchDupes(chosen,ENGLISH_A1,n-chosen.length)); // البنك نفد تنويعاً؛ حل أخير
   return chosen.map(item=>{
     const order=shuffle([0,1,2,3]); // نعيد ترتيب الخيارات في كل جلسة حتى لا يُحفظ موضع الإجابة
-    return{q:item.q,c:order.map(i=>item.c[i]),a:order.indexOf(item.a),w:item.w};
+    return{q:item.q,c:order.map(i=>item.c[i]),a:order.indexOf(item.a),w:item.w,listen:item.listen};
   });
 }
 let engFiltered=[],engIdx=0,engPicked=null,engLocked=false,engScore=0,engDone=false,engAnswered=[];
@@ -1000,6 +1025,7 @@ function renderEnglish(){
   <div class="card">
     <span class="tag" style="background:#CFFAFE;color:#0891B2">🇬🇧 تعلّم الإنجليزية · مستوى A1</span>
     <div class="q">${q.q}</div>
+    ${q.listen?`<button type="button" onclick="speakEnglish(engFiltered[${engIdx}].listen)" style="background:#ECFEFF;border:1.5px solid #A5F3FC;color:#0891B2;border-radius:10px;padding:7px 16px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:16px;font-family:inherit">🔊 استمعي بصوت أمريكي</button>`:""}
     <div class="choices">${choices}</div>
     ${explain}
   </div>
@@ -1013,6 +1039,68 @@ function renderEnglishResult(){
     <div style="color:#64748B;font-size:15px;margin-bottom:14px">${pct>=85?"ممتاز! أساس A1 قوي 🌟":pct>=60?"جيد جداً، واصلي 💪":"لا بأس، التكرار يبني الأساس 🌱"}</div>
     <div style="background:#CFFAFE;border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:14px;color:#0E7490;font-weight:700">${growthMsg('english_a1',pct)}</div>
     <button class="btn" style="background:#0891B2" onclick="startEnglish()">إعادة (أسئلة جديدة)</button>
+    <button class="link-btn" onclick="home()">→ الرئيسية</button>
+  </div>`;
+}
+
+// ===== إملاء إنجليزي: تستمع للكلمة بصوت أمريكي ثم تكتبها (مستوى A1) =====
+const DICTATION_A1=[
+ {w:"cat",m:"قطة"},{w:"dog",m:"كلب"},{w:"book",m:"كتاب"},{w:"pen",m:"قلم"},{w:"sun",m:"شمس"},
+ {w:"bed",m:"سرير"},{w:"box",m:"صندوق"},{w:"bus",m:"حافلة"},{w:"cup",m:"كوب"},{w:"map",m:"خريطة"},
+ {w:"hat",m:"قبعة"},{w:"six",m:"ستة"},{w:"ten",m:"عشرة"},{w:"big",m:"كبير"},{w:"red",m:"أحمر"},
+ {w:"run",m:"يجري"},{w:"yes",m:"نعم"},{w:"boy",m:"ولد"},{w:"girl",m:"بنت"},{w:"fish",m:"سمكة"},
+];
+let dictSession=[],dictIdx=0,dictInput="",dictLocked=false,dictScore=0,dictDone=false;
+function startDictation(){
+  mode="dictation";dictSession=shuffle(DICTATION_A1).slice(0,10);dictIdx=0;dictInput="";dictLocked=false;dictScore=0;dictDone=false;
+  window.scrollTo(0,0);render();
+  setTimeout(()=>speakEnglish(dictSession[0].w),300);
+}
+function dictReplay(){speakEnglish(dictSession[dictIdx].w)}
+function dictCheck(){
+  if(dictLocked)return;
+  const el=document.getElementById('dictIn');
+  const val=(el?el.value:"").trim().toLowerCase();
+  dictInput=val;dictLocked=true;
+  if(val===dictSession[dictIdx].w.toLowerCase())dictScore++;
+  render();
+}
+function dictNext(){
+  if(dictIdx+1>=dictSession.length){dictDone=true;window.scrollTo(0,0);render();return}
+  dictIdx++;dictInput="";dictLocked=false;render();
+  setTimeout(()=>speakEnglish(dictSession[dictIdx].w),300);
+}
+function renderDictation(){
+  if(dictDone)return renderDictationResult();
+  const item=dictSession[dictIdx];
+  const prog=dictSession.map((_,i)=>`<div class="seg" style="background:${i<=dictIdx?'#0E7490':'#E2E8F0'};opacity:${i<=dictIdx?1:.5}"></div>`).join("");
+  const ok=dictLocked&&dictInput===item.w.toLowerCase();
+  const feedback=dictLocked?`<div class="explain"><div class="explain-title" style="color:${ok?'#059669':'#B45309'}">${ok?"✓ إملاء صحيح":"الإملاء الصحيح بالأخضر"}</div><div class="explain-body">${ok?"":`الصحيح: <b style="direction:ltr;display:inline-block;font-family:Georgia,serif">${item.w}</b> — `}تعني «${item.m}».</div></div>`:"";
+  const btn=dictLocked
+    ?`<button class="btn" style="background:#0E7490" onclick="dictNext()">${dictIdx+1>=dictSession.length?"إنهاء ومشاهدة النتيجة":"الكلمة التالية ←"}</button>`
+    :`<button class="btn" style="background:#0E7490" onclick="dictCheck()">تحقّقي ←</button>`;
+  app.innerHTML=`
+  <button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
+  <div class="bar">${prog}</div>
+  <div class="meta"><span>كلمة ${toAr(dictIdx+1)} من ${toAr(dictSession.length)}</span><span>إملاء · A1</span></div>
+  <div class="card" style="text-align:center">
+    <span class="tag" style="background:#CFFAFE;color:#0E7490">✍️ إملاء · استمعي واكتبي</span>
+    <div style="margin:18px 0"><button type="button" onclick="dictReplay()" style="background:#0E7490;color:#fff;border:none;border-radius:50%;width:64px;height:64px;font-size:26px;cursor:pointer">🔊</button></div>
+    <div style="font-size:13px;color:#64748B;margin-bottom:16px">اضغطي على السمّاعة لسماع الكلمة، ثم اكتبيها بالإنجليزي</div>
+    <input id="dictIn" ${dictLocked?"disabled":""} style="width:100%;padding:14px;border-radius:12px;border:2px solid #E2E8F0;font-size:20px;text-align:center;direction:ltr;font-family:Georgia,serif" placeholder="type here" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" onkeydown="if(event.key==='Enter')dictCheck()">
+    ${feedback}
+  </div>
+  ${btn}`;
+  if(!dictLocked){const el=document.getElementById('dictIn');if(el)el.focus()}
+}
+function renderDictationResult(){
+  const pct=Math.round(dictScore/dictSession.length*100);
+  app.innerHTML=`
+  <div class="card">
+    <div class="score-row"><span class="score-big" style="color:${pct>=70?'#059669':pct>=50?'#D97706':'#DC2626'}">${toAr(dictScore)}</span><span class="score-total">/ ${toAr(dictSession.length)}</span><span class="score-pct">${toAr(pct)}%</span></div>
+    <div style="color:#64748B;font-size:15px;margin-bottom:14px">${pct>=85?"إملاء ممتاز! 🌟":pct>=60?"جيد جداً، واصلي 💪":"لا بأس، الإملاء يحتاج تكراراً 🌱"}</div>
+    <div style="background:#CFFAFE;border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:14px;color:#0E7490;font-weight:700">${growthMsg('dictation_a1',pct)}</div>
+    <button class="btn" style="background:#0E7490" onclick="startDictation()">إعادة (كلمات جديدة)</button>
     <button class="link-btn" onclick="home()">→ الرئيسية</button>
   </div>`;
 }
@@ -1091,7 +1179,7 @@ function bumpStreak(){const st=getStreak();const t=todayStr();if(st.last===t)ret
 function growthMsg(modeKey,pct){try{const key="mawhiba_best_"+modeKey;const prev=parseInt(localStorage.getItem(key)||"-1");let msg="";if(prev<0){msg="أول محاولة في هذا القسم — انطلاقة موفّقة! 🌱"}else if(pct>prev){msg=`تحسّنتِ عن أفضل نتيجة سابقة (${toAr(prev)}%)! تقدّم رائع 📈`}else if(pct===prev){msg="ثبات على أفضل مستوى سابق 💪"}else{msg="واصلي، كل محاولة تبني مهارتك 🌟"}if(pct>prev)localStorage.setItem(key,String(pct));return msg}catch(e){return""}}
 
 // ===== العرض =====
-function render(){if(mode==="home")return renderHome();if(mode==="english")return renderEnglish();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="arithdiag")return renderArithDiag();if(mode==="arithdiagResult")return renderArithDiagResult();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
+function render(){if(mode==="home")return renderHome();if(mode==="english")return renderEnglish();if(mode==="dictation")return renderDictation();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="arithdiag")return renderArithDiag();if(mode==="arithdiagResult")return renderArithDiagResult();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
 
 function renderHome(){
   app.innerHTML=`
@@ -1112,7 +1200,8 @@ function renderHome(){
     <button class="mode prog" onclick="loadProgress()"><span class="m-name">📈 متابعة التقدّم</span><div class="m-sub">نتائجك السابقة وتحليل المستوى لكل مجال</div></button>
     <button class="mode" style="border-color:#99F6E4" onclick="startArithDiag()"><span class="m-name">🔍 تشخيص سريع: الجمع والضرب والقسمة</span><div class="m-sub">٧ أسئلة تحدّد أين بالضبط الصعوبة (حفظ، حمل، أو خلط مفاهيم)</div></button>
     <button class="mode full" style="background:#0D9488;border-color:#0D9488" onclick="startBasics('multdiv')"><span class="m-name">🧱 تدريب الأساسيات: عائلات الحقائق</span><div class="m-sub">ضرب/قسمة مرتبطان + جمع بالحمل (عشرات/مئات) — مبني على نتيجة التشخيص</div></button>
-    <button class="mode full" style="background:#0891B2;border-color:#0891B2" onclick="startEnglish()"><span class="m-name">🇬🇧 تعلّم الإنجليزية · مستوى A1</span><div class="m-sub">مفردات وقواعد أساسية وقراءة قصيرة — الخطوة الأولى نحو C2</div></button>
+    <button class="mode full" style="background:#0891B2;border-color:#0891B2" onclick="startEnglish()"><span class="m-name">🇬🇧 تعلّم الإنجليزية · مستوى A1</span><div class="m-sub">مفردات وقواعد وقراءة، مع نطق بصوت أمريكي 🔊 — الخطوة الأولى نحو C2</div></button>
+    <button class="mode full" style="background:#0E7490;border-color:#0E7490" onclick="startDictation()"><span class="m-name">✍️ إملاء بالإنجليزية</span><div class="m-sub">استمعي للكلمة بصوت أمريكي، ثم اكتبيها — مستوى A1</div></button>
   </div>
   <div class="tips">
     <h3>💡 استراتيجيات موهبة</h3>
