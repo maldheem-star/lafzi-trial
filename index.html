@@ -129,7 +129,7 @@ function gSides(){const sh=pick([["المثلث",3],["المربع",4],["الش�
 function gWorkers(){const w1=rand(3,6),f=rand(2,4),d2=rand(3,6);const total=w1*d2*f;const d1=total/w1;const w2=total/d2;return qz("quant",`يستطيع ${toAr(w1)} عمّال دهن بيت في ${toAr(d1)} يوماً. كم عاملاً يدهنون نفس البيت في ${toAr(d2)} أيام؟`,w2,[w2+1,w2-1,w1+d2],`العمل ثابت: العمّال × الأيام = ${toAr(total)}. العمّال = ${toAr(total)} ÷ ${toAr(d2)} = ${toAr(w2)}.`)}
 function gMedian(){const mid=rand(4,20),sum=5*mid;return qz("quant",`مجموع خمسة أعداد صحيحة متتالية يساوي ${toAr(sum)}. أوجد وسيطها.`,mid,[mid+1,mid-1,Math.round(sum/4)],`الوسيط = المجموع ÷ العدد = ${toAr(sum)} ÷ ٥ = ${toAr(mid)}.`)}
 function gCube(){const s=rand(2,5),v=s*s*s,nv=(2*s)**3;return qz("quant",`مكعّب حجمه ${toAr(v)} سم³. إذا ضاعفنا طول ضلعه، فما حجمه الجديد؟`,nv,[v*2,v*4,v*6],`مضاعفة الضلع تضاعف الحجم ٨ مرّات: ${toAr(v)} × ٨ = ${toAr(nv)} سم³.`)}
-function gPercent(){const rentP=pick([30,40,50]),expP=pick([20,30]),leftP=100-rentP-expP;if(leftP<=0)return gPercent();const salary=pick([6000,8000,9000,10000,12000]);const left=salary*leftP/100;if(!Number.isInteger(left))return gPercent();return qz("quant",`دفع سالم ${toAr(rentP)}% من راتبه إيجاراً و${toAr(expP)}% مصروفات، وتبقّى له ${toAr(left)} ريال. كم راتبه؟`,salary,[salary+1000,salary-1000,left*2],`المتبقّي = ${toAr(leftP)}% من الراتب. الراتب = ${toAr(left)} ÷ ${toAr(leftP)}% = ${toAr(salary)} ريال.`)}
+function gPercent(){const rentP=pick([30,40,50]),expP=pick([20,30]),leftP=100-rentP-expP;if(leftP<=0)return gPercent();const salary=pick([6000,8000,9000,10000,12000]);const left=salary*leftP/100;if(!Number.isInteger(left))return gPercent();const onePercent=left/leftP;return qz("quant",`دفع سالم ${toAr(rentP)}% من راتبه إيجاراً و${toAr(expP)}% مصروفات، وتبقّى له ${toAr(left)} ريال. كم راتبه؟`,salary,[salary+1000,salary-1000,left*2],`المتبقّي = ${toAr(leftP)}% من الراتب = ${toAr(left)} ريال. قيمة ١% واحد = ${toAr(left)} ÷ ${toAr(leftP)} = ${toAr(onePercent)} ريال. الراتب الكامل = ${toAr(onePercent)} × ١٠٠ = ${toAr(salary)} ريال.`)}
 function gPaths(){const p=rand(2,4),q=rand(2,4);return qz("quant",`عدد الطرق من (أ) إلى (ب) ${toAr(p)}، ومن (ب) إلى (ج) ${toAr(q)}. كم عدد الطرق من (أ) إلى (ج)؟`,p*q,[p+q,p*q+1,p*q-1],`نضرب: ${toAr(p)} × ${toAr(q)} = ${toAr(p*q)} طريقاً.`)}
 
 // ===== مولّدات المرونة والأنماط =====
@@ -587,10 +587,11 @@ function fadeMakePercent(){
   const salary=pick([6000,8000,9000,10000,12000]);
   const left=salary*leftP/100;
   if(!Number.isInteger(left))return fadeMakePercent();
+  const onePercent=left/leftP;
   const ans=salary;
   return{kind:"percent",ans,prompt:"كم راتبه؟",
-    steps:[`المتبقّي = ١٠٠٪ − ${toAr(rentP)}٪ − ${toAr(expP)}٪ = ${toAr(leftP)}٪ من الراتب`,`الراتب = المتبقّي ÷ نسبته = ${toAr(left)} ÷ ${toAr(leftP)}٪ = ${toAr(salary)} ريال`],
-    ruleTxt:`إذا عرفنا قيمة نسبة من الكل، فالكل = القيمة ÷ النسبة`,
+    steps:[`نسبة المتبقّي = ١٠٠٪ − ${toAr(rentP)}٪ − ${toAr(expP)}٪ = ${toAr(leftP)}٪ من الراتب`,`إذن ${toAr(leftP)}٪ من الراتب = ${toAr(left)} ريال، فقيمة ١٪ واحد = ${toAr(left)} ÷ ${toAr(leftP)} = ${toAr(onePercent)} ريال`,`الراتب الكامل = ١٠٠٪ = ${toAr(onePercent)} × ١٠٠ = ${toAr(salary)} ريال`],
+    ruleTxt:`أوجدي قيمة ١٪ واحد من الكل أولاً (بقسمة الجزء المعروف على رقم نسبته)، ثم اضربيها في ١٠٠ لتحصلي على الكل كاملاً`,
     distractors:[salary+1000,salary-1000,left*2],
     q:`دفع سالم ${toAr(rentP)}٪ من راتبه إيجاراً و${toAr(expP)}٪ مصروفات، وتبقّى له ${toAr(left)} ريال. كم راتبه؟`};
 }
