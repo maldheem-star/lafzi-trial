@@ -731,7 +731,8 @@ const BASICS_REQ=2;
 const BASICS_SUBS={
   multdiv:{label:"عائلات الضرب والقسمة",short:"عائلات الضرب والقسمة"},
   addcarry:{label:"الجمع بالحمل (عشرات/مئات)",short:"الجمع بالحمل"},
-  subborrow:{label:"الطرح بالاستلاف (عشرات/مئات)",short:"الطرح بالاستلاف"}
+  subborrow:{label:"الطرح بالاستلاف (عشرات/مئات)",short:"الطرح بالاستلاف"},
+  percent:{label:"أساسيات النسبة المئوية",short:"النسبة المئوية"}
 };
 let basicsSub="multdiv",basicsStage=1,basicsStreak=0,basicsCur=null,basicsLocked=false,basicsPicked=-1,basicsMasteryStreak=0,basicsStage4Support=false,basicsRecoveryStreak=0;
 
@@ -744,6 +745,14 @@ function groupsVisual(n,m){
     groups+=`<div style="background:#F0FDFA;border:1.5px solid #99F6E4;border-radius:9px;padding:3px;display:inline-block;margin:3px"><svg viewBox="0 0 39 ${h}" width="39" height="${h}">${dots}</svg></div>`;
   }
   return`<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:2px;max-width:320px;margin:0 auto">${groups}</div>`;
+}
+function percentGridVisual(p){
+  let cells="";
+  for(let i=0;i<100;i++){
+    const shaded=i<p,x=(i%10)*11,y=Math.floor(i/10)*11;
+    cells+=`<rect x="${x}" y="${y}" width="9" height="9" rx="1.5" fill="${shaded?'#0D9488':'#E2E8F0'}"/>`;
+  }
+  return `<svg viewBox="0 0 108 108" width="140" height="140">${cells}</svg>`;
 }
 function placeValueVisual(n){
   const hundreds=Math.floor(n/100),tens=Math.floor((n%100)/10),ones=n%10;
@@ -784,6 +793,7 @@ function subtractionSteps(a,b){
 function basicsMakeFamily(){const a=rand(2,9),b=rand(2,9);return{a,b,c:a*b}}
 function basicsMakeAddCarry(){const o1=rand(5,9),o2=rand(5,9),t1=rand(1,8),t2=rand(1,8);const a=t1*10+o1,b=t2*10+o2;return{a,b,c:a+b}}
 function basicsMakeSubBorrow(){const o2=rand(2,9),o1=rand(0,o2-1),t2=rand(1,7),t1=rand(t2+1,9);const a=t1*10+o1,b=t2*10+o2;return{a,b,c:a-b}}
+function basicsMakePercent(){const a=pick([100,200,300,400,500,600,800,1000]),b=pick([10,20,25,30,40,50,60,70,75,80,90]);const onePercent=a/100,c=onePercent*b;return{a,b,c,onePercent}}
 function basicsFamilyQ(f){
   const kind=pick(["mul1","mul2","div1","div2"]);
   if(kind==="mul1")return{text:`${toAr(f.a)} × ${toAr(f.b)} = ؟`,ans:f.c};
@@ -797,12 +807,13 @@ function basicsPrep(){
   let ans;
   if(basicsSub==="multdiv"){const fq=basicsFamilyQ(f);basicsCur.qText=fq.text;ans=fq.ans}
   else if(basicsSub==="addcarry"){ans=f.c;basicsCur.qText=`${toAr(f.a)} + ${toAr(f.b)} = ؟`}
-  else{ans=f.c;basicsCur.qText=`${toAr(f.a)} - ${toAr(f.b)} = ؟`}
-  const m=mcNum(ans,[ans+1,ans-1,ans+10]);
+  else if(basicsSub==="subborrow"){ans=f.c;basicsCur.qText=`${toAr(f.a)} - ${toAr(f.b)} = ؟`}
+  else{ans=f.c;basicsCur.qText=`${toAr(f.b)}% من ${toAr(f.a)} = ؟`}
+  const m=basicsSub==="percent"?mcNum(ans,[ans+f.onePercent,ans-f.onePercent,f.a*f.b]):mcNum(ans,[ans+1,ans-1,ans+10]);
   basicsCur.opts=m.choices;basicsCur.ai=m.answer;
 }
 function basicsNew(){
-  const gen=basicsSub==="multdiv"?basicsMakeFamily:basicsSub==="addcarry"?basicsMakeAddCarry:basicsMakeSubBorrow;
+  const gen=basicsSub==="multdiv"?basicsMakeFamily:basicsSub==="addcarry"?basicsMakeAddCarry:basicsSub==="subborrow"?basicsMakeSubBorrow:basicsMakePercent;
   basicsCur={fam:gen()};basicsLocked=false;basicsPicked=-1;basicsPrep();render();
 }
 function logAnswer(domain,qtype,isCorrect){try{fetch(`${SB_URL}/rest/v1/${TBL_LOG}`,{method:"POST",headers:{"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json","Prefer":"return-minimal"},body:JSON.stringify({student_alias:alias(),domain,qtype,is_correct:isCorrect})})}catch(e){}}
@@ -846,6 +857,7 @@ function renderBasics(){
   let visualBox="";
   if(showVisual){
     if(basicsSub==="multdiv")visualBox=`<div style="margin-bottom:14px">${groupsVisual(f.a,f.b)}</div>`;
+    else if(basicsSub==="percent")visualBox=`<div style="display:flex;justify-content:center;margin-bottom:6px">${percentGridVisual(f.b)}</div><div style="text-align:center;font-size:12px;color:#64748B;margin-bottom:14px">المربعات الملوّنة = ٪${toAr(f.b)} من الشبكة (١٠٠ مربع)</div>`;
     else{
       const sign=basicsSub==="addcarry"?"+":"−";
       visualBox=`<div style="display:flex;gap:16px;align-items:center;justify-content:center;margin-bottom:14px"><div>${placeValueVisual(f.a)}<div style="text-align:center;font-size:12px;color:#64748B;margin-top:4px">${toAr(f.a)}</div></div><div style="font-size:22px;font-weight:800;color:#0D9488">${sign}</div><div>${placeValueVisual(f.b)}<div style="text-align:center;font-size:12px;color:#64748B;margin-top:4px">${toAr(f.b)}</div></div></div>`;
@@ -856,7 +868,8 @@ function renderBasics(){
     let explain;
     if(basicsSub==="multdiv")explain=`<div>١) ${toAr(f.a)} مجموعات، كل وحدة فيها ${toAr(f.b)} = المجموع ${toAr(f.c)}.</div><div>٢) إذن: ${toAr(f.a)}×${toAr(f.b)}=${toAr(f.c)} ، و${toAr(f.b)}×${toAr(f.a)}=${toAr(f.c)}.</div><div>٣) وبالعكس: ${toAr(f.c)}÷${toAr(f.a)}=${toAr(f.b)} ، و${toAr(f.c)}÷${toAr(f.b)}=${toAr(f.a)}.</div>`;
     else if(basicsSub==="addcarry"){const steps=additionSteps(f.a,f.b);explain=steps.map((s,i)=>`<div>${toAr(i+1)}) ${s}.</div>`).join("")+`<div>النتيجة النهائية: ${toAr(f.a)}+${toAr(f.b)}=${toAr(f.c)}.</div>`}
-    else{const steps=subtractionSteps(f.a,f.b);explain=steps.map((s,i)=>`<div>${toAr(i+1)}) ${s}.</div>`).join("")+`<div>النتيجة النهائية: ${toAr(f.a)}-${toAr(f.b)}=${toAr(f.c)}.</div>`}
+    else if(basicsSub==="subborrow"){const steps=subtractionSteps(f.a,f.b);explain=steps.map((s,i)=>`<div>${toAr(i+1)}) ${s}.</div>`).join("")+`<div>النتيجة النهائية: ${toAr(f.a)}-${toAr(f.b)}=${toAr(f.c)}.</div>`}
+    else explain=`<div>١) ٪${toAr(f.b)} تعني ${toAr(f.b)} من كل ١٠٠ (كما في الشبكة الملوّنة أعلاه).</div><div>٢) قيمة ١٪ واحد من ${toAr(f.a)} = ${toAr(f.a)} ÷ ١٠٠ = ${toAr(f.onePercent)}.</div><div>٣) إذن ٪${toAr(f.b)} = ${toAr(f.onePercent)} × ${toAr(f.b)} = ${toAr(f.c)}.</div>`;
     body=`<div style="background:#EFF6FF;border-radius:14px;padding:16px;font-size:14px;line-height:1.8;color:#1E40AF;margin-bottom:16px">📘 هذا <b>مثال محلول</b>. اقرئي الحل خطوة بخطوة، ثم اضغطي «فهمت».</div>
     ${visualBox}
     <div style="background:#F0FDF4;border-inline-start:4px solid #10B981;border-radius:12px;padding:16px;margin-bottom:16px;font-size:15px;line-height:2">${explain}</div>
@@ -869,7 +882,9 @@ function renderBasics(){
       ?`القاعدة: الضرب والقسمة مرتبطان — ${toAr(f.a)}×${toAr(f.b)}=${toAr(f.c)}، فإذن ${toAr(f.c)}÷${toAr(f.a)}=${toAr(f.b)} و${toAr(f.c)}÷${toAr(f.b)}=${toAr(f.a)}.`
       :basicsSub==="addcarry"
       ?`القاعدة: اجمعي كل خانة من اليمين (الآحاد ثم العشرات...)، ولو زاد المجموع عن ٩ اكتبي الآحاد واحملي الباقي للخانة التالية.`
-      :`القاعدة: اطرحي كل خانة من اليمين. لو رقم الأعلى في خانة أصغر من رقم الأسفل، استلفي ١ من الخانة التالية (تنقص ١) وأضيفي ١٠ للخانة الحالية قبل الطرح.`;
+      :basicsSub==="subborrow"
+      ?`القاعدة: اطرحي كل خانة من اليمين. لو رقم الأعلى في خانة أصغر من رقم الأسفل، استلفي ١ من الخانة التالية (تنقص ١) وأضيفي ١٠ للخانة الحالية قبل الطرح.`
+      :`القاعدة: أوجدي قيمة ١٪ واحد أولاً بقسمة الرقم على ١٠٠ (${toAr(f.a)}÷١٠٠=${toAr(f.onePercent)})، ثم اضربيها في رقم النسبة (${toAr(f.onePercent)}×${toAr(f.b)}=${toAr(f.c)}).`;
     if(basicsStage===2)hint=`<div style="background:#F0FDF4;border-inline-start:4px solid #10B981;border-radius:12px;padding:14px;margin-bottom:14px;font-size:15px">${ruleText}</div>`;
     else if(basicsStage===3)hint=`<div style="background:#FEF3C7;border-radius:12px;padding:14px;margin-bottom:14px;font-size:15px;color:#B45309"><b>تذكّري القاعدة:</b> ${ruleText}</div>`;
     else if(basicsStage===4&&basicsStage4Support)hint=`<div style="background:#FEF9C3;border-inline-start:4px solid #EAB308;border-radius:12px;padding:14px;margin-bottom:14px;font-size:15px;color:#854D0E">🌱 ما عليك، مراجعة سريعة: ${ruleText} جاوبي صح مرتين ليختفي التذكير.</div>`;
@@ -1381,7 +1396,7 @@ function renderHome(){
     <button class="mode full" onclick="start('full')"><span class="m-name">🎯 محاكاة شاملة (٤٨ سؤالاً)</span><div class="m-sub">من كل المجالات — الأقرب للاختبار الحقيقي</div></button>
     <button class="mode" style="border-color:#FDE68A" onclick="goFadeMenu()"><span class="m-name">🎓 وضع التقوية (تلاشٍ تدريجي)</span><div class="m-sub">اختاري مهارة وتدرّبي عليها خطوة بخطوة — مبني على دراسات التعلّم</div></button>
     <button class="mode prog" onclick="loadProgress()"><span class="m-name">📈 متابعة التقدّم</span><div class="m-sub">نتائجك السابقة وتحليل المستوى لكل مجال</div></button>
-    <button class="mode full" style="background:#0D9488;border-color:#0D9488" onclick="startBasics('multdiv')"><span class="m-name">🧱 تدريب الأساسيات: عائلات الحقائق</span><div class="m-sub">ضرب/قسمة مرتبطان + جمع بالحمل + طرح بالاستلاف (عشرات/مئات)</div></button>
+    <button class="mode full" style="background:#0D9488;border-color:#0D9488" onclick="startBasics('multdiv')"><span class="m-name">🧱 تدريب الأساسيات: عائلات الحقائق</span><div class="m-sub">ضرب/قسمة مرتبطان + جمع بالحمل + طرح بالاستلاف + أساسيات النسبة المئوية</div></button>
     <button class="mode full" style="background:#0891B2;border-color:#0891B2" onclick="startEnglish()"><span class="m-name">🇬🇧 تعلّم الإنجليزية · مستوى A1</span><div class="m-sub">مفردات وقواعد وقراءة، مع نطق بصوت أمريكي 🔊 — الخطوة الأولى نحو C2</div></button>
     <button class="mode full" style="background:#0E7490;border-color:#0E7490" onclick="startDictation()"><span class="m-name">✍️ إملاء بالإنجليزية</span><div class="m-sub">استمعي للكلمة، ثم اكتبيها — مستوى A1</div></button>
     <button class="mode full" style="background:#7C3AED;border-color:#7C3AED" onclick="startPronunciation()"><span class="m-name">🎤 تمرين النطق</span><div class="m-sub">تحقّق أساسي هل نطقتِ الكلمة صح (يحتاج ميكروفون) — وليس تصحيح لهجة دقيق</div></button>
