@@ -602,13 +602,29 @@ function fadeMakeCube(){
     distractors:[v*2,v*4,v*6],
     q:`مكعّب حجمه ${toAr(v)} سم³. إذا ضاعفنا طول ضلعه، فما حجمه الجديد؟`};
 }
+function pyramidNodeSVG(cx,cy,r,val,known){
+  const fill=known?"#F0FDF4":"#FEF3C7",stroke=known?"#10B981":"#D97706",col=known?"#065F46":"#92400E";
+  return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}" stroke="${stroke}" stroke-width="2.5"/><text x="${cx}" y="${cy+7}" font-size="19" font-weight="800" fill="${col}" text-anchor="middle">${val}</text>`;
+}
+function pyramidSVG(top,left,right,leftKnown,rightKnown){
+  return `<svg viewBox="0 0 200 150" width="200" height="150">
+    <line x1="100" y1="35" x2="45" y2="118" stroke="#CBD5E1" stroke-width="2.5"/>
+    <line x1="100" y1="35" x2="155" y2="118" stroke="#CBD5E1" stroke-width="2.5"/>
+    <line x1="45" y1="118" x2="155" y2="118" stroke="#CBD5E1" stroke-width="2.5"/>
+    ${pyramidNodeSVG(100,32,27,top,true)}
+    ${pyramidNodeSVG(45,120,25,left,leftKnown)}
+    ${pyramidNodeSVG(155,120,25,right,rightKnown)}
+  </svg>`;
+}
 function fadeMakePyramid(){
   const known=rand(2,12),other=rand(2,12),top=(known+other)*2,ans=other;
+  const knownOnLeft=Math.random()<0.5;
   return{kind:"pyramid",ans,prompt:"ما العدد الآخر؟",
     steps:[`نصف القمّة = ${toAr(top)} ÷ ٢ = ${toAr(top/2)} (مجموع العددين السفليين)`,`العدد الناقص = ${toAr(top/2)} − ${toAr(known)} = ${toAr(other)}`],
     ruleTxt:`القمّة = مجموع العددين السفليين × ٢، إذن مجموعهما = القمّة ÷ ٢`,
     distractors:[other+2,other-2,Math.round(top/2)],
-    q:`هرم عددي: مجموع العددين السفليين × ٢ = العلوي. إذا كان العلوي ${toAr(top)} وأحد السفليين ${toAr(known)}، فما الآخر؟`};
+    pyr:{top:toAr(top),left:knownOnLeft?toAr(known):"؟",right:knownOnLeft?"؟":toAr(known),leftKnown:knownOnLeft,rightKnown:!knownOnLeft},
+    q:`هرم عددي: مجموع العددين السفليين × ٢ = العلوي. ما العدد الناقص؟`};
 }
 function fadeMakeQuestion(){
   if(fadeTopic==="median")return fadeMakeMedian();
@@ -672,6 +688,11 @@ function renderFade(){
   if(c.kind==="seq"){
     const seqShown=c.seq.map(toAr).join("  ،  ")+"  ،  <span style='color:#D97706;background:#FEF3C7;border-radius:8px;padding:0 10px'>؟</span>";
     seqBox=`<div style="font-size:24px;font-weight:800;letter-spacing:2px;text-align:center;background:#F8FAFC;border-radius:14px;padding:20px;margin-bottom:16px;direction:ltr">${seqShown}</div>`;
+  } else if(c.kind==="pyramid"){
+    seqBox=`<div style="text-align:center;background:#F8FAFC;border-radius:14px;padding:16px 10px 10px;margin-bottom:16px">
+      ${pyramidSVG(c.pyr.top,c.pyr.left,c.pyr.right,c.pyr.leftKnown,c.pyr.rightKnown)}
+      <div style="font-size:14px;font-weight:700;color:#334155;margin-top:6px">${c.q}</div>
+    </div>`;
   } else {
     seqBox=`<div style="font-size:17px;font-weight:700;text-align:center;background:#F8FAFC;border-radius:14px;padding:20px;margin-bottom:16px;line-height:1.8">${c.q}</div>`;
   }
