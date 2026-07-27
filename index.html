@@ -653,6 +653,7 @@ function fadeChoose(i){
     else if(fadeStage4Support){fadeRecoveryStreak++;if(fadeRecoveryStreak>=RECOVERY_REQ){fadeStage4Support=false;fadeRecoveryStreak=0}}
     else{fadeMasteryStreak++}
   }
+  logAnswer("fade_"+fadeTopic,"stage"+fadeStage,ok);
   render();
 }
 function fadeStage1Next(){fadeStreak++;if(fadeStreak>=FADE_REQ){fadeStage=2;fadeStreak=0}fadeNew()}
