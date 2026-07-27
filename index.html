@@ -560,6 +560,8 @@ const FADE_TOPICS=[
   {key:"angles",icon:"📐",label:"الزوايا المتساوية",sub:"تقسيم زاوية كبيرة إلى أجزاء متساوية"},
   {key:"mirror",icon:"🪞",label:"الانعكاس المرآتي",sub:"إيجاد انعكاس الشكل حول خط عمودي"},
   {key:"rotate",icon:"🔄",label:"تدوير الأشكال",sub:"إكمال تسلسل شكل يدور بمقدار ثابت"},
+  {key:"logic",icon:"🧠",label:"الاستدلال المنطقي",sub:"استنتاج النتيجة الصحيحة من مقدّمتين"},
+  {key:"reading",icon:"📖",label:"الفهم المقروء",sub:"إيجاد الجواب داخل النص لا بالتخمين"},
 ];
 function fadeMakeSeq(){
   const kind=pick(["seq","seq","ratio"]); // متتاليات أكثر تكراراً
@@ -684,6 +686,84 @@ function fadeMakeRotate(){
     svg:mainSVG,
     q:`لاحظي دوران الشكل في التسلسل (باتجاه عقارب الساعة). ما الشكل التالي؟`};
 }
+// ===== الاستدلال المنطقي: مكتوب يدوياً (لا يُولَّد بالذكاء الاصطناعي) ليكون الشرح والقاعدة مضمونين =====
+// المموّهات مقصودة: كل واحد يمثّل خطأ تفكير شائعاً (عكس القاعدة، النفي الخاطئ، مناقضة المقدمة)
+const LOGIC_SYLL=[
+ {p1:"كل الطيور تبيض.",p2:"الببغاء طائر.",ans:"الببغاء يبيض.",
+  d:["كل ما يبيض طائر.","الببغاء لا يبيض.","بعض الطيور لا تبيض."],
+  ev:"ما دام الببغاء طائراً، فكل ما يصحّ على «كل الطيور» يصحّ عليه."},
+ {p1:"كل المعادن توصل الكهرباء.",p2:"النحاس معدن.",ans:"النحاس يوصل الكهرباء.",
+  d:["كل ما يوصل الكهرباء معدن.","النحاس لا يوصل الكهرباء.","بعض المعادن لا توصل الكهرباء."],
+  ev:"النحاس فرد من مجموعة المعادن، فتنطبق عليه صفة المجموعة كلها."},
+ {p1:"كل الثدييات ترضع صغارها.",p2:"الحوت من الثدييات.",ans:"الحوت يرضع صغاره.",
+  d:["كل ما يرضع صغاره من الثدييات.","الحوت لا يرضع صغاره.","بعض الثدييات لا ترضع صغارها."],
+  ev:"الحوت فرد من الثدييات، فتنطبق عليه صفتها."},
+ {p1:"كل المثلثات مجموع زواياها ١٨٠°.",p2:"هذا الشكل مثلث.",ans:"مجموع زوايا هذا الشكل ١٨٠°.",
+  d:["كل شكل مجموع زواياه ١٨٠° مثلث.","مجموع زوايا هذا الشكل ليس ١٨٠°.","بعض المثلثات مجموع زواياها ليس ١٨٠°."],
+  ev:"القاعدة تنطبق على كل مثلث بلا استثناء، وهذا الشكل مثلث."},
+ {p1:"كل النباتات تحتاج الماء.",p2:"النخلة نبات.",ans:"النخلة تحتاج الماء.",
+  d:["كل ما يحتاج الماء نبات.","النخلة لا تحتاج الماء.","بعض النباتات لا تحتاج الماء."],
+  ev:"النخلة فرد من النباتات، فتنطبق عليها صفة المجموعة."},
+];
+function fadeMakeLogicSyll(){
+  const s=pick(LOGIC_SYLL);
+  const opts=shuffle([s.ans,...s.d]);
+  return{kind:"logic",choiceKind:"text",opts,ai:opts.indexOf(s.ans),prompt:"ما النتيجة الصحيحة؟",
+    steps:[`المقدمة الأولى تعطي قاعدة عامة: «${s.p1}»`,`المقدمة الثانية تضع فرداً داخل تلك المجموعة: «${s.p2}»`,`${s.ev} إذن: ${s.ans}`],
+    ruleTxt:`إذا كانت قاعدة تنطبق على «كل» أفراد مجموعة، وكان شيء ما ينتمي لتلك المجموعة، فالقاعدة تنطبق عليه. وانتبهي: العكس ليس صحيحاً بالضرورة`,
+    passage:`${s.p1}<br>${s.p2}`,
+    q:`بناءً على العبارتين أعلاه، ما النتيجة الصحيحة؟`};
+}
+const LOGIC_NAMES=["سارة","نورة","ليلى","مها","هند","ريم"];
+const LOGIC_RELS=[{more:"أطول",most:"الأطول"},{more:"أكبر",most:"الأكبر"},{more:"أسرع",most:"الأسرع"},{more:"أثقل",most:"الأثقل"}];
+function fadeMakeLogicOrder(){
+  const [a,b,c]=shuffle(LOGIC_NAMES).slice(0,3);
+  const r=pick(LOGIC_RELS);
+  const opts=shuffle([a,b,c,"لا يمكن معرفة ذلك"]);
+  return{kind:"logic",choiceKind:"text",opts,ai:opts.indexOf(a),prompt:`من ${r.most}؟`,
+    steps:[`من العبارة الأولى: ${a} فوق ${b} في الترتيب`,`من العبارة الثانية: ${b} فوق ${c}`,`نرتّبهم معاً: ${a} ثم ${b} ثم ${c} — إذن ${r.most} هي ${a}`],
+    ruleTxt:`رتّبي الأسماء في سلسلة واحدة حسب المقارنات المعطاة، ثم اقرئي الطرف المطلوب من السلسلة`,
+    passage:`${a} ${r.more} من ${b}.<br>${b} ${r.more} من ${c}.`,
+    q:`بناءً على العبارتين أعلاه، من ${r.most}؟`};
+}
+function fadeMakeLogic(){return pick([fadeMakeLogicSyll,fadeMakeLogicOrder,fadeMakeLogicOrder])()}
+
+// ===== الفهم المقروء: نصوص قصيرة مع تحديد «جملة الدليل» ليتعلّم الطالب كيف يبحث لا كيف يخمّن =====
+const READING_ITEMS=[
+ {t:"تعيش النحلة في خلية منظّمة. تجمع العاملات الرحيق من الأزهار وتحوّله عسلاً، بينما تبقى الملكة داخل الخلية لتضع البيض.",
+  q:"ما مهمة النحلات العاملات؟",ans:"جمع الرحيق وتحويله عسلاً",
+  d:["وضع البيض","حراسة الملكة","بناء الأزهار"],
+  key:"تجمع العاملات الرحيق من الأزهار وتحوّله عسلاً"},
+ {t:"يهاجر طائر السنونو مسافات طويلة كل خريف بحثاً عن الدفء. وعندما يعود الربيع، يرجع إلى المكان نفسه الذي وُلد فيه.",
+  q:"لماذا يهاجر طائر السنونو في الخريف؟",ans:"بحثاً عن الدفء",
+  d:["بحثاً عن الماء","هرباً من الصيادين","للبحث عن مكان جديد"],
+  key:"يهاجر طائر السنونو مسافات طويلة كل خريف بحثاً عن الدفء"},
+ {t:"اخترع العالم الحسن بن الهيثم طريقة لدراسة الضوء، وأثبت أن العين ترى الأشياء لأن الضوء ينعكس عنها ويدخل إليها، لا لأن العين تُرسل شعاعاً.",
+  q:"بماذا فسّر ابن الهيثم عملية الرؤية؟",ans:"بانعكاس الضوء عن الأشياء ودخوله للعين",
+  d:["بإرسال العين شعاعاً للأشياء","بحركة الأشياء نفسها","بقرب الشيء من العين"],
+  key:"العين ترى الأشياء لأن الضوء ينعكس عنها ويدخل إليها"},
+ {t:"تُخزّن الجِمال الدهن في سنامها لا الماء كما يظنّ كثيرون. هذا الدهن يمدّها بالطاقة عند نقص الغذاء في الصحراء.",
+  q:"ما الذي يُخزَّن فعلاً في سنام الجمل؟",ans:"الدهن",
+  d:["الماء","الغذاء المهضوم","الهواء"],
+  key:"تُخزّن الجِمال الدهن في سنامها لا الماء كما يظنّ كثيرون"},
+ {t:"بدأت فاطمة تقرأ عشر صفحات يومياً في العطلة. وبعد شهر واحد لاحظت أن تركيزها في القراءة صار أطول، وأن مفرداتها اللغوية زادت.",
+  q:"ما الفائدتان اللتان لاحظتهما فاطمة؟",ans:"تركيز أطول ومفردات أكثر",
+  d:["سرعة أكبر وخط أجمل","نوم أفضل وتركيز أطول","مفردات أكثر وأصدقاء أكثر"],
+  key:"تركيزها في القراءة صار أطول، وأن مفرداتها اللغوية زادت"},
+ {t:"لا تنمو النباتات في الظلام التام، لأنها تحتاج ضوء الشمس لصنع غذائها. لذلك تجد نباتات الغرفة تميل دائماً نحو النافذة.",
+  q:"لماذا تميل نباتات الغرفة نحو النافذة؟",ans:"لأنها تحتاج ضوء الشمس لصنع غذائها",
+  d:["لأن الهواء أنقى عند النافذة","لأن التربة أدفأ هناك","لأنها تهرب من الظل"],
+  key:"تحتاج ضوء الشمس لصنع غذائها"},
+];
+function fadeMakeReading(){
+  const it=pick(READING_ITEMS);
+  const opts=shuffle([it.ans,...it.d]);
+  return{kind:"reading",choiceKind:"text",opts,ai:opts.indexOf(it.ans),prompt:"ما الإجابة الصحيحة؟",
+    steps:[`نقرأ السؤال أولاً لنعرف ما نبحث عنه بالضبط: «${it.q}»`,`نعود للنص ونبحث عن الجملة التي تحمل الجواب: «${it.key}»`,`من هذه الجملة تكون الإجابة: ${it.ans}`],
+    ruleTxt:`اقرئي السؤال أولاً، ثم ابحثي في النص عن الجملة التي تتحدّث عن الشيء نفسه — الجواب يكون فيها، ولا تعتمدي على التخمين أو معلوماتك السابقة`,
+    passage:it.t,
+    q:it.q};
+}
 function fadeMakeQuestion(){
   if(fadeTopic==="median")return fadeMakeMedian();
   if(fadeTopic==="percent")return fadeMakePercent();
@@ -692,12 +772,14 @@ function fadeMakeQuestion(){
   if(fadeTopic==="pyramid")return fadeMakePyramid();
   if(fadeTopic==="mirror")return fadeMakeMirror();
   if(fadeTopic==="rotate")return fadeMakeRotate();
+  if(fadeTopic==="logic")return fadeMakeLogic();
+  if(fadeTopic==="reading")return fadeMakeReading();
   return fadeMakeSeq();
 }
 function fadeDedupe(correct,dist){const out=[];for(const d of dist){if(d!==correct&&!out.includes(d))out.push(d)}let p=1;while(out.length<3){[correct+p,correct-p].forEach(x=>{if(out.length<3&&x>0&&x!==correct&&!out.includes(x))out.push(x)});p++}return out.slice(0,3)}
 function fadePrep(){
   if(fadeStage===1){fadeCur.opts=null;fadeCur.ai=-1;return}
-  if(fadeCur.choiceKind==="shape")return; // الخيارات (رسومات SVG) والإجابة الصحيحة جاهزة من المولّد نفسه
+  if(fadeCur.choiceKind)return; // الخيارات (رسومات أو نصوص) والإجابة الصحيحة جاهزة من المولّد نفسه
   let d;
   if(fadeCur.kind==="ratio"){d=[fadeCur.ans+fadeCur.per,fadeCur.ans-fadeCur.per,fadeCur.ans+fadeStage];}
   else if(fadeCur.kind==="seq"){d=fadeCur.type==="add"?[fadeCur.ans+fadeCur.rule,fadeCur.ans-fadeCur.rule,fadeCur.ans+fadeStage]:[fadeCur.ans-fadeCur.seq[4],fadeCur.seq[4]+fadeCur.rule,fadeCur.ans+fadeCur.rule];}
@@ -756,6 +838,11 @@ function renderFade(){
       ${pyramidSVG(c.pyr.top,c.pyr.left,c.pyr.right,c.pyr.leftKnown,c.pyr.rightKnown)}
       <div style="font-size:14px;font-weight:700;color:#334155;margin-top:6px">${c.q}</div>
     </div>`;
+  } else if(c.kind==="logic"||c.kind==="reading"){
+    seqBox=`<div style="background:#F8FAFC;border-radius:14px;padding:16px;margin-bottom:16px">
+      <div style="background:#EEF2FF;border-inline-start:4px solid #6366F1;border-radius:10px;padding:14px;font-size:16px;line-height:1.9;color:#312E81;margin-bottom:12px">${c.passage}</div>
+      <div style="font-size:15px;font-weight:700;color:#334155;text-align:center">${c.q}</div>
+    </div>`;
   } else if(c.kind==="angles"||c.kind==="mirror"||c.kind==="rotate"){
     const caption=c.caption?`<div style="font-size:12px;color:#64748B;margin-top:4px">${c.caption}</div>`:"";
     seqBox=`<div style="text-align:center;background:#F8FAFC;border-radius:14px;padding:16px 10px 10px;margin-bottom:16px">
@@ -775,7 +862,8 @@ function renderFade(){
     <button class="btn" style="background:#059669" onclick="fadeStage1Next()">فهمت، مثال آخر ←</button>
     <div style="font-size:13px;color:#64748B;text-align:center;margin-top:10px">شاهدي مثالين للانتقال (${toAr(fadeStreak)}/${toAr(FADE_REQ)})</div>`;
   } else {
-    const ch=c.opts.map((o,i)=>{let bg="#fff",bd="#E2E8F0",col="#334155";if(fadeLocked){if(i===c.ai){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(i===fadePicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}return `<button class="choice" style="background:${bg};border-color:${bd};color:${col};font-size:18px;font-weight:800" onclick="fadeChoose(${i})" ${fadeLocked?'disabled':''}>${c.choiceKind==="shape"?o:toAr(o)}</button>`}).join("");
+    const isText=c.choiceKind==="text"; // خيارات نصية طويلة: خط أصغر ومحاذاة طبيعية بدل التوسيط المكبّر
+    const ch=c.opts.map((o,i)=>{let bg="#fff",bd="#E2E8F0",col="#334155";if(fadeLocked){if(i===c.ai){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(i===fadePicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}return `<button class="choice" style="background:${bg};border-color:${bd};color:${col};${isText?'font-size:15px;font-weight:700;line-height:1.7;text-align:start':'font-size:18px;font-weight:800'}" onclick="fadeChoose(${i})" ${fadeLocked?'disabled':''}>${c.choiceKind?o:toAr(o)}</button>`}).join("");
     let hint="";
     if(fadeStage===2)hint=`<div style="background:#F0FDF4;border-inline-start:4px solid #10B981;border-radius:12px;padding:14px;margin-bottom:14px;font-size:15px">القاعدة معطاة: <b>${c.ruleTxt}</b>. طبّقيها لإيجاد الإجابة.</div>`;
     else if(fadeStage===3)hint=`<div style="background:#FEF3C7;border-radius:12px;padding:14px;margin-bottom:14px;font-size:15px;color:#B45309"><b>اكتشفي القاعدة بنفسك</b> ثم طبّقيها.</div>`;
