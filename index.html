@@ -485,7 +485,7 @@ async function fetchGemini(type,need){
   return out.map(tagAI(type));
 }
 function cachePutReplace(type,arr){try{const c=JSON.parse(localStorage.getItem("gemini_cache")||"{}");c[type]=arr;localStorage.setItem("gemini_cache",JSON.stringify(c))}catch(e){}}
-function normAI(type){return q=>({d:aiDomain(type),q:q.q,c:q.choices,a:q.answer,w:q.why||""})}
+function normAI(type){return q=>({d:aiDomain(type),q:q.q,c:q.choices,a:q.answer,w:q.why||"",qtype:type})}
 function tagAI(type){return q=>q}
 function aiDomain(type){return (type==="science")?"science":"verbal"}
 
@@ -528,8 +528,8 @@ async function buildDomain(domKey,n){
     const types=shuffle(AI_VERBAL);let qs=[];
     for(const t of types){if(qs.length>=n)break;const got=await fetchGemini(t,Math.ceil(n/2));qs=qs.concat(dedupeList(got))}
     // احتياط من البنك لو نقص، مع تفادي تكرار ما سبق عرضه
-    if(qs.length<n){qs=qs.concat(takeUniqueFrom(shuffle(VERBAL),n-qs.length))}
-    if(qs.length<n){qs=qs.concat(fillAvoidingBatchDupes(qs,VERBAL,n-qs.length))} // البنك نفد تنويعاً؛ حل أخير
+    if(qs.length<n){qs=qs.concat(takeUniqueFrom(shuffle(VERBAL),n-qs.length).map(q=>({...q,qtype:"bank"})))}
+    if(qs.length<n){qs=qs.concat(fillAvoidingBatchDupes(qs,VERBAL,n-qs.length).map(q=>({...q,qtype:"bank"})))} // البنك نفد تنويعاً؛ حل أخير
     return shuffle(qs).slice(0,n);
   }
   if(domKey==="science"){
@@ -1333,8 +1333,11 @@ async function home(){mode="home";window.scrollTo(0,0);render();await loadWeakne
 function choose(i){
   if(locked)return;
   picked=i;locked=true;
-  if(i===filtered[idx].a)score++;
-  answered[idx]=(i===filtered[idx].a);
+  const q=filtered[idx];
+  const ok=i===q.a;
+  if(ok)score++;
+  answered[idx]=ok;
+  if(q.d==="verbal")logAnswer("verbal",q.qtype||"bank",ok);
   const elapsed=Date.now()-questionShownAt;
   recentAnswerTimes.push(elapsed);
   if(recentAnswerTimes.length>RAPID_STREAK)recentAnswerTimes.shift();
