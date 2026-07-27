@@ -250,8 +250,7 @@ function gAngleEqualRays(){
   for(let i=0;i<k;i++){
     const u1=uDir(phis[i]),u2=uDir(phis[i+1]),isUnk=i===unknownIdx;
     arcs+=`<path d="${arcPathBetween(O,u1,u2,arcR)}" fill="none" stroke="${isUnk?'#D97706':'#0D9488'}" stroke-width="2"/>`;
-    const lp=bisectorPoint(O,u1,u2,labR);
-    labels+=isUnk?`<text x="${lp.x.toFixed(1)}" y="${lp.y.toFixed(1)}" font-size="15" font-weight="800" text-anchor="middle" dominant-baseline="middle" fill="#D97706">ص</text>`:`<text x="${lp.x.toFixed(1)}" y="${lp.y.toFixed(1)}" font-size="14" font-weight="800" text-anchor="middle" dominant-baseline="middle" fill="#0D9488">٭</text>`;
+    if(isUnk){const lp=bisectorPoint(O,u1,u2,labR);labels+=`<text x="${lp.x.toFixed(1)}" y="${lp.y.toFixed(1)}" font-size="15" font-weight="800" text-anchor="middle" dominant-baseline="middle" fill="#D97706">ص</text>`;}
   }
   const uO1=uDir(phis[0]),uO2=uDir(phis[k]);
   const outerLabel=bisectorPoint(O,uO1,uO2,outerR);
@@ -259,7 +258,7 @@ function gAngleEqualRays(){
   const outerText=`<text x="${outerLabel.x.toFixed(1)}" y="${outerLabel.y.toFixed(1)}" font-size="12" font-weight="700" text-anchor="middle" fill="#334155">المجموع ${toAr(total)}°</text>`;
   const svg=`<svg viewBox="0 0 200 200" width="200" height="200">${rays}<circle cx="${O.x}" cy="${O.y}" r="3" fill="#1E293B"/>${arcs}${labels}${outerArc}${outerText}</svg>`;
   const m=mcNum(part,[part+8,part-8,total]);
-  return{d:"flex",q:`زاوية كبيرة قياسها ${toAr(total)}° مقسومة بأشعّة متساوية إلى ${toAr(k)} زوايا متطابقة (مُعلَّمة بـ ٭). ما قياس الزاوية ص؟`,c:m.choices.map(x=>x+"°"),a:m.answer,w:`الزوايا متساوية: كل زاوية = ${toAr(total)} ÷ ${toAr(k)} = ${toAr(part)}°.`,svg};
+  return{d:"flex",q:`زاوية كبيرة قياسها ${toAr(total)}° مقسومة بأشعّة إلى ${toAr(k)} زوايا متساوية (الأقواس الخضراء بالرسم). ما قياس الزاوية ص؟`,c:m.choices.map(x=>x+"°"),a:m.answer,w:`الزوايا متساوية: كل زاوية = ${toAr(total)} ÷ ${toAr(k)} = ${toAr(part)}°.`,svg};
 }
 
 // ===== مصفوفة ريفن ٣×٣ =====
@@ -638,8 +637,7 @@ function equalAnglesSVG(total,k){
   for(let i=0;i<k;i++){
     const u1=uDir(phis[i]),u2=uDir(phis[i+1]),isUnk=i===0;
     arcs+=`<path d="${arcPathBetween(O,u1,u2,arcR)}" fill="none" stroke="${isUnk?'#D97706':'#0D9488'}" stroke-width="2"/>`;
-    const lp=bisectorPoint(O,u1,u2,labR);
-    labels+=isUnk?`<text x="${lp.x.toFixed(1)}" y="${lp.y.toFixed(1)}" font-size="15" font-weight="800" text-anchor="middle" dominant-baseline="middle" fill="#D97706">؟</text>`:`<text x="${lp.x.toFixed(1)}" y="${lp.y.toFixed(1)}" font-size="14" font-weight="800" text-anchor="middle" dominant-baseline="middle" fill="#0D9488">٭</text>`;
+    if(isUnk){const lp=bisectorPoint(O,u1,u2,labR);labels+=`<text x="${lp.x.toFixed(1)}" y="${lp.y.toFixed(1)}" font-size="15" font-weight="800" text-anchor="middle" dominant-baseline="middle" fill="#D97706">؟</text>`;}
   }
   const uO1=uDir(phis[0]),uO2=uDir(phis[k]);
   const outerLabel=bisectorPoint(O,uO1,uO2,outerR);
@@ -651,12 +649,13 @@ function fadeMakeAngles(){
   const k=pick([2,3,4]),part=pick([10,12,15,18,20,24,25,30,36,40,45]),total=part*k;
   if(total>170)return fadeMakeAngles();
   const ans=part;
-  return{kind:"angles",ans,prompt:"ما قياس الزاوية الواحدة (؟)؟",
-    steps:[`الزاوية الكبيرة مقسومة إلى ${toAr(k)} زوايا متساوية (مُعلَّمة بـ ٭)، ومجموعها ${toAr(total)}°`,`الزاوية الواحدة = ${toAr(total)} ÷ ${toAr(k)} = ${toAr(part)}°`],
+  return{kind:"angles",ans,prompt:"ما قياس الزاوية الواحدة (المُعلَّمة بـ ؟)؟",
+    steps:[`كل الأقواس الخضراء بالرسم متساوية في القياس، ومجموع الزاوية الكبيرة كلها ${toAr(total)}°`,`الزاوية الواحدة = ${toAr(total)} ÷ ${toAr(k)} = ${toAr(part)}°`],
     ruleTxt:`الزاوية الواحدة = مجموع الزاوية الكبيرة ÷ عدد الأجزاء المتساوية`,
     distractors:[part+5,part-5,total],
     svg:equalAnglesSVG(total,k),
-    q:`زاوية كبيرة قياسها ${toAr(total)}° مقسومة بأشعّة متساوية إلى ${toAr(k)} زوايا متطابقة (٭). ما قياس الزاوية الواحدة؟`};
+    caption:`الأقواس الخضراء كلها متساوية في القياس، والقوس البرتقالي (؟) هو المطلوب إيجاده`,
+    q:`زاوية كبيرة قياسها ${toAr(total)}° مقسومة بأشعّة إلى ${toAr(k)} زوايا متساوية. ما قياس الزاوية الواحدة؟`};
 }
 function fadeMakeMirror(){
   const color=pick(["#0D9488","#7C3AED","#D97706"]);
@@ -758,8 +757,10 @@ function renderFade(){
       <div style="font-size:14px;font-weight:700;color:#334155;margin-top:6px">${c.q}</div>
     </div>`;
   } else if(c.kind==="angles"||c.kind==="mirror"||c.kind==="rotate"){
+    const caption=c.caption?`<div style="font-size:12px;color:#64748B;margin-top:4px">${c.caption}</div>`:"";
     seqBox=`<div style="text-align:center;background:#F8FAFC;border-radius:14px;padding:16px 10px 10px;margin-bottom:16px">
       ${c.svg}
+      ${caption}
       <div style="font-size:14px;font-weight:700;color:#334155;margin-top:6px">${c.q}</div>
     </div>`;
   } else {
