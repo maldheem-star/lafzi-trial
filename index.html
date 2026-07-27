@@ -1328,6 +1328,297 @@ function renderEnglishResult(){
   </div>`;
 }
 
+// ===================================================================
+// ===== الخطة اليومية للإنجليزية (٤٠ دقيقة) — مواءمة لمنهج الصف السادس
+// المشكلة التي تعالجها: الوحدات السابقة تختبر ولا تُعلّم — لذلك A1 كان ٨٣٪ (مفردات تعرفها)
+// وA2 هبط إلى ٢٥٪ (قواعد جديدة تماماً عُرضت كاختبار بلا شرح، أي تخمين).
+// الأسس العلمية المطبَّقة:
+//  ١) التعليم قبل الاختبار: بطاقة شرح تُعرض مرة واحدة قبل أول تدريب على كل قاعدة
+//  ٢) التباعد المتمدّد (Ebbinghaus؛ Cepeda 2006): ١←٢←٤←٨←١٦←٣٢ يوماً، والخطأ يُعيدها للبداية
+//  ٣) الاستدعاء النشط (Roediger & Karpicke 2006): الاختبار نفسه أداة تثبيت لا قياس فقط
+//  ٤) التشبيك (Rohrer & Taylor): خلط الأنواع بدل تجميع كل نوع على حدة
+//  ٥) لا تكرار بلا فائدة: العنصر لا يُعاد إلا في يوم استحقاقه — وهذا جوهر الطلب
+// ===================================================================
+const ENG_LESSONS={
+ l_present:{t:"المضارع البسيط: متى نضيف s؟",b:"نستخدم المضارع البسيط للعادات والحقائق الثابتة.<br><b>القاعدة:</b> مع <b>he / she / it</b> (أو اسم مفرد) نضيف <b>s</b> للفعل. ومع <b>I / you / we / they</b> نتركه كما هو.",ex:["She <b>plays</b> tennis.","They <b>play</b> tennis.","My father <b>works</b> here.","I <b>work</b> here."]},
+ l_freq:{t:"ظروف التكرار وموقعها",b:"تصف كم مرة يحدث الشيء: <b>always</b> دائماً، <b>usually</b> عادةً، <b>sometimes</b> أحياناً، <b>never</b> أبداً.<br><b>القاعدة:</b> تأتي <b>قبل</b> الفعل العادي، و<b>بعد</b> الفعل to be.",ex:["She <b>always</b> reads at night.","I <b>never</b> drink coffee.","He <b>is always</b> late."]},
+ l_count:{t:"المعدود وغير المعدود: some / any / many / much",b:"المعدود يُعدّ بالوحدات (apples, books)، وغير المعدود لا يُعدّ (water, sugar, rice).<br><b>القاعدة:</b> <b>some</b> في الإثبات، <b>any</b> في النفي والسؤال، <b>many</b> مع المعدود، <b>much</b> مع غير المعدود.",ex:["There is <b>some</b> water.","There isn't <b>any</b> milk.","How <b>many</b> books?","How <b>much</b> sugar?"]},
+ l_past_reg:{t:"الماضي البسيط — الأفعال المنتظمة",b:"نتحدث عن حدث انتهى في الماضي.<br><b>القاعدة:</b> نضيف <b>ed</b> لآخر الفعل. وإذا انتهى بـ e نضيف <b>d</b> فقط، وإذا انتهى بحرف ساكن + y نحوّلها إلى <b>ied</b>.",ex:["play → <b>played</b>","clean → <b>cleaned</b>","live → <b>lived</b>","study → <b>studied</b>"]},
+ l_past_irr:{t:"الماضي البسيط — الأفعال الشاذة",b:"بعض الأفعال لا تأخذ ed، بل تتغيّر صورتها تماماً — وهذه تُحفَظ حفظاً.<br><b>الأشهر:</b> go→went, eat→ate, buy→bought, write→wrote, see→saw, take→took, come→came.",ex:["I <b>went</b> to school.","She <b>ate</b> an apple.","We <b>bought</b> a car."]},
+ l_comp:{t:"المقارنة بين شيئين (comparative)",b:"للمقارنة بين اثنين نستخدم صيغة المقارنة + <b>than</b>.<br><b>القاعدة:</b> الصفة القصيرة تأخذ <b>er</b>، والطويلة (٣ مقاطع فأكثر) تسبقها <b>more</b>.",ex:["big → <b>bigger than</b>","tall → <b>taller than</b>","expensive → <b>more expensive than</b>","beautiful → <b>more beautiful than</b>"]},
+ l_super:{t:"التفضيل بين ثلاثة فأكثر (superlative)",b:"للأفضل/الأكبر في مجموعة نستخدم <b>the</b> + صيغة التفضيل.<br><b>القاعدة:</b> القصيرة تأخذ <b>est</b>، والطويلة تسبقها <b>most</b>.",ex:["big → <b>the biggest</b>","high → <b>the highest</b>","expensive → <b>the most expensive</b>"]},
+ l_future:{t:"المستقبل: will أم going to؟",b:"<b>going to</b> للخطط المتّفق عليها مسبقاً، وللتوقّع الذي أمامك دليل عليه الآن.<br><b>will</b> للتوقّع العام أو القرار اللحظي.",ex:["I <b>am going to</b> visit my uncle. (خطة)","Look at the clouds — it <b>is going to</b> rain. (دليل)","I think it <b>will</b> be sunny. (توقّع)"]},
+ l_modal:{t:"أفعال الوجوب والنصيحة: must / should / can",b:"<b>must</b> إلزام قوي، <b>should</b> نصيحة، <b>can</b> قدرة أو طلب إذن.<br><b>القاعدة:</b> يأتي بعدها الفعل مجرّداً بلا to وبلا s.",ex:["You <b>must</b> wear a seatbelt.","You <b>should</b> sleep early.","<b>Can</b> I open the window?"]},
+};
+// عناصر بمعرّفات ثابتة — المعرّف هو مفتاح جدولة التباعد، فلا يُغيَّر بعد النشر
+const ENG_ITEMS=[
+ // و١ — الوظائف والأماكن
+ {id:"u1v1",t:"vocab",q:'ما ترجمة "طبيب"؟',c:["doctor","teacher","farmer","pilot"],a:0,w:'"doctor" تعني طبيب.',listen:"doctor"},
+ {id:"u1v2",t:"vocab",q:'ما ترجمة "مهندس"؟',c:["engineer","nurse","driver","baker"],a:0,w:'"engineer" تعني مهندس.',listen:"engineer"},
+ {id:"u1v3",t:"vocab",q:'ما ترجمة "ممرضة"؟',c:["nurse","doctor","teacher","chef"],a:0,w:'"nurse" تعني ممرضة.',listen:"nurse"},
+ {id:"u1v4",t:"vocab",q:'أين يعمل الطبيب؟',c:["hospital","school","factory","farm"],a:0,w:'"hospital" تعني مستشفى.',listen:"hospital"},
+ {id:"u1v5",t:"vocab",q:'ما ترجمة "مصنع"؟',c:["factory","library","market","airport"],a:0,w:'"factory" تعني مصنع.',listen:"factory"},
+ {id:"u1v6",t:"vocab",q:'ما ترجمة "مكتبة (لاستعارة الكتب)"؟',c:["library","bookshop","office","museum"],a:0,w:'"library" مكتبة للاستعارة، و"bookshop" محل لبيع الكتب.',listen:"library"},
+ {id:"u1g1",t:"grammar",lesson:"l_present",q:'اختاري الصحيح: "My mother ___ in a hospital."',c:["works","work","working","worked"],a:0,w:'"my mother" مفرد (she) فنضيف s: works.',listen:"My mother works in a hospital."},
+ {id:"u1g2",t:"grammar",lesson:"l_present",q:'اختاري الصحيح: "They ___ in a factory."',c:["work","works","working","to work"],a:0,w:'مع they لا نضيف s.',listen:"They work in a factory."},
+ {id:"u1d1",t:"dict",w:"doctor",m:"طبيب"},
+ {id:"u1d2",t:"dict",w:"nurse",m:"ممرضة"},
+ {id:"u1r1",t:"reading",passage:"Mr. Salem is an engineer. He works in a big factory near the city. He starts work at seven and comes home at three.",q:"متى يعود السيد سالم إلى البيت؟",c:["الثالثة","السابعة","الخامسة","الواحدة"],a:0,w:'النص يقول "comes home at three".'},
+ // و٢ — الروتين اليومي وظروف التكرار
+ {id:"u2v1",t:"vocab",q:'ما ترجمة "يستيقظ"؟',c:["wake up","go to bed","sit down","stand up"],a:0,w:'"wake up" تعني يستيقظ.',listen:"wake up"},
+ {id:"u2v2",t:"vocab",q:'ما ترجمة "يفطر"؟',c:["have breakfast","have dinner","have lunch","have a rest"],a:0,w:'"have breakfast" تعني يتناول الفطور.',listen:"have breakfast"},
+ {id:"u2v3",t:"vocab",q:'ما معنى "always"؟',c:["دائماً","أبداً","أحياناً","نادراً"],a:0,w:'"always" تعني دائماً.',listen:"always"},
+ {id:"u2v4",t:"vocab",q:'ما معنى "never"؟',c:["أبداً","دائماً","عادةً","غالباً"],a:0,w:'"never" تعني أبداً (لا يحدث إطلاقاً).',listen:"never"},
+ {id:"u2v5",t:"vocab",q:'ما معنى "usually"؟',c:["عادةً","أبداً","مرة واحدة","أمس"],a:0,w:'"usually" تعني عادةً.',listen:"usually"},
+ {id:"u2g1",t:"grammar",lesson:"l_freq",q:'اختاري الترتيب الصحيح:',c:["She always reads at night.","She reads always at night.","Always she reads at night.","She reads at night always."],a:0,w:'ظرف التكرار يأتي قبل الفعل العادي: She always reads.',listen:"She always reads at night."},
+ {id:"u2g2",t:"grammar",lesson:"l_freq",q:'اختاري الصحيح: "He ___ late for school."',c:["is never","never is","is not never","never"],a:0,w:'مع الفعل to be يأتي الظرف بعده: is never.',listen:"He is never late for school."},
+ {id:"u2g3",t:"grammar",lesson:"l_present",q:'اختاري الصحيح: "The sun ___ in the east."',c:["rises","rise","rising","rose"],a:0,w:'"the sun" مفرد (it) فنضيف s: rises.',listen:"The sun rises in the east."},
+ {id:"u2d1",t:"dict",w:"morning",m:"صباح"},
+ {id:"u2d2",t:"dict",w:"night",m:"ليل"},
+ {id:"u2r1",t:"reading",passage:"Huda always wakes up at six. She has breakfast with her family, then she walks to school. She never takes the bus because the school is very close.",q:"لماذا لا تركب هدى الحافلة أبداً؟",c:["لأن المدرسة قريبة جداً","لأنها تستيقظ متأخرة","لأنها تحب المشي فقط","لأن الحافلة غالية"],a:0,w:'النص يقول "because the school is very close".'},
+ // و٣ — الطعام والصحة
+ {id:"u3v1",t:"vocab",q:'ما ترجمة "خضروات"؟',c:["vegetables","fruit","meat","bread"],a:0,w:'"vegetables" تعني خضروات.',listen:"vegetables"},
+ {id:"u3v2",t:"vocab",q:'ما ترجمة "صحّي"؟',c:["healthy","tasty","cheap","fresh"],a:0,w:'"healthy" تعني صحّي.',listen:"healthy"},
+ {id:"u3v3",t:"vocab",q:'ما ترجمة "سكّر"؟',c:["sugar","salt","rice","oil"],a:0,w:'"sugar" تعني سكّر.',listen:"sugar"},
+ {id:"u3v4",t:"vocab",q:'ما ترجمة "وجبة"؟',c:["meal","plate","spoon","menu"],a:0,w:'"meal" تعني وجبة.',listen:"meal"},
+ {id:"u3g1",t:"grammar",lesson:"l_count",q:"اختاري الصحيح: \"There isn't ___ milk left.\"",c:["any","some","many","a"],a:0,w:'في النفي نستخدم any.',listen:"There isn't any milk left."},
+ {id:"u3g2",t:"grammar",lesson:"l_count",q:'اختاري الصحيح: "How ___ sugar do you need?"',c:["much","many","some","any"],a:0,w:'sugar غير معدود فنستخدم much.',listen:"How much sugar do you need?"},
+ {id:"u3g3",t:"grammar",lesson:"l_count",q:'اختاري الصحيح: "How ___ apples are there?"',c:["many","much","some","a"],a:0,w:'apples معدودة فنستخدم many.',listen:"How many apples are there?"},
+ {id:"u3g4",t:"grammar",lesson:"l_modal",q:'اختاري الصحيح: "You ___ eat more vegetables." (نصيحة)',c:["should","must","can","will"],a:0,w:'النصيحة تكون بـ should.',listen:"You should eat more vegetables."},
+ {id:"u3d1",t:"dict",w:"water",m:"ماء"},
+ {id:"u3d2",t:"dict",w:"bread",m:"خبز"},
+ {id:"u3r1",t:"reading",passage:"Doctors say children should eat fruit and vegetables every day. They should also drink a lot of water and sleep eight hours at night.",q:"كم ساعة نوم ينصح الأطباء بها؟",c:["ثماني ساعات","ست ساعات","عشر ساعات","اثنتا عشرة ساعة"],a:0,w:'النص يقول "sleep eight hours at night".'},
+ // و٤ — الماضي والعطلات
+ {id:"u4v1",t:"vocab",q:'ما معنى "yesterday"؟',c:["أمس","غداً","اليوم","الأسبوع القادم"],a:0,w:'"yesterday" تعني أمس.',listen:"yesterday"},
+ {id:"u4v2",t:"vocab",q:'ما معنى "last week"؟',c:["الأسبوع الماضي","الأسبوع القادم","هذا الأسبوع","كل أسبوع"],a:0,w:'"last week" تعني الأسبوع الماضي.',listen:"last week"},
+ {id:"u4v3",t:"vocab",q:'ما ترجمة "رحلة"؟',c:["trip","road","ticket","station"],a:0,w:'"trip" تعني رحلة.',listen:"trip"},
+ {id:"u4g1",t:"grammar",lesson:"l_past_reg",q:'اختاري الصحيح: "We ___ our grandmother last Friday."',c:["visited","visit","visits","visiting"],a:0,w:'الماضي المنتظم: visit + ed = visited.',listen:"We visited our grandmother last Friday."},
+ {id:"u4g2",t:"grammar",lesson:"l_past_reg",q:'ما ماضي الفعل "study"؟',c:["studied","studyed","studed","studying"],a:0,w:'ساكن + y ← ied: studied.',listen:"studied"},
+ {id:"u4g3",t:"grammar",lesson:"l_past_irr",q:'اختاري الصحيح: "She ___ to the market yesterday." (go)',c:["went","goed","gone","going"],a:0,w:'go فعل شاذ: went.',listen:"She went to the market yesterday."},
+ {id:"u4g4",t:"grammar",lesson:"l_past_irr",q:'ما ماضي الفعل "buy"؟',c:["bought","buyed","buied","buying"],a:0,w:'buy فعل شاذ: bought.',listen:"bought"},
+ {id:"u4d1",t:"dict",w:"school",m:"مدرسة"},
+ {id:"u4d2",t:"dict",w:"family",m:"عائلة"},
+ {id:"u4r1",t:"reading",passage:"Last summer, Faisal traveled to Abha with his family. They stayed there for one week. He took many photos of the green mountains.",q:"كم بقيت عائلة فيصل في أبها؟",c:["أسبوعاً واحداً","يومين","شهراً","ثلاثة أيام"],a:0,w:'النص يقول "stayed there for one week".'},
+ // و٥ — المقارنة والوصف
+ {id:"u5v1",t:"vocab",q:'ما ترجمة "ثقيل"؟',c:["heavy","light","soft","hard"],a:0,w:'"heavy" تعني ثقيل.',listen:"heavy"},
+ {id:"u5v2",t:"vocab",q:'ما ترجمة "غالٍ (السعر)"؟',c:["expensive","cheap","rich","free"],a:0,w:'"expensive" تعني غالي الثمن.',listen:"expensive"},
+ {id:"u5v3",t:"vocab",q:'ما ترجمة "خطير"؟',c:["dangerous","careful","quiet","famous"],a:0,w:'"dangerous" تعني خطير.',listen:"dangerous"},
+ {id:"u5g1",t:"grammar",lesson:"l_comp",q:'اختاري الصحيح: "A camel is ___ than a cat."',c:["bigger","biggest","more big","big"],a:0,w:'صفة قصيرة + er: bigger than.',listen:"A camel is bigger than a cat."},
+ {id:"u5g2",t:"grammar",lesson:"l_comp",q:'اختاري الصحيح: "This bag is ___ than that one."',c:["more expensive","expensiver","most expensive","expensive"],a:0,w:'الصفة الطويلة تسبقها more.',listen:"This bag is more expensive than that one."},
+ {id:"u5g3",t:"grammar",lesson:"l_super",q:'اختاري الصحيح: "The Nile is ___ river in the world."',c:["the longest","longer","the longer","most long"],a:0,w:'التفضيل: the + est = the longest.',listen:"The Nile is the longest river in the world."},
+ {id:"u5d1",t:"dict",w:"big",m:"كبير"},
+ {id:"u5d2",t:"dict",w:"small",m:"صغير"},
+ {id:"u5r1",t:"reading",passage:"An elephant is heavier than a horse, but a blue whale is the heaviest animal on Earth. It can weigh more than one hundred tons.",q:"ما أثقل حيوان على الأرض حسب النص؟",c:["الحوت الأزرق","الفيل","الحصان","لم يذكر النص"],a:0,w:'النص يقول "a blue whale is the heaviest animal on Earth".'},
+ // و٦ — المستقبل والخطط
+ {id:"u6v1",t:"vocab",q:'ما ترجمة "غداً"؟',c:["tomorrow","yesterday","today","tonight"],a:0,w:'"tomorrow" تعني غداً.',listen:"tomorrow"},
+ {id:"u6v2",t:"vocab",q:'ما ترجمة "خطة"؟',c:["plan","dream","idea","hope"],a:0,w:'"plan" تعني خطة.',listen:"plan"},
+ {id:"u6g1",t:"grammar",lesson:"l_future",q:'اختاري الصحيح: "I ___ study medicine next year." (خطة)',c:["am going to","will to","going","am will"],a:0,w:'الخطة المسبقة: going to.',listen:"I am going to study medicine next year."},
+ {id:"u6g2",t:"grammar",lesson:"l_future",q:'اختاري الصحيح: "Look at those clouds! It ___ rain."',c:["is going to","will to","goes to","is will"],a:0,w:'يوجد دليل حاضر (الغيوم) ← going to.',listen:"Look at those clouds! It is going to rain."},
+ {id:"u6g3",t:"grammar",lesson:"l_modal",q:'اختاري الصحيح: "You ___ stop at the red light."',c:["must","should","can","may"],a:0,w:'إلزام قانوني ← must.',listen:"You must stop at the red light."},
+ {id:"u6d1",t:"dict",w:"today",m:"اليوم"},
+ {id:"u6d2",t:"dict",w:"work",m:"عمل"},
+ {id:"u6r1",t:"reading",passage:"Next month, our school is going to have a science fair. Students are going to show their projects. Sara is going to build a small robot.",q:"ماذا ستصنع سارة؟",c:["روبوتاً صغيراً","مجسّم بركان","لوحة فنية","نموذج مدرسة"],a:0,w:'النص يقول "Sara is going to build a small robot".'},
+ // ===== توسعة: مفردات وتدريبات إضافية لكل وحدة (يحتاجها التباعد ليعمل بلا تكرار قسري) =====
+ {id:"u1v7",t:"vocab",q:'ما ترجمة "شرطي"؟',c:["policeman","postman","fireman","salesman"],a:0,w:'"policeman" تعني شرطي.',listen:"policeman"},
+ {id:"u1v8",t:"vocab",q:'ما ترجمة "مطار"؟',c:["airport","station","harbour","garage"],a:0,w:'"airport" تعني مطار.',listen:"airport"},
+ {id:"u1v9",t:"vocab",q:'ما ترجمة "صيدلية"؟',c:["pharmacy","bakery","library","bank"],a:0,w:'"pharmacy" تعني صيدلية.',listen:"pharmacy"},
+ {id:"u1g3",t:"grammar",lesson:"l_present",q:'اختاري الصحيح: "A pilot ___ a plane."',c:["flies","fly","flys","flying"],a:0,w:'مفرد (he/she/it) والفعل ينتهي بـ y بعد ساكن ← ies: flies.',listen:"A pilot flies a plane."},
+ {id:"u1d3",t:"dict",w:"office",m:"مكتب"},
+ {id:"u1r2",t:"reading",passage:"Nora wants to be a pharmacist. She likes science and she wants to help sick people. Every summer she visits her uncle's pharmacy to learn.",q:"لماذا تزور نورة صيدلية عمها كل صيف؟",c:["لتتعلّم","لتشتري دواء","لتقابل أصدقاءها","لتعمل بأجر"],a:0,w:'النص يقول "to learn".'},
+ {id:"u2v6",t:"vocab",q:'ما معنى "sometimes"؟',c:["أحياناً","دائماً","أبداً","كثيراً جداً"],a:0,w:'"sometimes" تعني أحياناً.',listen:"sometimes"},
+ {id:"u2v7",t:"vocab",q:'ما ترجمة "يغسل وجهه"؟',c:["wash his face","brush his teeth","comb his hair","wear his shoes"],a:0,w:'"wash" تعني يغسل.',listen:"wash his face"},
+ {id:"u2v8",t:"vocab",q:'ما ترجمة "ينام"؟',c:["go to bed","wake up","get up","stay up"],a:0,w:'"go to bed" تعني يذهب للنوم.',listen:"go to bed"},
+ {id:"u2g4",t:"grammar",lesson:"l_freq",q:'اختاري الصحيح: "I ___ eat fast food."',c:["never","am never","never am","not never"],a:0,w:'مع الفعل العادي يأتي الظرف قبله مباشرة: I never eat.',listen:"I never eat fast food."},
+ {id:"u2d3",t:"dict",w:"clock",m:"ساعة حائط"},
+ {id:"u3v5",t:"vocab",q:'ما ترجمة "فاكهة"؟',c:["fruit","vegetable","meat","cheese"],a:0,w:'"fruit" تعني فاكهة.',listen:"fruit"},
+ {id:"u3v6",t:"vocab",q:'ما ترجمة "طازج"؟',c:["fresh","frozen","sweet","salty"],a:0,w:'"fresh" تعني طازج.',listen:"fresh"},
+ {id:"u3v7",t:"vocab",q:'ما ترجمة "تمرين رياضي"؟',c:["exercise","game","race","match"],a:0,w:'"exercise" تعني تمرين رياضي.',listen:"exercise"},
+ {id:"u3g5",t:"grammar",lesson:"l_count",q:'اختاري الصحيح: "Would you like ___ tea?"',c:["some","any","many","much"],a:0,w:'في العرض المهذّب نستخدم some رغم أنه سؤال.',listen:"Would you like some tea?"},
+ {id:"u3d3",t:"dict",w:"milk",m:"حليب"},
+ {id:"u3r2",t:"reading",passage:"Breakfast is an important meal. Students who eat breakfast can think better at school. A good breakfast has milk, eggs and fruit.",q:"ما فائدة الفطور حسب النص؟",c:["يساعد على التفكير بشكل أفضل","يزيد الطول","يجعل النوم أطول","يقلّل الواجبات"],a:0,w:'النص يقول "can think better at school".'},
+ {id:"u4v4",t:"vocab",q:'ما معنى "ago"؟',c:["قبل (في الماضي)","بعد","خلال","منذ الآن"],a:0,w:'"two years ago" تعني قبل سنتين.',listen:"two years ago"},
+ {id:"u4v5",t:"vocab",q:'ما ترجمة "ذكريات"؟',c:["memories","photos","stories","letters"],a:0,w:'"memories" تعني ذكريات.',listen:"memories"},
+ {id:"u4g5",t:"grammar",lesson:"l_past_reg",q:'ما ماضي الفعل "live"؟',c:["lived","lifed","livd","living"],a:0,w:'ينتهي بـ e فنضيف d فقط: lived.',listen:"lived"},
+ {id:"u4g6",t:"grammar",lesson:"l_past_irr",q:'اختاري الصحيح: "He ___ a new book last week." (write)',c:["wrote","writed","written","writing"],a:0,w:'write فعل شاذ: wrote.',listen:"He wrote a new book last week."},
+ {id:"u4g7",t:"grammar",lesson:"l_past_irr",q:'ما ماضي الفعل "see"؟',c:["saw","seed","seen","seeing"],a:0,w:'see فعل شاذ: saw.',listen:"saw"},
+ {id:"u4d4",t:"dict",w:"street",m:"شارع"},
+ {id:"u5v4",t:"vocab",q:'ما ترجمة "هادئ"؟',c:["quiet","noisy","busy","crowded"],a:0,w:'"quiet" تعني هادئ.',listen:"quiet"},
+ {id:"u5v5",t:"vocab",q:'ما ترجمة "مزدحم"؟',c:["crowded","empty","wide","narrow"],a:0,w:'"crowded" تعني مزدحم.',listen:"crowded"},
+ {id:"u5g4",t:"grammar",lesson:"l_comp",q:'اختاري الصحيح: "Riyadh is ___ than Abha." (hot)',c:["hotter","hoter","more hot","hottest"],a:0,w:'الصفة القصيرة تضاعف الحرف الأخير: hotter.',listen:"Riyadh is hotter than Abha."},
+ {id:"u5g5",t:"grammar",lesson:"l_super",q:'اختاري الصحيح: "This is ___ book I have ever read." (interesting)',c:["the most interesting","the interestingest","more interesting","most interesting"],a:0,w:'صفة طويلة ← the most + الصفة.',listen:"This is the most interesting book I have ever read."},
+ {id:"u5d3",t:"dict",w:"long",m:"طويل"},
+ {id:"u6v3",t:"vocab",q:'ما ترجمة "مستقبل"؟',c:["future","past","present","moment"],a:0,w:'"future" تعني مستقبل.',listen:"future"},
+ {id:"u6v4",t:"vocab",q:'ما ترجمة "يحلم بـ"؟',c:["dream of","think of","ask for","look for"],a:0,w:'"dream of" تعني يحلم بـ.',listen:"dream of"},
+ {id:"u6g4",t:"grammar",lesson:"l_future",q:'اختاري الصحيح: "Don\'t worry, I ___ help you." (قرار لحظي)',c:["will","am going to","going to","will to"],a:0,w:'القرار اللحظي ← will.',listen:"Don't worry, I will help you."},
+ {id:"u6g5",t:"grammar",lesson:"l_modal",q:'اختاري الصحيح: "___ you speak English?" (قدرة)',c:["Can","Must","Should","Will"],a:0,w:'القدرة ← Can.',listen:"Can you speak English?"},
+ {id:"u6d3",t:"dict",w:"year",m:"سنة"},
+ {id:"u6r2",t:"reading",passage:"In the future, many cars will use electricity instead of petrol. They will be cleaner and quieter, and the air in our cities will be much better.",q:"ما الفائدة التي ذكرها النص للسيارات الكهربائية؟",c:["هواء أنظف ومدن أهدأ","سعر أرخص","سرعة أعلى","حجم أصغر"],a:0,w:'النص يذكر "cleaner and quieter" وتحسّن الهواء.'},
+];
+// ===== محرّك التباعد المتمدّد =====
+const SRS_KEY="mawhiba_eng_srs";
+const SRS_INTERVALS=[1,2,4,8,16,32]; // أيام
+// تقديرات زمنية واقعية لطالبة سادس (قراءة السؤال بالعربي + الخيارات بالإنجليزي)
+const ENG_SECS={lesson:90,vocab:25,grammar:35,reading:110,dict:35};
+const PLAN_SECS=34*60;  // ٣٤ دقيقة تدريب مُصحَّح + ٦ دقائق نطق = ٤٠ دقيقة
+const NEW_CAP=25;       // حد العناصر الجديدة يومياً (قريب من المعتمد في أنظمة التباعد) لكبح الحمل المعرفي
+function srsLoad(){try{return JSON.parse(localStorage.getItem(SRS_KEY)||"{}")}catch(e){return{}}}
+function srsSave(o){try{localStorage.setItem(SRS_KEY,JSON.stringify(o))}catch(e){}}
+function srsToday(){return Math.floor(Date.now()/86400000)}
+function srsUpdate(id,ok){
+  const st=srsLoad(),r=st[id]||{box:0,seen:0};
+  r.box=ok?Math.min(r.box+1,SRS_INTERVALS.length-1):0; // الخطأ يُعيد العنصر لبداية السلّم
+  r.due=srsToday()+SRS_INTERVALS[r.box];r.seen=(r.seen||0)+1;
+  st[id]=r;srsSave(st);
+}
+function lessonSeen(id){try{return (JSON.parse(localStorage.getItem("mawhiba_eng_lessons")||"[]")).includes(id)}catch(e){return false}}
+function lessonMark(id){try{const a=JSON.parse(localStorage.getItem("mawhiba_eng_lessons")||"[]");if(!a.includes(id)){a.push(id);localStorage.setItem("mawhiba_eng_lessons",JSON.stringify(a))}}catch(e){}}
+// يبني خطة اليوم: المستحق أولاً (الأهم علمياً)، ثم جديد بحد أقصى، مع بطاقة شرح قبل أول تدريب على أي قاعدة
+// المخزون = عناصر المنهج + بنوك A1/A2/الإملاء الموجودة، بمعرّفات ثابتة.
+// دالة لا ثابت: لأن DICTATION_A1 مُعرَّف لاحقاً في الملف (تفادي منطقة الموت الزمنية للـ const).
+let _engPool=null;
+function engPool(){
+  if(_engPool)return _engPool;
+  _engPool=[...ENG_ITEMS,
+    ...ENGLISH_A1.map((it,i)=>({id:"a1_"+i,t:it.passage?"reading":"vocab",passage:it.passage,q:it.q,c:it.c,a:it.a,w:it.w,listen:it.listen})),
+    ...ENGLISH_A2.map((it,i)=>({id:"a2_"+i,t:it.passage?"reading":"grammar",passage:it.passage,q:it.q,c:it.c,a:it.a,w:it.w,listen:it.listen})),
+    ...DICTATION_A1.map((it,i)=>({id:"dw_"+i,t:"dict",w:it.w,m:it.m})),
+  ];
+  return _engPool;
+}
+function buildDailyPlan(){
+  const st=srsLoad(),today=srsToday(),POOL=engPool();
+  const due=POOL.filter(i=>st[i.id]&&st[i.id].due<=today);
+  const fresh=POOL.filter(i=>!st[i.id]);
+  const chosen=[];let secs=0,newCount=0;
+  const fits=it=>secs+(ENG_SECS[it.t]||30)<=PLAN_SECS;
+  const add=it=>{if(!fits(it))return false;chosen.push(it);secs+=ENG_SECS[it.t]||30;return true};
+  shuffle(due).forEach(add);
+  for(const it of fresh){if(newCount>=NEW_CAP)break;if(add(it))newCount++}
+  // تشبيك: توزيع الأنواع بالتناوب بدل تجميع كل نوع معاً
+  const byType={};chosen.forEach(i=>(byType[i.t]=byType[i.t]||[]).push(i));
+  const order=["vocab","grammar","dict","reading"],woven=[];
+  let any=true;while(any){any=false;order.forEach(t=>{const q=byType[t];if(q&&q.length){woven.push(q.shift());any=true}})}
+  // إدراج بطاقة الشرح مرة واحدة قبل أول عنصر يعتمد عليها
+  const out=[],taught={};
+  woven.forEach(it=>{
+    if(it.lesson&&!taught[it.lesson]&&!lessonSeen(it.lesson)){out.push({t:"lesson",id:it.lesson});taught[it.lesson]=1}
+    out.push(it);
+  });
+  return {items:out,secs,due:due.length,fresh:newCount};
+}
+let planItems=[],planIdx=0,planPicked=null,planLocked=false,planScore=0,planTotal=0,planDone=false,planInput="",planMeta=null;
+function startEngPlan(){
+  const p=buildDailyPlan();
+  planItems=p.items;planMeta=p;planIdx=0;planPicked=null;planLocked=false;planScore=0;planDone=false;planInput="";
+  planTotal=planItems.filter(i=>i.t!=="lesson").length;
+  mode="engplan";window.scrollTo(0,0);render();
+  const f=planItems[0];if(f&&f.t==="dict")setTimeout(()=>speakEnglish(f.w),400);
+}
+function planCur(){return planItems[planIdx]}
+function planChoose(i){
+  if(planLocked)return;planPicked=i;planLocked=true;
+  const it=planCur(),ok=i===it.a;
+  if(ok)planScore++;
+  srsUpdate(it.id,ok);
+  logAnswer("eng_plan",it.t,ok);
+  render();
+}
+function planCheckDict(){
+  if(planLocked)return;
+  const el=document.getElementById('planIn');
+  const val=(el?el.value:"").trim().toLowerCase();
+  planInput=val;planLocked=true;
+  const it=planCur(),ok=val===it.w.toLowerCase();
+  if(ok)planScore++;
+  srsUpdate(it.id,ok);
+  logAnswer("eng_plan","dict",ok);
+  render();
+}
+function planLessonDone(){const it=planCur();lessonMark(it.id);planNext()}
+function planNext(){
+  if(planIdx+1>=planItems.length){planDone=true;window.scrollTo(0,0);render();return}
+  planIdx++;planPicked=null;planLocked=false;planInput="";render();
+  const it=planCur();if(it&&it.t==="dict")setTimeout(()=>speakEnglish(it.w),300);
+}
+function planRepeat(){const it=planCur();if(it&&it.t==="dict")speakEnglish(it.w)}
+function renderEngPlan(){
+  if(planDone)return renderEngPlanResult();
+  const it=planCur();
+  const answered=planItems.slice(0,planIdx).filter(x=>x.t!=="lesson").length;
+  const prog=`<div class="bar">${planItems.map((_,i)=>`<div class="seg" style="background:${i<=planIdx?'#4338CA':'#E2E8F0'};opacity:${i<=planIdx?1:.5}"></div>`).join("")}</div>`;
+  const head=`<button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>${prog}
+  <div class="meta"><span>${toAr(planIdx+1)} من ${toAr(planItems.length)}</span><span>الخطة اليومية · ٤٠ دقيقة</span></div>`;
+  if(it.t==="lesson"){
+    const L=ENG_LESSONS[it.id];
+    app.innerHTML=`${head}
+    <div class="card">
+      <span class="tag" style="background:#E0E7FF;color:#4338CA">📘 شرح جديد · افهمي أولاً</span>
+      <div style="font-size:18px;font-weight:800;color:#312E81;margin:12px 0 10px">${L.t}</div>
+      <div style="background:#EEF2FF;border-radius:12px;padding:14px;font-size:15px;line-height:2;color:#312E81">${L.b}</div>
+      <div style="background:#F0FDF4;border-inline-start:4px solid #10B981;border-radius:12px;padding:14px;margin-top:12px;font-size:16px;line-height:2;direction:ltr;text-align:left;font-family:Georgia,serif">${L.ex.map(e=>`<div>${e}</div>`).join("")}</div>
+    </div>
+    <button class="btn" style="background:#4338CA" onclick="planLessonDone()">فهمت، لنتدرّب ←</button>`;
+    return;
+  }
+  if(it.t==="dict"){
+    const ok=planLocked&&planInput===it.w.toLowerCase();
+    const fb=planLocked?`<div class="explain"><div class="explain-title" style="color:${ok?'#059669':'#B45309'}">${ok?"✓ صحيح":"الصحيح:"}</div><div class="explain-body">${ok?"":`<div style="font-size:22px;font-weight:800;letter-spacing:3px;direction:ltr;font-family:Georgia,serif;margin:6px 0">${dictDiff(planInput,it.w)}</div>`}تعني «${it.m}».</div></div>`:"";
+    app.innerHTML=`${head}
+    <div class="card" style="text-align:center">
+      <span class="tag" style="background:#CFFAFE;color:#0E7490">✍️ استمعي واكتبي</span>
+      <div style="margin:16px 0"><button type="button" onclick="planRepeat()" style="background:#0E7490;color:#fff;border:none;border-radius:50%;width:60px;height:60px;font-size:24px;cursor:pointer">🔊</button></div>
+      <input id="planIn" ${planLocked?"disabled":""} style="width:100%;padding:14px;border-radius:12px;border:2px solid #E2E8F0;font-size:20px;text-align:center;direction:ltr;font-family:Georgia,serif" placeholder="type here" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" onkeydown="if(event.key==='Enter')planCheckDict()">
+      ${fb}
+    </div>
+    ${planLocked?`<button class="btn" style="background:#4338CA" onclick="planNext()">التالي ←</button>`:`<button class="btn" style="background:#0E7490" onclick="planCheckDict()">تحقّقي ←</button>`}`;
+    if(!planLocked){const el=document.getElementById('planIn');if(el)el.focus()}
+    return;
+  }
+  const choices=it.c.map((c,i)=>{
+    let bg="#fff",bd="#E2E8F0",col="#334155";
+    if(planLocked){if(i===it.a){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(i===planPicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}
+    return `<button class="choice" style="background:${bg};border-color:${bd};color:${col}" onclick="planChoose(${i})" ${planLocked?"disabled":""}><span class="letter">${L[i]}</span>${c}</button>`}).join("");
+  const tag=it.t==="reading"?"📖 فهم مقروء":it.t==="grammar"?"🔧 قواعد":"🔤 مفردات";
+  app.innerHTML=`${head}
+  <div class="card">
+    <span class="tag" style="background:#E0E7FF;color:#4338CA">${tag}</span>
+    ${it.passage?`<div style="background:#F0FDFA;border:1px solid #99F6E4;border-radius:12px;padding:14px;margin:12px 0;font-size:16px;line-height:1.8;direction:ltr;text-align:left;color:#0F766E;font-family:Georgia,serif">${it.passage}</div>`:""}
+    <div class="q">${it.q}</div>
+    ${it.listen?`<button type="button" onclick="speakEnglish(planItems[${planIdx}].listen)" style="background:#ECFEFF;border:1.5px solid #A5F3FC;color:#0891B2;border-radius:10px;padding:7px 16px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:14px;font-family:inherit">🔊 استمعي</button>`:""}
+    <div class="choices">${choices}</div>
+    ${planLocked?`<div class="explain"><div class="explain-title" style="color:${planPicked===it.a?'#059669':'#B45309'}">${planPicked===it.a?"✓ إجابة صحيحة":"الصحيحة بالأخضر"}</div><div class="explain-body">${it.w||""}</div></div>`:""}
+  </div>
+  ${planLocked?`<button class="btn" style="background:#4338CA" onclick="planNext()">${planIdx+1>=planItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`:""}`;
+}
+function renderEngPlanResult(){
+  const pct=planTotal?Math.round(planScore/planTotal*100):0;
+  const st=srsLoad(),today=srsToday(),POOL=engPool();
+  const tomorrow=POOL.filter(i=>st[i.id]&&st[i.id].due===today+1).length;
+  const mastered=POOL.filter(i=>st[i.id]&&st[i.id].box>=4).length;
+  const planMin=planMeta?Math.round(planMeta.secs/60):0;
+  const shortfall=Math.max(0,40-planMin-6); // ٦ دقائق مخصّصة للنطق
+  app.innerHTML=`
+  <div class="card">
+    <div class="score-row"><span class="score-big" style="color:${pct>=70?'#059669':pct>=50?'#D97706':'#DC2626'}">${toAr(planScore)}</span><span class="score-total">/ ${toAr(planTotal)}</span><span class="score-pct">${toAr(pct)}%</span></div>
+    <div style="color:#64748B;font-size:15px;margin-bottom:14px">${pct>=85?"يوم ممتاز! 🌟":pct>=60?"تقدّم جيد، واصلي 💪":"لا بأس — العناصر التي أخطأتِ فيها ستعود غداً تلقائياً 🌱"}</div>
+    <div style="background:#E0E7FF;border-radius:12px;padding:14px;margin-bottom:14px;font-size:14px;color:#3730A3;line-height:1.9">
+      🔁 مستحقّ للمراجعة غداً: <b>${toAr(tomorrow)}</b> عنصراً<br>
+      🏆 وصل لمرحلة الترسيخ (١٦ يوماً فأكثر): <b>${toAr(mastered)}</b> عنصراً<br>
+      <span style="font-size:12px;color:#4F46E5">لن يتكرّر أي عنصر قبل موعد استحقاقه — التكرار يكون عند حافة النسيان لا قبله.</span>
+    </div>
+    <div style="background:#F3E8FF;border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:14px;color:#6B21A8;font-weight:700">🎤 أنهي يومك بتمرين النطق (٦ دقائق).</div>
+    <button class="btn" style="background:#7C3AED" onclick="startPronunciation()">🎤 تمرين النطق (٦ دقائق)</button>
+    ${shortfall>0?`<div style="background:#FEF3C7;border-radius:12px;padding:12px 14px;margin-top:14px;font-size:13px;color:#92400E;line-height:1.9;text-align:start">
+      ⏱️ خطة اليوم كانت <b>${toAr(planMin)}</b> دقيقة، وبقيت <b>${toAr(shortfall)}</b> دقيقة لإكمال الأربعين.<br>
+      هذا طبيعي: العناصر لا تُعاد قبل موعد استحقاقها، فإن قلّت المراجعات اليوم قلّ الوقت. أكملي بما يفيد ولا يكرّر:
+      <div style="margin-top:8px">
+        <button class="btn" style="background:#0891B2;margin-bottom:6px" onclick="startEnglish('a2')">🇬🇧 تدريب A2 إضافي</button>
+        <button class="btn" style="background:#D97706" onclick="startFade('reading')">📖 تقوية الفهم المقروء</button>
+      </div></div>`:""}
+    <button class="link-btn" onclick="home()">→ الرئيسية</button>
+  </div>`;
+}
+
 // ===== إملاء إنجليزي: تستمع للكلمة بصوت أمريكي ثم تكتبها (مستوى A1) =====
 const DICTATION_A1=[
  {w:"cat",m:"قطة"},{w:"dog",m:"كلب"},{w:"book",m:"كتاب"},{w:"pen",m:"قلم"},{w:"sun",m:"شمس"},
@@ -1660,7 +1951,7 @@ function bumpStreak(){const st=getStreak();const t=todayStr();if(st.last===t)ret
 function growthMsg(modeKey,pct){try{const key="mawhiba_best_"+modeKey;const prev=parseInt(localStorage.getItem(key)||"-1");let msg="";if(prev<0){msg="أول محاولة في هذا القسم — انطلاقة موفّقة! 🌱"}else if(pct>prev){msg=`تحسّنتِ عن أفضل نتيجة سابقة (${toAr(prev)}%)! تقدّم رائع 📈`}else if(pct===prev){msg="ثبات على أفضل مستوى سابق 💪"}else{msg="واصلي، كل محاولة تبني مهارتك 🌟"}if(pct>prev)localStorage.setItem(key,String(pct));return msg}catch(e){return""}}
 
 // ===== العرض =====
-function render(){if(mode==="home")return renderHome();if(mode==="english")return renderEnglish();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
+function render(){if(mode==="home")return renderHome();if(mode==="engplan")return renderEngPlan();if(mode==="english")return renderEnglish();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
 
 function renderHome(){
   app.innerHTML=`
@@ -1680,6 +1971,7 @@ function renderHome(){
     <button class="mode" style="border-color:#FDE68A" onclick="goFadeMenu()"><span class="m-name">🎓 وضع التقوية (تلاشٍ تدريجي)</span><div class="m-sub">اختاري مهارة وتدرّبي عليها خطوة بخطوة — مبني على دراسات التعلّم</div></button>
     <button class="mode prog" onclick="loadProgress()"><span class="m-name">📈 متابعة التقدّم</span><div class="m-sub">نتائجك السابقة وتحليل المستوى لكل مجال</div></button>
     <button class="mode full" style="background:#0D9488;border-color:#0D9488" onclick="startBasics('multdiv')"><span class="m-name">🧱 تدريب الأساسيات: عائلات الحقائق</span><div class="m-sub">ضرب/قسمة مرتبطان + جمع بالحمل + طرح بالاستلاف + أساسيات النسبة المئوية</div></button>
+    <button class="mode full" style="background:#4338CA;border-color:#4338CA" onclick="startEngPlan()"><span class="m-name">⭐ خطة الإنجليزية اليومية · ٤٠ دقيقة</span><div class="m-sub">شرح ثم تدريب، بتباعد ذكي — لا يتكرّر أي عنصر إلا في يوم استحقاقه (منهج الصف السادس)</div></button>
     <button class="mode full" style="background:#0891B2;border-color:#0891B2" onclick="startEnglish('a1')"><span class="m-name">🇬🇧 تعلّم الإنجليزية · مستوى A1</span><div class="m-sub">مفردات وقواعد وقراءة، مع نطق بصوت أمريكي 🔊 — الخطوة الأولى نحو C2</div></button>
     <button class="mode full" style="background:#155E75;border-color:#155E75" onclick="startEnglish('a2')"><span class="m-name">🇬🇧 تعلّم الإنجليزية · مستوى A2</span><div class="m-sub">أزمنة الماضي والمستقبل، المقارنة، أفعال الوجوب — الخطوة الثانية نحو C2</div></button>
     <button class="mode full" style="background:#0E7490;border-color:#0E7490" onclick="startDictation()"><span class="m-name">✍️ إملاء بالإنجليزية</span><div class="m-sub">استمعي للكلمة، ثم اكتبيها — مستوى A1</div></button>
