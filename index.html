@@ -558,6 +558,7 @@ const FADE_TOPICS=[
   {key:"percent",icon:"٪",label:"النسبة المئوية",sub:"مسائل الراتب والنسب المئوية"},
   {key:"cube",icon:"🧊",label:"حجم المكعّب",sub:"أثر مضاعفة الضلع على الحجم"},
   {key:"pyramid",icon:"🔺",label:"الهرم العددي",sub:"إيجاد العدد الناقص في الهرم"},
+  {key:"angles",icon:"📐",label:"الزوايا المتساوية",sub:"تقسيم زاوية كبيرة إلى أجزاء متساوية"},
 ];
 function fadeMakeSeq(){
   const kind=pick(["seq","seq","ratio"]); // متتاليات أكثر تكراراً
@@ -627,10 +628,39 @@ function fadeMakePyramid(){
     pyr:{top:toAr(top),left:knownOnLeft?toAr(known):"؟",right:knownOnLeft?"؟":toAr(known),leftKnown:knownOnLeft,rightKnown:!knownOnLeft},
     q:`هرم عددي: مجموع العددين السفليين × ٢ = العلوي. ما العدد الناقص؟`};
 }
+function equalAnglesSVG(total,k){
+  const O={x:100,y:165},startPhi=(180-total)/2,rayLen=75,arcR=22,labR=34,outerR=80;
+  let phis=[startPhi];for(let i=0;i<k;i++)phis.push(phis[phis.length-1]+total/k);
+  let rays="",arcs="",labels="";
+  phis.forEach(p=>{const pt=vAngleDeg(O,rayLen,p);rays+=`<line x1="${O.x}" y1="${O.y}" x2="${pt.x.toFixed(1)}" y2="${pt.y.toFixed(1)}" stroke="#1E293B" stroke-width="2.5"/>`});
+  for(let i=0;i<k;i++){
+    const u1=uDir(phis[i]),u2=uDir(phis[i+1]),isUnk=i===0;
+    arcs+=`<path d="${arcPathBetween(O,u1,u2,arcR)}" fill="none" stroke="${isUnk?'#D97706':'#0D9488'}" stroke-width="2"/>`;
+    const lp=bisectorPoint(O,u1,u2,labR);
+    labels+=isUnk?`<text x="${lp.x.toFixed(1)}" y="${lp.y.toFixed(1)}" font-size="15" font-weight="800" text-anchor="middle" dominant-baseline="middle" fill="#D97706">؟</text>`:`<text x="${lp.x.toFixed(1)}" y="${lp.y.toFixed(1)}" font-size="14" font-weight="800" text-anchor="middle" dominant-baseline="middle" fill="#0D9488">٭</text>`;
+  }
+  const uO1=uDir(phis[0]),uO2=uDir(phis[k]);
+  const outerLabel=bisectorPoint(O,uO1,uO2,outerR);
+  const outerArc=`<path d="${arcPathBetween(O,uO1,uO2,outerR-14)}" fill="none" stroke="#334155" stroke-width="1.5" stroke-dasharray="3 3"/>`;
+  const outerText=`<text x="${outerLabel.x.toFixed(1)}" y="${outerLabel.y.toFixed(1)}" font-size="12" font-weight="700" text-anchor="middle" fill="#334155">المجموع ${toAr(total)}°</text>`;
+  return `<svg viewBox="0 0 200 200" width="200" height="200">${rays}<circle cx="${O.x}" cy="${O.y}" r="3" fill="#1E293B"/>${arcs}${labels}${outerArc}${outerText}</svg>`;
+}
+function fadeMakeAngles(){
+  const k=pick([2,3,4]),part=pick([10,12,15,18,20,24,25,30,36,40,45]),total=part*k;
+  if(total>170)return fadeMakeAngles();
+  const ans=part;
+  return{kind:"angles",ans,prompt:"ما قياس الزاوية الواحدة (؟)؟",
+    steps:[`الزاوية الكبيرة مقسومة إلى ${toAr(k)} زوايا متساوية (مُعلَّمة بـ ٭)، ومجموعها ${toAr(total)}°`,`الزاوية الواحدة = ${toAr(total)} ÷ ${toAr(k)} = ${toAr(part)}°`],
+    ruleTxt:`الزاوية الواحدة = مجموع الزاوية الكبيرة ÷ عدد الأجزاء المتساوية`,
+    distractors:[part+5,part-5,total],
+    svg:equalAnglesSVG(total,k),
+    q:`زاوية كبيرة قياسها ${toAr(total)}° مقسومة بأشعّة متساوية إلى ${toAr(k)} زوايا متطابقة (٭). ما قياس الزاوية الواحدة؟`};
+}
 function fadeMakeQuestion(){
   if(fadeTopic==="median")return fadeMakeMedian();
   if(fadeTopic==="percent")return fadeMakePercent();
   if(fadeTopic==="cube")return fadeMakeCube();
+  if(fadeTopic==="angles")return fadeMakeAngles();
   if(fadeTopic==="pyramid")return fadeMakePyramid();
   return fadeMakeSeq();
 }
@@ -693,6 +723,11 @@ function renderFade(){
   } else if(c.kind==="pyramid"){
     seqBox=`<div style="text-align:center;background:#F8FAFC;border-radius:14px;padding:16px 10px 10px;margin-bottom:16px">
       ${pyramidSVG(c.pyr.top,c.pyr.left,c.pyr.right,c.pyr.leftKnown,c.pyr.rightKnown)}
+      <div style="font-size:14px;font-weight:700;color:#334155;margin-top:6px">${c.q}</div>
+    </div>`;
+  } else if(c.kind==="angles"){
+    seqBox=`<div style="text-align:center;background:#F8FAFC;border-radius:14px;padding:16px 10px 10px;margin-bottom:16px">
+      ${c.svg}
       <div style="font-size:14px;font-weight:700;color:#334155;margin-top:6px">${c.q}</div>
     </div>`;
   } else {
