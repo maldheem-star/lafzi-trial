@@ -735,7 +735,7 @@ const BASICS_SUBS={
   subborrow:{label:"الطرح بالاستلاف (عشرات/مئات)",short:"الطرح بالاستلاف"},
   percent:{label:"أساسيات النسبة المئوية",short:"النسبة المئوية"}
 };
-let basicsSub="multdiv",basicsStage=1,basicsStreak=0,basicsCur=null,basicsLocked=false,basicsPicked=-1,basicsMasteryStreak=0,basicsStage4Support=false,basicsRecoveryStreak=0;
+let basicsSub="multdiv",basicsStage=1,basicsStreak=0,basicsCur=null,basicsLocked=false,basicsPicked=-1,basicsMasteryStreak=0,basicsMidSupport=false,basicsMidRecoveryStreak=0,basicsFinalSupport=false,basicsFinalRecoveryStreak=0;
 
 function groupsVisual(n,m){
   let groups="";
@@ -823,17 +823,20 @@ function basicsChoose(i){
   const ok=i===basicsCur.ai;
   if(ok)basicsStreak++;else basicsStreak=0;
   if(basicsStage===4){
-    if(!ok){basicsMasteryStreak=0;basicsStage4Support=true;basicsRecoveryStreak=0}
-    else if(basicsStage4Support){basicsRecoveryStreak++;if(basicsRecoveryStreak>=RECOVERY_REQ){basicsStage4Support=false;basicsRecoveryStreak=0}}
+    if(!ok){basicsMidSupport=true;basicsMidRecoveryStreak=0}
+    else if(basicsMidSupport){basicsMidRecoveryStreak++;if(basicsMidRecoveryStreak>=RECOVERY_REQ){basicsMidSupport=false;basicsMidRecoveryStreak=0}}
+  } else if(basicsStage===5){
+    if(!ok){basicsMasteryStreak=0;basicsFinalSupport=true;basicsFinalRecoveryStreak=0}
+    else if(basicsFinalSupport){basicsFinalRecoveryStreak++;if(basicsFinalRecoveryStreak>=RECOVERY_REQ){basicsFinalSupport=false;basicsFinalRecoveryStreak=0}}
     else{basicsMasteryStreak++}
   }
   logAnswer("basics_"+basicsSub,"stage"+basicsStage,ok);
   render();
 }
 function basicsStage1Next(){basicsStreak++;if(basicsStreak>=BASICS_REQ){basicsStage=2;basicsStreak=0}basicsNew()}
-function basicsAdvance(){if(basicsStreak>=BASICS_REQ&&basicsStage<4){basicsStage++;basicsStreak=0}basicsNew()}
-function basicsStage4Next(){if(basicsMasteryStreak>=MASTERY_REQ){mode="basicsDone";window.scrollTo(0,0);render();return}basicsNew()}
-function startBasics(sub){mode="basics";basicsSub=sub;basicsStage=1;basicsStreak=0;basicsMasteryStreak=0;basicsStage4Support=false;basicsRecoveryStreak=0;window.scrollTo(0,0);basicsNew()}
+function basicsAdvance(){if(basicsStreak>=BASICS_REQ&&basicsStage<5){basicsStage++;basicsStreak=0}basicsNew()}
+function basicsFinalNext(){if(basicsMasteryStreak>=MASTERY_REQ){mode="basicsDone";window.scrollTo(0,0);render();return}basicsNew()}
+function startBasics(sub){mode="basics";basicsSub=sub;basicsStage=1;basicsStreak=0;basicsMasteryStreak=0;basicsMidSupport=false;basicsMidRecoveryStreak=0;basicsFinalSupport=false;basicsFinalRecoveryStreak=0;window.scrollTo(0,0);basicsNew()}
 function renderBasicsDone(){
   const subLabel=BASICS_SUBS[basicsSub].label;
   const otherBtns=Object.keys(BASICS_SUBS).filter(k=>k!==basicsSub).map(k=>`<button class="btn" style="background:#059669" onclick="startBasics('${k}')">🔁 دربي على ${BASICS_SUBS[k].short}</button>`).join("");
@@ -849,12 +852,13 @@ function basicsStageInfo(){return[
   {label:"مرحلة ١: مثال محلول كامل (شاهدي)",tag:"شاهدي"},
   {label:"مرحلة ٢: مع الرسم والقاعدة (طبّقي)",tag:"طبّقي"},
   {label:"مرحلة ٣: بدون رسم، والقاعدة مذكورة (اكتشفي)",tag:"اكتشفي"},
-  {label:"مرحلة ٤: حل مستقل تماماً (مستقل)",tag:"مستقل"}
+  {label:"مرحلة ٤: بلا تذكير مسبق (دعم عند الحاجة)",tag:"دعم"},
+  {label:"مرحلة ٥: حل مستقل تماماً (مستقل)",tag:"مستقل"}
 ][basicsStage-1]}
 function renderBasics(){
   const info=basicsStageInfo(),f=basicsCur.fam;
-  const bar=[1,2,3,4].map(x=>`<div class="seg" style="flex:1;height:8px;border-radius:99px;background:${x<basicsStage?'#10B981':x===basicsStage?'#0D9488':'#E2E8F0'}"></div>`).join("");
-  const showVisual=basicsStage<=2||(basicsStage===4&&basicsStage4Support);
+  const bar=[1,2,3,4,5].map(x=>`<div class="seg" style="flex:1;height:8px;border-radius:99px;background:${x<basicsStage?'#10B981':x===basicsStage?'#0D9488':'#E2E8F0'}"></div>`).join("");
+  const showVisual=basicsStage<=2||(basicsStage===5&&basicsFinalSupport);
   let visualBox="";
   if(showVisual){
     if(basicsSub==="multdiv")visualBox=`<div style="margin-bottom:14px">${groupsVisual(f.a,f.b)}</div>`;
@@ -888,10 +892,12 @@ function renderBasics(){
       :`القاعدة: أوجدي قيمة ١٪ واحد أولاً بقسمة الرقم على ١٠٠ (${toAr(f.a)}÷١٠٠=${toAr(f.onePercent)})، ثم اضربيها في رقم النسبة (${toAr(f.onePercent)}×${toAr(f.b)}=${toAr(f.c)}).`;
     if(basicsStage===2)hint=`<div style="background:#F0FDF4;border-inline-start:4px solid #10B981;border-radius:12px;padding:14px;margin-bottom:14px;font-size:15px">${ruleText}</div>`;
     else if(basicsStage===3)hint=`<div style="background:#FEF3C7;border-radius:12px;padding:14px;margin-bottom:14px;font-size:15px;color:#B45309"><b>تذكّري القاعدة:</b> ${ruleText}</div>`;
-    else if(basicsStage===4&&basicsStage4Support)hint=`<div style="background:#FEF9C3;border-inline-start:4px solid #EAB308;border-radius:12px;padding:14px;margin-bottom:14px;font-size:15px;color:#854D0E">🌱 ما عليك، مراجعة سريعة: ${ruleText} جاوبي صح مرتين ليختفي التذكير.</div>`;
-    const why=basicsLocked?`<div class="why" style="margin-bottom:10px">${basicsPicked===basicsCur.ai?"✓ "+(basicsStage===4?"حللتِها وحدك! 🌟":"أحسنتِ"):"الصحيحة بالأخضر"}.</div><button class="btn" style="background:${basicsStage===4?'#059669':'#0D9488'}" onclick="${basicsStage===4?'basicsStage4Next()':'basicsAdvance()'}">${basicsStage===4?'سؤال جديد ←':'التالي ←'}</button>`:"";
+    else if(basicsStage===4&&basicsMidSupport)hint=`<div style="background:#FEF9C3;border-inline-start:4px solid #EAB308;border-radius:12px;padding:14px;margin-bottom:14px;font-size:15px;color:#854D0E">🌱 القاعدة: ${ruleText} جاوبي صح مرتين ليختفي التذكير.</div>`;
+    else if(basicsStage===5&&basicsFinalSupport)hint=`<div style="background:#FEF9C3;border-inline-start:4px solid #EAB308;border-radius:12px;padding:14px;margin-bottom:14px;font-size:15px;color:#854D0E">🌱 ما عليك، مراجعة سريعة: ${ruleText} جاوبي صح مرتين ليختفي التذكير.</div>`;
+    const why=basicsLocked?`<div class="why" style="margin-bottom:10px">${basicsPicked===basicsCur.ai?"✓ "+(basicsStage===5?"حللتِها وحدك! 🌟":"أحسنتِ"):"الصحيحة بالأخضر"}.</div><button class="btn" style="background:${basicsStage===5?'#059669':'#0D9488'}" onclick="${basicsStage===5?'basicsFinalNext()':'basicsAdvance()'}">${basicsStage===5?'سؤال جديد ←':'التالي ←'}</button>`:"";
     const mtr=basicsStage<4?`<div style="font-size:13px;color:#64748B;text-align:center;margin-top:10px">جاوبي صح مرتين متتاليتين للانتقال (${toAr(basicsStreak)}/${toAr(BASICS_REQ)})</div>`
-      :basicsStage4Support?`<div style="font-size:13px;color:#854D0E;text-align:center;margin-top:10px">🌱 مراجعة: (${toAr(basicsRecoveryStreak)}/${toAr(RECOVERY_REQ)}) لإخفاء التذكير مرة أخرى</div>`
+      :basicsStage===4?(basicsMidSupport?`<div style="font-size:13px;color:#854D0E;text-align:center;margin-top:10px">🌱 مراجعة: (${toAr(basicsMidRecoveryStreak)}/${toAr(RECOVERY_REQ)}) لإخفاء التذكير</div>`:`<div style="font-size:13px;color:#64748B;text-align:center;margin-top:10px">تدريب شبه مستقل — جاوبي صح مرتين متتاليتين للوصول للاستقلال الكامل (${toAr(basicsStreak)}/${toAr(BASICS_REQ)})</div>`)
+      :basicsFinalSupport?`<div style="font-size:13px;color:#854D0E;text-align:center;margin-top:10px">🌱 مراجعة: (${toAr(basicsFinalRecoveryStreak)}/${toAr(RECOVERY_REQ)}) لإخفاء التذكير مرة أخرى</div>`
       :`<div style="font-size:13px;color:#64748B;text-align:center;margin-top:10px">🎓 حل مستقل — (${toAr(basicsMasteryStreak)}/${toAr(MASTERY_REQ)}) متتالية لإتقان هذا النوع</div>`;
     body=`${hint}${visualBox}<div class="q" style="text-align:center">${basicsCur.qText}</div><div class="choices">${ch}</div>${why}${mtr}`;
   }
