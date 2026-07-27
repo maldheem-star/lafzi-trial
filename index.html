@@ -1127,7 +1127,9 @@ function engChoose(i){
   if(engLocked)return;engPicked=i;engLocked=true;
   const item=engFiltered[engIdx],ok=i===item.a;
   if(ok){engScore++;if(item.passage)bumpReadingCorrect()}
-  engAnswered[engIdx]=ok;render();
+  engAnswered[engIdx]=ok;
+  logAnswer("english_a1",item.passage?"reading":"vocab_grammar",ok);
+  render();
 }
 function engNext(){if(engIdx+1>=engFiltered.length){engDone=true;window.scrollTo(0,0)}else{engIdx++;engPicked=null;engLocked=false}render()}
 function renderEnglish(){
@@ -1187,7 +1189,9 @@ function dictCheck(){
   const el=document.getElementById('dictIn');
   const val=(el?el.value:"").trim().toLowerCase();
   dictInput=val;dictLocked=true;
-  if(val===dictSession[dictIdx].w.toLowerCase())dictScore++;
+  const dictOk=val===dictSession[dictIdx].w.toLowerCase();
+  if(dictOk)dictScore++;
+  logAnswer("dictation_a1","word",dictOk);
   render();
 }
 function dictNext(){
@@ -1298,6 +1302,7 @@ async function pronListen(){
     if(data&&data.ok){
       pronResult={heard:data.heard,ok:data.matched};
       if(data.matched)pronScore++;
+      logAnswer("pronunciation_a1","word",data.matched);
     }else if(data&&data.error==="not_configured"){
       pronResult={heard:"",ok:false,error:true,notConfigured:true};
     }else{
