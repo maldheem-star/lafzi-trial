@@ -1247,9 +1247,34 @@ const DICTATION_A1=[
  {w:"hat",m:"قبعة"},{w:"six",m:"ستة"},{w:"ten",m:"عشرة"},{w:"big",m:"كبير"},{w:"red",m:"أحمر"},
  {w:"run",m:"يجري"},{w:"yes",m:"نعم"},{w:"boy",m:"ولد"},{w:"girl",m:"بنت"},{w:"fish",m:"سمكة"},
 ];
+// تدرّج الإملاء (نفس فلسفة التقوية/الأساسيات): الكتابة الحرة من الصفر أصعب بكثير من الاختيار من متعدد،
+// فنبدأ بالنسخ (ربط الصوت بالحروف) ثم نسحب المساعدة تدريجياً. المرحلة محفوظة بين الجلسات ليستمر التقدّم.
+const DICT_REQ=2;   // إجابتان صحيحتان متتاليتان للصعود لمرحلة أصعب
+const DICT_BACK=2;  // خطآن متتاليان للنزول لمرحلة أسهل (دعم تلقائي)
+const DICT_STAGES=[
+  {label:"مرحلة ١: انسخي الكلمة (اربطي الصوت بالحروف)",tag:"انسخي"},
+  {label:"مرحلة ٢: أول حرف معطى",tag:"أول حرف"},
+  {label:"مرحلة ٣: عدد الحروف فقط",tag:"عدد الحروف"},
+  {label:"مرحلة ٤: بلا مساعدة (مستقل)",tag:"مستقل"},
+];
+function dictStageGet(){try{const v=parseInt(localStorage.getItem("mawhiba_dict_stage")||"1");return(v>=1&&v<=4)?v:1}catch(e){return 1}}
+function dictStageSet(v){try{localStorage.setItem("mawhiba_dict_stage",String(v))}catch(e){}}
+// تلميح المرحلة: الكلمة كاملة ← أول حرف + شرطات ← شرطات فقط ← لا شيء
+function dictHint(word,stage){
+  if(stage>=4)return"";
+  if(stage<=1)return word;
+  return word.split("").map((c,i)=>(stage===2&&i===0)?c:"_").join(" ");
+}
+// مقارنة حرفاً بحرف: تُظهر لها أي الحروف أصابت وأيها أخطأت بدل مجرد "غلط"
+function dictDiff(typed,correct){
+  const t=(typed||"").split("");
+  return correct.split("").map((ch,i)=>`<span style="color:${t[i]===ch?'#059669':'#DC2626'}">${ch}</span>`).join("");
+}
 let dictSession=[],dictIdx=0,dictInput="",dictLocked=false,dictScore=0,dictDone=false;
+let dictStage=1,dictStreak=0,dictMiss=0;
 function startDictation(){
   mode="dictation";dictSession=shuffle(DICTATION_A1).slice(0,10);dictIdx=0;dictInput="";dictLocked=false;dictScore=0;dictDone=false;
+  dictStage=dictStageGet();dictStreak=0;dictMiss=0;
   window.scrollTo(0,0);render();
   setTimeout(()=>speakEnglish(dictSession[0].w),300);
 }
@@ -1261,7 +1286,15 @@ function dictCheck(){
   dictInput=val;dictLocked=true;
   const dictOk=val===dictSession[dictIdx].w.toLowerCase();
   if(dictOk)dictScore++;
-  logAnswer("dictation_a1","word",dictOk);
+  logAnswer("dictation_a1","stage"+dictStage,dictOk);
+  // تدرّج المرحلة: صعود بإتقان متتالٍ، ونزول تلقائي عند تكرار الخطأ حتى لا تعلق على مستوى أصعب من قدرتها
+  if(dictOk){
+    dictMiss=0;dictStreak++;
+    if(dictStreak>=DICT_REQ&&dictStage<4){dictStage++;dictStreak=0;dictStageSet(dictStage)}
+  }else{
+    dictStreak=0;dictMiss++;
+    if(dictMiss>=DICT_BACK&&dictStage>1){dictStage--;dictMiss=0;dictStageSet(dictStage)}
+  }
   render();
 }
 function dictNext(){
@@ -1272,9 +1305,14 @@ function dictNext(){
 function renderDictation(){
   if(dictDone)return renderDictationResult();
   const item=dictSession[dictIdx];
+  const info=DICT_STAGES[dictStage-1];
   const prog=dictSession.map((_,i)=>`<div class="seg" style="background:${i<=dictIdx?'#0E7490':'#E2E8F0'};opacity:${i<=dictIdx?1:.5}"></div>`).join("");
+  const stageBar=[1,2,3,4].map(x=>`<div class="seg" style="flex:1;height:8px;border-radius:99px;background:${x<dictStage?'#10B981':x===dictStage?'#0E7490':'#E2E8F0'}"></div>`).join("");
   const ok=dictLocked&&dictInput===item.w.toLowerCase();
-  const feedback=dictLocked?`<div class="explain"><div class="explain-title" style="color:${ok?'#059669':'#B45309'}">${ok?"✓ إملاء صحيح":"الإملاء الصحيح بالأخضر"}</div><div class="explain-body">${ok?"":`الصحيح: <b style="direction:ltr;display:inline-block;font-family:Georgia,serif">${item.w}</b> — `}تعني «${item.m}».</div></div>`:"";
+  const hint=dictHint(item.w,dictStage);
+  const hintBox=hint?`<div style="background:#F0FDFA;border:1px solid #99F6E4;border-radius:12px;padding:12px;margin-bottom:14px"><div style="font-size:12px;color:#0E7490;margin-bottom:4px">${dictStage<=1?"انسخي هذه الكلمة:":"مساعدة:"}</div><div style="font-size:24px;font-weight:800;letter-spacing:4px;direction:ltr;font-family:Georgia,serif;color:#0F766E">${hint}</div></div>`:"";
+  const feedback=dictLocked?`<div class="explain"><div class="explain-title" style="color:${ok?'#059669':'#B45309'}">${ok?"✓ إملاء صحيح":"الإملاء الصحيح:"}</div><div class="explain-body">${ok?"":`<div style="font-size:24px;font-weight:800;letter-spacing:3px;direction:ltr;font-family:Georgia,serif;margin:6px 0">${dictDiff(dictInput,item.w)}</div><div style="font-size:12px;color:#64748B;margin-bottom:6px">الأخضر = حرف صحيح في مكانه، الأحمر = خطأ أو ناقص</div>`}تعني «${item.m}».</div></div>`:"";
+  const meter=`<div style="font-size:12px;color:#64748B;text-align:center;margin-top:10px">${dictStage<4?`صحيحتان متتاليتان للانتقال للمرحلة التالية (${toAr(dictStreak)}/${toAr(DICT_REQ)})`:"🎓 كتابة مستقلة تماماً"}</div>`;
   const btn=dictLocked
     ?`<button class="btn" style="background:#0E7490" onclick="dictNext()">${dictIdx+1>=dictSession.length?"إنهاء ومشاهدة النتيجة":"الكلمة التالية ←"}</button>`
     :`<button class="btn" style="background:#0E7490" onclick="dictCheck()">تحقّقي ←</button>`;
@@ -1282,12 +1320,16 @@ function renderDictation(){
   <button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
   <div class="bar">${prog}</div>
   <div class="meta"><span>كلمة ${toAr(dictIdx+1)} من ${toAr(dictSession.length)}</span><span>إملاء · A1</span></div>
+  <div style="display:flex;gap:6px;margin-bottom:8px">${stageBar}</div>
+  <div style="font-size:12px;font-weight:800;color:#0E7490;margin-bottom:12px">${info.label}</div>
   <div class="card" style="text-align:center">
-    <span class="tag" style="background:#CFFAFE;color:#0E7490">✍️ إملاء · استمعي واكتبي</span>
+    <span class="tag" style="background:#CFFAFE;color:#0E7490">✍️ إملاء · ${info.tag}</span>
     <div style="margin:18px 0"><button type="button" onclick="dictReplay()" style="background:#0E7490;color:#fff;border:none;border-radius:50%;width:64px;height:64px;font-size:26px;cursor:pointer">🔊</button></div>
     <div style="font-size:13px;color:#64748B;margin-bottom:16px">اضغطي على السمّاعة لسماع الكلمة، ثم اكتبيها بالإنجليزي</div>
+    ${hintBox}
     <input id="dictIn" ${dictLocked?"disabled":""} style="width:100%;padding:14px;border-radius:12px;border:2px solid #E2E8F0;font-size:20px;text-align:center;direction:ltr;font-family:Georgia,serif" placeholder="type here" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" onkeydown="if(event.key==='Enter')dictCheck()">
     ${feedback}
+    ${meter}
   </div>
   ${btn}`;
   if(!dictLocked){const el=document.getElementById('dictIn');if(el)el.focus()}
