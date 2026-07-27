@@ -559,6 +559,8 @@ const FADE_TOPICS=[
   {key:"cube",icon:"🧊",label:"حجم المكعّب",sub:"أثر مضاعفة الضلع على الحجم"},
   {key:"pyramid",icon:"🔺",label:"الهرم العددي",sub:"إيجاد العدد الناقص في الهرم"},
   {key:"angles",icon:"📐",label:"الزوايا المتساوية",sub:"تقسيم زاوية كبيرة إلى أجزاء متساوية"},
+  {key:"mirror",icon:"🪞",label:"الانعكاس المرآتي",sub:"إيجاد انعكاس الشكل حول خط عمودي"},
+  {key:"rotate",icon:"🔄",label:"تدوير الأشكال",sub:"إكمال تسلسل شكل يدور بمقدار ثابت"},
 ];
 function fadeMakeSeq(){
   const kind=pick(["seq","seq","ratio"]); // متتاليات أكثر تكراراً
@@ -656,17 +658,47 @@ function fadeMakeAngles(){
     svg:equalAnglesSVG(total,k),
     q:`زاوية كبيرة قياسها ${toAr(total)}° مقسومة بأشعّة متساوية إلى ${toAr(k)} زوايا متطابقة (٭). ما قياس الزاوية الواحدة؟`};
 }
+function fadeMakeMirror(){
+  const color=pick(["#0D9488","#7C3AED","#D97706"]);
+  const mainSVG=`<svg viewBox="0 0 140 90" width="140" height="90"><line x1="70" y1="5" x2="70" y2="85" stroke="#94A3B8" stroke-width="2" stroke-dasharray="4 4"/><g transform="translate(95,45) scale(0.9,0.9)">${mirrorFlagMarkup(color)}</g></svg>`;
+  const correct={t:"scale(-0.9,0.9)"};
+  const distract=[{t:"scale(0.9,0.9)"},{t:"scale(0.9,-0.9)"},{t:"rotate(180) scale(0.9,0.9)"}];
+  const all=shuffle([correct,...distract]);
+  const opts=all.map(o=>mirrorFlagSVG(o.t,color));
+  const ai=all.indexOf(correct);
+  return{kind:"mirror",choiceKind:"shape",opts,ai,prompt:"ما انعكاسه المرآتي الصحيح؟",
+    steps:[`الانعكاس المرآتي عبر خط عمودي يقلب الشكل أفقياً فقط (يمين ↔ يسار)`,`لا يُدار الشكل ولا يُقلب رأسياً (أعلى↔أسفل) — فقط ينعكس يميناً↔يساراً`],
+    ruleTxt:`الانعكاس المرآتي عبر خط عمودي = قلب الشكل أفقياً فقط (يمين↔يسار)، بدون أي تدوير أو قلب رأسي`,
+    svg:mainSVG,
+    q:`الشكل يقع على يمين الخط المتقطّع (خط الانعكاس). ما انعكاسه المرآتي الصحيح على الجانب الآخر؟`};
+}
+function fadeMakeRotate(){
+  const step=pick([90,90,45]),rots=[0,1,2,3].map(i=>(i*step)%360),nextRot=(4*step)%360;
+  const mainSVG=`<div style="display:flex;gap:10px;align-items:center;justify-content:center">${rots.map(r=>rtriSVG(r)).join("")}<span style="font-size:22px;font-weight:800;color:#D97706">؟</span></div>`;
+  const distractRots=[90,180,270].map(d=>(nextRot+d)%360);
+  const optsRots=shuffle([nextRot,...distractRots]);
+  const opts=optsRots.map(r=>rtriSVG(r));
+  const ai=optsRots.indexOf(nextRot);
+  return{kind:"rotate",choiceKind:"shape",opts,ai,prompt:"ما الشكل التالي في التسلسل؟",
+    steps:[`الشكل يدور ${toAr(step)}° في كل مرة باتجاه عقارب الساعة`,`بعد ${toAr(rots[3])}° يأتي ${toAr(nextRot)}°`],
+    ruleTxt:`لاحظي مقدار الدوران بين كل شكل والذي يليه، وطبّقي نفس المقدار على آخر شكل لإيجاد التالي`,
+    svg:mainSVG,
+    q:`لاحظي دوران الشكل في التسلسل (باتجاه عقارب الساعة). ما الشكل التالي؟`};
+}
 function fadeMakeQuestion(){
   if(fadeTopic==="median")return fadeMakeMedian();
   if(fadeTopic==="percent")return fadeMakePercent();
   if(fadeTopic==="cube")return fadeMakeCube();
   if(fadeTopic==="angles")return fadeMakeAngles();
   if(fadeTopic==="pyramid")return fadeMakePyramid();
+  if(fadeTopic==="mirror")return fadeMakeMirror();
+  if(fadeTopic==="rotate")return fadeMakeRotate();
   return fadeMakeSeq();
 }
 function fadeDedupe(correct,dist){const out=[];for(const d of dist){if(d!==correct&&!out.includes(d))out.push(d)}let p=1;while(out.length<3){[correct+p,correct-p].forEach(x=>{if(out.length<3&&x>0&&x!==correct&&!out.includes(x))out.push(x)});p++}return out.slice(0,3)}
 function fadePrep(){
   if(fadeStage===1){fadeCur.opts=null;fadeCur.ai=-1;return}
+  if(fadeCur.choiceKind==="shape")return; // الخيارات (رسومات SVG) والإجابة الصحيحة جاهزة من المولّد نفسه
   let d;
   if(fadeCur.kind==="ratio"){d=[fadeCur.ans+fadeCur.per,fadeCur.ans-fadeCur.per,fadeCur.ans+fadeStage];}
   else if(fadeCur.kind==="seq"){d=fadeCur.type==="add"?[fadeCur.ans+fadeCur.rule,fadeCur.ans-fadeCur.rule,fadeCur.ans+fadeStage]:[fadeCur.ans-fadeCur.seq[4],fadeCur.seq[4]+fadeCur.rule,fadeCur.ans+fadeCur.rule];}
@@ -725,7 +757,7 @@ function renderFade(){
       ${pyramidSVG(c.pyr.top,c.pyr.left,c.pyr.right,c.pyr.leftKnown,c.pyr.rightKnown)}
       <div style="font-size:14px;font-weight:700;color:#334155;margin-top:6px">${c.q}</div>
     </div>`;
-  } else if(c.kind==="angles"){
+  } else if(c.kind==="angles"||c.kind==="mirror"||c.kind==="rotate"){
     seqBox=`<div style="text-align:center;background:#F8FAFC;border-radius:14px;padding:16px 10px 10px;margin-bottom:16px">
       ${c.svg}
       <div style="font-size:14px;font-weight:700;color:#334155;margin-top:6px">${c.q}</div>
@@ -742,7 +774,7 @@ function renderFade(){
     <button class="btn" style="background:#059669" onclick="fadeStage1Next()">فهمت، مثال آخر ←</button>
     <div style="font-size:13px;color:#64748B;text-align:center;margin-top:10px">شاهدي مثالين للانتقال (${toAr(fadeStreak)}/${toAr(FADE_REQ)})</div>`;
   } else {
-    const ch=c.opts.map((o,i)=>{let bg="#fff",bd="#E2E8F0",col="#334155";if(fadeLocked){if(i===c.ai){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(i===fadePicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}return `<button class="choice" style="background:${bg};border-color:${bd};color:${col};font-size:18px;font-weight:800" onclick="fadeChoose(${i})" ${fadeLocked?'disabled':''}>${toAr(o)}</button>`}).join("");
+    const ch=c.opts.map((o,i)=>{let bg="#fff",bd="#E2E8F0",col="#334155";if(fadeLocked){if(i===c.ai){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(i===fadePicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}return `<button class="choice" style="background:${bg};border-color:${bd};color:${col};font-size:18px;font-weight:800" onclick="fadeChoose(${i})" ${fadeLocked?'disabled':''}>${c.choiceKind==="shape"?o:toAr(o)}</button>`}).join("");
     let hint="";
     if(fadeStage===2)hint=`<div style="background:#F0FDF4;border-inline-start:4px solid #10B981;border-radius:12px;padding:14px;margin-bottom:14px;font-size:15px">القاعدة معطاة: <b>${c.ruleTxt}</b>. طبّقيها لإيجاد الإجابة.</div>`;
     else if(fadeStage===3)hint=`<div style="background:#FEF3C7;border-radius:12px;padding:14px;margin-bottom:14px;font-size:15px;color:#B45309"><b>اكتشفي القاعدة بنفسك</b> ثم طبّقيها.</div>`;
