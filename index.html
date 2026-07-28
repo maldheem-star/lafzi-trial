@@ -1003,15 +1003,23 @@ const BASICS_SUBS={
 };
 let basicsSub="multdiv",basicsStage=1,basicsStreak=0,basicsCur=null,basicsLocked=false,basicsPicked=-1,basicsMasteryStreak=0,basicsMidSupport=false,basicsMidRecoveryStreak=0,basicsFinalSupport=false,basicsFinalRecoveryStreak=0;
 
+// إطار العشرة (Ten-Frame): يرتّب الكمية في صفّين من خمسة بدل نقاط عشوائية تُعدّ واحدة واحدة،
+// حتى يتعرّف الدماغ على الكمية دفعة واحدة (الإدراك البصري الفوري/Subitizing) بدل العدّ اليدوي — نفس مبدأ عدّ الأصابع لكن بلا حاجة للعدّ
+function tenFrameSVG(n,color){
+  color=color||"#0D9488";
+  let cells="";
+  for(let i=0;i<10;i++){
+    const row=Math.floor(i/5),col=i%5,x=3+col*20,y=3+row*20,filled=i<n;
+    cells+=`<rect x="${x}" y="${y}" width="16" height="16" rx="3" fill="${filled?color:'#F1F5F9'}" stroke="${filled?color:'#CBD5E1'}" stroke-width="1.5"/>`;
+  }
+  return `<svg viewBox="0 0 103 43" width="103" height="43">${cells}<line x1="0" y1="23" x2="103" y2="23" stroke="#94A3B8" stroke-width="1" stroke-dasharray="2 2"/></svg>`;
+}
 function groupsVisual(n,m){
   let groups="";
   for(let g=0;g<n;g++){
-    let dots="";
-    for(let i=0;i<m;i++){const row=Math.floor(i/3),col=i%3;dots+=`<circle cx="${8+col*13}" cy="${8+row*13}" r="4.5" fill="#0D9488"/>`}
-    const h=Math.ceil(m/3)*13+8;
-    groups+=`<div style="background:#F0FDFA;border:1.5px solid #99F6E4;border-radius:9px;padding:3px;display:inline-block;margin:3px"><svg viewBox="0 0 39 ${h}" width="39" height="${h}">${dots}</svg></div>`;
+    groups+=`<div style="background:#F0FDFA;border:1.5px solid #99F6E4;border-radius:9px;padding:4px;display:inline-block;margin:3px">${tenFrameSVG(m)}</div>`;
   }
-  return`<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:2px;max-width:320px;margin:0 auto">${groups}</div>`;
+  return`<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:2px;max-width:340px;margin:0 auto">${groups}</div>`;
 }
 function percentGridVisual(p){
   let cells="";
@@ -1025,8 +1033,8 @@ function placeValueVisual(n){
   const hundreds=Math.floor(n/100),tens=Math.floor((n%100)/10),ones=n%10;
   let h="";for(let i=0;i<hundreds;i++)h+=`<div style="background:#0D9488;width:32px;height:32px;border-radius:4px;display:grid;place-items:center;color:#fff;font-size:9px;font-weight:800">١٠٠</div>`;
   let t="";for(let i=0;i<tens;i++)t+=`<div style="background:#2DD4BF;width:9px;height:32px;border-radius:2px"></div>`;
-  let o="";for(let i=0;i<ones;i++)o+=`<div style="background:#99F6E4;width:8px;height:8px;border-radius:2px"></div>`;
-  return`<div style="display:flex;gap:6px;align-items:flex-end;justify-content:center;min-height:38px">${h?`<div style="display:flex;gap:2px">${h}</div>`:""}${t?`<div style="display:flex;gap:2px;align-items:flex-end">${t}</div>`:""}${o?`<div style="display:flex;flex-wrap:wrap;gap:2px;width:36px;align-content:flex-end">${o}</div>`:""}</div>`;
+  const o=ones?tenFrameSVG(ones,"#0D9488"):"";
+  return`<div style="display:flex;gap:6px;align-items:flex-end;justify-content:center;min-height:43px">${h?`<div style="display:flex;gap:2px">${h}</div>`:""}${t?`<div style="display:flex;gap:2px;align-items:flex-end">${t}</div>`:""}${o}</div>`;
 }
 function additionSteps(a,b){
   const ad=String(a).split("").reverse().map(Number),bd=String(b).split("").reverse().map(Number);
@@ -2115,6 +2123,138 @@ async function loadWeakness(){
   }catch(e){weakSuggestion=null}
 }
 
+// ===== طلاقة الحقائق الحسابية: استرجاع فوري لحقائق الجمع/الطرح/الضرب/القسمة بدل العدّ اليدوي =====
+// السبب العلمي: العدّ بالأصابع عرَض لغياب "الاسترجاع الفوري"، لا مشكلة انضباط. الحل المثبت:
+// (١) استرجاع نشِط (Retrieval Practice) بتباعد ذكي SRS بدل التكرار العشوائي (Roediger & Karpicke)
+// (٢) تعليم استراتيجيات تفكيك صريحة (إكمال العشرة، المضاعفات القريبة) عند الخطأ بدل تصحيح بلا شرح (Baroody 2006)
+// (٣) تشبيك العمليات الأربع بدل تجميعها (Rohrer & Taylor) — يمنع "التخمين حسب القسم"
+const FACT_SRS_KEY="mawhiba_fact_srs";
+const FACT_SECS=12;          // تقدير واقعي لثانية الاسترجاع الواحدة لطالبة سادس
+const FACT_PLAN_SECS=10*60;  // ١٠ دقائق يومياً: جلسات قصيرة متكررة أفعل من جلسة طويلة متباعدة لبناء الطلاقة
+const FACT_NEW_CAP=10;
+function factSrsLoad(){try{return JSON.parse(localStorage.getItem(FACT_SRS_KEY)||"{}")}catch(e){return{}}}
+function factSrsSave(o){try{localStorage.setItem(FACT_SRS_KEY,JSON.stringify(o))}catch(e){}}
+function factSrsUpdate(id,ok){
+  const st=factSrsLoad(),r=st[id]||{box:0,seen:0};
+  r.box=ok?Math.min(r.box+1,SRS_INTERVALS.length-1):0;
+  r.due=srsToday()+SRS_INTERVALS[r.box];r.seen=(r.seen||0)+1;
+  st[id]=r;factSrsSave(st);
+}
+// بنك الحقائق: جمع/طرح ١-٩ (مجاميع حتى ١٨)، وضرب/قسمة ٢-٩ (جداول الضرب الأساسية)
+function buildFactBank(){
+  const items=[];
+  for(let a=1;a<=9;a++)for(let b=a;b<=9;b++){
+    items.push({id:`add_${a}_${b}`,op:"add",a,b,ans:a+b});
+    items.push({id:`sub_${a+b}_${b}`,op:"sub",a:a+b,b,ans:a});
+    if(a!==b)items.push({id:`sub_${a+b}_${a}`,op:"sub",a:a+b,b:a,ans:b});
+  }
+  for(let a=2;a<=9;a++)for(let b=a;b<=9;b++){
+    items.push({id:`mul_${a}_${b}`,op:"mul",a,b,ans:a*b});
+    items.push({id:`div_${a*b}_${b}`,op:"div",a:a*b,b,ans:a});
+    if(a!==b)items.push({id:`div_${a*b}_${a}`,op:"div",a:a*b,b:a,ans:b});
+  }
+  return items;
+}
+let _factBank=null;
+function factBank(){if(!_factBank)_factBank=buildFactBank();return _factBank}
+const FACT_OP_SYM={add:"+",sub:"−",mul:"×",div:"÷"};
+// استراتيجية فورية عند الخطأ: تعليم صريح لطريقة أسرع من العدّ، لا مجرد إعطاء الجواب
+function factStrategy(op,a,b,ans){
+  if(op==="add"){
+    if(a===b)return `مضاعف: ${toAr(a)}+${toAr(a)}=${toAr(ans)} — احفظي المضاعفات فهي أسرع من العدّ`;
+    if(Math.abs(a-b)===1){const s=Math.min(a,b);return `مضاعف قريب: ${toAr(s)}+${toAr(s)}=${toAr(2*s)}، والفرق واحد فقط، إذن الجواب ${toAr(2*s)}+١=${toAr(ans)}`;}
+    if(a===9||b===9){const other=a===9?b:a;return `أكملي العشرة: ٩ يحتاج ١ ليكمل ١٠، فحوّلي ${toAr(other)} إلى (١+${toAr(other-1)}): ١٠+${toAr(other-1)}=${toAr(ans)}`;}
+    if((a===8||b===8)&&Math.min(a,b)>=2){const other=a===8?b:a;return `أكملي العشرة: ٨ يحتاج ٢ ليكمل ١٠، فحوّلي ${toAr(other)} إلى (٢+${toAr(other-2)}): ١٠+${toAr(other-2)}=${toAr(ans)}`;}
+    return `عدّي من العدد الأكبر (${toAr(Math.max(a,b))}) وأضيفي ${toAr(Math.min(a,b))} — لا تبدئي العدّ من واحد`;
+  }
+  if(op==="sub")return `فكّري بها كجمع ناقص: ${toAr(b)}+؟=${toAr(a)} — الجواب ${toAr(ans)}`;
+  if(op==="mul"){
+    if(a===b)return `مربّع العدد: ${toAr(a)}×${toAr(a)}=${toAr(ans)}`;
+    if(a===2||b===2)return `الضرب في ٢ = جمع العدد مع نفسه: ${toAr(ans)}`;
+    if(a===5||b===5)return `الضرب في ٥ = عدّي بالخمسات حتى ${toAr(a)} خطوة، أو (العدد×١٠)÷٢ = ${toAr(ans)}`;
+    if(a===9||b===9){const other=a===9?b:a;return `الضرب في ٩: (${toAr(other)}×١٠)−${toAr(other)}=${toAr(ans)}`;}
+    const smaller=Math.min(a,b),bigger=Math.max(a,b);
+    return `استعملي حقيقة أصغر تعرفينها: ${toAr(bigger)}×${toAr(smaller-1)} ثم أضيفي ${toAr(bigger)} أخرى = ${toAr(ans)}`;
+  }
+  if(op==="div")return `فكّري بها كضرب معكوس: ؟×${toAr(b)}=${toAr(a)} — الجواب ${toAr(ans)}`;
+  return "";
+}
+function buildFactPlan(){
+  const st=factSrsLoad(),today=srsToday(),POOL=factBank();
+  const due=POOL.filter(i=>st[i.id]&&st[i.id].due<=today);
+  const fresh=POOL.filter(i=>!st[i.id]);
+  const chosen=[];let secs=0,newCount=0;
+  const add=it=>{if(secs+FACT_SECS>FACT_PLAN_SECS)return false;chosen.push(it);secs+=FACT_SECS;return true};
+  shuffle(due).forEach(add);
+  for(const it of shuffle(fresh)){if(newCount>=FACT_NEW_CAP)break;if(add(it))newCount++}
+  const byOp={};chosen.forEach(i=>(byOp[i.op]=byOp[i.op]||[]).push(i));
+  const order=["add","sub","mul","div"],woven=[];
+  let any=true;while(any){any=false;order.forEach(op=>{const q=byOp[op];if(q&&q.length){woven.push(q.shift());any=true}})}
+  return {items:woven,secs,due:due.length,fresh:newCount};
+}
+let factItems=[],factIdx=0,factInput="",factLocked=false,factScore=0,factTotal=0,factDone=false,factMeta=null;
+function startFactPlan(){
+  const p=buildFactPlan();
+  factItems=p.items;factMeta=p;factIdx=0;factInput="";factLocked=false;factScore=0;factDone=false;
+  factTotal=factItems.length;
+  mode="factplan";window.scrollTo(0,0);render();
+  setTimeout(()=>{const el=document.getElementById('factIn');if(el)el.focus()},50);
+}
+function factCur(){return factItems[factIdx]}
+function factCheck(){
+  if(factLocked)return;
+  const el=document.getElementById('factIn');
+  const val=(el?el.value:"").trim();
+  factInput=val;factLocked=true;
+  const it=factCur(),ok=parseInt(val,10)===it.ans;
+  if(ok)factScore++;
+  factSrsUpdate(it.id,ok);
+  logAnswer("fact_fluency",it.op,ok);
+  render();
+}
+function factNext(){
+  if(factIdx+1>=factItems.length){factDone=true;window.scrollTo(0,0);render();return}
+  factIdx++;factInput="";factLocked=false;render();
+  setTimeout(()=>{const el=document.getElementById('factIn');if(el)el.focus()},50);
+}
+function renderFactPlan(){
+  if(factDone)return renderFactPlanResult();
+  if(!factItems.length){app.innerHTML=`<div class="card" style="text-align:center">لا توجد حقائق مستحقة اليوم بعد — عودي غداً 🌱</div><button class="link-btn" onclick="home()">→ الرئيسية</button>`;return}
+  const it=factCur();
+  const ok=factLocked&&parseInt(factInput,10)===it.ans;
+  const bar=`<div class="bar">${factItems.map((_,i)=>`<div class="seg" style="background:${i<=factIdx?'#0D9488':'#E2E8F0'};opacity:${i<=factIdx?1:.5}"></div>`).join("")}</div>`;
+  const head=`<button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>${bar}
+  <div class="meta"><span>${toAr(factIdx+1)} من ${toAr(factItems.length)}</span><span>طلاقة الحقائق · ١٠ دقائق</span></div>`;
+  const hint=factLocked&&!ok?`<div class="explain"><div class="explain-title" style="color:#B45309">استراتيجية أسرع من العدّ:</div><div class="explain-body">${factStrategy(it.op,it.a,it.b,it.ans)}</div></div>`:"";
+  app.innerHTML=`${head}
+  <div class="card" style="text-align:center">
+    <span class="tag" style="background:#F0FDFA;color:#0D9488">🧮 استرجاع سريع — بلا عدّ ولا أصابع</span>
+    <div style="font-size:40px;font-weight:800;letter-spacing:4px;margin:24px 0;direction:ltr">${toAr(it.a)} ${FACT_OP_SYM[it.op]} ${toAr(it.b)} = ؟</div>
+    <input id="factIn" ${factLocked?"disabled":""} type="tel" inputmode="numeric" style="width:140px;padding:14px;border-radius:12px;border:2px solid ${factLocked?(ok?'#10B981':'#EF4444'):'#E2E8F0'};font-size:26px;text-align:center;font-weight:800" autocomplete="off" onkeydown="if(event.key==='Enter')factCheck()">
+    ${factLocked?`<div style="margin-top:10px;font-weight:800;color:${ok?'#059669':'#DC2626'}">${ok?"✓ صحيح":"الصحيح: "+toAr(it.ans)}</div>`:""}
+    ${hint}
+  </div>
+  ${factLocked?`<button class="btn" style="background:#0D9488" onclick="factNext()">${factIdx+1>=factItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`:`<button class="btn" style="background:#0D9488" onclick="factCheck()">تحقّقي ←</button>`}`;
+}
+function renderFactPlanResult(){
+  const pct=factTotal?Math.round(factScore/factTotal*100):0;
+  const st=factSrsLoad(),today=srsToday(),POOL=factBank();
+  const tomorrow=POOL.filter(i=>st[i.id]&&st[i.id].due===today+1).length;
+  const mastered=POOL.filter(i=>st[i.id]&&st[i.id].box>=4).length;
+  app.innerHTML=`
+  <div class="card">
+    <div class="score-row"><span class="score-big" style="color:${pct>=70?'#059669':pct>=50?'#D97706':'#DC2626'}">${toAr(factScore)}</span><span class="score-total">/ ${toAr(factTotal)}</span><span class="score-pct">${toAr(pct)}%</span></div>
+    <div style="color:#64748B;font-size:15px;margin-bottom:14px">${pct>=85?"استرجاع فوري ممتاز! 🌟":pct>=60?"تحسّن ملحوظ — واصلي 💪":"لا بأس — الأخطاء تعود للمراجعة غداً تلقائياً 🌱"}</div>
+    <div style="background:#F0FDFA;border-radius:12px;padding:14px;margin-bottom:14px;font-size:14px;color:#0F766E;line-height:1.9">
+      🔁 مستحقّ للمراجعة غداً: <b>${toAr(tomorrow)}</b> حقيقة<br>
+      🏆 وصلت لمرحلة الترسيخ (١٦ يوماً فأكثر): <b>${toAr(mastered)}</b> حقيقة<br>
+      <span style="font-size:12px;color:#0D9488">جلسة قصيرة يومياً أفعل من جلسة طويلة متباعدة — لا تُطوّلي الجلسة.</span>
+    </div>
+    <button class="btn" style="background:#0D9488" onclick="startFactPlan()">🔁 جلسة أخرى</button>
+    <button class="link-btn" onclick="home()">→ الرئيسية</button>
+  </div>`;
+}
+
 // ===== طبقة التشجيع (مبنية على إظهار النمو والكفاءة) =====
 function todayStr(){return new Date().toISOString().slice(0,10)}
 function getStreak(){try{return JSON.parse(localStorage.getItem("mawhiba_streak")||'{"days":0,"last":""}')}catch(e){return{days:0,last:""}}}
@@ -2123,7 +2263,7 @@ function bumpStreak(){const st=getStreak();const t=todayStr();if(st.last===t)ret
 function growthMsg(modeKey,pct){try{const key="mawhiba_best_"+modeKey;const prev=parseInt(localStorage.getItem(key)||"-1");let msg="";if(prev<0){msg="أول محاولة في هذا القسم — انطلاقة موفّقة! 🌱"}else if(pct>prev){msg=`تحسّنتِ عن أفضل نتيجة سابقة (${toAr(prev)}%)! تقدّم رائع 📈`}else if(pct===prev){msg="ثبات على أفضل مستوى سابق 💪"}else{msg="واصلي، كل محاولة تبني مهارتك 🌟"}if(pct>prev)localStorage.setItem(key,String(pct));return msg}catch(e){return""}}
 
 // ===== العرض =====
-function render(){if(mode==="home")return renderHome();if(mode==="engplan")return renderEngPlan();if(mode==="english")return renderEnglish();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
+function render(){if(mode==="home")return renderHome();if(mode==="engplan")return renderEngPlan();if(mode==="factplan")return renderFactPlan();if(mode==="english")return renderEnglish();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
 
 function renderHome(){
   app.innerHTML=`
@@ -2143,6 +2283,7 @@ function renderHome(){
     <button class="mode" style="border-color:#FDE68A" onclick="goFadeMenu()"><span class="m-name">🎓 وضع التقوية (تلاشٍ تدريجي)</span><div class="m-sub">اختاري مهارة وتدرّبي عليها خطوة بخطوة — مبني على دراسات التعلّم</div></button>
     <button class="mode prog" onclick="loadProgress()"><span class="m-name">📈 متابعة التقدّم</span><div class="m-sub">نتائجك السابقة وتحليل المستوى لكل مجال</div></button>
     <button class="mode full" style="background:#0D9488;border-color:#0D9488" onclick="startBasics('multdiv')"><span class="m-name">🧱 تدريب الأساسيات: عائلات الحقائق</span><div class="m-sub">ضرب/قسمة مرتبطان + جمع بالحمل + طرح بالاستلاف + أساسيات النسبة المئوية</div></button>
+    <button class="mode full" style="background:#0F766E;border-color:#0F766E" onclick="startFactPlan()"><span class="m-name">🧮 طلاقة الحقائق · ١٠ دقائق</span><div class="m-sub">استرجاع فوري للجمع والطرح والضرب بلا عدّ أو أصابع، بتباعد ذكي</div></button>
     <button class="mode full" style="background:#4338CA;border-color:#4338CA" onclick="startEngPlan()"><span class="m-name">⭐ خطة الإنجليزية اليومية · ٤٠ دقيقة</span><div class="m-sub">شرح ثم تدريب، بتباعد ذكي — لا يتكرّر أي عنصر إلا في يوم استحقاقه (منهج الصف السادس)</div></button>
     <button class="mode full" style="background:#0891B2;border-color:#0891B2" onclick="startEnglish('a1')"><span class="m-name">🇬🇧 تعلّم الإنجليزية · مستوى A1</span><div class="m-sub">مفردات وقواعد وقراءة، مع نطق بصوت أمريكي 🔊 — الخطوة الأولى نحو C2</div></button>
     <button class="mode full" style="background:#155E75;border-color:#155E75" onclick="startEnglish('a2')"><span class="m-name">🇬🇧 تعلّم الإنجليزية · مستوى A2</span><div class="m-sub">أزمنة الماضي والمستقبل، المقارنة، أفعال الوجوب — الخطوة الثانية نحو C2</div></button>
