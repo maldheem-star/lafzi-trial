@@ -1091,7 +1091,7 @@ function basicsNew(){
   const gen=basicsSub==="multdiv"?basicsMakeFamily:basicsSub==="addcarry"?basicsMakeAddCarry:basicsSub==="subborrow"?basicsMakeSubBorrow:basicsMakePercent;
   basicsCur={fam:gen()};basicsLocked=false;basicsPicked=-1;basicsPrep();render();
 }
-function logAnswer(domain,qtype,isCorrect){try{fetch(`${SB_URL}/rest/v1/${TBL_LOG}`,{method:"POST",headers:{"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json","Prefer":"return-minimal"},body:JSON.stringify({student_alias:alias(),domain,qtype,is_correct:isCorrect})})}catch(e){}}
+function logAnswer(domain,qtype,isCorrect,response,itemId){try{fetch(`${SB_URL}/rest/v1/${TBL_LOG}`,{method:"POST",headers:{"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json","Prefer":"return-minimal"},body:JSON.stringify({student_alias:alias(),domain,qtype,is_correct:isCorrect,response:response==null?null:String(response),item_id:itemId||null})})}catch(e){}}
 function basicsChoose(i){
   if(basicsLocked)return;basicsLocked=true;basicsPicked=i;
   const ok=i===basicsCur.ai;
@@ -2209,7 +2209,7 @@ function factCheck(){
   const it=factCur(),ok=parseInt(val,10)===it.ans;
   if(ok)factScore++;
   factSrsUpdate(it.id,ok);
-  logAnswer("fact_fluency",it.op,ok);
+  logAnswer("fact_fluency",it.op,ok,val,it.id);
   render();
 }
 function factNext(){
