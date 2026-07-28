@@ -1091,7 +1091,7 @@ function basicsNew(){
   const gen=basicsSub==="multdiv"?basicsMakeFamily:basicsSub==="addcarry"?basicsMakeAddCarry:basicsSub==="subborrow"?basicsMakeSubBorrow:basicsMakePercent;
   basicsCur={fam:gen()};basicsLocked=false;basicsPicked=-1;basicsPrep();render();
 }
-function logAnswer(domain,qtype,isCorrect,response,itemId){try{fetch(`${SB_URL}/rest/v1/${TBL_LOG}`,{method:"POST",headers:{"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json","Prefer":"return-minimal"},body:JSON.stringify({student_alias:alias(),domain,qtype,is_correct:isCorrect,response:response==null?null:String(response),item_id:itemId||null})})}catch(e){}}
+function logAnswer(domain,qtype,isCorrect,response,itemId,elapsedMs){try{fetch(`${SB_URL}/rest/v1/${TBL_LOG}`,{method:"POST",headers:{"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json","Prefer":"return-minimal"},body:JSON.stringify({student_alias:alias(),domain,qtype,is_correct:isCorrect,response:response==null?null:String(response),item_id:itemId||null,elapsed_ms:elapsedMs==null?null:Math.round(elapsedMs)})})}catch(e){}}
 function basicsChoose(i){
   if(basicsLocked)return;basicsLocked=true;basicsPicked=i;
   const ok=i===basicsCur.ai;
@@ -2063,6 +2063,9 @@ const app=document.getElementById("app");
 // ===== إدارة الحمل المعرفي: كشف الإجابات السريعة المتتالية واقتراح استراحة (بحسب الجلسة الحالية فقط) =====
 let sessionAnswered=0,questionShownAt=0,recentAnswerTimes=[],rapidNudge=false,breakSuggest=false,breakShownFor=[];
 const BREAK_EVERY=20,RAPID_MS=2500,RAPID_STREAK=4;
+// أنواع تتطلّب قراءة/تفكيراً أطول من مجرّد الاسترجاع (نص، علاقة، استنتاج) — لها حدّ أدنى فوري خاص
+// بدل انتظار ٤ إجابات متتالية سريعة؛ إجابة واحدة أسرع من الحدّ كافية لتنبيه الاستعجال
+const RAPID_MIN_BY_TYPE={reading:6000,logic:4000,analogy:4000};
 
 async function start(domKey){
   currentMode=domKey;mode="quiz";idx=0;picked=null;locked=false;score=0;done=false;answered=[];
@@ -2081,12 +2084,13 @@ function choose(i){
   const ok=i===q.a;
   if(ok)score++;
   answered[idx]=ok;
-  if(q.d==="verbal")logAnswer("verbal",q.qtype||"bank",ok);
   const elapsed=Date.now()-questionShownAt;
+  logAnswer(q.d,q.qtype||"bank",ok,null,null,elapsed);
   recentAnswerTimes.push(elapsed);
   if(recentAnswerTimes.length>RAPID_STREAK)recentAnswerTimes.shift();
   sessionAnswered++;
-  rapidNudge=recentAnswerTimes.length===RAPID_STREAK&&recentAnswerTimes.every(t=>t<RAPID_MS);
+  const typeFloor=RAPID_MIN_BY_TYPE[q.qtype],singleTooFast=typeFloor&&elapsed<typeFloor;
+  rapidNudge=singleTooFast||(recentAnswerTimes.length===RAPID_STREAK&&recentAnswerTimes.every(t=>t<RAPID_MS));
   if(rapidNudge)recentAnswerTimes=[];
   breakSuggest=!rapidNudge&&sessionAnswered%BREAK_EVERY===0&&!breakShownFor.includes(sessionAnswered);
   if(breakSuggest)breakShownFor.push(sessionAnswered);
@@ -2323,7 +2327,7 @@ function renderQuiz(){
     return `<button class="choice" style="background:${bg};border-color:${bd};color:${col}" onclick="choose(${i})" ${locked?"disabled":""}><span class="letter">${L[i]}</span>${c}</button>`}).join("");
   const explain=locked?`<div class="explain"><div class="explain-title" style="color:${picked===q.a?'#059669':'#B45309'}">${picked===q.a?"✓ إجابة صحيحة":"الصحيحة بالأخضر"}</div><div class="explain-body">${q.w||""}</div></div>`:"";
   const svg=q.svg?`<div class="svgbox" style="background:#F8FAFC;border-radius:14px;padding:16px;display:flex;justify-content:center;margin-bottom:16px">${q.svg}</div>`:"";
-  const banner=locked&&rapidNudge?`<div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:12px;padding:12px 14px;margin-top:10px;font-size:13px;color:#92400E;line-height:1.7">⏱️ لاحظنا إجابات سريعة متتالية — خذي وقتك في قراءة السؤال جيداً قبل الاختيار.</div>`
+  const banner=locked&&rapidNudge?`<div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:12px;padding:12px 14px;margin-top:10px;font-size:13px;color:#92400E;line-height:1.7">⏱️ هذا السؤال يحتاج وقتاً للقراءة والتفكير — خذي وقتك ولا تستعجلي بالإجابة.</div>`
     :locked&&breakSuggest?`<div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:12px;padding:12px 14px;margin-top:10px;font-size:13px;color:#1D4ED8;line-height:1.7">🌿 جاوبتِ على ${toAr(sessionAnswered)} سؤالاً في هذه الجلسة. استراحة قصيرة (٥ دقائق) تساعدك على التركيز أكثر — لا داعي للاستعجال.</div>`
     :"";
   const btn=locked?`<button class="btn" style="background:${d.color}" onclick="next()">${idx+1>=filtered.length?"إنهاء ومشاهدة النتيجة":"السؤال التالي ←"}</button>`:"";
