@@ -1267,203 +1267,6 @@ function renderAudioDiag(){
   </div>`;
 }
 
-// ===== تعلّم الإنجليزية: مستوى A1 (مفردات، قواعد أساسية، قراءة قصيرة) =====
-// كل بند: تعليمات بالعربي + خيارات (إنجليزية أو عربية حسب ما يُختبر) + شرح بالعربي + listen: الجملة/الكلمة الصحيحة كاملة للنطق
-const ENGLISH_A1=[
- // مفردات
- {q:'ما ترجمة كلمة "قطة"؟',c:["cat","dog","book","sun"],a:0,w:'"cat" تعني قطة.',listen:"cat"},
- {q:'ما ترجمة كلمة "كتاب"؟',c:["book","pen","table","door"],a:0,w:'"book" تعني كتاب.',listen:"book"},
- {q:'ما ترجمة كلمة "بيت"؟',c:["house","car","school","tree"],a:0,w:'"house" تعني بيت أو منزل.',listen:"house"},
- {q:'ما ترجمة كلمة "شمس"؟',c:["sun","moon","star","sky"],a:0,w:'"sun" تعني شمس.',listen:"sun"},
- {q:'ما ترجمة كلمة "ماء"؟',c:["water","milk","juice","bread"],a:0,w:'"water" تعني ماء.',listen:"water"},
- {q:'ما ترجمة كلمة "كرسي"؟',c:["chair","table","bed","door"],a:0,w:'"chair" تعني كرسي.',listen:"chair"},
- {q:'ما ترجمة كلمة "مدرسة"؟',c:["school","hospital","market","park"],a:0,w:'"school" تعني مدرسة.',listen:"school"},
- {q:'ما ترجمة كلمة "سيارة"؟',c:["car","bus","bike","train"],a:0,w:'"car" تعني سيارة.',listen:"car"},
- {q:'ما ترجمة كلمة "أم"؟',c:["mother","father","sister","brother"],a:0,w:'"mother" تعني أم.',listen:"mother"},
- {q:'ما ترجمة كلمة "شجرة"؟',c:["tree","flower","grass","leaf"],a:0,w:'"tree" تعني شجرة.',listen:"tree"},
- {q:'ما ترجمة كلمة "كلب"؟',c:["dog","cat","bird","fish"],a:0,w:'"dog" تعني كلب.',listen:"dog"},
- {q:'ما ترجمة كلمة "قلم"؟',c:["pen","pencil","book","bag"],a:0,w:'"pen" تعني قلم حبر.',listen:"pen"},
- {q:'ما ترجمة كلمة "باب"؟',c:["door","window","wall","roof"],a:0,w:'"door" تعني باب.',listen:"door"},
- {q:'ما ترجمة كلمة "طعام"؟',c:["food","drink","fruit","meat"],a:0,w:'"food" تعني طعام.',listen:"food"},
- {q:'ما ترجمة كلمة "صديق"؟',c:["friend","family","teacher","neighbor"],a:0,w:'"friend" تعني صديق.',listen:"friend"},
- // فعل to be
- {q:'اختاري الصحيح: "I ___ a student."',c:["am","is","are","be"],a:0,w:'مع "I" نستخدم "am".',listen:"I am a student."},
- {q:'اختاري الصحيح: "She ___ happy."',c:["am","is","are","be"],a:1,w:'مع "she/he/it" نستخدم "is".',listen:"She is happy."},
- {q:'اختاري الصحيح: "They ___ at school."',c:["am","is","are","be"],a:2,w:'مع "they/we/you" نستخدم "are".',listen:"They are at school."},
- {q:'اختاري الصحيح: "It ___ a small cat."',c:["am","is","are","be"],a:1,w:'مع "it" نستخدم "is".',listen:"It is a small cat."},
- {q:'اختاري الصحيح: "We ___ friends."',c:["am","is","are","be"],a:2,w:'مع "we" نستخدم "are".',listen:"We are friends."},
- {q:'اختاري الصحيح: "He ___ my brother."',c:["am","is","are","be"],a:1,w:'مع "he" نستخدم "is".',listen:"He is my brother."},
- // الجمع
- {q:'ما جمع كلمة "book"؟',c:["books","bookes","bookies","book"],a:0,w:'نضيف "s" فقط: books.',listen:"books"},
- {q:'ما جمع كلمة "box"؟',c:["boxes","boxs","boxies","box"],a:0,w:'الكلمات المنتهية بـ x تأخذ "es": boxes.',listen:"boxes"},
- {q:'ما جمع كلمة "cat"؟',c:["cats","cates","catses","cat"],a:0,w:'نضيف "s" فقط: cats.',listen:"cats"},
- {q:'ما جمع كلمة "child"؟',c:["children","childs","childes","child"],a:0,w:'جمع غير منتظم: child ← children.',listen:"children"},
- {q:'ما جمع كلمة "bus"؟',c:["buses","bus","busies","buss"],a:0,w:'الكلمات المنتهية بـ s تأخذ "es": buses.',listen:"buses"},
- // المضارع البسيط
- {q:'اختاري الصحيح: "She ___ football every day."',c:["plays","play","playing","played"],a:0,w:'مع "she/he/it" نضيف "s" للفعل: plays.',listen:"She plays football every day."},
- {q:'اختاري الصحيح: "My father ___ in a hospital."',c:["works","work","working","worked"],a:0,w:'مع "he/she/it" نضيف "s" للفعل: works.',listen:"My father works in a hospital."},
- {q:'اختاري الصحيح: "I ___ apples."',c:["like","likes","liking","liked"],a:0,w:'مع "I" لا نضيف "s" للفعل: like.',listen:"I like apples."},
- {q:'اختاري الصحيح: "The sun ___ in the east."',c:["rises","rise","rising","rised"],a:0,w:'"the sun" مفرد (it) فنضيف "s": rises.',listen:"The sun rises in the east."},
- {q:'اختاري الصحيح: "We ___ to school every morning."',c:["go","goes","going","went"],a:0,w:'مع "we" لا نضيف "s" للفعل: go.',listen:"We go to school every morning."},
- // حروف الجر
- {q:'أكملي: "The cat is ___ the box." (داخل الصندوق)',c:["in","on","under","behind"],a:0,w:'"in" تعني داخل.',listen:"The cat is in the box."},
- {q:'أكملي: "The book is ___ the table." (فوق الطاولة)',c:["on","in","under","behind"],a:0,w:'"on" تعني فوق/على السطح.',listen:"The book is on the table."},
- {q:'أكملي: "The ball is ___ the bed." (تحت السرير)',c:["under","on","in","behind"],a:0,w:'"under" تعني تحت.',listen:"The ball is under the bed."},
- {q:'أكملي: "The picture is ___ the wall." (على الحائط)',c:["on","in","under","at"],a:0,w:'"on" تُستخدم أيضاً مع الأسطح الرأسية كالحائط.',listen:"The picture is on the wall."},
- // أدوات التنكير a/an
- {q:'اختاري الصحيح: "I have ___ apple."',c:["an","a","the","—"],a:0,w:'"apple" تبدأ بصوت حرف علّة فنستخدم "an".',listen:"I have an apple."},
- {q:'اختاري الصحيح: "She has ___ dog."',c:["a","an","the","—"],a:0,w:'"dog" تبدأ بصوت ساكن فنستخدم "a".',listen:"She has a dog."},
- {q:'اختاري الصحيح: "He is ___ engineer."',c:["an","a","the","—"],a:0,w:'"engineer" تبدأ بصوت حرف علّة فنستخدم "an".',listen:"He is an engineer."},
- // أرقام
- {q:'ما معنى "seven"؟',c:["٧","٦","٨","٥"],a:0,w:'"seven" تعني سبعة.',listen:"seven"},
- {q:'ما معنى "eleven"؟',c:["١١","١٠","١٢","٩"],a:0,w:'"eleven" تعني أحد عشر.',listen:"eleven"},
- {q:'ما معنى "twenty"؟',c:["٢٠","٢","١٢","٢٢"],a:0,w:'"twenty" تعني عشرين.',listen:"twenty"},
- // ألوان
- {q:'ما معنى كلمة "red"؟',c:["أحمر","أزرق","أخضر","أصفر"],a:0,w:'"red" تعني أحمر.',listen:"red"},
- {q:'ما معنى كلمة "green"؟',c:["أخضر","أحمر","أسود","أبيض"],a:0,w:'"green" تعني أخضر.',listen:"green"},
- {q:'ما معنى كلمة "yellow"؟',c:["أصفر","بنفسجي","وردي","بني"],a:0,w:'"yellow" تعني أصفر.',listen:"yellow"},
- // أيام
- {q:'ما ترجمة "الاثنين"؟',c:["Monday","Sunday","Tuesday","Friday"],a:0,w:'"Monday" تعني الاثنين.',listen:"Monday"},
- {q:'ما ترجمة "الجمعة"؟',c:["Friday","Saturday","Thursday","Monday"],a:0,w:'"Friday" تعني الجمعة.',listen:"Friday"},
- // قراءة قصيرة (النص إنجليزي منفصل بفقرة، والسؤال عربي بفقرة تحته)
- // cEn: نفس الخيارات بالإنجليزي بنفس ترتيب c — تُستخدم تدريجياً بعد إتقان أولي بالعربي (انظر readingLevel)
- {passage:"My name is Sara. I am ten years old. I have a small brown dog.",q:'كم عمر سارة؟',c:["عشر سنوات","تسع سنوات","إحدى عشرة سنة","ثماني سنوات"],cEn:["ten years old","nine years old","eleven years old","eight years old"],a:0,w:'النص يقول "ten years old" أي عشر سنوات.',listen:"My name is Sara. I am ten years old. I have a small brown dog."},
- {passage:"Tom likes apples, but he doesn't like bananas.",q:'ماذا يحب توم؟',c:["التفاح","الموز","كليهما","لا شيء"],cEn:["apples","bananas","both","nothing"],a:0,w:'النص يقول "likes apples" أي يحب التفاح.',listen:"Tom likes apples, but he doesn't like bananas."},
- {passage:"It is Monday. Lina goes to school by bus every day.",q:'كيف تذهب لينا إلى المدرسة؟',c:["بالحافلة","بالسيارة","سيراً","بالدراجة"],cEn:["by bus","by car","on foot","by bike"],a:0,w:'"by bus" تعني بالحافلة.',listen:"It is Monday. Lina goes to school by bus every day."},
- {passage:"This is my family. I have one sister and two brothers.",q:'كم أخاً عند المتحدث؟',c:["أخوان","أخ واحد","ثلاثة إخوة","لا يوجد"],cEn:["two brothers","one brother","three brothers","none"],a:0,w:'"two brothers" تعني أخوان.',listen:"This is my family. I have one sister and two brothers."},
- {passage:"The weather is cold today. I am wearing a warm coat.",q:'كيف الطقس اليوم؟',c:["بارد","حار","ممطر","مشمس"],cEn:["cold","hot","rainy","sunny"],a:0,w:'"cold" تعني بارد.',listen:"The weather is cold today. I am wearing a warm coat."},
- {passage:"Ali has a red bike. He rides it every weekend.",q:'متى يركب علي دراجته؟',c:["في نهاية الأسبوع","كل يوم","في المدرسة","في الليل"],cEn:["on the weekend","every day","at school","at night"],a:0,w:'"every weekend" تعني في نهاية كل أسبوع.',listen:"Ali has a red bike. He rides it every weekend."},
-];
-
-// ===== مستوى A2 — الخطوة الثانية نحو C2: أزمنة الماضي، المقارنة، المستقبل، أفعال الوجوب، محدّدات الكمية =====
-const ENGLISH_A2=[
- // وظائف
- {q:'ما ترجمة كلمة "طبيب"؟',c:["doctor","teacher","farmer","pilot"],a:0,w:'"doctor" تعني طبيب.',listen:"doctor"},
- {q:'ما ترجمة كلمة "مهندس"؟',c:["engineer","doctor","nurse","driver"],a:0,w:'"engineer" تعني مهندس.',listen:"engineer"},
- {q:'ما ترجمة كلمة "مزارع"؟',c:["farmer","fisherman","baker","cook"],a:0,w:'"farmer" تعني مزارع.',listen:"farmer"},
- {q:'ما ترجمة كلمة "طيار"؟',c:["pilot","driver","sailor","doctor"],a:0,w:'"pilot" تعني طيار.',listen:"pilot"},
- // الطقس
- {q:'ما ترجمة كلمة "مشمس"؟',c:["sunny","rainy","cloudy","windy"],a:0,w:'"sunny" تعني مشمس.',listen:"sunny"},
- {q:'ما ترجمة كلمة "ممطر"؟',c:["rainy","sunny","snowy","cloudy"],a:0,w:'"rainy" تعني ممطر.',listen:"rainy"},
- {q:'ما ترجمة كلمة "عاصف"؟',c:["windy","cloudy","snowy","sunny"],a:0,w:'"windy" تعني عاصف (رياح قوية).',listen:"windy"},
- {q:'ما ترجمة كلمة "غائم"؟',c:["cloudy","sunny","rainy","windy"],a:0,w:'"cloudy" تعني غائم.',listen:"cloudy"},
- // هوايات
- {q:'ما ترجمة كلمة "السباحة"؟',c:["swimming","running","painting","cooking"],a:0,w:'"swimming" تعني السباحة.',listen:"swimming"},
- {q:'ما ترجمة كلمة "الرسم"؟',c:["painting","swimming","reading","dancing"],a:0,w:'"painting" تعني الرسم.',listen:"painting"},
- {q:'ما ترجمة كلمة "الطبخ"؟',c:["cooking","cleaning","swimming","reading"],a:0,w:'"cooking" تعني الطبخ.',listen:"cooking"},
- // مطعم
- {q:'ما ترجمة كلمة "قائمة الطعام"؟',c:["menu","bill","waiter","table"],a:0,w:'"menu" تعني قائمة الطعام.',listen:"menu"},
- {q:'ما ترجمة كلمة "الفاتورة"؟',c:["bill","menu","order","waiter"],a:0,w:'"bill" تعني الفاتورة.',listen:"bill"},
- {q:'ما ترجمة كلمة "نادل"؟',c:["waiter","cook","customer","chef"],a:0,w:'"waiter" تعني نادل.',listen:"waiter"},
- // الماضي البسيط (منتظم)
- {q:'اختاري الصحيح: "Yesterday, I ___ football."',c:["played","play","playing","plays"],a:0,w:'الماضي البسيط للفعل المنتظم play: played.',listen:"Yesterday, I played football."},
- {q:'اختاري الصحيح: "She ___ her room last night."',c:["cleaned","clean","cleans","cleaning"],a:0,w:'الماضي البسيط: cleaned.',listen:"She cleaned her room last night."},
- {q:'اختاري الصحيح: "We ___ our grandmother last weekend."',c:["visited","visit","visits","visiting"],a:0,w:'الماضي البسيط: visited.',listen:"We visited our grandmother last weekend."},
- // الماضي البسيط (شاذ)
- {q:'اختاري الصحيح: "I ___ to the park yesterday." (go)',c:["went","goed","gone","going"],a:0,w:'ماضي go الشاذ: went.',listen:"I went to the park yesterday."},
- {q:'اختاري الصحيح: "She ___ an apple." (eat)',c:["ate","eated","eaten","eating"],a:0,w:'ماضي eat الشاذ: ate.',listen:"She ate an apple."},
- {q:'اختاري الصحيح: "They ___ a new car last month." (buy)',c:["bought","buyed","buying","buys"],a:0,w:'ماضي buy الشاذ: bought.',listen:"They bought a new car last month."},
- {q:'اختاري الصحيح: "He ___ a letter to his friend." (write)',c:["wrote","writed","written","writing"],a:0,w:'ماضي write الشاذ: wrote.',listen:"He wrote a letter to his friend."},
- // المقارنة والتفضيل
- {q:'اختاري الصحيح: "An elephant is ___ than a cat." (big)',c:["bigger","biggest","more big","big"],a:0,w:'صيغة المقارنة للكلمات القصيرة: bigger.',listen:"An elephant is bigger than a cat."},
- {q:'اختاري الصحيح: "This car is ___ than that one." (expensive)',c:["more expensive","expensiver","most expensive","expensive"],a:0,w:'الكلمات الطويلة تأخذ more: more expensive.',listen:"This car is more expensive than that one."},
- {q:'اختاري الصحيح: "Mount Everest is the ___ mountain in the world." (high)',c:["highest","higher","most high","high"],a:0,w:'صيغة التفضيل المطلق: the highest.',listen:"Mount Everest is the highest mountain in the world."},
- // المستقبل
- {q:'اختاري الصحيح: "I ___ visit my uncle tomorrow." (خطة مسبقة)',c:["am going to","will","am","going"],a:0,w:'الخطط المسبقة: going to.',listen:"I am going to visit my uncle tomorrow."},
- {q:'اختاري الصحيح: "It looks cloudy — it ___ rain." (توقّع بدليل حاضر)',c:["is going to","will has","is will","going"],a:0,w:'التوقّع بدليل حاضر: going to.',listen:"It looks cloudy — it is going to rain."},
- {q:'اختاري الصحيح: "I think it ___ be sunny tomorrow." (توقّع بلا دليل)',c:["will","is going to","am","going"],a:0,w:'التوقّع العام بدون دليل: will.',listen:"I think it will be sunny tomorrow."},
- // أفعال الوجوب والنصيحة
- {q:'اختاري الصحيح: "You ___ wear a seatbelt in the car." (إلزامي)',c:["must","can","might","would"],a:0,w:'الإلزام: must.',listen:"You must wear a seatbelt in the car."},
- {q:'اختاري الصحيح: "___ I open the window, please?" (طلب إذن)',c:["Can","Must","Should","Will"],a:0,w:'طلب الإذن: Can.',listen:"Can I open the window, please?"},
- {q:'اختاري الصحيح: "You ___ study more if you want to pass." (نصيحة)',c:["should","must","can","will"],a:0,w:'النصيحة: should.',listen:"You should study more if you want to pass."},
- // المضارع المستمر مقابل البسيط
- {q:'اختاري الصحيح: "Look! The baby ___ now."',c:["is sleeping","sleeps","sleep","slept"],a:0,w:'حدث يحصل الآن: is sleeping.',listen:"Look! The baby is sleeping now."},
- {q:'اختاري الصحيح: "I usually ___ breakfast at 7 a.m."',c:["eat","am eating","ate","eats"],a:0,w:'عادة متكررة: eat (مع I لا نضيف s).',listen:"I usually eat breakfast at 7 a.m."},
- // محدّدات الكمية
- {q:"اختاري الصحيح: \"There isn't ___ milk in the fridge.\" (نفي، غير معدود)",c:["any","some","many","a"],a:0,w:'مع النفي وغير المعدود: any.',listen:"There isn't any milk in the fridge."},
- {q:'اختاري الصحيح: "I have ___ friends in this city." (معدود، إيجابي)',c:["many","much","any","a"],a:0,w:'مع المعدود: many.',listen:"I have many friends in this city."},
- {q:'اختاري الصحيح: "There is ___ sugar in my tea." (إيجابي، غير معدود)',c:["some","any","many","a"],a:0,w:'مع الإيجابي وغير المعدود: some.',listen:"There is some sugar in my tea."},
- // اتجاهات إضافية
- {q:'أكملي: "The bank is ___ the supermarket." (بجانب)',c:["next to","between","across from","behind"],a:0,w:'"next to" تعني بجانب.',listen:"The bank is next to the supermarket."},
- {q:'أكملي: "The library is ___ the school and the park." (بين)',c:["between","next to","in front of","behind"],a:0,w:'"between" تعني بين.',listen:"The library is between the school and the park."},
- {q:'أكملي: "Turn left, then go ___." (سيراً على الاستقامة)',c:["straight","behind","under","between"],a:0,w:'"go straight" تعني سيري على استقامتك.',listen:"Turn left, then go straight."},
- // تعبيرات زمنية
- {q:'ما معنى "yesterday"؟',c:["أمس","غداً","اليوم","الأسبوع الماضي"],a:0,w:'"yesterday" تعني أمس.',listen:"yesterday"},
- {q:'ما معنى "next month"؟',c:["الشهر القادم","الشهر الماضي","هذا الشهر","الأسبوع القادم"],a:0,w:'"next month" تعني الشهر القادم.',listen:"next month"},
- {q:'ما معنى "two years ago"؟',c:["قبل سنتين","بعد سنتين","هذه السنة","السنة القادمة"],a:0,w:'"ago" تعني "قبل" عند الحديث عن الماضي.',listen:"two years ago"},
- // قراءة (أطول وأعمق استنتاجاً من A1)
- {passage:"Yesterday, Ahmed went to the market with his mother. They bought fresh vegetables and fruit. After that, they had lunch at a small restaurant near their house.",q:'ماذا فعل أحمد وأمه بعد شرائهما الخضار والفواكه؟',c:["تناولا الغداء في مطعم","عادا للبيت مباشرة","ذهبا للمدرسة","اشتريا ملابس"],cEn:["They had lunch at a restaurant","They went home directly","They went to school","They bought clothes"],a:0,w:'النص يقول "After that, they had lunch at a small restaurant".',listen:"Yesterday, Ahmed went to the market with his mother. They bought fresh vegetables and fruit. After that, they had lunch at a small restaurant near their house."},
- {passage:"Noura is going to visit her grandparents next weekend. She is very excited because she hasn't seen them for three months. She is going to bring them a special gift.",q:'لماذا نورا متحمّسة؟',c:["لأنها لم ترَ جدّيها منذ ثلاثة أشهر","لأنها ستشتري هدية لنفسها","لأنها ستسافر للخارج","لأنها ستزور صديقتها"],cEn:["Because she hasn't seen them for three months","Because she will buy a gift for herself","Because she will travel abroad","Because she will visit her friend"],a:0,w:"النص يقول \"because she hasn't seen them for three months\".",listen:"Noura is going to visit her grandparents next weekend. She is very excited because she hasn't seen them for three months. She is going to bring them a special gift."},
- {passage:"The weather was cold and windy yesterday, so Sara didn't go outside. Instead, she stayed home and read a new book about space.",q:'لماذا بقيت سارة في البيت؟',c:["لأن الطقس كان بارداً وعاصفاً","لأنها كانت مريضة","لأنها كانت مشغولة بالدراسة","لأنها كانت نائمة"],cEn:["Because the weather was cold and windy","Because she was sick","Because she was busy studying","Because she was sleeping"],a:0,w:"النص يقول \"The weather was cold and windy yesterday, so Sara didn't go outside\".",listen:"The weather was cold and windy yesterday, so Sara didn't go outside. Instead, she stayed home and read a new book about space."},
- {passage:"Khalid works as an engineer in a big company. He usually starts work at eight in the morning and finishes at four in the afternoon. On weekends, he likes to play football with his friends.",q:'متى ينهي خالد عمله عادةً؟',c:["الرابعة عصراً","الثامنة صباحاً","الثانية عشرة ظهراً","السادسة مساءً"],cEn:["Four in the afternoon","Eight in the morning","Twelve noon","Six in the evening"],a:0,w:'النص يقول "finishes at four in the afternoon".',listen:"Khalid works as an engineer in a big company. He usually starts work at eight in the morning and finishes at four in the afternoon. On weekends, he likes to play football with his friends."},
- {passage:"Last summer, my family and I traveled to a small village near the mountains. We stayed in a wooden house for a week. Every morning, we walked in the forest and saw many beautiful birds.",q:'أين أقامت العائلة خلال الرحلة؟',c:["في بيت خشبي","في فندق كبير","عند أقاربهم","في خيمة"],cEn:["In a wooden house","In a big hotel","At their relatives' house","In a tent"],a:0,w:'النص يقول "We stayed in a wooden house for a week".',listen:"Last summer, my family and I traveled to a small village near the mountains. We stayed in a wooden house for a week. Every morning, we walked in the forest and saw many beautiful birds."},
- {passage:"Layla must finish her homework before she can watch TV. She has a lot of math problems to solve, but she is a fast learner, so she usually finishes quickly.",q:'ماذا يجب على ليلى أن تفعل قبل مشاهدة التلفاز؟',c:["تنهي واجبها المنزلي","تتصل بصديقتها","تنام مبكراً","تساعد أمها"],cEn:["Finish her homework","Call her friend","Sleep early","Help her mother"],a:0,w:'النص يقول "Layla must finish her homework before she can watch TV".',listen:"Layla must finish her homework before she can watch TV. She has a lot of math problems to solve, but she is a fast learner, so she usually finishes quickly."},
-];
-const ENGLISH_BANKS={a1:ENGLISH_A1,a2:ENGLISH_A2};
-function buildEnglishSession(n,level){
-  const bank=ENGLISH_BANKS[level]||ENGLISH_A1;
-  const chosen=takeUniqueFrom(shuffle(bank),n);
-  if(chosen.length<n)chosen.push(...fillAvoidingBatchDupes(chosen,bank,n-chosen.length)); // البنك نفد تنويعاً؛ حل أخير
-  return chosen.map(item=>{
-    const order=shuffle([0,1,2,3]); // نعيد ترتيب الخيارات في كل جلسة حتى لا يُحفظ موضع الإجابة
-    return{q:item.q,passage:item.passage,c:order.map(i=>item.c[i]),cEn:item.cEn?order.map(i=>item.cEn[i]):null,a:order.indexOf(item.a),w:item.w,listen:item.listen};
-  });
-}
-// تدرّج خيارات أسئلة القراءة بمستوى A1: عربي بالبداية، ثم إنجليزي تلقائياً بعد عدد إجابات صحيحة كافٍ (طلب صريح)
-// بمستوى A2 تُعرض الخيارات إنجليزية مباشرة، لأنه أصلاً خطوة متقدّمة عن A1
-const READING_ARABIC_STREAK=4;
-function readingCorrectCount(){try{return parseInt(localStorage.getItem("mawhiba_reading_correct")||"0")}catch(e){return 0}}
-function bumpReadingCorrect(){try{localStorage.setItem("mawhiba_reading_correct",String(readingCorrectCount()+1))}catch(e){}}
-let engLevel="a1",engFiltered=[],engIdx=0,engPicked=null,engLocked=false,engScore=0,engDone=false,engAnswered=[];
-function startEnglish(level){mode="english";engLevel=level||engLevel||"a1";engFiltered=buildEnglishSession(12,engLevel);engIdx=0;engPicked=null;engLocked=false;engScore=0;engDone=false;engAnswered=[];window.scrollTo(0,0);render()}
-function engChoose(i){
-  if(engLocked)return;engPicked=i;engLocked=true;
-  const item=engFiltered[engIdx],ok=i===item.a;
-  if(ok){engScore++;if(item.passage&&engLevel==="a1")bumpReadingCorrect()}
-  engAnswered[engIdx]=ok;
-  logAnswer("english_"+engLevel,item.passage?"reading":"vocab_grammar",ok);
-  render();
-}
-function engNext(){if(engIdx+1>=engFiltered.length){engDone=true;window.scrollTo(0,0)}else{engIdx++;engPicked=null;engLocked=false}render()}
-function renderEnglish(){
-  if(engDone)return renderEnglishResult();
-  const q=engFiltered[engIdx];
-  const prog=engFiltered.map((_,i)=>`<div class="seg" style="background:${i<=engIdx?'#0891B2':'#E2E8F0'};opacity:${i<=engIdx?1:.5}"></div>`).join("");
-  const useEnglishChoices=q.passage&&q.cEn&&(engLevel==="a2"||readingCorrectCount()>=READING_ARABIC_STREAK);
-  const displayChoices=useEnglishChoices?q.cEn:q.c;
-  const choices=displayChoices.map((c,i)=>{
-    let bg="#fff",bd="#E2E8F0",col="#334155";
-    if(engLocked){if(i===q.a){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(i===engPicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}
-    return `<button class="choice" style="background:${bg};border-color:${bd};color:${col}" onclick="engChoose(${i})" ${engLocked?"disabled":""}><span class="letter">${L[i]}</span>${c}</button>`}).join("");
-  const explain=engLocked?`<div class="explain"><div class="explain-title" style="color:${engPicked===q.a?'#059669':'#B45309'}">${engPicked===q.a?"✓ إجابة صحيحة":"الصحيحة بالأخضر"}</div><div class="explain-body">${q.w||""}</div></div>`:"";
-  const btn=engLocked?`<button class="btn" style="background:#0891B2" onclick="engNext()">${engIdx+1>=engFiltered.length?"إنهاء ومشاهدة النتيجة":"السؤال التالي ←"}</button>`:"";
-  const levelLabel=engLevel.toUpperCase();
-  app.innerHTML=`
-  <button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
-  <div class="bar">${prog}</div>
-  <div class="meta"><span>سؤال ${toAr(engIdx+1)} من ${toAr(engFiltered.length)}</span><span>English · ${levelLabel}</span></div>
-  <div class="card">
-    <span class="tag" style="background:#CFFAFE;color:#0891B2">🇬🇧 تعلّم الإنجليزية · مستوى ${levelLabel}</span>
-    ${q.passage?`<div style="background:#F0FDFA;border:1px solid #99F6E4;border-radius:12px;padding:14px;margin-bottom:12px;font-size:16px;line-height:1.7;direction:ltr;text-align:left;color:#0F766E;font-family:Georgia,serif">${q.passage}</div>`:""}
-    <div class="q">${q.q}</div>
-    ${q.listen?`<button type="button" onclick="speakEnglish(engFiltered[${engIdx}].listen)" style="background:#ECFEFF;border:1.5px solid #A5F3FC;color:#0891B2;border-radius:10px;padding:7px 16px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:16px;font-family:inherit">🔊 استمعي</button>`:""}
-    <div class="choices">${choices}</div>
-    ${explain}
-  </div>
-  ${btn}`;
-}
-function renderEnglishResult(){
-  const pct=Math.round(engScore/engFiltered.length*100);
-  const levelLabel=engLevel.toUpperCase();
-  app.innerHTML=`
-  <div class="card">
-    <div class="score-row"><span class="score-big" style="color:${pct>=70?'#059669':pct>=50?'#D97706':'#DC2626'}">${toAr(engScore)}</span><span class="score-total">/ ${toAr(engFiltered.length)}</span><span class="score-pct">${toAr(pct)}%</span></div>
-    <div style="color:#64748B;font-size:15px;margin-bottom:14px">${pct>=85?`ممتاز! أساس ${levelLabel} قوي 🌟`:pct>=60?"جيد جداً، واصلي 💪":"لا بأس، التكرار يبني الأساس 🌱"}</div>
-    <div style="background:#CFFAFE;border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:14px;color:#0E7490;font-weight:700">${growthMsg('english_'+engLevel,pct)}</div>
-    <button class="btn" style="background:#0891B2" onclick="startEnglish('${engLevel}')">إعادة (أسئلة جديدة)</button>
-    <button class="link-btn" onclick="home()">→ الرئيسية</button>
-  </div>`;
-}
 
 // ===================================================================
 // ===== الخطة اليومية للإنجليزية (٤٠ دقيقة) — مواءمة لمنهج الصف السادس
@@ -1666,14 +1469,12 @@ function srsUpdate(id,ok){
 function lessonSeen(id){try{return (JSON.parse(localStorage.getItem("mawhiba_eng_lessons")||"[]")).includes(id)}catch(e){return false}}
 function lessonMark(id){try{const a=JSON.parse(localStorage.getItem("mawhiba_eng_lessons")||"[]");if(!a.includes(id)){a.push(id);localStorage.setItem("mawhiba_eng_lessons",JSON.stringify(a))}}catch(e){}}
 // يبني خطة اليوم: المستحق أولاً (الأهم علمياً)، ثم جديد بحد أقصى، مع بطاقة شرح قبل أول تدريب على أي قاعدة
-// المخزون = عناصر المنهج + بنوك A1/A2/الإملاء الموجودة، بمعرّفات ثابتة.
+// المخزون = عناصر المنهج + بنك الإملاء الموجود، بمعرّفات ثابتة.
 // دالة لا ثابت: لأن DICTATION_A1 مُعرَّف لاحقاً في الملف (تفادي منطقة الموت الزمنية للـ const).
 let _engPool=null;
 function engPool(){
   if(_engPool)return _engPool;
   _engPool=[...ENG_ITEMS,
-    ...ENGLISH_A1.map((it,i)=>({id:"a1_"+i,t:it.passage?"reading":"vocab",passage:it.passage,q:it.q,c:it.c,a:it.a,w:it.w,listen:it.listen})),
-    ...ENGLISH_A2.map((it,i)=>({id:"a2_"+i,t:it.passage?"reading":"grammar",passage:it.passage,q:it.q,c:it.c,a:it.a,w:it.w,listen:it.listen})),
     ...DICTATION_A1.map((it,i)=>({id:"dw_"+i,t:"dict",w:it.w,m:it.m})),
   ];
   return _engPool;
@@ -1811,7 +1612,7 @@ function renderEngPlanResult(){
       ⏱️ خطة اليوم كانت <b>${toAr(planMin)}</b> دقيقة، وبقيت <b>${toAr(shortfall)}</b> دقيقة لإكمال الأربعين.<br>
       هذا طبيعي: العناصر لا تُعاد قبل موعد استحقاقها، فإن قلّت المراجعات اليوم قلّ الوقت. أكملي بما يفيد ولا يكرّر:
       <div style="margin-top:8px">
-        <button class="btn" style="background:#0891B2;margin-bottom:6px" onclick="startEnglish('a2')">🇬🇧 تدريب A2 إضافي</button>
+        <button class="btn" style="background:#0891B2;margin-bottom:6px" onclick="startDictation()">✍️ تدريب إملاء إضافي</button>
         <button class="btn" style="background:#D97706" onclick="startFade('reading')">📖 تقوية الفهم المقروء</button>
       </div></div>`:""}
     <button class="link-btn" onclick="home()">→ الرئيسية</button>
@@ -2286,7 +2087,7 @@ function bumpStreak(){const st=getStreak();const t=todayStr();if(st.last===t)ret
 function growthMsg(modeKey,pct){try{const key="mawhiba_best_"+modeKey;const prev=parseInt(localStorage.getItem(key)||"-1");let msg="";if(prev<0){msg="أول محاولة في هذا القسم — انطلاقة موفّقة! 🌱"}else if(pct>prev){msg=`تحسّنتِ عن أفضل نتيجة سابقة (${toAr(prev)}%)! تقدّم رائع 📈`}else if(pct===prev){msg="ثبات على أفضل مستوى سابق 💪"}else{msg="واصلي، كل محاولة تبني مهارتك 🌟"}if(pct>prev)localStorage.setItem(key,String(pct));return msg}catch(e){return""}}
 
 // ===== العرض =====
-function render(){if(mode==="home")return renderHome();if(mode==="engplan")return renderEngPlan();if(mode==="factplan")return renderFactPlan();if(mode==="english")return renderEnglish();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
+function render(){if(mode==="home")return renderHome();if(mode==="engplan")return renderEngPlan();if(mode==="factplan")return renderFactPlan();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
 
 function renderHome(){
   app.innerHTML=`
@@ -2308,8 +2109,6 @@ function renderHome(){
     <button class="mode full" style="background:#0D9488;border-color:#0D9488" onclick="startBasics('multdiv')"><span class="m-name">🧱 تدريب الأساسيات: عائلات الحقائق</span><div class="m-sub">ضرب/قسمة مرتبطان + جمع بالحمل + طرح بالاستلاف + أساسيات النسبة المئوية</div></button>
     <button class="mode full" style="background:#0F766E;border-color:#0F766E" onclick="startFactPlan()"><span class="m-name">🧮 طلاقة الحقائق · ١٠ دقائق</span><div class="m-sub">استرجاع فوري للجمع والطرح والضرب بلا عدّ أو أصابع، بتباعد ذكي</div></button>
     <button class="mode full" style="background:#4338CA;border-color:#4338CA" onclick="startEngPlan()"><span class="m-name">⭐ خطة الإنجليزية اليومية · ٤٠ دقيقة</span><div class="m-sub">شرح ثم تدريب، بتباعد ذكي — لا يتكرّر أي عنصر إلا في يوم استحقاقه (منهج الصف السادس)</div></button>
-    <button class="mode full" style="background:#0891B2;border-color:#0891B2" onclick="startEnglish('a1')"><span class="m-name">🇬🇧 تعلّم الإنجليزية · مستوى A1</span><div class="m-sub">مفردات وقواعد وقراءة، مع نطق بصوت أمريكي 🔊 — الخطوة الأولى نحو C2</div></button>
-    <button class="mode full" style="background:#155E75;border-color:#155E75" onclick="startEnglish('a2')"><span class="m-name">🇬🇧 تعلّم الإنجليزية · مستوى A2</span><div class="m-sub">أزمنة الماضي والمستقبل، المقارنة، أفعال الوجوب — الخطوة الثانية نحو C2</div></button>
     <button class="mode full" style="background:#0E7490;border-color:#0E7490" onclick="startDictation()"><span class="m-name">✍️ إملاء بالإنجليزية</span><div class="m-sub">استمعي للكلمة، ثم اكتبيها — مستوى A1</div></button>
     <button class="mode full" style="background:#7C3AED;border-color:#7C3AED" onclick="startPronunciation()"><span class="m-name">🎤 تمرين النطق</span><div class="m-sub">تحقّق أساسي هل نطقتِ الكلمة صح (يحتاج ميكروفون) — وليس تصحيح لهجة دقيق</div></button>
   </div>
