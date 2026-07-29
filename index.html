@@ -1469,14 +1469,11 @@ function srsUpdate(id,ok){
 function lessonSeen(id){try{return (JSON.parse(localStorage.getItem("mawhiba_eng_lessons")||"[]")).includes(id)}catch(e){return false}}
 function lessonMark(id){try{const a=JSON.parse(localStorage.getItem("mawhiba_eng_lessons")||"[]");if(!a.includes(id)){a.push(id);localStorage.setItem("mawhiba_eng_lessons",JSON.stringify(a))}}catch(e){}}
 // يبني خطة اليوم: المستحق أولاً (الأهم علمياً)، ثم جديد بحد أقصى، مع بطاقة شرح قبل أول تدريب على أي قاعدة
-// المخزون = عناصر المنهج + بنك الإملاء الموجود، بمعرّفات ثابتة.
-// دالة لا ثابت: لأن DICTATION_A1 مُعرَّف لاحقاً في الملف (تفادي منطقة الموت الزمنية للـ const).
+// المخزون = عناصر المنهج (تشمل عناصر إملاء حقيقية أصلاً)، بمعرّفات ثابتة.
 let _engPool=null;
 function engPool(){
   if(_engPool)return _engPool;
-  _engPool=[...ENG_ITEMS,
-    ...DICTATION_A1.map((it,i)=>({id:"dw_"+i,t:"dict",w:it.w,m:it.m})),
-  ];
+  _engPool=[...ENG_ITEMS]; // ENG_ITEMS يضمّ عناصر dict الحقيقية أصلاً؛ DICTATION_A1 صار نفس الكلمات بالضبط (مصدر واحد) فلا داعي لدمجها مرتين
   return _engPool;
 }
 // بنك المنهج مكتوب بالإجابة الصحيحة أولاً دائماً؛ بلا خلط ستتعلّم موضع الإجابة لا محتواها
@@ -1620,11 +1617,17 @@ function renderEngPlanResult(){
 }
 
 // ===== إملاء إنجليزي: تستمع للكلمة بصوت أمريكي ثم تكتبها (مستوى A1) =====
+// كلمات حقيقية من منهج الصف السادس (نفس مفردات ENG_ITEMS)، لا كلمات عامة عشوائية
 const DICTATION_A1=[
- {w:"cat",m:"قطة"},{w:"dog",m:"كلب"},{w:"book",m:"كتاب"},{w:"pen",m:"قلم"},{w:"sun",m:"شمس"},
- {w:"bed",m:"سرير"},{w:"box",m:"صندوق"},{w:"bus",m:"حافلة"},{w:"cup",m:"كوب"},{w:"map",m:"خريطة"},
- {w:"hat",m:"قبعة"},{w:"six",m:"ستة"},{w:"ten",m:"عشرة"},{w:"big",m:"كبير"},{w:"red",m:"أحمر"},
- {w:"run",m:"يجري"},{w:"yes",m:"نعم"},{w:"boy",m:"ولد"},{w:"girl",m:"بنت"},{w:"fish",m:"سمكة"},
+ {w:"taxi",m:"سيارة أجرة"},{w:"gate",m:"بوابة"},
+ {w:"insect",m:"حشرة"},{w:"camel",m:"جمل"},{w:"eagle",m:"نسر"},
+ {w:"medicine",m:"دواء"},{w:"bread",m:"خبز"},{w:"spoon",m:"ملعقة"},
+ {w:"concert",m:"حفل موسيقي"},{w:"prize",m:"جائزة"},{w:"chess",m:"شطرنج"},
+ {w:"space",m:"الفضاء"},{w:"planet",m:"كوكب"},{w:"business",m:"عمل تجاري"},
+ {w:"team",m:"فريق"},{w:"match",m:"مباراة"},{w:"race",m:"سباق"},
+ {w:"storm",m:"عاصفة"},{w:"hill",m:"تل"},{w:"stone",m:"حجر"},
+ {w:"pocket",m:"جيب"},{w:"winter",m:"شتاء"},{w:"summer",m:"صيف"},
+ {w:"exams",m:"اختبارات"},{w:"improve",m:"يُحسّن"},{w:"invent",m:"يخترع"},
 ];
 // تدرّج الإملاء (نفس فلسفة التقوية/الأساسيات): الكتابة الحرة من الصفر أصعب بكثير من الاختيار من متعدد،
 // فنبدأ بالنسخ (ربط الصوت بالحروف) ثم نسحب المساعدة تدريجياً. المرحلة محفوظة بين الجلسات ليستمر التقدّم.
@@ -1793,11 +1796,15 @@ async function pronListen(){
     if(data&&data.ok){
       pronResult={heard:data.heard,ok:data.matched};
       if(data.matched)pronScore++;
-      logAnswer("pronunciation_a1","word",data.matched);
+      // نسجّل وش سمعه Whisper فعلاً (response) مقابل الكلمة المستهدفة (item_id) لتشخيص السبب الحقيقي للتراجع:
+      // نطق فعلي، أو قطع التسجيل مبكراً (٢٫٢ ثانية ثابتة)، أو خلل تحويل صوتي
+      logAnswer("pronunciation_a1","word",data.matched,data.heard,pronSession[pronIdx].w);
     }else if(data&&data.error==="not_configured"){
       pronResult={heard:"",ok:false,error:true,notConfigured:true};
+      logAnswer("pronunciation_a1","word",false,"[not_configured]",pronSession[pronIdx].w);
     }else{
       pronResult={heard:"",ok:false,error:true};
+      logAnswer("pronunciation_a1","word",false,"[transcription_error]",pronSession[pronIdx].w);
     }
   }catch(e){
     pronResult={heard:"",ok:false,error:true};
