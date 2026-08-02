@@ -1098,6 +1098,12 @@ const BASICS_SUBS={
   subborrow:{label:"الطرح بالاستلاف (عشرات/مئات)",short:"الطرح بالاستلاف"},
   percent:{label:"أساسيات النسبة المئوية",short:"النسبة المئوية"}
 };
+const BASICS_TERMS={
+  multdiv:[{ar:"ضرب",en:"multiplication"},{ar:"قسمة",en:"division"}],
+  addcarry:[{ar:"جمع",en:"addition"},{ar:"حمل",en:"carrying"}],
+  subborrow:[{ar:"طرح",en:"subtraction"},{ar:"استلاف",en:"borrowing"}],
+  percent:[{ar:"نسبة مئوية",en:"percentage"}],
+};
 let basicsSub="multdiv",basicsStage=1,basicsStreak=0,basicsCur=null,basicsLocked=false,basicsPicked=-1,basicsMasteryStreak=0,basicsMidSupport=false,basicsMidRecoveryStreak=0,basicsFinalSupport=false,basicsFinalRecoveryStreak=0;
 
 // إطار العشرة (Ten-Frame): يرتّب الكمية في صفّين من خمسة بدل نقاط عشوائية تُعدّ واحدة واحدة،
@@ -1277,7 +1283,7 @@ function renderBasics(){
   app.innerHTML=`<button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
   <div style="display:flex;gap:6px;margin-bottom:12px">${bar}</div>
   <div style="font-size:12px;font-weight:800;color:#0D9488;margin-bottom:12px">${info.label}</div>
-  <div class="card"><span class="tag" style="background:#CCFBF1;color:#0D9488">تدريب الأساسيات · ${subLabel} · ${info.tag}</span>${body}</div>
+  <div class="card"><span class="tag" style="background:#CCFBF1;color:#0D9488">تدريب الأساسيات · ${subLabel} · ${info.tag}</span>${termsChipsHtml(BASICS_TERMS[basicsSub])}${body}</div>
   ${switchBtns}`;
 }
 
@@ -2067,6 +2073,7 @@ function buildFactBank(){
 let _factBank=null;
 function factBank(){if(!_factBank)_factBank=buildFactBank();return _factBank}
 const FACT_OP_SYM={add:"+",sub:"−",mul:"×",div:"÷"};
+const FACT_OP_TERMS={add:[{ar:"جمع",en:"addition"}],sub:[{ar:"طرح",en:"subtraction"}],mul:[{ar:"ضرب",en:"multiplication"}],div:[{ar:"قسمة",en:"division"}]};
 // استراتيجية فورية عند الخطأ: تعليم صريح لطريقة أسرع من العدّ، لا مجرد إعطاء الجواب
 function factStrategy(op,a,b,ans){
   if(op==="add"){
@@ -2138,6 +2145,7 @@ function renderFactPlan(){
   app.innerHTML=`${head}
   <div class="card" style="text-align:center">
     <span class="tag" style="background:#F0FDFA;color:#0D9488">🧮 استرجاع سريع — بلا عدّ ولا أصابع</span>
+    ${termsChipsHtml(FACT_OP_TERMS[it.op])}
     <div style="font-size:40px;font-weight:800;letter-spacing:4px;margin:24px 0;direction:ltr">${toAr(it.a)} ${FACT_OP_SYM[it.op]} ${toAr(it.b)} = ؟</div>
     <input id="factIn" ${factLocked?"disabled":""} type="tel" inputmode="numeric" style="width:140px;padding:14px;border-radius:12px;border:2px solid ${factLocked?(ok?'#10B981':'#EF4444'):'#E2E8F0'};font-size:26px;text-align:center;font-weight:800" autocomplete="off" onkeydown="if(event.key==='Enter')factCheck()">
     ${factLocked?`<div style="margin-top:10px;font-weight:800;color:${ok?'#059669':'#DC2626'}">${ok?"✓ صحيح":"الصحيح: "+toAr(it.ans)}</div>`:""}
