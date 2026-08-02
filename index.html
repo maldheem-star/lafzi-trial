@@ -571,6 +571,31 @@ const FADE_TOPICS=[
   {key:"prismvol",icon:"📦",label:"حجم المنشور الرباعي",sub:"الطول × العرض × الارتفاع"},
   {key:"prismsurf",icon:"🧱",label:"مساحة سطح المنشور",sub:"مجموع مساحات الأوجه الستّة"},
 ];
+// مصطلحات مفتاحية بالإنجليزية لكل نوع تقوية — تظهر كشرائح صوتية فوق كل سؤال بغضّ النظر عن المرحلة،
+// عشان تبني مفردات إنجليزية حقيقية (رياضيات/هندسة/منطق) بدل ترجمة الجملة كاملة
+const FADE_TERMS={
+  seq:[{ar:"متتالية",en:"sequence"},{ar:"نسبة",en:"ratio"}],
+  median:[{ar:"وسيط",en:"median"}],
+  percent:[{ar:"نسبة مئوية",en:"percentage"}],
+  cube:[{ar:"مكعّب",en:"cube"},{ar:"حجم",en:"volume"}],
+  pyramid:[{ar:"هرم",en:"pyramid"}],
+  angles:[{ar:"زاوية",en:"angle"}],
+  mirror:[{ar:"انعكاس",en:"reflection"},{ar:"مرآة",en:"mirror"}],
+  rotate:[{ar:"دوران",en:"rotation"}],
+  logic:[{ar:"استدلال",en:"reasoning"},{ar:"منطق",en:"logic"}],
+  reading:[{ar:"فهم مقروء",en:"comprehension"},{ar:"دليل",en:"evidence"}],
+  circle:[{ar:"دائرة",en:"circle"},{ar:"محيط",en:"circumference"},{ar:"قطر",en:"diameter"},{ar:"نصف قطر",en:"radius"}],
+  parallelogram:[{ar:"متوازي أضلاع",en:"parallelogram"},{ar:"مساحة",en:"area"},{ar:"ارتفاع",en:"height"},{ar:"قاعدة",en:"base"}],
+  triangle:[{ar:"مثلث",en:"triangle"},{ar:"مساحة",en:"area"}],
+  prismvol:[{ar:"منشور",en:"prism"},{ar:"حجم",en:"volume"}],
+  prismsurf:[{ar:"مساحة السطح",en:"surface area"},{ar:"منشور",en:"prism"}],
+};
+function fadeTermsRow(topic){
+  const terms=FADE_TERMS[topic];
+  if(!terms||!terms.length)return"";
+  const chips=terms.map(t=>`<button type="button" onclick="speakEnglish('${t.en.replace(/'/g,"\\'")}')" style="background:#EEF2FF;border:1px solid #C7D2FE;color:#3730A3;border-radius:999px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;font-family:inherit">🔊 ${t.ar} = <span style="direction:ltr;font-family:Georgia,serif">${t.en}</span></button>`).join("");
+  return `<div style="display:flex;flex-wrap:wrap;gap:6px;margin:12px 0">${chips}</div>`;
+}
 function fadeMakeSeq(){
   const kind=pick(["seq","seq","ratio"]); // متتاليات أكثر تكراراً
   if(kind==="ratio"){
@@ -1007,7 +1032,7 @@ function renderFade(){
   app.innerHTML=`<button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
   <div style="display:flex;gap:6px;margin-bottom:12px">${bar}</div>
   <div style="font-size:12px;font-weight:800;color:#D97706;margin-bottom:12px">${info.label}</div>
-  <div class="card"><span class="tag" style="background:#FEF3C7;color:#D97706">تقوية ${topicLabel} · ${info.tag}</span>${body}</div>
+  <div class="card"><span class="tag" style="background:#FEF3C7;color:#D97706">تقوية ${topicLabel} · ${info.tag}</span>${fadeTermsRow(fadeTopic)}${body}</div>
   <button class="link-btn" onclick="goFadeMenu()">🔁 غيّري نوع التقوية</button>`;
 }
 
