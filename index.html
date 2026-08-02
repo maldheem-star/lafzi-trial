@@ -590,11 +590,64 @@ const FADE_TERMS={
   prismvol:[{ar:"منشور",en:"prism"},{ar:"حجم",en:"volume"}],
   prismsurf:[{ar:"مساحة السطح",en:"surface area"},{ar:"منشور",en:"prism"}],
 };
-function fadeTermsRow(topic){
-  const terms=FADE_TERMS[topic];
+// عرض عام لشرائح "عربي = إنجليزي 🔊" — يُستعمل بوضع التقوية وبالاختبار الرئيسي معاً
+function termsChipsHtml(terms){
   if(!terms||!terms.length)return"";
   const chips=terms.map(t=>`<button type="button" onclick="speakEnglish('${t.en.replace(/'/g,"\\'")}')" style="background:#EEF2FF;border:1px solid #C7D2FE;color:#3730A3;border-radius:999px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;font-family:inherit">🔊 ${t.ar} = <span style="direction:ltr;font-family:Georgia,serif">${t.en}</span></button>`).join("");
   return `<div style="display:flex;flex-wrap:wrap;gap:6px;margin:12px 0">${chips}</div>`;
+}
+function fadeTermsRow(topic){return termsChipsHtml(FADE_TERMS[topic])}
+// معجم مصطلحات للاختبار الرئيسي (كمّي/مرن/لفظي/علمي) — نفحص نصّ السؤال عن أي من هذه العبارات ونعرض ما وُجد
+// مرتّب من الأخصّ للأعمّ حتى تُفضَّل "نصف قطر" على "قطر" لو ظهرت العبارتان معاً
+const QUIZ_TERMS=[
+  {ar:"نصف قطر",en:"radius"},{ar:"أعداد صحيحة متتالية",en:"consecutive integers"},
+  {ar:"خط الأعداد",en:"number line"},{ar:"الشكل الخماسي",en:"pentagon"},{ar:"الشكل السداسي",en:"hexagon"},
+  {ar:"الشكل الثماني",en:"octagon"},{ar:"متوازي أضلاع",en:"parallelogram"},{ar:"نسبة مئوية",en:"percentage"},
+  {ar:"البناء الضوئي",en:"photosynthesis"},{ar:"المجموعة الشمسية",en:"solar system"},
+  {ar:"قطر",en:"diameter"},{ar:"محيط",en:"perimeter"},{ar:"مساحة",en:"area"},{ar:"حجم",en:"volume"},
+  {ar:"مكعّب",en:"cube"},{ar:"مربّع",en:"square"},{ar:"مستطيل",en:"rectangle"},{ar:"مثلث",en:"triangle"},
+  {ar:"دائرة",en:"circle"},{ar:"منشور",en:"prism"},{ar:"هرم",en:"pyramid"},{ar:"أضلاع",en:"sides"},{ar:"ضلع",en:"side"},
+  {ar:"زوايا",en:"angles"},{ar:"زاوية",en:"angle"},{ar:"عدد صحيح",en:"integer"},{ar:"متتالية",en:"sequence"},
+  {ar:"نمط",en:"pattern"},{ar:"وسيط",en:"median"},{ar:"متوسط",en:"average"},{ar:"كسر",en:"fraction"},
+  {ar:"عمّال",en:"workers"},{ar:"عامل",en:"worker"},{ar:"راتب",en:"salary"},{ar:"إيجار",en:"rent"},
+  {ar:"مصروفات",en:"expenses"},{ar:"سعر",en:"price"},{ar:"ثمن",en:"price"},{ar:"طرق",en:"routes"},
+  {ar:"آلات",en:"machines"},{ar:"سرعة",en:"speed"},{ar:"الزمن",en:"time"},{ar:"رسم بياني",en:"graph"},
+  {ar:"نرد",en:"dice"},{ar:"تدوير",en:"rotation"},{ar:"دوران",en:"rotation"},{ar:"انعكاس",en:"reflection"},
+  {ar:"مرآتي",en:"mirror"},{ar:"أشجار",en:"trees"},{ar:"شجرة",en:"tree"},{ar:"أشكال",en:"shapes"},{ar:"شكل",en:"shape"},
+  {ar:"مرادف",en:"synonym"},{ar:"ضدّ",en:"opposite"},{ar:"مَثَل",en:"proverb"},
+  {ar:"حالات المادة",en:"states of matter"},{ar:"صلبة",en:"solid"},{ar:"سائلة",en:"liquid"},{ar:"غازية",en:"gas"},
+  {ar:"تبخّر",en:"evaporation"},{ar:"تكاثف",en:"condensation"},{ar:"تجمّد",en:"freezing"},{ar:"انصهار",en:"melting"},
+  {ar:"جاذبية",en:"gravity"},{ar:"احتكاك",en:"friction"},{ar:"نبات",en:"plant"},{ar:"موصل",en:"conductor"},
+  {ar:"عازل",en:"insulator"},{ar:"كوكب",en:"planet"},{ar:"القلب",en:"heart"},{ar:"الرئة",en:"lung"},
+  {ar:"أكسجين",en:"oxygen"},{ar:"نيتروجين",en:"nitrogen"},{ar:"الثدييات",en:"mammals"},{ar:"الحشرة",en:"insect"},
+  {ar:"الجاذبية",en:"gravity"},{ar:"الدماغ",en:"brain"},
+  // مفردات مراحل الترتيب التسلسلي (gSeq) — نفس كلمات SEQS بالضبط
+  {ar:"جنين",en:"embryo"},{ar:"رضيع",en:"infant"},{ar:"طفل",en:"child"},{ar:"صبي",en:"boy"},{ar:"شاب",en:"young man"},
+  {ar:"كهل",en:"middle-aged"},{ar:"شيخ",en:"elderly"},
+  {ar:"السبت",en:"Saturday"},{ar:"الأحد",en:"Sunday"},{ar:"الاثنين",en:"Monday"},{ar:"الثلاثاء",en:"Tuesday"},
+  {ar:"الأربعاء",en:"Wednesday"},{ar:"الخميس",en:"Thursday"},{ar:"الجمعة",en:"Friday"},
+  {ar:"بذرة",en:"seed"},{ar:"برعم",en:"bud"},{ar:"نبتة",en:"sprout"},
+  {ar:"بيضة",en:"egg"},{ar:"يرقة",en:"larva"},{ar:"شرنقة",en:"cocoon"},{ar:"فراشة",en:"butterfly"},
+  {ar:"الأول",en:"first"},{ar:"الثاني",en:"second"},{ar:"الثالث",en:"third"},{ar:"الرابع",en:"fourth"},
+  {ar:"الخامس",en:"fifth"},{ar:"السادس",en:"sixth"},
+  // مزيد من مفردات بنكَي اللفظي والعلمي الاحتياطيَّين
+  {ar:"طاقة متجدّد",en:"renewable energy"},{ar:"وحدة قياس",en:"unit of measurement"},
+  {ar:"مكتبة",en:"library"},{ar:"دواء",en:"medicine"},{ar:"قفّاز",en:"glove"},{ar:"جيش",en:"army"},
+  {ar:"لاعب",en:"player"},{ar:"ريش",en:"feathers"},{ar:"طائر",en:"bird"},{ar:"خروف",en:"sheep"},
+  {ar:"أداة",en:"tool"},{ar:"رسم",en:"drawing"},{ar:"سمكة",en:"fish"},{ar:"رياضة",en:"sport"},
+  {ar:"سائل",en:"liquid"},{ar:"بخار",en:"vapor"},{ar:"القوة",en:"force"},{ar:"كائنات",en:"organisms"},
+  {ar:"عضو",en:"organ"},{ar:"الدم",en:"blood"},{ar:"الغاز",en:"gas"},{ar:"طاقة",en:"energy"},{ar:"الضوء",en:"light"},
+  {ar:"يتنفّس",en:"breathes"},{ar:"حاسة",en:"sense"},{ar:"الأذن",en:"ear"},{ar:"درجة حرارة",en:"temperature"},
+  {ar:"نجم",en:"star"},{ar:"سطح الأرض",en:"earth's surface"},{ar:"اللون الأزرق",en:"blue"},{ar:"الأصفر",en:"yellow"},
+  {ar:"الحواس",en:"senses"},
+];
+function quizTermsFor(text){
+  if(!text)return[];
+  const found=[];
+  for(const t of QUIZ_TERMS){
+    if(text.includes(t.ar)&&!found.some(f=>f.ar.includes(t.ar)||t.ar.includes(f.ar)))found.push(t);
+  }
+  return found.slice(0,4);
 }
 function fadeMakeSeq(){
   const kind=pick(["seq","seq","ratio"]); // متتاليات أكثر تكراراً
@@ -2187,6 +2240,7 @@ function renderQuiz(){
   <div class="meta"><span>سؤال ${toAr(idx+1)} من ${toAr(filtered.length)}</span><span>${d.name}</span></div>
   <div class="card">
     <span class="tag" style="background:${d.soft};color:${d.color}">${d.name}</span>
+    ${termsChipsHtml(quizTermsFor(q.q))}
     <div class="q">${q.q}</div>
     ${svg}
     <div class="choices">${choices}</div>
