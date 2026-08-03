@@ -474,7 +474,34 @@ function gShapeAnalogy(){
     w:"القاعدة: كل خانة تنزل مكاناً واحداً لأسفل، والخانة السفلية تلتفّ إلى الأعلى — نطبّقها على الشكل الثالث.",svg};
 }
 
-const QUANT_GENS=[gArith,gGeo,gPrice,gPerim,gClock,gSides,gWorkers,gMedian,gCube,gPercent,gPaths,gCompound,gFraction,gTrees,gCircleValue,gConsec,gAngleTriangle,gAngleLine,gAnglePoint,gAngleSquare,gSpeedGraph,gShadedArea,gNumberLine,gFractionBetween,gFractionOfNumber,gBills,gAgeChain,gClockPuzzle];
+// مستطيل مقسوم إلى ثلاثة أجزاء رأسية: يسار مساحته معلومة، وسط مظلّل (المطلوب)، يمين مساحته معلومة.
+// سهم علوي يقيس (اليسار + المظلّل)، وسهم سفلي يقيس (المظلّل + اليمين) — والسهمان يبدآن من حافتين مختلفتين.
+// طريق الحل: الارتفاع = (مساحة اليمين − مساحة اليسار) ÷ (السهم السفلي − السهم العلوي)
+function gShadedThreeParts(){
+  const h=pick([4,5,6,8,10]),a=rand(2,6),c=a+rand(1,6),b=rand(3,8);
+  const leftA=a*h,rightA=c*h,ans=b*h,topSpan=a+b,botSpan=b+c;
+  const total=a+b+c,X0=20,W=200;
+  const x1=X0+W*a/total,x2=x1+W*b/total,X1=X0+W;
+  const arrow=(xa,xb,y,lab)=>`<line x1="${xa.toFixed(1)}" y1="${y}" x2="${xb.toFixed(1)}" y2="${y}" stroke="#334155" stroke-width="1.5"/>
+    <polygon points="${xa.toFixed(1)},${y} ${(xa+6).toFixed(1)},${y-3} ${(xa+6).toFixed(1)},${y+3}" fill="#334155"/>
+    <polygon points="${xb.toFixed(1)},${y} ${(xb-6).toFixed(1)},${y-3} ${(xb-6).toFixed(1)},${y+3}" fill="#334155"/>
+    <text x="${((xa+xb)/2).toFixed(1)}" y="${y-6}" font-size="11" font-weight="700" fill="#334155" text-anchor="middle">${lab}</text>`;
+  const svg=`<svg viewBox="0 0 240 150" width="240" height="150">
+    <rect x="${X0}" y="40" width="${W}" height="70" fill="none" stroke="#BE185D" stroke-width="1.8"/>
+    <rect x="${x1.toFixed(1)}" y="40" width="${(x2-x1).toFixed(1)}" height="70" fill="#BFDBFE" stroke="#BE185D" stroke-width="1.5"/>
+    <line x1="${x1.toFixed(1)}" y1="40" x2="${x1.toFixed(1)}" y2="110" stroke="#BE185D" stroke-width="1.5"/>
+    <line x1="${x2.toFixed(1)}" y1="40" x2="${x2.toFixed(1)}" y2="110" stroke="#BE185D" stroke-width="1.5"/>
+    <text x="${((X0+x1)/2).toFixed(1)}" y="79" font-size="11" font-weight="700" fill="#BE185D" text-anchor="middle">${toAr(leftA)}سم²</text>
+    <text x="${((x2+X1)/2).toFixed(1)}" y="79" font-size="11" font-weight="700" fill="#BE185D" text-anchor="middle">${toAr(rightA)}سم²</text>
+    ${arrow(X0,x2,30,toAr(topSpan)+"سم")}
+    ${arrow(x1,X1,132,toAr(botSpan)+"سم")}
+  </svg>`;
+  return{d:"quant",q:"في الشكل المجاور، أوجد مساحة الجزء المظلّل.",svg,
+    ...(()=>{const m=mcNum(ans,[ans+h,ans-h,leftA+rightA-ans]);return{c:m.choices.map(x=>x+" سم²"),a:m.answer}})(),
+    w:`الأجزاء الثلاثة لها الارتفاع نفسه. الفرق بين السهمين = ${toAr(botSpan)} − ${toAr(topSpan)} = ${toAr(c-a)} سم، وهو الفرق بين عرضَي الجزأين غير المظلّلين. والفرق بين مساحتيهما = ${toAr(rightA)} − ${toAr(leftA)} = ${toAr(rightA-leftA)} سم². إذن الارتفاع = ${toAr(rightA-leftA)} ÷ ${toAr(c-a)} = ${toAr(h)} سم. وعرض الجزء الأيسر = ${toAr(leftA)} ÷ ${toAr(h)} = ${toAr(a)} سم، فيكون عرض المظلّل = ${toAr(topSpan)} − ${toAr(a)} = ${toAr(b)} سم. المساحة = ${toAr(b)} × ${toAr(h)} = ${toAr(ans)} سم².`};
+}
+
+const QUANT_GENS=[gArith,gGeo,gPrice,gPerim,gClock,gSides,gWorkers,gMedian,gCube,gPercent,gPaths,gCompound,gFraction,gTrees,gCircleValue,gConsec,gAngleTriangle,gAngleLine,gAnglePoint,gAngleSquare,gSpeedGraph,gShadedArea,gNumberLine,gFractionBetween,gFractionOfNumber,gBills,gAgeChain,gClockPuzzle,gShadedThreeParts];
 const FLEX_GENS=[fDouble,fTriple,fFib,fSq,fOpp,gPyramid,gCircleNum,gShapeEq,gSeq,gDice,gAngleEqualRays,gRavenCount,gRavenRotate,gShapeRotateSeq,gDicePattern,gShapeSeries,gMirrorReflect,gShapeAnalogy];
 
 // ===== بنك اللغوي الاحتياطي =====
