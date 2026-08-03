@@ -396,8 +396,86 @@ function gMirrorReflect(){
   return{d:"flex",q:"الشكل يقع على يمين الخط المتقطّع (خط الانعكاس). ما انعكاسه المرآتي الصحيح على الجانب الآخر من الخط؟",c,a:all.indexOf(correct),w:"الانعكاس المرآتي يقلب الشكل أفقياً (يمين ↔ يسار) حول خط الانعكاس، دون تدويره أو قلبه رأسياً.",svg:mainSVG};
 }
 
-const QUANT_GENS=[gArith,gGeo,gPrice,gPerim,gClock,gSides,gWorkers,gMedian,gCube,gPercent,gPaths,gCompound,gFraction,gTrees,gCircleValue,gConsec,gAngleTriangle,gAngleLine,gAnglePoint,gAngleSquare,gSpeedGraph,gShadedArea,gNumberLine];
-const FLEX_GENS=[fDouble,fTriple,fFib,fSq,fOpp,gPyramid,gCircleNum,gShapeEq,gSeq,gDice,gAngleEqualRays,gRavenCount,gRavenRotate,gShapeRotateSeq,gDicePattern,gShapeSeries,gMirrorReflect];
+// ===== أنواع مأخوذة من كراسة تدريب قدرات فعلية (لم تكن موجودة في التطبيق) =====
+const frTxt=(n,d)=>`${toAr(n)}/${toAr(d)}`;
+// كسر يقع بين كسرين — كل المموّهات أصغر من الحدّ الأدنى فعلياً (تحقّقنا عددياً)
+const FRAC_BETWEEN=[
+  {lo:[1,4],hi:[1,2],ans:[1,3],dis:[[1,8],[1,6],[1,5]]},
+  {lo:[1,6],hi:[1,3],ans:[1,4],dis:[[1,8],[1,10],[1,12]]},
+  {lo:[1,8],hi:[1,4],ans:[1,6],dis:[[1,10],[1,12],[1,16]]},
+  {lo:[1,5],hi:[1,2],ans:[1,3],dis:[[1,6],[1,8],[1,10]]},
+  {lo:[1,10],hi:[1,5],ans:[1,8],dis:[[1,12],[1,16],[1,20]]},
+];
+function gFractionBetween(){
+  const s=pick(FRAC_BETWEEN),f=a=>frTxt(a[0],a[1]);
+  const correct=f(s.ans),all=shuffle([correct,...s.dis.map(f)]);
+  return{d:"quant",q:`أي من الكسور الآتية يقع بين الكسرين ${f(s.lo)} و ${f(s.hi)}؟`,c:all,a:all.indexOf(correct),
+    w:`في كسور البسط واحد: كلما كبر المقام صغرت قيمة الكسر. مقام ${correct} يقع بين مقامَي ${f(s.hi)} و${f(s.lo)}، فقيمته بينهما. أما بقية الخيارات فمقاماتها أكبر، أي قيمها أصغر من ${f(s.lo)}.`};
+}
+const FRAC_WORD={2:"نصف",3:"ثلث",4:"ربع",6:"سُدس"};
+function gFractionOfNumber(){
+  const parts=[2,3,4,6],p1=pick(parts),p2=pick(parts.filter(x=>x!==p1));
+  const gcd=(a,b)=>b?gcd(b,a%b):a, L=p1*p2/gcd(p1,p2);
+  const N=L*rand(2,8),v=N/p1,ans=N/p2;
+  return qz("quant",`إذا كان ${FRAC_WORD[p1]} عدد ما يساوي (${toAr(v)})، فما ${FRAC_WORD[p2]} هذا العدد؟`,ans,[ans+1,ans-1,v],
+    `${FRAC_WORD[p1]} العدد = ${toAr(v)}، إذن العدد كاملاً = ${toAr(v)} × ${toAr(p1)} = ${toAr(N)}. و${FRAC_WORD[p2]} العدد = ${toAr(N)} ÷ ${toAr(p2)} = ${toAr(ans)}.`);
+}
+// الأوراق النقدية من فئتين — نوع متكرّر في قدرات
+const BILL_PAIRS=[[200,500],[50,100],[100,500],[10,50],[20,50],[5,10]];
+function gBills(){
+  const [a,b]=pick(BILL_PAIRS),T=rand(3,8),x=rand(1,T-1),y=T-x,S=a*x+b*y;
+  return qz("quant",`إذا كان مع محمد ${toAr(S)} ريالاً من فئة ${toAr(a)} و${toAr(b)} ريال، وكان عدد الأوراق النقدية ${toAr(T)} أوراق، فكم ورقة معه من فئة ${toAr(a)} ريالاً؟`,x,[y,x+1,x-1],
+    `لو كانت الأوراق ${toAr(T)} كلها من فئة ${toAr(b)} لصار المجموع ${toAr(b*T)} ريالاً. الفرق عن الحقيقي = ${toAr(b*T)} − ${toAr(S)} = ${toAr(b*T-S)}. وكل ورقة من فئة ${toAr(a)} تُنقص المجموع ${toAr(b-a)} ريالاً، إذن عددها = ${toAr(b*T-S)} ÷ ${toAr(b-a)} = ${toAr(x)} ورقة.`);
+}
+// سلسلة مقارنات أعمار متتابعة — نبدأ من المعلوم ونعود للخلف
+const AGE_NAMES=["مهند","أحمد","أحلام","هند","سارة","خالد","نورة","فيصل","ريم","بدر"];
+function gAgeChain(){
+  const [A,B,C,D]=shuffle(AGE_NAMES).slice(0,4);
+  const p=rand(2,5),q=rand(2,6),r=rand(3,8),dAge=rand(18,30);
+  const cAge=dAge-r,bAge=cAge+q,aAge=bAge-p;
+  if(aAge<5||cAge<5)return gAgeChain();
+  return qz("quant",`إذا كان ${A} أصغر من ${B} بـ(${toAr(p)}) سنوات، و${B} أكبر من ${C} بـ(${toAr(q)}) سنوات، و${C} أصغر من ${D} بـ(${toAr(r)}) سنوات. إذا كان عُمر ${D} (${toAr(dAge)}) سنة، فما عُمر ${A}؟`,aAge,[aAge+2,aAge-2,dAge-p],
+    `نبدأ من المعلوم: ${D} = ${toAr(dAge)}. ${C} أصغر منه بـ${toAr(r)} → ${toAr(cAge)}. ${B} أكبر من ${C} بـ${toAr(q)} → ${toAr(bAge)}. ${A} أصغر من ${B} بـ${toAr(p)} → ${toAr(aAge)} سنة.`);
+}
+// لغز الساعة: مربع (س÷أ) = مكعب (س÷٢أ) ← الحل س = ٨أ
+function gClockPuzzle(){
+  const a=pick([2,3]),x=8*a;
+  const W1={2:"نصفها",3:"ثلثها"},W2={2:"ربعها",3:"سدسها"};
+  const lab=h=>h===24?"١٢ منتصف الليل":(h>12?toAr(h-12)+" مساءً":toAr(h)+" مساءً");
+  const correct=lab(x);
+  const pool=["٨ مساءً","٩ مساءً","١٠ مساءً","١١ مساءً","٤ مساءً","٦ مساءً","١٢ منتصف الليل","٤ صباحًا"];
+  const all=shuffle([correct,...shuffle(pool.filter(t=>t!==correct)).slice(0,3)]);
+  return{d:"quant",q:`قيل لحسن: متى تنام ليلاً؟ قال: في الساعة التي مربّع ${W1[a]} يساوي مكعّب ${W2[a]}. متى ينام حسن؟`,c:all,a:all.indexOf(correct),
+    w:`نرمز للساعة بـ(س): مربّع (س÷${toAr(a)}) = س²÷${toAr(a*a)}، ومكعّب (س÷${toAr(2*a)}) = س³÷${toAr(Math.pow(2*a,3))}. بمساواتهما: س = ${toAr(Math.pow(2*a,3))} ÷ ${toAr(a*a)} = ${toAr(x)}، أي الساعة ${correct}.`};
+}
+// التناظر الشكلي (أ : ب  ::  ج : ؟) — القاعدة: كل خانة تنزل مكاناً واحداً لأسفل
+function analogyStrip(cells){
+  const cell=(s,y)=>{
+    if(s==='f')return `<rect x="8" y="${y}" width="26" height="26" fill="#BE185D" stroke="#1E293B" stroke-width="1.5"/>`;
+    if(s==='g')return `<rect x="8" y="${y}" width="26" height="26" fill="none" stroke="#1E293B" stroke-width="1.5"/><line x1="21" y1="${y}" x2="21" y2="${y+26}" stroke="#1E293B" stroke-width="1"/><line x1="8" y1="${y+13}" x2="34" y2="${y+13}" stroke="#1E293B" stroke-width="1"/>`;
+    return `<rect x="8" y="${y}" width="26" height="26" fill="#fff" stroke="#1E293B" stroke-width="1.5"/>`;
+  };
+  return `<svg viewBox="0 0 42 92" width="42" height="92"><rect x="3" y="2" width="36" height="88" fill="none" stroke="#BE185D" stroke-width="1.5"/>${cell(cells[0],6)}${cell(cells[1],34)}${cell(cells[2],62)}</svg>`;
+}
+const rotDown=a=>[a[2],a[0],a[1]];
+function gShapeAnalogy(){
+  const perms=[['f','e','g'],['f','g','e'],['e','f','g'],['e','g','f'],['g','f','e'],['g','e','f']];
+  const A=pick(perms),B=rotDown(A);
+  const key=z=>z.join("");
+  const cyc=[key(A),key(B),key(rotDown(B))];
+  const C=pick(perms.filter(z=>!cyc.includes(key(z))));
+  const ans=rotDown(C);
+  const cands=[rotDown(ans),[...C].reverse(),A,B,C];
+  const dis=[];
+  for(const z of cands){if(dis.length<3&&key(z)!==key(ans)&&!dis.some(w=>key(w)===key(z)))dis.push(z)}
+  const all=shuffle([ans,...dis]);
+  const svg=`<div style="display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap">${analogyStrip(A)}<span style="font-size:20px;font-weight:800;color:#334155">:</span>${analogyStrip(B)}<span style="font-size:18px;font-weight:800;color:#334155">::</span>${analogyStrip(C)}<span style="font-size:18px;font-weight:800;color:#334155">:</span><span style="font-size:26px;font-weight:800;color:#D97706">؟</span></div>`;
+  return{d:"flex",q:"لاحظي العلاقة بين الشكلين الأولين، ثم طبّقي القاعدة نفسها. ما الشكل الذي يجب وضعه مكان علامة الاستفهام؟",c:all.map(z=>analogyStrip(z)),a:all.findIndex(z=>key(z)===key(ans)),
+    w:"القاعدة: كل خانة تنزل مكاناً واحداً لأسفل، والخانة السفلية تلتفّ إلى الأعلى — نطبّقها على الشكل الثالث.",svg};
+}
+
+const QUANT_GENS=[gArith,gGeo,gPrice,gPerim,gClock,gSides,gWorkers,gMedian,gCube,gPercent,gPaths,gCompound,gFraction,gTrees,gCircleValue,gConsec,gAngleTriangle,gAngleLine,gAnglePoint,gAngleSquare,gSpeedGraph,gShadedArea,gNumberLine,gFractionBetween,gFractionOfNumber,gBills,gAgeChain,gClockPuzzle];
+const FLEX_GENS=[fDouble,fTriple,fFib,fSq,fOpp,gPyramid,gCircleNum,gShapeEq,gSeq,gDice,gAngleEqualRays,gRavenCount,gRavenRotate,gShapeRotateSeq,gDicePattern,gShapeSeries,gMirrorReflect,gShapeAnalogy];
 
 // ===== بنك اللغوي الاحتياطي =====
 const VERBAL=[
@@ -640,6 +718,10 @@ const QUIZ_TERMS=[
   {ar:"يتنفّس",en:"breathes"},{ar:"حاسة",en:"sense"},{ar:"الأذن",en:"ear"},{ar:"درجة حرارة",en:"temperature"},
   {ar:"نجم",en:"star"},{ar:"سطح الأرض",en:"earth's surface"},{ar:"اللون الأزرق",en:"blue"},{ar:"الأصفر",en:"yellow"},
   {ar:"الحواس",en:"senses"},
+  {ar:"الكسور",en:"fractions"},{ar:"أوراق النقدية",en:"banknotes"},{ar:"فئة",en:"denomination"},
+  {ar:"عُمر",en:"age"},{ar:"سنة",en:"year"},{ar:"الساعة",en:"hour"},
+  // كلمات الكسور — تأتي بعد "نصف قطر" و"عدد صحيح" في الترتيب فيفوز الأخصّ عند التطابق
+  {ar:"نصف",en:"half"},{ar:"ثلث",en:"third"},{ar:"ربع",en:"quarter"},{ar:"سُدس",en:"sixth"},{ar:"العدد",en:"number"},
 ];
 function quizTermsFor(text){
   if(!text)return[];
