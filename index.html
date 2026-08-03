@@ -498,7 +498,63 @@ function gShadedThreeParts(){
   </svg>`;
   return{d:"quant",q:"في الشكل المجاور، أوجد مساحة الجزء المظلّل.",svg,
     ...(()=>{const m=mcNum(ans,[ans+h,ans-h,leftA+rightA-ans]);return{c:m.choices.map(x=>x+" سم²"),a:m.answer}})(),
-    w:`الأجزاء الثلاثة لها الارتفاع نفسه. الفرق بين السهمين = ${toAr(botSpan)} − ${toAr(topSpan)} = ${toAr(c-a)} سم، وهو الفرق بين عرضَي الجزأين غير المظلّلين. والفرق بين مساحتيهما = ${toAr(rightA)} − ${toAr(leftA)} = ${toAr(rightA-leftA)} سم². إذن الارتفاع = ${toAr(rightA-leftA)} ÷ ${toAr(c-a)} = ${toAr(h)} سم. وعرض الجزء الأيسر = ${toAr(leftA)} ÷ ${toAr(h)} = ${toAr(a)} سم، فيكون عرض المظلّل = ${toAr(topSpan)} − ${toAr(a)} = ${toAr(b)} سم. المساحة = ${toAr(b)} × ${toAr(h)} = ${toAr(ans)} سم².`};
+    w:shadedStepsHtml(a,b,c,h,leftA,rightA,topSpan,botSpan,ans)};
+}
+// شرح مرئي متدرّج: كل خطوة برسمها الخاص. الفكرة الصعبة (لماذا فرق السهمين = فرق العرضين)
+// تُشرح برسم السهمين فوق بعضهما بحيث يقع الجزء المظلّل المشترك في العمود نفسه، فيظهر الفرق بالعين.
+function shadedStepsHtml(a,b,c,h,leftA,rightA,topSpan,botSpan,ans){
+  const s=230/(a+b+c),BH=30,GRAY="#F1F5F9",BLUE="#BFDBFE",AMB="#FDE68A",ST="#BE185D";
+  const step=(n,title,body,svg)=>`<div style="background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:12px;margin-top:10px">
+    <div style="font-weight:800;color:#0F766E;font-size:14px;margin-bottom:6px">${toAr(n)}) ${title}</div>
+    <div style="font-size:14px;line-height:1.9;color:#334155">${body}</div>
+    <div style="display:flex;justify-content:center;margin-top:8px">${svg}</div></div>`;
+  const box=(x,w,fill,lab,y)=>`<rect x="${x.toFixed(1)}" y="${y}" width="${w.toFixed(1)}" height="${BH}" fill="${fill}" stroke="${ST}" stroke-width="1.4"/>`+
+    (lab?`<text x="${(x+w/2).toFixed(1)}" y="${y+BH/2+4}" font-size="10" font-weight="700" fill="#334155" text-anchor="middle">${lab}</text>`:"");
+  const arw=(xa,xb,y,lab,col)=>`<line x1="${xa.toFixed(1)}" y1="${y}" x2="${xb.toFixed(1)}" y2="${y}" stroke="${col}" stroke-width="1.5"/>
+    <polygon points="${xa.toFixed(1)},${y} ${(xa+5).toFixed(1)},${y-3} ${(xa+5).toFixed(1)},${y+3}" fill="${col}"/>
+    <polygon points="${xb.toFixed(1)},${y} ${(xb-5).toFixed(1)},${y-3} ${(xb-5).toFixed(1)},${y+3}" fill="${col}"/>
+    <text x="${((xa+xb)/2).toFixed(1)}" y="${y-5}" font-size="10" font-weight="800" fill="${col}" text-anchor="middle">${lab}</text>`;
+
+  // ١) الارتفاع مشترك
+  const s1=`<svg viewBox="0 0 250 70" width="250" height="70">
+    ${box(10,a*s,GRAY,"",18)}${box(10+a*s,b*s,BLUE,"",18)}${box(10+(a+b)*s,c*s,GRAY,"",18)}
+    <line x1="6" y1="18" x2="6" y2="48" stroke="#0F766E" stroke-width="1.5"/>
+    <polygon points="6,18 3,23 9,23" fill="#0F766E"/><polygon points="6,48 3,43 9,43" fill="#0F766E"/>
+    <text x="${(10+(a+b+c)*s/2).toFixed(1)}" y="62" font-size="10" font-weight="700" fill="#0F766E" text-anchor="middle">الارتفاع نفسه للأجزاء الثلاثة = (ن)</text></svg>`;
+
+  // ٢) السهمان يشتركان في المظلّل — نرصفهما بحيث يتطابق المظلّل عمودياً
+  const xShadeL=10+a*s, xShadeR=10+(a+b)*s;
+  const s2=`<svg viewBox="0 0 250 140" width="250" height="140">
+    ${arw(10,xShadeR,16,toAr(topSpan)+" سم","#334155")}
+    ${box(10,a*s,AMB,"الأيسر",24)}${box(xShadeL,b*s,BLUE,"المظلّل",24)}
+    <line x1="${xShadeL.toFixed(1)}" y1="54" x2="${xShadeL.toFixed(1)}" y2="70" stroke="#2563EB" stroke-width="1" stroke-dasharray="3 2"/>
+    <line x1="${xShadeR.toFixed(1)}" y1="54" x2="${xShadeR.toFixed(1)}" y2="70" stroke="#2563EB" stroke-width="1" stroke-dasharray="3 2"/>
+    ${box(xShadeL,b*s,BLUE,"المظلّل",70)}${box(xShadeR,c*s,AMB,"الأيمن",70)}
+    ${arw(xShadeL,10+(a+b+c)*s,114,toAr(botSpan)+" سم","#334155")}
+    <text x="125" y="132" font-size="10" font-weight="800" fill="#B45309" text-anchor="middle">الأزرق مشترك ← الفرق بينهما = الأيمن − الأيسر</text></svg>`;
+
+  // ٣) فرق المساحتين ناتج فقط عن الشريط الزائد
+  const xR=10+a*s+18;
+  const s3=`<svg viewBox="0 0 250 96" width="250" height="96">
+    ${box(10,a*s,GRAY,toAr(leftA),14)}
+    ${box(xR,a*s,GRAY,toAr(leftA),14)}${box(xR+a*s,(c-a)*s,AMB,toAr(rightA-leftA),14)}
+    <text x="${(10+a*s/2).toFixed(1)}" y="58" font-size="9" font-weight="700" fill="#334155" text-anchor="middle">الأيسر = ${toAr(leftA)}</text>
+    <text x="${(xR+c*s/2).toFixed(1)}" y="58" font-size="9" font-weight="700" fill="#334155" text-anchor="middle">الأيمن = ${toAr(rightA)}</text>
+    <text x="125" y="76" font-size="9" font-weight="800" fill="#B45309" text-anchor="middle">الأيمن = جزء يساوي الأيسر (${toAr(leftA)}) + شريط زائد (${toAr(rightA-leftA)})</text>
+    <text x="125" y="90" font-size="9" font-weight="800" fill="#B45309" text-anchor="middle">الشريط الأصفر عرضه ${toAr(c-a)} وارتفاعه (ن)</text></svg>`;
+
+  // ٤) الخلاصة على الشكل الأصلي بعد معرفة كل الأعراض
+  const s4=`<svg viewBox="0 0 250 76" width="250" height="76">
+    ${box(10,a*s,GRAY,toAr(a),14)}${box(10+a*s,b*s,BLUE,toAr(b),14)}${box(10+(a+b)*s,c*s,GRAY,toAr(c),14)}
+    <text x="125" y="60" font-size="10" font-weight="700" fill="#334155" text-anchor="middle">العرض بالسم — والارتفاع (ن) = ${toAr(h)} سم</text>
+    <text x="125" y="72" font-size="11" font-weight="800" fill="#059669" text-anchor="middle">المظلّل = ${toAr(b)} × ${toAr(h)} = ${toAr(ans)} سم²</text></svg>`;
+
+  return `<div style="font-size:14px">
+    ${step(1,"الارتفاع واحد","الأجزاء الثلاثة داخل مستطيل واحد، فارتفاعها واحد. نسمّيه <b>(ن)</b>.",s1)}
+    ${step(2,"لماذا فرق السهمين = فرق العرضين؟",`السهم العلوي يغطّي <b>الأيسر + المظلّل</b>، والسفلي يغطّي <b>المظلّل + الأيمن</b>. المظلّل موجود في الاثنين، فإذا حذفناه بقي: الأيسر من العلوي، والأيمن من السفلي.<br>إذن: عرض الأيمن − عرض الأيسر = ${toAr(botSpan)} − ${toAr(topSpan)} = <b>${toAr(c-a)} سم</b>.`,s2)}
+    ${step(3,"نستخرج الارتفاع (ن)",`الجزءان غير المظلّلين لهما الارتفاع نفسه، ففرق مساحتيهما سببه فرق العرض فقط.<br>${toAr(rightA)} − ${toAr(leftA)} = <b>${toAr(rightA-leftA)} سم²</b> وهي مساحة شريط عرضه ${toAr(c-a)}.<br>إذن: ${toAr(c-a)} × ن = ${toAr(rightA-leftA)} ← <b>ن = ${toAr(rightA-leftA)} ÷ ${toAr(c-a)} = ${toAr(h)} سم</b>.`,s3)}
+    ${step(4,"نوجد عرض المظلّل ثم مساحته",`عرض الأيسر = ${toAr(leftA)} ÷ ${toAr(h)} = <b>${toAr(a)} سم</b>.<br>عرض المظلّل = ${toAr(topSpan)} − ${toAr(a)} = <b>${toAr(b)} سم</b>.<br>المساحة = ${toAr(b)} × ${toAr(h)} = <b style="color:#059669">${toAr(ans)} سم²</b>.`,s4)}
+  </div>`;
 }
 
 const QUANT_GENS=[gArith,gGeo,gPrice,gPerim,gClock,gSides,gWorkers,gMedian,gCube,gPercent,gPaths,gCompound,gFraction,gTrees,gCircleValue,gConsec,gAngleTriangle,gAngleLine,gAnglePoint,gAngleSquare,gSpeedGraph,gShadedArea,gNumberLine,gFractionBetween,gFractionOfNumber,gBills,gAgeChain,gClockPuzzle,gShadedThreeParts];
