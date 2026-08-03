@@ -1289,19 +1289,30 @@ function renderBasics(){
 
 // ===== نطق إنجليزي بصوت أمريكي عبر خاصية المتصفح المدمجة (بلا أي خدمة خارجية) =====
 // onDone (اختياري): يبلغ بنتيجة فعلية {ok,voicesCount,hasEnVoice,voiceName} أو {ok:false,reason,errorType} — يُستخدم في تشخيص الصوت
+// فتح قفل الصوت: iOS (وبعض متصفحات أندرويد) لا تسمح بالنطق إطلاقاً حتى يحدث أول نطق داخل لمسة حقيقية.
+// ننطق نصاً صامتاً عند أول لمسة في الصفحة حتى يصير محرّك الصوت مفتوحاً لما تضغط أي زر 🔊 بعدها.
+let _ttsUnlocked=false;
+function unlockTTS(){
+  if(_ttsUnlocked||!('speechSynthesis' in window))return;
+  _ttsUnlocked=true;
+  try{const u=new SpeechSynthesisUtterance(" ");u.volume=0;window.speechSynthesis.speak(u)}catch(e){}
+}
+document.addEventListener("touchend",unlockTTS,{capture:true,once:true});
+document.addEventListener("click",unlockTTS,{capture:true,once:true});
 function speakEnglish(text,onDone){
   try{
     if(!text||!('speechSynthesis' in window)){if(onDone)onDone({ok:false,reason:'unsupported'});return}
     const synth=window.speechSynthesis;
-    let done=false,triedFallback=false;
+    let triedFallback=false,started=false,retried=false;
     const attempt=(forceNoLang)=>{
-      synth.cancel();
+      // إلغاء ما قبله فقط عند وجود نطق جارٍ فعلاً — استدعاء cancel() دائماً قبل speak() يبتلع النطق الجديد على iOS
+      try{if(synth.speaking||synth.pending)synth.cancel()}catch(e){}
       const u=new SpeechSynthesisUtterance(text);
       const voices=synth.getVoices();
       const usVoice=voices.find(v=>v.lang==='en-US')||voices.find(v=>v.lang&&v.lang.startsWith('en'));
       if(!forceNoLang){u.lang='en-US';u.rate=0.85;try{if(usVoice)u.voice=usVoice}catch(e){}}
       else{u.rate=0.85} // لا نفرض لغة/صوتاً غير متوفرين على الجهاز، نترك المتصفح يختار افتراضياً
-      u.onstart=()=>{if(onDone)onDone({ok:true,voicesCount:voices.length,hasEnVoice:!!usVoice,voiceName:usVoice&&usVoice.name,fallback:!!forceNoLang})};
+      u.onstart=()=>{started=true;if(onDone)onDone({ok:true,voicesCount:voices.length,hasEnVoice:!!usVoice,voiceName:usVoice&&usVoice.name,fallback:!!forceNoLang})};
       u.onerror=(e)=>{
         if(!forceNoLang&&!triedFallback){triedFallback=true;attempt(true);return}
         if(onDone)onDone({ok:false,reason:'speak_error',errorType:e&&e.error,voicesCount:voices.length,hasEnVoice:!!usVoice});
@@ -1309,13 +1320,13 @@ function speakEnglish(text,onDone){
       synth.resume();
       synth.speak(u);
     };
-    const doSpeak=()=>{if(done)return;done=true;attempt(false)};
-    // بعض متصفحات أندرويد تحمّل قائمة الأصوات بشكل غير متزامن؛ النطق قبل اكتمالها يُتجاهل بصمت
-    if(synth.getVoices().length>0){
-      doSpeak();
-    }else{
-      synth.addEventListener('voiceschanged',doSpeak,{once:true});
-      setTimeout(doSpeak,300);
+    // ننطق فوراً وبشكل متزامن داخل لمسة المستخدم. التأجيل لانتظار قائمة الأصوات (voiceschanged/setTimeout)
+    // يُخرج الاستدعاء من سياق اللمسة، فتتجاهله المتصفحات بصمت — وهذا سبب عدم خروج أي صوت على الجهاز.
+    const voicesReady=synth.getVoices().length>0;
+    attempt(false);
+    // لو كانت قائمة الأصوات فارغة وقت اللمس ولم يبدأ النطق، نعيد المحاولة مرة واحدة بعد وصولها
+    if(!voicesReady){
+      setTimeout(()=>{if(!started&&!retried){retried=true;attempt(false)}},700);
     }
   }catch(e){if(onDone)onDone({ok:false,reason:'exception',message:String(e&&e.message||e)})}
 }
