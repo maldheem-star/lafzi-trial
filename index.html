@@ -1159,7 +1159,8 @@ function fadeChoose(i){
   const ok=i===fadeCur.ai;
   if(ok){fadeStreak++;fadeWrongStreak=0}else{fadeStreak=0;fadeWrongStreak++}
   if(fadeStage===4){
-    if(!ok){fadeMasteryStreak=0;fadeStage4Support=true;fadeRecoveryStreak=0}
+    // الخطأ في مرحلة الاستقلال يُسقط الإتقان المحفوظ: النوع يرجع لأول القائمة بلا شارة حتى تتقنه من جديد
+    if(!ok){fadeMasteryStreak=0;fadeStage4Support=true;fadeRecoveryStreak=0;fadeMasteryBreak(fadeTopic)}
     else if(fadeStage4Support){fadeRecoveryStreak++;if(fadeRecoveryStreak>=RECOVERY_REQ){fadeStage4Support=false;fadeRecoveryStreak=0}}
     else{fadeMasteryStreak++}
   }
@@ -1172,21 +1173,64 @@ function fadeAdvance(){
   else if(fadeWrongStreak>=FADE_STUCK&&fadeStage>1){fadeStage--;fadeStreak=0;fadeWrongStreak=0;fadeDroppedBack=true}
   fadeNew();
 }
-function fadeStage4Next(){if(fadeMasteryStreak>=MASTERY_REQ){mode="fadeDone";window.scrollTo(0,0);render();return}fadeNew()}
+// ===== حفظ إتقان التقوية + إعادته للمراجعة بتباعد =====
+// الإتقان بجلسة واحدة يتلاشى بلا مراجعة (Ebbinghaus)، فنحفظه ونعيده بعد فترة متزايدة بدل حذف النوع نهائياً.
+// سلّم المراجعة بالأيام: أول إتقان ← بعد ٧ أيام، ثم ١٤، ثم ٣٠ (كل مراجعة ناجحة تباعد الموعد أكثر).
+const FADE_MASTERY_KEY="mawhiba_fade_mastery";
+const FADE_REVIEW_DAYS=[7,14,30];
+function fadeMasteryLoad(){try{return JSON.parse(localStorage.getItem(FADE_MASTERY_KEY)||"{}")}catch(e){return{}}}
+function fadeMasterySave(o){try{localStorage.setItem(FADE_MASTERY_KEY,JSON.stringify(o))}catch(e){}}
+function fadeMarkMastered(topic){
+  const st=fadeMasteryLoad(),r=st[topic]||{level:0};
+  r.level=Math.min((r.level||0)+1,FADE_REVIEW_DAYS.length);
+  r.due=srsToday()+FADE_REVIEW_DAYS[r.level-1];
+  r.at=srsToday();
+  st[topic]=r;fadeMasterySave(st);
+}
+// الخطأ في نوع متقن يُسقط الإتقان — يرجع النوع لقائمة التدريب العادية
+function fadeMasteryBreak(topic){
+  const st=fadeMasteryLoad();
+  if(st[topic]){delete st[topic];fadeMasterySave(st)}
+}
+// صياغة عربية سليمة للعدد مع "يوم" (تمييز المفرد/المثنى/الجمع)
+function arDays(n){return n===0?"اليوم":n===1?"يوم واحد":n===2?"يومين":n<=10?`${toAr(n)} أيام`:`${toAr(n)} يوماً`}
+function fadeMasteryState(topic){
+  const r=fadeMasteryLoad()[topic];
+  if(!r)return{mastered:false,due:false};
+  return{mastered:true,due:srsToday()>=r.due,level:r.level,daysLeft:Math.max(0,r.due-srsToday())};
+}
+function fadeStage4Next(){if(fadeMasteryStreak>=MASTERY_REQ){fadeMarkMastered(fadeTopic);mode="fadeDone";window.scrollTo(0,0);render();return}fadeNew()}
 function startFade(topic){mode="fade";fadeTopic=topic||fadeTopic||"seq";fadeStage=1;fadeStreak=0;fadeWrongStreak=0;fadeDroppedBack=false;fadeMasteryStreak=0;fadeStage4Support=false;fadeRecoveryStreak=0;window.scrollTo(0,0);fadeNew()}
 function goFadeMenu(){mode="fadeMenu";window.scrollTo(0,0);render()}
 function renderFadeMenu(){
-  const cards=FADE_TOPICS.map(t=>`<button class="mode" style="text-align:center" onclick="startFade('${t.key}')"><div style="font-size:26px;margin-bottom:6px">${t.icon}</div><div class="m-name">${t.label}</div><div class="m-sub">${t.sub}</div></button>`).join("");
+  // نرتّب: غير المتقن أولاً، ثم المتقن المستحقّ للمراجعة، ثم المتقن الذي لم يحن موعده — فتتوجّه تلقائياً للأضعف
+  const rank=t=>{const m=fadeMasteryState(t.key);return !m.mastered?0:(m.due?1:2)};
+  const sorted=FADE_TOPICS.map((t,i)=>({t,i})).sort((a,b)=>rank(a.t)-rank(b.t)||a.i-b.i).map(x=>x.t);
+  const card=t=>{
+    const m=fadeMasteryState(t.key);
+    const badge=!m.mastered?""
+      :m.due?`<div style="font-size:11px;font-weight:800;color:#B45309;background:#FEF3C7;border-radius:99px;padding:2px 8px;display:inline-block;margin-top:5px">🔁 حان وقت المراجعة</div>`
+      :`<div style="font-size:11px;font-weight:800;color:#059669;background:#ECFDF5;border-radius:99px;padding:2px 8px;display:inline-block;margin-top:5px">✓ متقن · مراجعة بعد ${arDays(m.daysLeft)}</div>`;
+    const dim=m.mastered&&!m.due?'opacity:.62;':'';
+    return `<button class="mode" style="text-align:center;${dim}" onclick="startFade('${t.key}')"><div style="font-size:26px;margin-bottom:6px">${t.icon}</div><div class="m-name">${t.label}</div><div class="m-sub">${t.sub}</div>${badge}</button>`;
+  };
+  const st=fadeMasteryLoad();
+  const nMast=Object.keys(st).length,nDue=FADE_TOPICS.filter(t=>fadeMasteryState(t.key).due).length;
+  const summary=nMast?`<div style="background:#F0FDF4;border-radius:12px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#065F46;line-height:1.8">🏆 أتقنتِ <b>${toAr(nMast)}</b> من ${toAr(FADE_TOPICS.length)} أنواع.${nDue?` ومنها <b>${toAr(nDue)}</b> حان وقت مراجعتها اليوم.`:" الأنواع المتقنة تنزل لآخر القائمة وتعود للمراجعة في موعدها."}</div>`:"";
   app.innerHTML=`<button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
   <div class="section-title"><span>🎓 اختاري نوع التقوية</span></div>
-  <div class="modes">${cards}</div>`;
+  ${summary}
+  <div class="modes">${sorted.map(card).join("")}</div>`;
 }
 function renderFadeDone(){
   const topicLabel=FADE_TOPICS.find(t=>t.key===fadeTopic).label;
+  const m=fadeMasteryState(fadeTopic);
+  const days=m.mastered?FADE_REVIEW_DAYS[m.level-1]:FADE_REVIEW_DAYS[0];
   app.innerHTML=`<div class="card" style="text-align:center">
     <div style="font-size:44px;margin-bottom:6px">🏆</div>
     <div style="font-weight:800;font-size:19px;margin-bottom:8px">أتقنتِ ${topicLabel}!</div>
-    <div style="color:#64748B;font-size:14px;line-height:1.8;margin-bottom:18px">جاوبتِ ${toAr(MASTERY_REQ)} أسئلة صحيحة متتالية بدون أي مساعدة — هذا يعني إتقاناً حقيقياً لهذا النوع.</div>
+    <div style="color:#64748B;font-size:14px;line-height:1.8;margin-bottom:12px">جاوبتِ ${toAr(MASTERY_REQ)} أسئلة صحيحة متتالية بدون أي مساعدة — هذا يعني إتقاناً حقيقياً لهذا النوع.</div>
+    <div style="background:#EFF6FF;border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:#1E40AF;line-height:1.9">📅 سيعود هذا النوع للمراجعة بعد <b>${arDays(days)}</b>.<br><span style="font-size:12px">الإتقان في جلسة واحدة يتلاشى بلا مراجعة، فنعيده مرة واحدة عند حافة النسيان بدل تكراره كل يوم.</span></div>
     <button class="btn" style="background:#059669" onclick="goFadeMenu()">🔁 تدريب نوع آخر</button>
     <button class="link-btn" onclick="home()">→ الرئيسية</button>
   </div>`;
