@@ -2041,6 +2041,7 @@ const PRON_GROQ_FN_URL=SB_URL+"/functions/v1/assess-pronunciation-groq";
 let pronSession=[],pronIdx=0,pronResult=null,pronListening=false,pronScore=0,pronDone=false,pronUnsupported=false;
 function startPronunciation(){
   mode="pron";pronSession=shuffle(DICTATION_A1).slice(0,8);pronIdx=0;pronResult=null;pronListening=false;pronScore=0;pronDone=false;
+  pronBusy=false;pronElapsed=0;if(pronTimer){clearInterval(pronTimer);pronTimer=null}
   pronUnsupported=!micSupported();
   azureResult=null;azureBusy=false;azureRecording=false;
   window.scrollTo(0,0);render();
@@ -2081,45 +2082,90 @@ async function azureAssess(){
   }
   azureBusy=false;azureRecording=false;render();
 }
-async function pronListen(){
-  if(pronListening)return;
+// ===== تقييم النطق كلمة بكلمة بدل المطابقة التامة =====
+// المطابقة التامة تخطئ في الاتجاهين: Whisper مدرَّب على النسخ لا التقييم فيُصلح الكلام ويعطي "صح" كاذباً،
+// وأتفه فرق شكلي (I'm مقابل I am، نقطة، أداة تعريف) يعطي "خطأ" كاذباً. فنوحّد الصيغة ثم نقارن الكلمات.
+const PRON_CONTRACTIONS=[[/\bi'm\b/g,"i am"],[/\bit's\b/g,"it is"],[/\bthat's\b/g,"that is"],[/\bwhat's\b/g,"what is"],[/\blet's\b/g,"let us"],[/\bcan't\b/g,"cannot"],[/\bwon't\b/g,"will not"],[/\bdon't\b/g,"do not"],[/\bdoesn't\b/g,"does not"],[/\bdidn't\b/g,"did not"],[/\bisn't\b/g,"is not"],[/\baren't\b/g,"are not"],[/\bwasn't\b/g,"was not"],[/\bweren't\b/g,"were not"],[/\bhaven't\b/g,"have not"],[/\bhasn't\b/g,"has not"],[/\byou're\b/g,"you are"],[/\bwe're\b/g,"we are"],[/\bthey're\b/g,"they are"],[/\bhe's\b/g,"he is"],[/\bshe's\b/g,"she is"],[/\bi've\b/g,"i have"],[/\bi'll\b/g,"i will"],[/\bi'd\b/g,"i would"]];
+function pronWords(s){
+  let t=String(s||"").toLowerCase();
+  PRON_CONTRACTIONS.forEach(p=>{t=t.replace(p[0],p[1])});
+  return t.replace(/[^a-z0-9\s]/g," ").split(/\s+/).filter(Boolean);
+}
+// محاذاة بأطول سلسلة جزئية مشتركة: تتسامح مع كلمة زائدة أو ناقصة بدل إسقاط الجملة كلها
+function pronAlign(t,h){
+  const n=t.length,m=h.length;
+  const dp=Array.from({length:n+1},()=>new Array(m+1).fill(0));
+  for(let i=n-1;i>=0;i--)for(let j=m-1;j>=0;j--)dp[i][j]=t[i]===h[j]?dp[i+1][j+1]+1:Math.max(dp[i+1][j],dp[i][j+1]);
+  const hit=new Array(n).fill(false);
+  let i=0,j=0;
+  while(i<n&&j<m){
+    if(t[i]===h[j]){hit[i]=true;i++;j++}
+    else if(dp[i+1][j]>=dp[i][j+1])i++;else j++;
+  }
+  return hit;
+}
+const PRON_PASS=80; // نسبة الكلمات المطلوبة لاعتبار المحاولة ناجحة
+function pronScoreOf(target,heard){
+  const t=pronWords(target),h=pronWords(heard);
+  if(!t.length)return{pct:0,hit:[],words:[],got:0,total:0,ok:false};
+  const hit=pronAlign(t,h),got=hit.filter(Boolean).length,pct=Math.round(100*got/t.length);
+  return{pct,hit,words:t,got,total:t.length,ok:pct>=PRON_PASS};
+}
+// ===== التسجيل: تبدأ وتتوقف بيدها بدل نافذة ثابتة كانت تقطع الكلام =====
+const PRON_MAX_MS=15000; // حدّ أمان فقط، لا نافذة إجبارية
+let pronRec=null,pronStream=null,pronChunks=[],pronTimer=null,pronElapsed=0,pronBusy=false;
+async function pronStart(){
+  if(pronListening||pronBusy)return;
   if(!micSupported()){pronUnsupported=true;render();return}
-  pronListening=true;pronResult=null;render();
+  pronResult=null;
   try{
-    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
-    const chunks=[];
-    const rec=new MediaRecorder(stream);
-    rec.ondataavailable=(e)=>{if(e.data&&e.data.size>0)chunks.push(e.data)};
-    const stopped=new Promise(resolve=>{rec.onstop=resolve});
-    rec.start();
-    await new Promise(r=>setTimeout(r,2200));
-    rec.stop();
-    stream.getTracks().forEach(t=>t.stop());
-    await stopped;
-    const blob=new Blob(chunks,{type:rec.mimeType||"audio/webm"});
+    pronStream=await navigator.mediaDevices.getUserMedia({audio:true});
+    pronChunks=[];
+    pronRec=new MediaRecorder(pronStream);
+    pronRec.ondataavailable=(e)=>{if(e.data&&e.data.size>0)pronChunks.push(e.data)};
+    pronRec.onstop=()=>{pronFinish()};
+    pronRec.start();
+    pronListening=true;pronElapsed=0;
+    pronTimer=setInterval(()=>{pronElapsed+=0.25;if(pronElapsed*1000>=PRON_MAX_MS){pronStop();return}render()},250);
+    render();
+  }catch(e){pronListening=false;pronResult={heard:"",ok:false,error:true};render()}
+}
+function pronStop(){
+  if(!pronListening)return;
+  pronListening=false;pronBusy=true;
+  if(pronTimer){clearInterval(pronTimer);pronTimer=null}
+  try{if(pronRec&&pronRec.state!=="inactive")pronRec.stop();else{pronBusy=false}}catch(e){pronBusy=false}
+  render();
+}
+async function pronFinish(){
+  const target=pronSession[pronIdx]?pronSession[pronIdx].w:"";
+  try{
+    if(pronStream){pronStream.getTracks().forEach(t=>t.stop());pronStream=null}
+    const blob=new Blob(pronChunks,{type:(pronRec&&pronRec.mimeType)||"audio/webm"});
     const b64=await blobToBase64(blob);
-    const res=await fetch(PRON_GROQ_FN_URL,{method:"POST",headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({audio:b64,mimeType:blob.type,referenceText:pronSession[pronIdx].w})});
+    const res=await fetch(PRON_GROQ_FN_URL,{method:"POST",headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({audio:b64,mimeType:blob.type,referenceText:target})});
     const data=await res.json();
     if(data&&data.ok){
-      pronResult={heard:data.heard,ok:data.matched};
-      if(data.matched)pronScore++;
-      // نسجّل وش سمعه Whisper فعلاً (response) مقابل الكلمة المستهدفة (item_id) لتشخيص السبب الحقيقي للتراجع:
-      // نطق فعلي، أو قطع التسجيل مبكراً (٢٫٢ ثانية ثابتة)، أو خلل تحويل صوتي
-      logAnswer("pronunciation_a1","word",data.matched,data.heard,pronSession[pronIdx].w);
+      const sc=pronScoreOf(target,data.heard);
+      pronResult={heard:data.heard,ok:sc.ok,sc};
+      if(sc.ok)pronScore++;
+      logAnswer("pronunciation_a1","word",sc.ok,data.heard,target,Math.round(pronElapsed*1000),{score_pct:sc.pct});
     }else if(data&&data.error==="not_configured"){
       pronResult={heard:"",ok:false,error:true,notConfigured:true};
-      logAnswer("pronunciation_a1","word",false,"[not_configured]",pronSession[pronIdx].w);
+      logAnswer("pronunciation_a1","word",false,"[not_configured]",target);
     }else{
       pronResult={heard:"",ok:false,error:true};
-      logAnswer("pronunciation_a1","word",false,"[transcription_error]",pronSession[pronIdx].w);
+      logAnswer("pronunciation_a1","word",false,"[transcription_error]",target);
     }
   }catch(e){
     pronResult={heard:"",ok:false,error:true};
   }
-  pronListening=false;render();
+  pronBusy=false;render();
 }
 function pronNext(){
   azureResult=null;azureBusy=false;azureRecording=false;
+  if(pronTimer){clearInterval(pronTimer);pronTimer=null}
+  pronListening=false;pronBusy=false;
   if(pronIdx+1>=pronSession.length){pronDone=true;window.scrollTo(0,0);render();return}
   pronIdx++;pronResult=null;render();
   setTimeout(()=>speakEnglish(pronSession[pronIdx].w),300);
@@ -2136,7 +2182,15 @@ function renderPron(){
       ?(pronResult.notConfigured
         ?`<div class="explain"><div class="explain-title" style="color:#B45309">التحقّق غير مفعّل حالياً</div><div class="explain-body">هذه الميزة تحتاج إعداداً من طرفنا. جرّبي لاحقاً.</div></div>`
         :`<div class="explain"><div class="explain-title" style="color:#B45309">تعذّر تسجيل صوتك</div><div class="explain-body">تأكدي من السماح للميكروفون للمتصفح، وحاولي مرة أخرى.</div></div>`)
-      :`<div class="explain"><div class="explain-title" style="color:${pronResult.ok?'#059669':'#B45309'}">${pronResult.ok?"✓ نطقتِ الكلمة الصحيحة":"لم يُسمع نطق الكلمة المطلوبة"}</div><div class="explain-body">${pronResult.heard?`سمعنا: <b style="direction:ltr;display:inline-block">"${pronResult.heard}"</b> — `:""}الكلمة المطلوبة: <b style="direction:ltr;display:inline-block">${item.w}</b> (${item.m}).${pronResult.ok?"":" استمعي وحاولي مرة أخرى."}</div></div>`
+      :(()=>{
+        const sc=pronResult.sc;
+        const pct=sc?sc.pct:(pronResult.ok?100:0);
+        const col=pct>=PRON_PASS?'#059669':pct>=50?'#B45309':'#DC2626';
+        const title=pct>=PRON_PASS?"✓ نطق صحيح":pct>=50?"قريب — أعيدي المحاولة":"لم يُسمع النطق المطلوب";
+        // تلوين كلمة بكلمة: تشوف بالضبط أي كلمة وصلت وأيها لا، بدل "صح/خطأ" مبهم
+        const wordsHtml=sc&&sc.words.length?`<div style="direction:ltr;font-family:Georgia,serif;font-size:19px;font-weight:800;margin:10px 0;line-height:1.7">${sc.words.map((w,i)=>`<span style="color:${sc.hit[i]?'#059669':'#DC2626'};margin:0 4px">${w}</span>`).join("")}</div><div style="font-size:12px;color:#64748B">الأخضر نُطق صحيحاً · الأحمر لم يصل${sc.total>1?` — ${toAr(sc.got)} من ${toAr(sc.total)} كلمات`:""}</div>`:"";
+        return `<div class="explain"><div class="explain-title" style="color:${col}">${title} · ${toAr(pct)}%</div><div class="explain-body">${wordsHtml}${pronResult.heard?`<div style="margin-top:8px;font-size:13px">سمعنا: <b style="direction:ltr;display:inline-block">"${pronResult.heard}"</b></div>`:""}<div style="margin-top:6px;font-size:13px">المطلوب: <b style="direction:ltr;display:inline-block">${item.w}</b> (${item.m}).</div></div></div>`;
+      })()
     ):"";
     const nextBtn=pronResult?`<button class="btn" style="background:#7C3AED" onclick="pronNext()">${pronIdx+1>=pronSession.length?"إنهاء ومشاهدة النتيجة":pronResult.error?"تخطّي هذه الكلمة ←":"الكلمة التالية ←"}</button>`:"";
     let azureBody="";
@@ -2162,9 +2216,11 @@ function renderPron(){
     <div style="font-size:12px;color:#94A3B8;margin-bottom:14px">تحقّق أساسي: هل نطقتِ الكلمة الصحيحة؟ (ليس تقييماً دقيقاً للهجة)</div>
     <div style="display:flex;gap:12px;justify-content:center;align-items:center;margin:10px 0 18px">
       <button type="button" onclick="speakEnglish(pronSession[${pronIdx}].w)" style="background:#ECFEFF;border:1.5px solid #A5F3FC;color:#0891B2;border-radius:50%;width:56px;height:56px;font-size:22px;cursor:pointer">🔊</button>
-      <button type="button" onclick="pronListen()" ${pronListening?"disabled":""} style="background:${pronListening?'#C4B5FD':'#7C3AED'};color:#fff;border:none;border-radius:50%;width:72px;height:72px;font-size:26px;cursor:pointer">${pronListening?"🎙️":"🎤"}</button>
+      ${pronListening
+        ? `<button type="button" onclick="pronStop()" style="background:#DC2626;color:#fff;border:none;border-radius:50%;width:72px;height:72px;font-size:26px;cursor:pointer;box-shadow:0 0 0 6px rgba(220,38,38,.18)">⏹️</button>`
+        : `<button type="button" onclick="pronStart()" ${pronBusy?"disabled":""} style="background:${pronBusy?'#C4B5FD':'#7C3AED'};color:#fff;border:none;border-radius:50%;width:72px;height:72px;font-size:26px;cursor:pointer">🎤</button>`}
     </div>
-    <div style="font-size:13px;color:#64748B;margin-bottom:14px">${pronListening?"...أستمع، انطقي الكلمة الآن":"اضغطي 🔊 لتسمعي، ثم 🎤 وانطقي الكلمة"}</div>
+    <div style="font-size:13px;color:${pronListening?'#DC2626':'#64748B'};margin-bottom:14px;font-weight:${pronListening?'800':'400'}">${pronListening?`🔴 يسجّل… ${toAr(pronElapsed.toFixed(1)).replace('.','٫')} ث — اضغطي ⏹️ عند انتهائك`:pronBusy?"…جارٍ التحقّق":"اضغطي 🔊 لتسمعي، ثم 🎤 وانطقي — وأوقفي التسجيل بنفسك"}</div>
     ${feedback}${nextBtn}
     ${azureSection}`;
   }
