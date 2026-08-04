@@ -2137,11 +2137,15 @@ function pronAlign(t,h){
   return hit;
 }
 const PRON_PASS=80; // نسبة الكلمات المطلوبة لاعتبار المحاولة ناجحة
-function pronScoreOf(target,heard){
-  const t=pronWords(target),h=pronWords(heard);
-  if(!t.length)return{pct:0,hit:[],words:[],got:0,total:0,ok:false};
-  const hit=pronAlign(t,h),got=hit.filter(Boolean).length,pct=Math.round(100*got/t.length);
-  return{pct,hit,words:t,got,total:t.length,ok:pct>=PRON_PASS};
+// judged (اختياري): حكم النموذج اللغوي كلمةً بكلمة. نقبله فقط إذا طابق طوله عدد كلمات الهدف،
+// وإلا سقطت المحاذاة على الكلمة الخطأ. القسمة تبقى هنا دائماً فلا تتأرجح درجتها على نفس الأداء.
+function pronScoreOf(target,heard,judged){
+  const t=pronWords(target);
+  if(!t.length)return{pct:0,hit:[],words:[],got:0,total:0,ok:false,by:"none"};
+  const useJudge=Array.isArray(judged)&&judged.length===t.length;
+  const hit=useJudge?judged.map(Boolean):pronAlign(t,pronWords(heard));
+  const got=hit.filter(Boolean).length,pct=Math.round(100*got/t.length);
+  return{pct,hit,words:t,got,total:t.length,ok:pct>=PRON_PASS,by:useJudge?"judge":"local"};
 }
 // ===== التسجيل: تبدأ وتتوقف بيدها بدل نافذة ثابتة كانت تقطع الكلام =====
 const PRON_MAX_MS=15000; // حدّ أمان فقط، لا نافذة إجبارية
@@ -2180,14 +2184,16 @@ async function pronFinish(){
   try{
     const blob=new Blob(pronChunks,{type:(pronRec&&pronRec.mimeType)||"audio/webm"});
     const b64=await blobToBase64(blob);
-    const res=await fetch(PRON_GROQ_FN_URL,{method:"POST",headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({audio:b64,mimeType:blob.type,referenceText:target})});
+    const res=await fetch(PRON_GROQ_FN_URL,{method:"POST",headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({audio:b64,mimeType:blob.type,referenceText:target,targetWords:pronWords(target)})});
     const data=await res.json();
-    if(data&&data.ok&&pronHallucinated(target,data.heard)){
-      pronResult={heard:data.heard,ok:false,noisy:true};
-      logAnswer("pronunciation_a1","discarded",false,data.heard,target,Math.round(pronElapsed*1000));
+    // الإهمال: إما ثقة Whisper نفسه منخفضة، أو حكم النموذج أنه ليس محاولة للجملة، أو كشفنا المحلّي
+    const bad=data&&data.ok&&(data.lowConfidence||data.garbled||pronHallucinated(target,data.heard));
+    if(bad){
+      pronResult={heard:data.heard||"",ok:false,noisy:true};
+      logAnswer("pronunciation_a1","discarded",false,data.heard||"[low_confidence]",target,Math.round(pronElapsed*1000));
     }else if(data&&data.ok){
-      const sc=pronScoreOf(target,data.heard);
-      pronResult={heard:data.heard,ok:sc.ok,sc};
+      const sc=pronScoreOf(target,data.heard,data.judged);
+      pronResult={heard:data.heard,ok:sc.ok,sc,note:data.note||""};
       if(sc.ok)pronScore++;
       logAnswer("pronunciation_a1","word",sc.ok,data.heard,target,Math.round(pronElapsed*1000),{score_pct:sc.pct});
     }else if(data&&data.error==="not_configured"){
@@ -2390,16 +2396,17 @@ async function speakFinish(){
   try{
     const blob=new Blob(speakChunks,{type:(speakRec&&speakRec.mimeType)||"audio/webm"});
     const b64=await blobToBase64(blob);
-    const res=await fetch(PRON_GROQ_FN_URL,{method:"POST",headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({audio:b64,mimeType:blob.type,referenceText:target})});
+    const res=await fetch(PRON_GROQ_FN_URL,{method:"POST",headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({audio:b64,mimeType:blob.type,referenceText:target,targetWords:pronWords(target)})});
     const data=await res.json();
-    if(data&&data.ok&&pronHallucinated(target,data.heard)){
-      speakResult={heard:data.heard,discarded:true,why:"noisy"};
-      logAnswer("speaking","discarded",false,data.heard,it.id,Math.round(speakElapsed*1000),{is_new:!!it._isNew,srs_box:it._box});
+    const bad=data&&data.ok&&(data.lowConfidence||data.garbled||pronHallucinated(target,data.heard));
+    if(bad){
+      speakResult={heard:data.heard||"",discarded:true,why:"noisy"};
+      logAnswer("speaking","discarded",false,data.heard||"[low_confidence]",it.id,Math.round(speakElapsed*1000),{is_new:!!it._isNew,srs_box:it._box});
     }else if(data&&data.ok){
-      const sc=pronScoreOf(target,data.heard);
+      const sc=pronScoreOf(target,data.heard,data.judged);
       speakTries++;
-      speakResult={heard:data.heard,ok:sc.ok,sc};
-      logAnswer("speaking","stage"+speakStage,sc.ok,data.heard,it.id,Math.round(speakElapsed*1000),{score_pct:sc.pct,is_new:!!it._isNew,srs_box:it._box});
+      speakResult={heard:data.heard,ok:sc.ok,sc,note:data.note||""};
+      logAnswer("speaking","stage"+speakStage,sc.ok,data.heard,it.id,Math.round(speakElapsed*1000),{score_pct:sc.pct,is_new:!!it._isNew,srs_box:it._box,judged_by:sc.by});
     }else{
       speakResult={heard:"",error:true,notConfigured:!!(data&&data.error==="not_configured")};
       logAnswer("speaking","stage"+speakStage,false,"[transcription_error]",it.id);
@@ -2451,7 +2458,8 @@ function renderSpeak(){
         const pct=sc?sc.pct:0,col=pct>=PRON_PASS?'#059669':pct>=50?'#B45309':'#DC2626';
         const title=pct>=PRON_PASS?"✓ ممتاز! جملة واضحة":pct>=50?"قريب — أعيديها مرة أخرى":"لم تصل الجملة، جرّبي ببطء";
         const words=sc&&sc.words.length?`<div style="direction:ltr;font-family:Georgia,serif;font-size:18px;font-weight:800;margin:10px 0;line-height:1.8">${sc.words.map((w,i)=>`<span style="color:${sc.hit[i]?'#059669':'#DC2626'};margin:0 4px">${w}</span>`).join("")}</div><div style="font-size:12px;color:#64748B">الأخضر وصل · الأحمر لم يصل — الكلمات الصحيحة ${toAr(sc.got)} من ${toAr(sc.total)}</div>`:"";
-        return `<div class="explain"><div class="explain-title" style="color:${col}">${title} · ${toAr(pct)}%</div><div class="explain-body">${words}${speakResult.heard?`<div style="margin-top:8px;font-size:13px">سمعنا: <b style="direction:ltr;display:inline-block">"${speakResult.heard}"</b></div>`:""}</div></div>`;
+        const note=speakResult.note?`<div style="margin-top:8px;font-size:14px;color:#7C2D12;background:#FFF7ED;border-radius:8px;padding:8px 10px">💡 ${speakResult.note}</div>`:"";
+        return `<div class="explain"><div class="explain-title" style="color:${col}">${title} · ${toAr(pct)}%</div><div class="explain-body">${words}${note}${speakResult.heard?`<div style="margin-top:8px;font-size:13px">سمعنا: <b style="direction:ltr;display:inline-block">"${speakResult.heard}"</b></div>`:""}</div></div>`;
       })()
     ):"";
     const btns=speakResult
