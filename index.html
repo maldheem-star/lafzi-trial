@@ -1403,7 +1403,8 @@ function basicsNew(){
   const gen=basicsSub==="multdiv"?basicsMakeFamily:basicsSub==="addcarry"?basicsMakeAddCarry:basicsSub==="subborrow"?basicsMakeSubBorrow:basicsMakePercent;
   basicsCur={fam:gen()};basicsLocked=false;basicsPicked=-1;basicsPrep();render();
 }
-function logAnswer(domain,qtype,isCorrect,response,itemId,elapsedMs){try{fetch(`${SB_URL}/rest/v1/${TBL_LOG}`,{method:"POST",headers:{"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json","Prefer":"return-minimal"},body:JSON.stringify({student_alias:alias(),domain,qtype,is_correct:isCorrect,response:response==null?null:String(response),item_id:itemId||null,elapsed_ms:elapsedMs==null?null:Math.round(elapsedMs)})})}catch(e){}}
+// extra (اختياري): حقول إضافية مثل {is_new, srs_box} — تُميّز العنصر الجديد عن المُراجَع عند التحليل
+function logAnswer(domain,qtype,isCorrect,response,itemId,elapsedMs,extra){try{fetch(`${SB_URL}/rest/v1/${TBL_LOG}`,{method:"POST",headers:{"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json","Prefer":"return-minimal"},body:JSON.stringify(Object.assign({student_alias:alias(),domain,qtype,is_correct:isCorrect,response:response==null?null:String(response),item_id:itemId||null,elapsed_ms:elapsedMs==null?null:Math.round(elapsedMs)},extra||{}))})}catch(e){}}
 function basicsChoose(i){
   if(basicsLocked)return;basicsLocked=true;basicsPicked=i;
   const ok=i===basicsCur.ai;
@@ -1792,7 +1793,9 @@ function buildDailyPlan(){
   const fresh=POOL.filter(i=>!st[i.id]);
   const chosen=[];let secs=0,newCount=0;
   const fits=it=>secs+(ENG_SECS[it.t]||30)<=PLAN_SECS;
-  const add=it=>{if(!fits(it))return false;chosen.push(it);secs+=ENG_SECS[it.t]||30;return true};
+  // نلتقط حالة العنصر وقت اختياره (جديد؟ وأي درجة على سلّم التباعد) قبل أن يغيّرها srsUpdate بعد الإجابة —
+  // بدونها لا يمكن التمييز بين "عنصر جديد فطبيعي أن تخطئ فيه" و"عنصر سبق أن أتقنته فتراجعت فيه"
+  const add=it=>{if(!fits(it))return false;const r=st[it.id];chosen.push(Object.assign({},it,{_isNew:!r,_box:r?r.box:null}));secs+=ENG_SECS[it.t]||30;return true};
   shuffle(due).forEach(add);
   for(const it of fresh){if(newCount>=NEW_CAP)break;if(add(it))newCount++}
   // تشبيك: توزيع الأنواع بالتناوب بدل تجميع كل نوع معاً
@@ -1821,7 +1824,7 @@ function planChoose(i){
   const it=planCur(),ok=i===it.a;
   if(ok)planScore++;
   srsUpdate(it.id,ok);
-  logAnswer("eng_plan",it.t,ok);
+  logAnswer("eng_plan",it.t,ok,it.c?it.c[i]:null,it.id,null,{is_new:!!it._isNew,srs_box:it._box});
   render();
 }
 function planCheckDict(){
@@ -1832,7 +1835,7 @@ function planCheckDict(){
   const it=planCur(),ok=val===it.w.toLowerCase();
   if(ok)planScore++;
   srsUpdate(it.id,ok);
-  logAnswer("eng_plan","dict",ok);
+  logAnswer("eng_plan","dict",ok,val,it.id,null,{is_new:!!it._isNew,srs_box:it._box});
   render();
 }
 function planLessonDone(){const it=planCur();lessonMark(it.id);planNext()}
