@@ -2085,11 +2085,43 @@ async function azureAssess(){
 // ===== تقييم النطق كلمة بكلمة بدل المطابقة التامة =====
 // المطابقة التامة تخطئ في الاتجاهين: Whisper مدرَّب على النسخ لا التقييم فيُصلح الكلام ويعطي "صح" كاذباً،
 // وأتفه فرق شكلي (I'm مقابل I am، نقطة، أداة تعريف) يعطي "خطأ" كاذباً. فنوحّد الصيغة ثم نقارن الكلمات.
-const PRON_CONTRACTIONS=[[/\bi'm\b/g,"i am"],[/\bit's\b/g,"it is"],[/\bthat's\b/g,"that is"],[/\bwhat's\b/g,"what is"],[/\blet's\b/g,"let us"],[/\bcan't\b/g,"cannot"],[/\bwon't\b/g,"will not"],[/\bdon't\b/g,"do not"],[/\bdoesn't\b/g,"does not"],[/\bdidn't\b/g,"did not"],[/\bisn't\b/g,"is not"],[/\baren't\b/g,"are not"],[/\bwasn't\b/g,"was not"],[/\bweren't\b/g,"were not"],[/\bhaven't\b/g,"have not"],[/\bhasn't\b/g,"has not"],[/\byou're\b/g,"you are"],[/\bwe're\b/g,"we are"],[/\bthey're\b/g,"they are"],[/\bhe's\b/g,"he is"],[/\bshe's\b/g,"she is"],[/\bi've\b/g,"i have"],[/\bi'll\b/g,"i will"],[/\bi'd\b/g,"i would"]];
+// Whisper كثيراً ما يكتب الاختصار بلا فاصلة عليا (wasnt / its / dont)، فنقبل الشكلين معاً.
+// استثناء مقصود: لا نوحّد ما يصطدم بكلمة إنجليزية حقيقية بلا الفاصلة — were (we're) و ill (I'll)
+// و id (I'd) و hell (he'll) و wed (we'd) و lets — لأن التوحيد هنا قد يغيّر ما قالته فعلاً.
+const PRON_CONTRACTIONS=[
+  [/\b(i'm|im)\b/g,"i am"],[/\b(it's|its)\b/g,"it is"],[/\b(that's|thats)\b/g,"that is"],
+  [/\b(what's|whats)\b/g,"what is"],[/\b(there's|theres)\b/g,"there is"],[/\b(here's|heres)\b/g,"here is"],
+  [/\blet's\b/g,"let us"],
+  [/\b(can't|cant|cannot)\b/g,"can not"],[/\b(won't|wont)\b/g,"will not"],
+  [/\b(don't|dont)\b/g,"do not"],[/\b(doesn't|doesnt)\b/g,"does not"],[/\b(didn't|didnt)\b/g,"did not"],
+  [/\b(isn't|isnt)\b/g,"is not"],[/\b(aren't|arent)\b/g,"are not"],[/\b(wasn't|wasnt)\b/g,"was not"],
+  [/\b(weren't|werent)\b/g,"were not"],[/\b(haven't|havent)\b/g,"have not"],[/\b(hasn't|hasnt)\b/g,"has not"],
+  [/\b(wouldn't|wouldnt)\b/g,"would not"],[/\b(couldn't|couldnt)\b/g,"could not"],[/\b(shouldn't|shouldnt)\b/g,"should not"],
+  [/\b(you're|youre)\b/g,"you are"],[/\bwe're\b/g,"we are"],[/\b(they're|theyre)\b/g,"they are"],
+  [/\b(he's|hes)\b/g,"he is"],[/\b(she's|shes)\b/g,"she is"],
+  [/\b(i've|ive)\b/g,"i have"],[/\b(you've|youve)\b/g,"you have"],[/\b(we've|weve)\b/g,"we have"],
+  [/\bi'll\b/g,"i will"],[/\bi'd\b/g,"i would"],
+  [/\bokay\b/g,"ok"], // Whisper يكتبها okay والكتاب يكتبها OK — نفس الكلمة
+];
 function pronWords(s){
-  let t=String(s||"").toLowerCase();
+  let t=String(s||"").toLowerCase().replace(/[‘’ʼ´`]/g,"'"); // الفاصلة المائلة في iOS ثم القواعد
   PRON_CONTRACTIONS.forEach(p=>{t=t.replace(p[0],p[1])});
-  return t.replace(/[^a-z0-9\s]/g," ").split(/\s+/).filter(Boolean);
+  // ما بقي من فواصل عليا هو ملكية (teacher's) — نحذفها بلا فراغ حتى تطابق ما يكتبه Whisper بلا فاصلة
+  return t.replace(/'/g,"").replace(/[^a-z0-9\s]/g," ").split(/\s+/).filter(Boolean);
+}
+// Whisper يدخل في حلقة تكرار عند الصوت القصير أو غير الواضح ("no brown bear" ثلاث مرات) —
+// نتيجة كهذه لا تصف نطقها، فنطلب الإعادة بدل احتساب درجة لا معنى لها.
+const PRON_MIN_MS=800; // أقل من هذا: الزر أُغلق قبل أن تتكلّم
+function pronHallucinated(target,heard){
+  const t=pronWords(target),h=pronWords(heard);
+  if(h.length<4||h.length<t.length*2)return false;
+  for(let n=1;n<=3;n++){ // ثنائية أو ثلاثية مكرّرة ثلاث مرات متتالية = حلقة تكرار
+    for(let i=0;i+3*n<=h.length;i++){
+      const a=h.slice(i,i+n).join(" ");
+      if(a===h.slice(i+n,i+2*n).join(" ")&&a===h.slice(i+2*n,i+3*n).join(" "))return true;
+    }
+  }
+  return false;
 }
 // محاذاة بأطول سلسلة جزئية مشتركة: تتسامح مع كلمة زائدة أو ناقصة بدل إسقاط الجملة كلها
 function pronAlign(t,h){
@@ -2139,13 +2171,21 @@ function pronStop(){
 }
 async function pronFinish(){
   const target=pronSession[pronIdx]?pronSession[pronIdx].w:"";
+  if(pronStream){try{pronStream.getTracks().forEach(t=>t.stop())}catch(e){}pronStream=null}
+  if(pronElapsed*1000<PRON_MIN_MS){ // أُغلق الزر قبل أن تتكلّم: لا نحتسبها خطأً
+    pronResult={heard:"",ok:false,tooShort:true};pronBusy=false;
+    logAnswer("pronunciation_a1","discarded",false,"[too_short]",target,Math.round(pronElapsed*1000));
+    render();return;
+  }
   try{
-    if(pronStream){pronStream.getTracks().forEach(t=>t.stop());pronStream=null}
     const blob=new Blob(pronChunks,{type:(pronRec&&pronRec.mimeType)||"audio/webm"});
     const b64=await blobToBase64(blob);
     const res=await fetch(PRON_GROQ_FN_URL,{method:"POST",headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({audio:b64,mimeType:blob.type,referenceText:target})});
     const data=await res.json();
-    if(data&&data.ok){
+    if(data&&data.ok&&pronHallucinated(target,data.heard)){
+      pronResult={heard:data.heard,ok:false,noisy:true};
+      logAnswer("pronunciation_a1","discarded",false,data.heard,target,Math.round(pronElapsed*1000));
+    }else if(data&&data.ok){
       const sc=pronScoreOf(target,data.heard);
       pronResult={heard:data.heard,ok:sc.ok,sc};
       if(sc.ok)pronScore++;
@@ -2303,10 +2343,10 @@ function buildSpeakSession(){
   if(!out.length)out.push(...shuffle(SPEAK_ITEMS).slice(0,SPEAK_LEN)); // لا شيء مستحق: مراجعة حرّة بدل شاشة فارغة
   return out.map(i=>Object.assign({},i,{_isNew:!st[i.id],_box:st[i.id]?st[i.id].box:null}));
 }
-let speakSession=[],speakIdx=0,speakStage=1,speakStreak=0,speakMiss=0,speakResult=null,speakScore=0,speakDone=false,speakTries=0,speakUnsupported=false;
+let speakSession=[],speakIdx=0,speakStage=1,speakStreak=0,speakMiss=0,speakResult=null,speakScore=0,speakSkipped=0,speakDone=false,speakTries=0,speakUnsupported=false;
 let speakRec=null,speakStream=null,speakChunks=[],speakTimer=null,speakElapsed=0,speakListening=false,speakBusy=false;
 function startSpeaking(){
-  mode="speak";speakSession=buildSpeakSession();speakIdx=0;speakResult=null;speakScore=0;speakDone=false;speakTries=0;
+  mode="speak";speakSession=buildSpeakSession();speakIdx=0;speakResult=null;speakScore=0;speakSkipped=0;speakDone=false;speakTries=0;
   speakStage=speakStageGet();speakStreak=0;speakMiss=0;
   speakListening=false;speakBusy=false;speakElapsed=0;if(speakTimer){clearInterval(speakTimer);speakTimer=null}
   speakUnsupported=!micSupported();
@@ -2340,13 +2380,22 @@ function speakStop(){
 }
 async function speakFinish(){
   const it=speakCur();const target=it?it.en:"";
+  if(speakStream){try{speakStream.getTracks().forEach(t=>t.stop())}catch(e){}speakStream=null}
+  // محاولة مُهمَلة: لا تُحتسب خطأً ولا تُكتب في التباعد — الجملة تبقى كما هي لتعيدها
+  if(speakElapsed*1000<PRON_MIN_MS){
+    speakResult={heard:"",discarded:true,why:"short"};speakBusy=false;
+    logAnswer("speaking","discarded",false,"[too_short]",it?it.id:null,Math.round(speakElapsed*1000),{is_new:!!(it&&it._isNew),srs_box:it?it._box:null});
+    render();return;
+  }
   try{
-    if(speakStream){speakStream.getTracks().forEach(t=>t.stop());speakStream=null}
     const blob=new Blob(speakChunks,{type:(speakRec&&speakRec.mimeType)||"audio/webm"});
     const b64=await blobToBase64(blob);
     const res=await fetch(PRON_GROQ_FN_URL,{method:"POST",headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({audio:b64,mimeType:blob.type,referenceText:target})});
     const data=await res.json();
-    if(data&&data.ok){
+    if(data&&data.ok&&pronHallucinated(target,data.heard)){
+      speakResult={heard:data.heard,discarded:true,why:"noisy"};
+      logAnswer("speaking","discarded",false,data.heard,it.id,Math.round(speakElapsed*1000),{is_new:!!it._isNew,srs_box:it._box});
+    }else if(data&&data.ok){
       const sc=pronScoreOf(target,data.heard);
       speakTries++;
       speakResult={heard:data.heard,ok:sc.ok,sc};
@@ -2359,12 +2408,16 @@ async function speakFinish(){
   speakBusy=false;render();
 }
 // تُحسب النتيجة والتباعد مرة واحدة لكل جملة عند الانتقال — فالمحاولات المتكررة تدريب لا عقوبة
-function speakNext(){
-  const it=speakCur(),ok=!!(speakResult&&speakResult.ok);
-  if(it){speakSrsUpdate(it.id,ok);if(ok)speakScore++}
-  if(ok){speakStreak++;speakMiss=0}else{speakMiss++;speakStreak=0}
-  if(speakStreak>=SPEAK_REQ&&speakStage<3){speakStage++;speakStageSet(speakStage);speakStreak=0}
-  else if(speakMiss>=SPEAK_BACK&&speakStage>1){speakStage--;speakStageSet(speakStage);speakMiss=0}
+function speakNext(skip){
+  const it=speakCur(),ok=!skip&&!!(speakResult&&speakResult.ok);
+  // المحاولة المُهمَلة (صوت قصير أو مشوّش) تُتخطّى بلا تباعد ولا سلسلة ولا درجة — لأنها لا تصف نطقها
+  if(skip){speakSkipped++}
+  else{
+    if(it){speakSrsUpdate(it.id,ok);if(ok)speakScore++}
+    if(ok){speakStreak++;speakMiss=0}else{speakMiss++;speakStreak=0}
+    if(speakStreak>=SPEAK_REQ&&speakStage<3){speakStage++;speakStageSet(speakStage);speakStreak=0}
+    else if(speakMiss>=SPEAK_BACK&&speakStage>1){speakStage--;speakStageSet(speakStage);speakMiss=0}
+  }
   if(speakTimer){clearInterval(speakTimer);speakTimer=null}
   speakListening=false;speakBusy=false;speakTries=0;
   if(speakIdx+1>=speakSession.length){speakDone=true;window.scrollTo(0,0);render();return}
@@ -2388,7 +2441,11 @@ function renderSpeak(){
       ?`<div style="direction:ltr;font-family:Georgia,serif;font-size:20px;font-weight:800;color:#831843;line-height:1.7;margin:6px 0">${it.en}</div><div style="font-size:13px;color:#64748B">${it.ar}</div>`
       :`<div style="font-size:15px;color:#9D174D;font-weight:700;margin:10px 0">🎧 استمعي جيداً ثم كرّري — النص مخفي</div><div style="font-size:13px;color:#64748B">${it.ar}</div>`;
     const sc=speakResult&&speakResult.sc;
-    const fb=speakResult?(speakResult.error
+    const fb=speakResult?(speakResult.discarded
+      ?`<div class="explain"><div class="explain-title" style="color:#B45309">${speakResult.why==="short"?"لم نسمع شيئاً":"لم يصل صوتك بوضوح"}</div><div class="explain-body">${speakResult.why==="short"
+          ?"أُغلق التسجيل قبل أن تتكلّمي — اضغطي 🎤 وقولي الجملة ثم اضغطي ⏹️."
+          :"التسجيل جاء مشوّشاً فلم نحتسبه. قرّبي الجهاز وقوليها بصوت أوضح."}<br><span style="font-size:12px;color:#94A3B8">هذه المحاولة لم تُحتسب عليك إطلاقاً.</span></div></div>`
+      :speakResult.error
       ?`<div class="explain"><div class="explain-title" style="color:#B45309">${speakResult.notConfigured?"التحقّق غير مفعّل حالياً":"تعذّر تسجيل صوتك"}</div><div class="explain-body">تأكدي من السماح للميكروفون، ثم أعيدي المحاولة.</div></div>`
       :(()=>{
         const pct=sc?sc.pct:0,col=pct>=PRON_PASS?'#059669':pct>=50?'#B45309':'#DC2626';
@@ -2398,8 +2455,10 @@ function renderSpeak(){
       })()
     ):"";
     const btns=speakResult
-      ?`<div style="display:flex;gap:8px;margin-top:12px"><button class="btn" style="background:#DB2777;margin:0" onclick="speakNext()">${speakIdx+1>=speakSession.length?"إنهاء ←":"الجملة التالية ←"}</button><button class="btn" style="background:#fff;color:#DB2777;border:2px solid #FBCFE8;margin:0" onclick="speakRetry()">🔁 أعيدي</button></div>
-         <div style="font-size:12px;color:#94A3B8;margin-top:8px">التكرار يرفع الطلاقة — أعيديها مرتين أو ثلاثاً قبل الانتقال${speakTries>1?` (حاولتِ ${toAr(speakTries)} مرات)`:""}</div>`
+      ?(speakResult.discarded
+        ? `<button class="link-btn" onclick="speakNext(true)">تخطّي هذه الجملة (بلا احتساب) ←</button>`
+        : `<div style="display:flex;gap:8px;margin-top:12px"><button class="btn" style="background:#DB2777;margin:0" onclick="speakNext()">${speakIdx+1>=speakSession.length?"إنهاء ←":"الجملة التالية ←"}</button><button class="btn" style="background:#fff;color:#DB2777;border:2px solid #FBCFE8;margin:0" onclick="speakRetry()">🔁 أعيدي</button></div>
+         <div style="font-size:12px;color:#94A3B8;margin-top:8px">التكرار يرفع الطلاقة — أعيديها مرتين أو ثلاثاً قبل الانتقال${speakTries>1?` (حاولتِ ${toAr(speakTries)} مرات)`:""}</div>`)
       :"";
     inner=`
     <div style="background:#FDF2F8;border-radius:14px;padding:16px;margin-bottom:14px;text-align:center">${sentence}</div>
@@ -2423,15 +2482,17 @@ function renderSpeak(){
   </div>`;
 }
 function renderSpeakResult(){
-  const pct=speakSession.length?Math.round(speakScore/speakSession.length*100):0;
+  const graded=Math.max(0,speakSession.length-speakSkipped);
+  const pct=graded?Math.round(speakScore/graded*100):0;
   const st=speakSrsLoad(),today=srsToday();
   const tomorrow=SPEAK_ITEMS.filter(i=>st[i.id]&&st[i.id].due===today+1).length;
   app.innerHTML=`
   <div class="card">
-    <div class="score-row"><span class="score-big" style="color:${pct>=70?'#059669':pct>=50?'#D97706':'#DC2626'}">${toAr(speakScore)}</span><span class="score-total">/ ${toAr(speakSession.length)}</span><span class="score-pct">${toAr(pct)}%</span></div>
+    <div class="score-row"><span class="score-big" style="color:${pct>=70?'#059669':pct>=50?'#D97706':'#DC2626'}">${toAr(speakScore)}</span><span class="score-total">/ ${toAr(graded)}</span><span class="score-pct">${toAr(pct)}%</span></div>
     <div style="color:#64748B;font-size:15px;margin-bottom:14px">${pct>=85?"نطق واضح وطلاقة ممتازة! 🌟":pct>=60?"تقدّم جيد — التكرار يثبّت الطلاقة 💪":"لا بأس، الجمل تحتاج تكراراً بصوت مسموع 🌱"}</div>
     <div style="background:#FCE7F3;border-radius:12px;padding:14px;margin-bottom:14px;font-size:14px;color:#9D174D;line-height:1.9">
       🔁 تعود للمراجعة غداً: <b>${toAr(tomorrow)}</b> جملة<br>
+      ${speakSkipped?`⏭️ تُخطّيت بلا احتساب (صوت غير واضح): <b>${toAr(speakSkipped)}</b><br>`:""}
       <span style="font-size:12px">المرحلة الحالية: ${SPEAK_STAGES[speakStage-1].tag} — تتقدّم تلقائياً بإجابتين صحيحتين متتاليتين.</span>
     </div>
     <button class="btn" style="background:#DB2777" onclick="startSpeaking()">🔁 جلسة أخرى</button>
