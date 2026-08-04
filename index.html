@@ -2244,6 +2244,201 @@ function renderPronResult(){
   </div>`;
 }
 
+// ===================================================================
+// ===== مهارة التحدّث (Speaking) — جمل قصيرة من منهجها
+// الأسس المطبَّقة:
+//  ١) القوالب الجاهزة (Nation؛ Boers وآخرون ٢٠٠٦): المبتدئ يطلق لسانه بحفظ تراكيب كاملة لا بتركيب كلمة كلمة
+//  ٢) الظلّ الصوتي (Kadota؛ Hamada ٢٠١٦): تسمع النموذج ثم تعيده فوراً — يحسّن النطق والاستماع معاً
+//  ٣) تكرار المهمة (Bygate ٢٠٠١): إعادة الجملة نفسها ترفع الطلاقة، فزر «أعيدي» أساسي لا ثانوي
+//  ٤) سحب السقالة تدريجياً: النص أمامها ← تقرؤه بلا نموذج ← بالسمع فقط
+//  ٥) التباعد: الجملة لا تعود إلا في يوم استحقاقها
+// المحتوى من وحدة Welcome بكتابها (صفحة المحادثة) — قوالب وظيفية حقيقية تستعملها في الفصل.
+// ===================================================================
+const SPEAK_ITEMS=[
+ // قوالب قصيرة (١-٣ كلمات)
+ {id:"sp_no_problem",en:"No problem!",ar:"لا مشكلة!"},
+ {id:"sp_in_a_minute",en:"In a minute.",ar:"بعد دقيقة."},
+ {id:"sp_go_away",en:"Go away!",ar:"ابتعد!"},
+ {id:"sp_i_agree",en:"I agree!",ar:"أوافق!"},
+ {id:"sp_if_you_want",en:"OK, if you want!",ar:"حسناً، إذا أردت!"},
+ {id:"sp_thanks",en:"Thanks, Bud!",ar:"شكراً يا بَد!"},
+ {id:"sp_i_can_try",en:"I can try that.",ar:"أستطيع تجربة ذلك."},
+ {id:"sp_that_was_great",en:"That was great!",ar:"كان ذلك رائعاً!"},
+ // جمل قصيرة (٤-٦ كلمات)
+ {id:"sp_everything_ok",en:"Is everything OK?",ar:"هل كل شيء بخير؟"},
+ {id:"sp_glass_of_juice",en:"Can I have a glass of juice?",ar:"هل لي بكوب عصير؟"},
+ {id:"sp_pass_me",en:"Can you pass me a glass?",ar:"هل تناولني كوباً؟"},
+ {id:"sp_just_an_exam",en:"It's just an exam.",ar:"إنه مجرد اختبار."},
+ {id:"sp_not_friendly",en:"That wasn't very friendly.",ar:"لم يكن ذلك ودّياً."},
+ // جمل أطول (٧+ كلمات)
+ {id:"sp_stressed",en:"I'm just stressed at the moment.",ar:"أنا متوتّر في هذه اللحظة فقط."},
+ {id:"sp_last_name",en:"I can't remember the teacher's last name.",ar:"لا أتذكّر اسم عائلة المعلّمة."},
+ {id:"sp_friendlier",en:"Can I help you to be a bit friendlier?",ar:"هل أساعدك لتكون أكثر ودّاً؟"},
+ {id:"sp_instead_of",en:"Instead of Go away, you can say In a minute.",ar:"بدل «ابتعد» تستطيع أن تقول «بعد دقيقة»."},
+];
+const SPEAK_SRS_KEY="mawhiba_speak_srs",SPEAK_STAGE_KEY="mawhiba_speak_stage";
+const SPEAK_REQ=2,SPEAK_BACK=2,SPEAK_NEW_CAP=6,SPEAK_LEN=8;
+const SPEAK_STAGES=[
+  {label:"مرحلة ١: استمعي ثم كرّري (النص أمامك)",tag:"ظلّ صوتي"},
+  {label:"مرحلة ٢: اقرئيها بصوتك (بلا نموذج مسبق)",tag:"اقرئي"},
+  {label:"مرحلة ٣: بالسمع فقط (النص مخفي)",tag:"مستقل"},
+];
+function speakSrsLoad(){try{return JSON.parse(localStorage.getItem(SPEAK_SRS_KEY)||"{}")}catch(e){return{}}}
+function speakSrsSave(o){try{localStorage.setItem(SPEAK_SRS_KEY,JSON.stringify(o))}catch(e){}}
+function speakSrsUpdate(id,ok){
+  const st=speakSrsLoad(),r=st[id]||{box:0,seen:0};
+  r.box=ok?Math.min(r.box+1,SRS_INTERVALS.length-1):0;
+  r.due=srsToday()+SRS_INTERVALS[r.box];r.seen=(r.seen||0)+1;
+  st[id]=r;speakSrsSave(st);
+}
+function speakStageGet(){try{const v=parseInt(localStorage.getItem(SPEAK_STAGE_KEY)||"1");return(v>=1&&v<=3)?v:1}catch(e){return 1}}
+function speakStageSet(v){try{localStorage.setItem(SPEAK_STAGE_KEY,String(v))}catch(e){}}
+// المستحقّ أولاً ثم الجديد (الأقصر أولاً) — نفس منطق الخطة اليومية
+function buildSpeakSession(){
+  const st=speakSrsLoad(),today=srsToday();
+  const due=SPEAK_ITEMS.filter(i=>st[i.id]&&st[i.id].due<=today);
+  const fresh=SPEAK_ITEMS.filter(i=>!st[i.id]).sort((a,b)=>pronWords(a.en).length-pronWords(b.en).length);
+  const out=shuffle(due).slice(0,SPEAK_LEN);
+  for(const it of fresh){if(out.length>=SPEAK_LEN)break;if(out.filter(x=>!st[x.id]).length>=SPEAK_NEW_CAP)break;out.push(it)}
+  if(!out.length)out.push(...shuffle(SPEAK_ITEMS).slice(0,SPEAK_LEN)); // لا شيء مستحق: مراجعة حرّة بدل شاشة فارغة
+  return out.map(i=>Object.assign({},i,{_isNew:!st[i.id],_box:st[i.id]?st[i.id].box:null}));
+}
+let speakSession=[],speakIdx=0,speakStage=1,speakStreak=0,speakMiss=0,speakResult=null,speakScore=0,speakDone=false,speakTries=0,speakUnsupported=false;
+let speakRec=null,speakStream=null,speakChunks=[],speakTimer=null,speakElapsed=0,speakListening=false,speakBusy=false;
+function startSpeaking(){
+  mode="speak";speakSession=buildSpeakSession();speakIdx=0;speakResult=null;speakScore=0;speakDone=false;speakTries=0;
+  speakStage=speakStageGet();speakStreak=0;speakMiss=0;
+  speakListening=false;speakBusy=false;speakElapsed=0;if(speakTimer){clearInterval(speakTimer);speakTimer=null}
+  speakUnsupported=!micSupported();
+  window.scrollTo(0,0);render();
+  if(!speakUnsupported&&speakStage!==2)setTimeout(()=>speakEnglish(speakSession[0].en),400);
+}
+function speakCur(){return speakSession[speakIdx]}
+function speakReplay(){const it=speakCur();if(it)speakEnglish(it.en)}
+async function speakStart(){
+  if(speakListening||speakBusy)return;
+  if(!micSupported()){speakUnsupported=true;render();return}
+  speakResult=null;
+  try{
+    speakStream=await navigator.mediaDevices.getUserMedia({audio:true});
+    speakChunks=[];
+    speakRec=new MediaRecorder(speakStream);
+    speakRec.ondataavailable=(e)=>{if(e.data&&e.data.size>0)speakChunks.push(e.data)};
+    speakRec.onstop=()=>{speakFinish()};
+    speakRec.start();
+    speakListening=true;speakElapsed=0;
+    speakTimer=setInterval(()=>{speakElapsed+=0.25;if(speakElapsed*1000>=PRON_MAX_MS){speakStop();return}render()},250);
+    render();
+  }catch(e){speakListening=false;speakResult={heard:"",error:true};render()}
+}
+function speakStop(){
+  if(!speakListening)return;
+  speakListening=false;speakBusy=true;
+  if(speakTimer){clearInterval(speakTimer);speakTimer=null}
+  try{if(speakRec&&speakRec.state!=="inactive")speakRec.stop();else{speakBusy=false}}catch(e){speakBusy=false}
+  render();
+}
+async function speakFinish(){
+  const it=speakCur();const target=it?it.en:"";
+  try{
+    if(speakStream){speakStream.getTracks().forEach(t=>t.stop());speakStream=null}
+    const blob=new Blob(speakChunks,{type:(speakRec&&speakRec.mimeType)||"audio/webm"});
+    const b64=await blobToBase64(blob);
+    const res=await fetch(PRON_GROQ_FN_URL,{method:"POST",headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({audio:b64,mimeType:blob.type,referenceText:target})});
+    const data=await res.json();
+    if(data&&data.ok){
+      const sc=pronScoreOf(target,data.heard);
+      speakTries++;
+      speakResult={heard:data.heard,ok:sc.ok,sc};
+      logAnswer("speaking","stage"+speakStage,sc.ok,data.heard,it.id,Math.round(speakElapsed*1000),{score_pct:sc.pct,is_new:!!it._isNew,srs_box:it._box});
+    }else{
+      speakResult={heard:"",error:true,notConfigured:!!(data&&data.error==="not_configured")};
+      logAnswer("speaking","stage"+speakStage,false,"[transcription_error]",it.id);
+    }
+  }catch(e){speakResult={heard:"",error:true}}
+  speakBusy=false;render();
+}
+// تُحسب النتيجة والتباعد مرة واحدة لكل جملة عند الانتقال — فالمحاولات المتكررة تدريب لا عقوبة
+function speakNext(){
+  const it=speakCur(),ok=!!(speakResult&&speakResult.ok);
+  if(it){speakSrsUpdate(it.id,ok);if(ok)speakScore++}
+  if(ok){speakStreak++;speakMiss=0}else{speakMiss++;speakStreak=0}
+  if(speakStreak>=SPEAK_REQ&&speakStage<3){speakStage++;speakStageSet(speakStage);speakStreak=0}
+  else if(speakMiss>=SPEAK_BACK&&speakStage>1){speakStage--;speakStageSet(speakStage);speakMiss=0}
+  if(speakTimer){clearInterval(speakTimer);speakTimer=null}
+  speakListening=false;speakBusy=false;speakTries=0;
+  if(speakIdx+1>=speakSession.length){speakDone=true;window.scrollTo(0,0);render();return}
+  speakIdx++;speakResult=null;render();
+  if(speakStage!==2)setTimeout(()=>speakEnglish(speakSession[speakIdx].en),300);
+}
+function speakRetry(){speakResult=null;render()} // تكرار المهمة: تعيد الجملة نفسها بلا احتساب محاولة جديدة
+function renderSpeak(){
+  if(speakDone)return renderSpeakResult();
+  const it=speakCur();
+  const info=SPEAK_STAGES[speakStage-1];
+  const prog=speakSession.map((_,i)=>`<div class="seg" style="background:${i<=speakIdx?'#DB2777':'#E2E8F0'};opacity:${i<=speakIdx?1:.5}"></div>`).join("");
+  const stageBar=[1,2,3].map(x=>`<div style="flex:1;height:8px;border-radius:99px;background:${x<speakStage?'#10B981':x===speakStage?'#DB2777':'#E2E8F0'}"></div>`).join("");
+  let inner;
+  if(speakUnsupported){
+    inner=`<div style="background:#FEF3C7;border-radius:12px;padding:16px;font-size:14px;color:#92400E;line-height:1.8">متصفحك لا يدعم تسجيل الصوت. جرّبي Safari على آيفون أو Chrome.</div>`;
+  }else{
+    // مرحلة ٣ تخفي النص حتى تُنتج من السمع لا من القراءة — ويظهر بعد المحاولة للمقارنة
+    const showText=speakStage<3||!!speakResult;
+    const sentence=showText
+      ?`<div style="direction:ltr;font-family:Georgia,serif;font-size:20px;font-weight:800;color:#831843;line-height:1.7;margin:6px 0">${it.en}</div><div style="font-size:13px;color:#64748B">${it.ar}</div>`
+      :`<div style="font-size:15px;color:#9D174D;font-weight:700;margin:10px 0">🎧 استمعي جيداً ثم كرّري — النص مخفي</div><div style="font-size:13px;color:#64748B">${it.ar}</div>`;
+    const sc=speakResult&&speakResult.sc;
+    const fb=speakResult?(speakResult.error
+      ?`<div class="explain"><div class="explain-title" style="color:#B45309">${speakResult.notConfigured?"التحقّق غير مفعّل حالياً":"تعذّر تسجيل صوتك"}</div><div class="explain-body">تأكدي من السماح للميكروفون، ثم أعيدي المحاولة.</div></div>`
+      :(()=>{
+        const pct=sc?sc.pct:0,col=pct>=PRON_PASS?'#059669':pct>=50?'#B45309':'#DC2626';
+        const title=pct>=PRON_PASS?"✓ ممتاز! جملة واضحة":pct>=50?"قريب — أعيديها مرة أخرى":"لم تصل الجملة، جرّبي ببطء";
+        const words=sc&&sc.words.length?`<div style="direction:ltr;font-family:Georgia,serif;font-size:18px;font-weight:800;margin:10px 0;line-height:1.8">${sc.words.map((w,i)=>`<span style="color:${sc.hit[i]?'#059669':'#DC2626'};margin:0 4px">${w}</span>`).join("")}</div><div style="font-size:12px;color:#64748B">الأخضر وصل · الأحمر لم يصل — الكلمات الصحيحة ${toAr(sc.got)} من ${toAr(sc.total)}</div>`:"";
+        return `<div class="explain"><div class="explain-title" style="color:${col}">${title} · ${toAr(pct)}%</div><div class="explain-body">${words}${speakResult.heard?`<div style="margin-top:8px;font-size:13px">سمعنا: <b style="direction:ltr;display:inline-block">"${speakResult.heard}"</b></div>`:""}</div></div>`;
+      })()
+    ):"";
+    const btns=speakResult
+      ?`<div style="display:flex;gap:8px;margin-top:12px"><button class="btn" style="background:#DB2777;margin:0" onclick="speakNext()">${speakIdx+1>=speakSession.length?"إنهاء ←":"الجملة التالية ←"}</button><button class="btn" style="background:#fff;color:#DB2777;border:2px solid #FBCFE8;margin:0" onclick="speakRetry()">🔁 أعيدي</button></div>
+         <div style="font-size:12px;color:#94A3B8;margin-top:8px">التكرار يرفع الطلاقة — أعيديها مرتين أو ثلاثاً قبل الانتقال${speakTries>1?` (حاولتِ ${toAr(speakTries)} مرات)`:""}</div>`
+      :"";
+    inner=`
+    <div style="background:#FDF2F8;border-radius:14px;padding:16px;margin-bottom:14px;text-align:center">${sentence}</div>
+    <div style="display:flex;gap:12px;justify-content:center;align-items:center;margin:6px 0 14px">
+      <button type="button" onclick="speakReplay()" style="background:#ECFEFF;border:1.5px solid #A5F3FC;color:#0891B2;border-radius:50%;width:56px;height:56px;font-size:22px;cursor:pointer">🔊</button>
+      ${speakListening
+        ? `<button type="button" onclick="speakStop()" style="background:#DC2626;color:#fff;border:none;border-radius:50%;width:72px;height:72px;font-size:26px;cursor:pointer;box-shadow:0 0 0 6px rgba(220,38,38,.18)">⏹️</button>`
+        : `<button type="button" onclick="speakStart()" ${speakBusy?"disabled":""} style="background:${speakBusy?'#F9A8D4':'#DB2777'};color:#fff;border:none;border-radius:50%;width:72px;height:72px;font-size:26px;cursor:pointer">🎤</button>`}
+    </div>
+    <div style="font-size:13px;color:${speakListening?'#DC2626':'#64748B'};margin-bottom:12px;font-weight:${speakListening?'800':'400'}">${speakListening?`🔴 يسجّل… ${toAr(speakElapsed.toFixed(1)).replace('.','٫')} ث — اضغطي ⏹️ عند انتهائك`:speakBusy?"…جارٍ التحقّق":"اضغطي 🔊 لتسمعي، ثم 🎤 وقوليها كاملة"}</div>
+    ${fb}${btns}`;
+  }
+  app.innerHTML=`<button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
+  <div class="bar">${prog}</div>
+  <div class="meta"><span>جملة ${toAr(speakIdx+1)} من ${toAr(speakSession.length)}</span><span>تحدّث · Speaking</span></div>
+  <div style="display:flex;gap:6px;margin:8px 0">${stageBar}</div>
+  <div style="font-size:12px;font-weight:800;color:#DB2777;margin-bottom:12px">${info.label}</div>
+  <div class="card" style="text-align:center">
+    <span class="tag" style="background:#FCE7F3;color:#DB2777">🗣️ تحدّث · ${info.tag}</span>
+    ${inner}
+  </div>`;
+}
+function renderSpeakResult(){
+  const pct=speakSession.length?Math.round(speakScore/speakSession.length*100):0;
+  const st=speakSrsLoad(),today=srsToday();
+  const tomorrow=SPEAK_ITEMS.filter(i=>st[i.id]&&st[i.id].due===today+1).length;
+  app.innerHTML=`
+  <div class="card">
+    <div class="score-row"><span class="score-big" style="color:${pct>=70?'#059669':pct>=50?'#D97706':'#DC2626'}">${toAr(speakScore)}</span><span class="score-total">/ ${toAr(speakSession.length)}</span><span class="score-pct">${toAr(pct)}%</span></div>
+    <div style="color:#64748B;font-size:15px;margin-bottom:14px">${pct>=85?"نطق واضح وطلاقة ممتازة! 🌟":pct>=60?"تقدّم جيد — التكرار يثبّت الطلاقة 💪":"لا بأس، الجمل تحتاج تكراراً بصوت مسموع 🌱"}</div>
+    <div style="background:#FCE7F3;border-radius:12px;padding:14px;margin-bottom:14px;font-size:14px;color:#9D174D;line-height:1.9">
+      🔁 تعود للمراجعة غداً: <b>${toAr(tomorrow)}</b> جملة<br>
+      <span style="font-size:12px">المرحلة الحالية: ${SPEAK_STAGES[speakStage-1].tag} — تتقدّم تلقائياً بإجابتين صحيحتين متتاليتين.</span>
+    </div>
+    <button class="btn" style="background:#DB2777" onclick="startSpeaking()">🔁 جلسة أخرى</button>
+    <button class="link-btn" onclick="home()">→ الرئيسية</button>
+  </div>`;
+}
+
 // ===== الحالة والتدفّق =====
 function alias(){return (localStorage.getItem("mawhiba_alias")||"بنتي").trim()||"بنتي"}
 function saveAlias(v){localStorage.setItem("mawhiba_alias",v)}
@@ -2459,7 +2654,7 @@ function bumpStreak(){const st=getStreak();const t=todayStr();if(st.last===t)ret
 function growthMsg(modeKey,pct){try{const key="mawhiba_best_"+modeKey;const prev=parseInt(localStorage.getItem(key)||"-1");let msg="";if(prev<0){msg="أول محاولة في هذا القسم — انطلاقة موفّقة! 🌱"}else if(pct>prev){msg=`تحسّنتِ عن أفضل نتيجة سابقة (${toAr(prev)}%)! تقدّم رائع 📈`}else if(pct===prev){msg="ثبات على أفضل مستوى سابق 💪"}else{msg="واصلي، كل محاولة تبني مهارتك 🌟"}if(pct>prev)localStorage.setItem(key,String(pct));return msg}catch(e){return""}}
 
 // ===== العرض =====
-function render(){if(mode==="home")return renderHome();if(mode==="engplan")return renderEngPlan();if(mode==="factplan")return renderFactPlan();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
+function render(){if(mode==="home")return renderHome();if(mode==="engplan")return renderEngPlan();if(mode==="factplan")return renderFactPlan();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="speak")return renderSpeak();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
 
 function renderHome(){
   app.innerHTML=`
@@ -2483,6 +2678,7 @@ function renderHome(){
     <button class="mode full" style="background:#4338CA;border-color:#4338CA" onclick="startEngPlan()"><span class="m-name">⭐ خطة الإنجليزية اليومية · ٤٠ دقيقة</span><div class="m-sub">شرح ثم تدريب، بتباعد ذكي — لا يتكرّر أي عنصر إلا في يوم استحقاقه (منهج الصف السادس)</div></button>
     <button class="mode full" style="background:#0E7490;border-color:#0E7490" onclick="startDictation()"><span class="m-name">✍️ إملاء بالإنجليزية</span><div class="m-sub">استمعي للكلمة، ثم اكتبيها — مستوى A1</div></button>
     <button class="mode full" style="background:#7C3AED;border-color:#7C3AED" onclick="startPronunciation()"><span class="m-name">🎤 تمرين النطق</span><div class="m-sub">تحقّق أساسي هل نطقتِ الكلمة صح (يحتاج ميكروفون) — وليس تصحيح لهجة دقيق</div></button>
+    <button class="mode full" style="background:#DB2777;border-color:#DB2777" onclick="startSpeaking()"><span class="m-name">🗣️ التحدّث · جمل من كتابك</span><div class="m-sub">جمل قصيرة جاهزة من وحدة Welcome: تسمعينها ثم تقولينها كاملة — تبدأ بالنص أمامك وتنتهي بالسمع فقط</div></button>
   </div>
   <button class="link-btn" onclick="startAudioDiag()">🔊 الصوت ما يشتغل؟ اضغطي هنا لتشخيص السبب</button>
   <div class="tips">
