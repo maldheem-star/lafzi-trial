@@ -7,17 +7,37 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <script>
+/* فحص الإصدار. كان موجوداً منذ البداية لكنه ميت لسببين، وهما سبب بقاء هيا ٩٠ دقيقة على نسخة
+   قديمة فلم يصلها أي إصلاح: (١) BUILD لم يُحدَّث منذ ٢٣ يوليو، فيقارن النص بنفسه ويطابق دائماً.
+   (٢) الفحص مرة واحدة فقط لكل جلسة تصفّح، والصفحة تبقى مفتوحة ساعات فلا يُعاد.
+   الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
+   وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260723-0310";
-  var KEY="mb_checked_"+BUILD;
-  if(sessionStorage.getItem(KEY))return;
-  sessionStorage.setItem(KEY,"1");
-  fetch(location.pathname+"?_cb="+Date.now(),{cache:"no-store"})
-    .then(function(r){return r.text()})
-    .then(function(html){
-      if(html.indexOf(BUILD)===-1){location.href=location.pathname+"?_r="+Date.now()}
-    })
-    .catch(function(){});
+  var BUILD="build-20260805-0345";
+  var url=function(){return location.pathname+"?_cb="+Date.now()};
+  var baseLen=null, notified=false;
+  function fetchHtml(){return fetch(url(),{cache:"no-store"}).then(function(r){return r.text()})}
+  function banner(){
+    if(notified)return; notified=true;
+    var d=document.createElement("div");
+    d.setAttribute("style","position:fixed;inset-inline:0;bottom:0;z-index:9999;background:#1D4ED8;color:#fff;"+
+      "padding:14px 16px;font:700 15px system-ui,sans-serif;text-align:center;cursor:pointer;box-shadow:0 -2px 12px rgba(0,0,0,.2)");
+    d.textContent="🔄 يوجد تحديث جديد للتطبيق — اضغطي هنا للتحديث";
+    d.onclick=function(){location.href=location.pathname+"?_r="+Date.now()};
+    document.body.appendChild(d);
+  }
+  // عند التحميل: لو كان المتصفّح يعرض نسخة مخزّنة أقدم من الخادم، نُحدّث فوراً (لا عمل جارياً بعد)
+  fetchHtml().then(function(html){
+    baseLen=html.length;
+    if(html.indexOf(BUILD)===-1){location.href=location.pathname+"?_r="+Date.now()}
+  }).catch(function(){});
+  // بعد ذلك: لا نُحدّث تلقائياً حتى لا نُضيّع إجابة جارية — نعرض شريطاً تضغطه هي
+  function recheck(){
+    if(baseLen===null||notified)return;
+    fetchHtml().then(function(html){if(html.length!==baseLen)banner()}).catch(function(){});
+  }
+  setInterval(recheck,10*60*1000);
+  document.addEventListener("visibilitychange",function(){if(!document.hidden)recheck()});
 })();
 </script>
 <title>برنامج موهبة المكثّف — المستوى الثاني</title>
@@ -1044,6 +1064,40 @@ const READING_ITEMS=[
   q:"لماذا تميل نباتات الغرفة نحو النافذة؟",ans:"لأنها تحتاج ضوء الشمس لصنع غذائها",
   d:["لأن الهواء أنقى عند النافذة","لأن التربة أدفأ هناك","لأنها تهرب من الظل"],
   key:"تحتاج ضوء الشمس لصنع غذائها"},
+ // توسعة البنك: بستة نصوص فقط كانت عشرة أسئلة تعني رؤية كل نص مرة ونصف، فتصير ٩٠٪ حفظاً لا فهماً.
+ // ونوّعنا نوع السؤال: سبب، ونتيجة، ومقارنة، وتسلسل، وما لا يُذكر في النص — لا "أين الجملة" فقط.
+ {t:"يصنع النمل الحاصد مخازن تحت الأرض يضع فيها الحبوب. وإذا ابتلّت الحبوب بالمطر أخرجها النمل إلى الشمس لتجفّ، حتى لا تتعفّن.",
+  q:"لماذا يُخرج النمل الحبوب إلى الشمس؟",ans:"حتى لا تتعفّن بعد أن تبتلّ",
+  d:["ليأكلها دافئة","ليجذب نملاً آخر","لأن المخزن صار ممتلئاً"],
+  key:"أخرجها النمل إلى الشمس لتجفّ، حتى لا تتعفّن"},
+ {t:"سدّ النهضة وسدّ الملك فهد كلاهما يخزّن الماء، لكن الأول بُني لتوليد الكهرباء أساساً، بينما بُني الثاني للريّ ومياه الشرب.",
+  q:"ما الفرق الأساسي بين السدّين؟",ans:"الأول للكهرباء والثاني للريّ والشرب",
+  d:["الأول أكبر والثاني أصغر","الأول قديم والثاني حديث","الأول على نهر والثاني على بحر"],
+  key:"الأول بُني لتوليد الكهرباء أساساً، بينما بُني الثاني للريّ ومياه الشرب"},
+ {t:"تبدأ الفراشة حياتها بيضةً، ثم تفقس يرقةً تأكل الأوراق بنهم، ثم تتحوّل إلى شرنقة ساكنة، وأخيراً تخرج منها فراشةً بجناحين.",
+  q:"ما الطور الذي يسبق خروج الفراشة مباشرةً؟",ans:"الشرنقة",
+  d:["البيضة","اليرقة","الجناح"],
+  key:"ثم تتحوّل إلى شرنقة ساكنة، وأخيراً تخرج منها فراشةً"},
+ {t:"يُنصح بشرب الماء قبل الشعور بالعطش، لأن العطش علامة متأخّرة تظهر بعد أن يكون الجسم قد فقد جزءاً من مائه فعلاً.",
+  q:"لماذا لا يُنتظر الشعور بالعطش؟",ans:"لأنه يظهر بعد فقد الجسم جزءاً من مائه",
+  d:["لأن الماء البارد يضرّ","لأن العطش يسبّب الصداع","لأن الجسم لا يشعر بالعطش أصلاً"],
+  key:"العطش علامة متأخّرة تظهر بعد أن يكون الجسم قد فقد جزءاً من مائه"},
+ {t:"نجح فريق المدرسة في مسابقة الروبوت بعد ثلاث محاولات فاشلة. قال المدرّب إن سبب الفوز لم يكن ذكاءً أكبر، بل أنهم دوّنوا سبب كل فشل وأصلحوه.",
+  q:"بمَ فسّر المدرّب فوز الفريق؟",ans:"بتدوين سبب كل فشل وإصلاحه",
+  d:["بذكاء الفريق الكبير","بكثرة عدد أعضاء الفريق","بجودة الروبوت المشترى"],
+  key:"دوّنوا سبب كل فشل وأصلحوه"},
+ {t:"تعيش أشجار السَّمُر في الصحراء بجذور تمتدّ عشرات الأمتار تحت الأرض بحثاً عن الماء. ولهذا تبقى خضراء في أشدّ الصيف.",
+  q:"ما سبب بقاء السَّمُر أخضر في الصيف؟",ans:"جذوره الممتدّة عميقاً تصل إلى الماء",
+  d:["أوراقه الصغيرة تخزّن الماء","ينمو في الظل دائماً","يحتاج ماءً قليلاً جداً"],
+  key:"بجذور تمتدّ عشرات الأمتار تحت الأرض بحثاً عن الماء"},
+ {t:"زار ثلاثة طلاب المتحف: نورة قبل سارة، وسارة قبل ريم. ولم يذكر السجلّ في أي يوم زار كل منهم.",
+  q:"ما الذي لا يمكن معرفته من النص؟",ans:"يوم الزيارة لكل طالب",
+  d:["ترتيب زيارة نورة","من زار قبل ريم","عدد الطلاب الزائرين"],
+  key:"ولم يذكر السجلّ في أي يوم زار كل منهم"},
+ {t:"يستطيع الدلفين أن ينام بنصف دماغه فقط بينما يبقى النصف الآخر مستيقظاً. وهذا يسمح له بالصعود للتنفّس والانتباه للخطر أثناء نومه.",
+  q:"ما فائدة نوم نصف الدماغ للدلفين؟",ans:"يتنفّس وينتبه للخطر وهو نائم",
+  d:["ينام وقتاً أطول","يسبح أسرع في نومه","يوفّر طاقة أكبر للصيد"],
+  key:"يسمح له بالصعود للتنفّس والانتباه للخطر أثناء نومه"},
 ];
 function fadeMakeReading(){
   const it=pick(READING_ITEMS);
@@ -1401,17 +1455,17 @@ function renderFade(){
 const BASICS_REQ=2;
 const BASICS_SUBS={
   multdiv:{label:"عائلات الضرب والقسمة",short:"عائلات الضرب والقسمة"},
-  addcarry:{label:"الجمع بالحمل (عشرات/مئات)",short:"الجمع بالحمل"},
-  subborrow:{label:"الطرح بالاستلاف (عشرات/مئات)",short:"الطرح بالاستلاف"},
+  addcarry:{label:"الجمع (عشرات/مئات)",short:"الجمع"},
+  subborrow:{label:"الطرح (عشرات/مئات)",short:"الطرح"},
   percent:{label:"أساسيات النسبة المئوية",short:"النسبة المئوية"}
 };
 const BASICS_TERMS={
   multdiv:[{ar:"ضرب",en:"multiplication"},{ar:"قسمة",en:"division"}],
-  addcarry:[{ar:"جمع",en:"addition"},{ar:"حمل",en:"carrying"}],
-  subborrow:[{ar:"طرح",en:"subtraction"},{ar:"استلاف",en:"borrowing"}],
+  addcarry:[{ar:"جمع",en:"addition"},{ar:"عشرات",en:"tens"}],
+  subborrow:[{ar:"طرح",en:"subtraction"},{ar:"فرق",en:"difference"}],
   percent:[{ar:"نسبة مئوية",en:"percentage"}],
 };
-let basicsSub="multdiv",basicsStage=1,basicsStreak=0,basicsCur=null,basicsLocked=false,basicsPicked=-1,basicsMasteryStreak=0,basicsMidSupport=false,basicsMidRecoveryStreak=0,basicsFinalSupport=false,basicsFinalRecoveryStreak=0;
+let basicsSub="multdiv",basicsStage=1,basicsStreak=0,basicsCur=null,basicsLocked=false,basicsPicked=-1,basicsMasteryStreak=0,basicsMidSupport=false,basicsMidRecoveryStreak=0,basicsFinalSupport=false,basicsFinalRecoveryStreak=0,basicsFinalCount=0,basicsBestStreak=0,basicsNotYet=false,basicsShownAt=0;
 
 // إطار العشرة (Ten-Frame): يرتّب الكمية في صفّين من خمسة بدل نقاط عشوائية تُعدّ واحدة واحدة،
 // حتى يتعرّف الدماغ على الكمية دفعة واحدة (الإدراك البصري الفوري/Subitizing) بدل العدّ اليدوي — نفس مبدأ عدّ الأصابع لكن بلا حاجة للعدّ
@@ -1458,6 +1512,64 @@ function additionSteps(a,b){
   }
   return steps;
 }
+// ===== طرق أسهل: تُزيل الحمل والاستلاف بدل أن تدرّب عليهما =====
+// الطريقة العمودية تُحمّل الذاكرة العاملة: تحفظ رقماً محمولاً بينما تحسب خانة أخرى — وهذا
+// بالضبط ما يُسقط طالبة تعدّ على أصابعها. البيانات: الجمع بحمل ١٩٪ بينما الضرب ٧٦٪.
+//
+// الجمع: المجاميع الجزئية (Partial Sums) — من اليسار لليمين بلا حمل إطلاقاً.
+//   ٤٧+٣٨: ٤٠+٣٠=٧٠ ثم ٧+٨=١٥ ثم ٧٠+١٥=٨٥
+// الطرح: العدّ للأعلى (Subtraction by Addition؛ Torbeyns وزملاؤه ٢٠٠٩) — تُثبت أنها أسرع
+//   وأدقّ من الاستلاف، وهي ما يفعله البائع فعلاً عند إعادة الباقي، وتستفيد من كون الجمع
+//   أسهل عليها من الطرح. ٦٢−٤٧: من ٤٧ إلى ٥٠ = ٣، ومن ٥٠ إلى ٦٢ = ١٢، فالفرق ١٥.
+function addPartialSteps(a,b){
+  const at=Math.floor(a/10)*10,ao=a%10,bt=Math.floor(b/10)*10,bo=b%10;
+  const tens=at+bt,ones=ao+bo;
+  return[`اجمعي العشرات وحدها: ${toAr(at)} + ${toAr(bt)} = ${toAr(tens)}`,
+         `اجمعي الآحاد وحدها: ${toAr(ao)} + ${toAr(bo)} = ${toAr(ones)}`,
+         `اجمعي الناتجين: ${toAr(tens)} + ${toAr(ones)} = ${toAr(a+b)}`];
+}
+function subAddUpStop(a,b){
+  const up=Math.ceil(b/10)*10;
+  // العشرة الوسيطة مفيدة فقط إذا وقعت فعلاً بين العددين: لو كان الأصغر مضاعفاً للعشرة
+  // أو كانت العشرة التالية تتجاوز الأكبر، فقفزة واحدة أوضح من قفزتين إحداهما صفر أو سالبة
+  return(up>b&&up<a)?up:null;
+}
+function subAddUpSteps(a,b){
+  const up=subAddUpStop(a,b);
+  if(up===null)return[`لا تطرحي — عُدّي للأعلى من ${toAr(b)} حتى ${toAr(a)}`,
+                      `من ${toAr(b)} إلى ${toAr(a)}: ${toAr(a-b)}`,
+                      `الفرق = ${toAr(a-b)}`];
+  const first=up-b,second=a-up;
+  return[`لا تطرحي — عُدّي للأعلى من ${toAr(b)} حتى ${toAr(a)}`,
+         `من ${toAr(b)} إلى ${toAr(up)}: ${toAr(first)}`,
+         `من ${toAr(up)} إلى ${toAr(a)}: ${toAr(second)}`,
+         `الفرق = ${toAr(first)} + ${toAr(second)} = ${toAr(a-b)}`];
+}
+// خط الأعداد: القفزتان مرسومتان فتراهما لا تتخيّلهما
+function jumpLineSVG(b,up,a){
+  const W=320,H=86,x=v=>20+(v-b)/(a-b)*(W-40);
+  if(up===null||up<=b||up>=a){ // قفزة واحدة: نرسمها وحدها بدل قوس بعرض صفر
+    const mid=(x(b)+x(a))/2;
+    return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:340px">
+      <line x1="14" y1="58" x2="${W-14}" y2="58" stroke="#94A3B8" stroke-width="2"/>
+      <path d="M ${x(b)} 58 Q ${mid} 20 ${x(a)} 58" fill="none" stroke="#0D9488" stroke-width="2.5"/>
+      <text x="${mid}" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="#0D9488">+${toAr(a-b)}</text>
+      ${[b,a].map(v=>`<circle cx="${x(v)}" cy="58" r="4" fill="#0F172A"/><text x="${x(v)}" y="79" text-anchor="middle" font-size="13" font-weight="800" fill="#0F172A">${toAr(v)}</text>`).join("")}
+    </svg>`;
+  }
+  const arc=(x1,x2,label,col)=>{
+    const mid=(x1+x2)/2;
+    return `<path d="M ${x1} 58 Q ${mid} 20 ${x2} 58" fill="none" stroke="${col}" stroke-width="2.5"/>
+      <text x="${mid}" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="${col}">+${toAr(0)}</text>`.replace("+"+toAr(0),label);
+  };
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:340px">
+    <line x1="14" y1="58" x2="${W-14}" y2="58" stroke="#94A3B8" stroke-width="2"/>
+    ${arc(x(b),x(up),"+"+toAr(up-b),"#0D9488")}
+    ${arc(x(up),x(a),"+"+toAr(a-up),"#7C3AED")}
+    ${[[b,"#0F172A"],[up,"#0D9488"],[a,"#0F172A"]].map(([v,c])=>
+      `<circle cx="${x(v)}" cy="58" r="4" fill="${c}"/><text x="${x(v)}" y="79" text-anchor="middle" font-size="13" font-weight="800" fill="${c}">${toAr(v)}</text>`).join("")}
+  </svg>`;
+}
 function subtractionSteps(a,b){
   const ad=String(a).split("").reverse().map(Number),bd=String(b).split("").reverse().map(Number);
   const len=Math.max(ad.length,bd.length),placeNames=["الآحاد","العشرات","المئات"];
@@ -1486,6 +1598,12 @@ function basicsFamilyQ(f){
   if(kind==="div1")return{text:`${toAr(f.c)} ÷ ${toAr(f.a)} = ؟`,ans:f.b};
   return{text:`${toAr(f.c)} ÷ ${toAr(f.b)} = ؟`,ans:f.a};
 }
+// نعرض الطريقة العمودية بديلاً مطويّاً لا بديلاً مفروضاً: من تعلّمتها في المدرسة تجدها،
+// ومن أرهقتها لا تراها إلا إذا فتحتها بنفسها
+function altBox(steps,title){
+  return `<details style="margin-top:12px"><summary style="cursor:pointer;font-size:13px;color:#64748B;font-weight:700">${title} — إن أحببتِ</summary>
+    <div style="font-size:14px;line-height:1.9;color:#475569;margin-top:8px">${steps.map((x,i)=>`<div>${toAr(i+1)}) ${x}.</div>`).join("")}</div></details>`;
+}
 function basicsPrep(){
   const f=basicsCur.fam;
   if(basicsStage===1){basicsCur.opts=null;basicsCur.ai=-1;return}
@@ -1498,6 +1616,7 @@ function basicsPrep(){
   basicsCur.opts=m.choices;basicsCur.ai=m.answer;
 }
 function basicsNew(){
+  basicsShownAt=Date.now();
   const gen=basicsSub==="multdiv"?basicsMakeFamily:basicsSub==="addcarry"?basicsMakeAddCarry:basicsSub==="subborrow"?basicsMakeSubBorrow:basicsMakePercent;
   basicsCur={fam:gen()};basicsLocked=false;basicsPicked=-1;basicsPrep();render();
 }
@@ -1506,6 +1625,7 @@ function logAnswer(domain,qtype,isCorrect,response,itemId,elapsedMs,extra){try{f
 function basicsChoose(i){
   if(basicsLocked)return;basicsLocked=true;basicsPicked=i;
   const ok=i===basicsCur.ai;
+  if(basicsStage===5){basicsFinalCount++;if(basicsMasteryStreak+(ok?1:0)>basicsBestStreak)basicsBestStreak=basicsMasteryStreak+(ok?1:0)}
   if(ok)basicsStreak++;else basicsStreak=0;
   if(basicsStage===4){
     if(!ok){basicsMidSupport=true;basicsMidRecoveryStreak=0}
@@ -1515,15 +1635,42 @@ function basicsChoose(i){
     else if(basicsFinalSupport){basicsFinalRecoveryStreak++;if(basicsFinalRecoveryStreak>=RECOVERY_REQ){basicsFinalSupport=false;basicsFinalRecoveryStreak=0}}
     else{basicsMasteryStreak++}
   }
-  logAnswer("basics_"+basicsSub,"stage"+basicsStage,ok);
+  const elapsed=basicsShownAt?Date.now()-basicsShownAt:null;
+  // الرقم الذي اختارته فعلاً: بدونه أعرف أنها أخطأت ولا أعرف نوع الخطأ (نسيت الحمل؟ جمعت بلا حمل؟)
+  logAnswer("basics_"+basicsSub,"stage"+basicsStage,ok,basicsCur.opts?basicsCur.opts[i]:null,null,elapsed,{q_text:basicsCur.qText||null});
+  if(elapsed!=null){
+    recentAnswerTimes.push(elapsed);if(recentAnswerTimes.length>RAPID_STREAK)recentAnswerTimes.shift();
+    rapidNudge=recentAnswerTimes.length===RAPID_STREAK&&recentAnswerTimes.every(t=>t<RAPID_MS);
+  }
   render();
 }
 function basicsStage1Next(){basicsStreak++;if(basicsStreak>=BASICS_REQ){basicsStage=2;basicsStreak=0}basicsNew()}
 function basicsAdvance(){if(basicsStreak>=BASICS_REQ&&basicsStage<5){basicsStage++;basicsStreak=0}basicsNew()}
-function basicsFinalNext(){if(basicsMasteryStreak>=MASTERY_REQ){mode="basicsDone";window.scrollTo(0,0);render();return}basicsNew()}
-function startBasics(sub){mode="basics";basicsSub=sub;basicsStage=1;basicsStreak=0;basicsMasteryStreak=0;basicsMidSupport=false;basicsMidRecoveryStreak=0;basicsFinalSupport=false;basicsFinalRecoveryStreak=0;window.scrollTo(0,0);basicsNew()}
+function basicsFinalNext(){
+  if(basicsMasteryStreak>=MASTERY_REQ){basicsNotYet=false;mode="basicsDone";window.scrollTo(0,0);render();return}
+  // نفس سقف التقوية: بلا حدّ كانت المرحلة المستقلة لا تنتهي إلا بخمس متتالية، فتتحوّل إلى ضغط عشوائي
+  if(basicsFinalCount>=MASTERY_MAX_Q){basicsNotYet=true;mode="basicsDone";window.scrollTo(0,0);render();return}
+  basicsNew();
+}
+function startBasics(sub){mode="basics";basicsSub=sub;basicsStage=1;basicsStreak=0;basicsMasteryStreak=0;basicsFinalCount=0;basicsBestStreak=0;basicsNotYet=false;recentAnswerTimes=[];rapidNudge=false;basicsMidSupport=false;basicsMidRecoveryStreak=0;basicsFinalSupport=false;basicsFinalRecoveryStreak=0;window.scrollTo(0,0);basicsNew()}
 function renderBasicsDone(){
   const subLabel=BASICS_SUBS[basicsSub].label;
+  if(basicsNotYet){
+    app.innerHTML=`<div class="card" style="text-align:center">
+      <div style="font-size:44px;margin-bottom:6px">🌱</div>
+      <div style="font-weight:800;font-size:19px;margin-bottom:8px">${subLabel} — لم يكتمل الإتقان بعد</div>
+      <div style="color:#64748B;font-size:14px;line-height:1.8;margin-bottom:12px">
+        حللتِ ${toAr(basicsFinalCount)} مسائل مستقلة، وأطول سلسلة صحيحة متتالية بلغت ${toAr(basicsBestStreak)} من ${toAr(MASTERY_REQ)}.
+        نتوقّف هنا عمداً: الاستمرار بعد هذا الحدّ يحوّل الحل إلى ضغط عشوائي.
+      </div>
+      <div style="background:#FEF3C7;border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:#92400E;line-height:1.9">
+        💡 جرّبي الطريقة السهلة في المثال المحلول: ${basicsSub==="addcarry"?"اجمعي العشرات ثم الآحاد بلا حمل":basicsSub==="subborrow"?"عُدّي للأعلى بدل الاستلاف":"استعملي القاعدة في المثال"}.
+      </div>
+      <button class="btn" style="background:#D97706" onclick="startBasics(basicsSub)">🔁 أعيدي من البداية (بالشرح)</button>
+      <button class="link-btn" onclick="home()">→ الرئيسية</button>
+    </div>`;
+    return;
+  }
   const otherBtns=Object.keys(BASICS_SUBS).filter(k=>k!==basicsSub).map(k=>`<button class="btn" style="background:#059669" onclick="startBasics('${k}')">🔁 دربي على ${BASICS_SUBS[k].short}</button>`).join("");
   app.innerHTML=`<div class="card" style="text-align:center">
     <div style="font-size:44px;margin-bottom:6px">🏆</div>
@@ -1557,8 +1704,17 @@ function renderBasics(){
   if(basicsStage===1){
     let explain;
     if(basicsSub==="multdiv")explain=`<div>١) ${toAr(f.a)} مجموعات، كل وحدة فيها ${toAr(f.b)} = المجموع ${toAr(f.c)}.</div><div>٢) إذن: ${toAr(f.a)}×${toAr(f.b)}=${toAr(f.c)} ، و${toAr(f.b)}×${toAr(f.a)}=${toAr(f.c)}.</div><div>٣) وبالعكس: ${toAr(f.c)}÷${toAr(f.a)}=${toAr(f.b)} ، و${toAr(f.c)}÷${toAr(f.b)}=${toAr(f.a)}.</div>`;
-    else if(basicsSub==="addcarry"){const steps=additionSteps(f.a,f.b);explain=steps.map((s,i)=>`<div>${toAr(i+1)}) ${s}.</div>`).join("")+`<div>النتيجة النهائية: ${toAr(f.a)}+${toAr(f.b)}=${toAr(f.c)}.</div>`}
-    else if(basicsSub==="subborrow"){const steps=subtractionSteps(f.a,f.b);explain=steps.map((s,i)=>`<div>${toAr(i+1)}) ${s}.</div>`).join("")+`<div>النتيجة النهائية: ${toAr(f.a)}-${toAr(f.b)}=${toAr(f.c)}.</div>`}
+    else if(basicsSub==="addcarry"){
+      const steps=addPartialSteps(f.a,f.b);
+      explain=`<div style="font-weight:800;color:#065F46;margin-bottom:6px">الطريقة السهلة: اجمعي العشرات ثم الآحاد — بلا حمل</div>`
+        +steps.map((x,i)=>`<div>${toAr(i+1)}) ${x}.</div>`).join("")+altBox(additionSteps(f.a,f.b),"الطريقة العمودية (بالحمل)");
+    }
+    else if(basicsSub==="subborrow"){
+      const steps=subAddUpSteps(f.a,f.b),up=subAddUpStop(f.a,f.b);
+      explain=`<div style="font-weight:800;color:#065F46;margin-bottom:6px">الطريقة السهلة: عُدّي للأعلى — بلا استلاف</div>`
+        +`<div style="text-align:center;margin:8px 0">${jumpLineSVG(f.b,up,f.a)}</div>`
+        +steps.map((x,i)=>`<div>${toAr(i+1)}) ${x}.</div>`).join("")+altBox(subtractionSteps(f.a,f.b),"الطريقة العمودية (بالاستلاف)");
+    }
     else explain=`<div>١) ٪${toAr(f.b)} تعني ${toAr(f.b)} من كل ١٠٠ (كما في الشبكة الملوّنة أعلاه).</div><div>٢) قيمة ١٪ واحد من ${toAr(f.a)} = ${toAr(f.a)} ÷ ١٠٠ = ${toAr(f.onePercent)}.</div><div>٣) إذن ٪${toAr(f.b)} = ${toAr(f.onePercent)} × ${toAr(f.b)} = ${toAr(f.c)}.</div>`;
     body=`<div style="background:#EFF6FF;border-radius:14px;padding:16px;font-size:14px;line-height:1.8;color:#1E40AF;margin-bottom:16px">📘 هذا <b>مثال محلول</b>. اقرئي الحل خطوة بخطوة، ثم اضغطي «فهمت».</div>
     ${visualBox}
@@ -1571,9 +1727,9 @@ function renderBasics(){
     const ruleText=basicsSub==="multdiv"
       ?`القاعدة: الضرب والقسمة مرتبطان — ${toAr(f.a)}×${toAr(f.b)}=${toAr(f.c)}، فإذن ${toAr(f.c)}÷${toAr(f.a)}=${toAr(f.b)} و${toAr(f.c)}÷${toAr(f.b)}=${toAr(f.a)}.`
       :basicsSub==="addcarry"
-      ?`القاعدة: اجمعي كل خانة من اليمين (الآحاد ثم العشرات...)، ولو زاد المجموع عن ٩ اكتبي الآحاد واحملي الباقي للخانة التالية.`
+      ?`الطريقة السهلة: اجمعي العشرات وحدها، ثم الآحاد وحدها، ثم اجمعي الناتجين. لا حمل ولا خانات.`
       :basicsSub==="subborrow"
-      ?`القاعدة: اطرحي كل خانة من اليمين. لو رقم الأعلى في خانة أصغر من رقم الأسفل، استلفي ١ من الخانة التالية (تنقص ١) وأضيفي ١٠ للخانة الحالية قبل الطرح.`
+      ?`الطريقة السهلة: لا تطرحي — عُدّي للأعلى من العدد الأصغر إلى أقرب عشرة، ثم منها إلى العدد الأكبر، واجمعي القفزتين.`
       :`القاعدة: أوجدي قيمة ١٪ واحد أولاً بقسمة الرقم على ١٠٠ (${toAr(f.a)}÷١٠٠=${toAr(f.onePercent)})، ثم اضربيها في رقم النسبة (${toAr(f.onePercent)}×${toAr(f.b)}=${toAr(f.c)}).`;
     if(basicsStage===2)hint=`<div style="background:#F0FDF4;border-inline-start:4px solid #10B981;border-radius:12px;padding:14px;margin-bottom:14px;font-size:15px">${ruleText}</div>`;
     else if(basicsStage===3)hint=`<div style="background:#FEF3C7;border-radius:12px;padding:14px;margin-bottom:14px;font-size:15px;color:#B45309"><b>تذكّري القاعدة:</b> ${ruleText}</div>`;
@@ -2913,7 +3069,7 @@ function renderHome(){
     <button class="mode full" onclick="start('full')"><span class="m-name">🎯 محاكاة شاملة (٤٨ سؤالاً)</span><div class="m-sub">من كل المجالات — الأقرب للاختبار الحقيقي</div></button>
     <button class="mode" style="border-color:#FDE68A" onclick="goFadeMenu()"><span class="m-name">🎓 وضع التقوية (تلاشٍ تدريجي)</span><div class="m-sub">اختاري مهارة وتدرّبي عليها خطوة بخطوة — مبني على دراسات التعلّم</div></button>
     <button class="mode prog" onclick="loadProgress()"><span class="m-name">📈 متابعة التقدّم</span><div class="m-sub">نتائجك السابقة وتحليل المستوى لكل مجال</div></button>
-    <button class="mode full" style="background:#0D9488;border-color:#0D9488" onclick="startBasics('multdiv')"><span class="m-name">🧱 تدريب الأساسيات: عائلات الحقائق</span><div class="m-sub">ضرب/قسمة مرتبطان + جمع بالحمل + طرح بالاستلاف + أساسيات النسبة المئوية</div></button>
+    <button class="mode full" style="background:#0D9488;border-color:#0D9488" onclick="startBasics('multdiv')"><span class="m-name">🧱 تدريب الأساسيات: عائلات الحقائق</span><div class="m-sub">ضرب/قسمة مرتبطان + جمع وطرح بطرق سهلة بلا حمل ولا استلاف + أساسيات النسبة المئوية</div></button>
     <button class="mode full" style="background:#0F766E;border-color:#0F766E" onclick="startFactPlan()"><span class="m-name">🧮 طلاقة الحقائق · ١٠ دقائق</span><div class="m-sub">استرجاع فوري للجمع والطرح والضرب بلا عدّ أو أصابع، بتباعد ذكي</div></button>
     <button class="mode full" style="background:#4338CA;border-color:#4338CA" onclick="startEngPlan()"><span class="m-name">⭐ خطة الإنجليزية اليومية · ٤٠ دقيقة</span><div class="m-sub">شرح ثم تدريب، بتباعد ذكي — لا يتكرّر أي عنصر إلا في يوم استحقاقه (منهج الصف السادس)</div></button>
     <button class="mode full" style="background:#0E7490;border-color:#0E7490" onclick="startDictation()"><span class="m-name">✍️ إملاء بالإنجليزية</span><div class="m-sub">استمعي للكلمة، ثم اكتبيها — مستوى A1</div></button>
