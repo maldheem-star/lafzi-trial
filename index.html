@@ -709,9 +709,13 @@ async function buildFull(){
 
 
 // ===== وضع التقوية: التلاشي التدريجي (المتتاليات) =====
-let fadeStage=1, fadeStreak=0, fadeCur=null, fadeLocked=false, fadePicked=-1, fadeMasteryStreak=0, fadeStage4Support=false, fadeRecoveryStreak=0, fadeTopic="seq", fadeWrongStreak=0, fadeDroppedBack=false;
+let fadeStage=1, fadeStreak=0, fadeCur=null, fadeLocked=false, fadePicked=-1, fadeMasteryStreak=0, fadeStage4Support=false, fadeRecoveryStreak=0, fadeTopic="seq", fadeWrongStreak=0, fadeDroppedBack=false, fadeStage4Count=0, fadeShownAt=0, fadeNotYet=false, fadeBestStreak=0;
 const RECOVERY_REQ=2;
 const FADE_REQ=2, MASTERY_REQ=5;
+// سقف المرحلة الرابعة: بلا سقف كانت الحلقة لا تنتهي إلا بخمس صحيحات متتالية، فحلّت هيا
+// ١٠٠ سؤال مرآة في ٣ دقائق بمعدل ثانيتين — أي أنها استسلمت وصارت تخمّن، والتخمين يدرّب على التخمين.
+// وعند دقة ٥٣٪ فأي خمس متتالية احتمالها ٤٪ لكل نافذة، وعبر ٩٥ نافذة تُتوقَّع أربع مرات — فالشهادة بلا معنى.
+const MASTERY_MAX_Q=10;
 // مراحل ٢/٣ ما كان فيها أي مساعدة إضافية عند التعثّر (فقط مرحلة ٤)؛ لو تعثّرت ٤ إجابات متتالية
 // بنفس المرحلة، نرجعها مرحلة للخلف لمراجعة إضافية بدل تركها تحاول بلا نهاية
 const FADE_STUCK=4;
@@ -1153,7 +1157,7 @@ function fadePrep(){
   else{d=fadeCur.distractors;} // الوسيط/النسبة المئوية/المكعّب/الهرم: مموّهات محسوبة عند الإنشاء
   const opts=shuffle([fadeCur.ans,...fadeDedupe(fadeCur.ans,d)]);fadeCur.opts=opts;fadeCur.ai=opts.indexOf(fadeCur.ans);
 }
-function fadeNew(){fadeCur=fadeMakeQuestion();fadeLocked=false;fadePicked=-1;fadePrep();render()}
+function fadeNew(){fadeCur=fadeMakeQuestion();fadeLocked=false;fadePicked=-1;fadePrep();fadeShownAt=Date.now();render()}
 function fadeChoose(i){
   if(fadeLocked)return;fadeLocked=true;fadePicked=i;
   const ok=i===fadeCur.ai;
@@ -1163,8 +1167,16 @@ function fadeChoose(i){
     if(!ok){fadeMasteryStreak=0;fadeStage4Support=true;fadeRecoveryStreak=0;fadeMasteryBreak(fadeTopic)}
     else if(fadeStage4Support){fadeRecoveryStreak++;if(fadeRecoveryStreak>=RECOVERY_REQ){fadeStage4Support=false;fadeRecoveryStreak=0}}
     else{fadeMasteryStreak++}
+    if(fadeMasteryStreak>fadeBestStreak)fadeBestStreak=fadeMasteryStreak; // أطول سلسلة لا الحالية: الشاشة الختامية تعرضها
+    fadeStage4Count++;
   }
-  logAnswer("fade_"+fadeTopic,"stage"+fadeStage,ok);
+  const elapsed=fadeShownAt?Date.now()-fadeShownAt:null;
+  logAnswer("fade_"+fadeTopic,"stage"+fadeStage,ok,null,null,elapsed);
+  // نفس كاشف التسرّع المستعمل في الاختبار — لم يكن يعمل في التقوية لأنها لا تسجّل الزمن
+  if(elapsed!=null){
+    recentAnswerTimes.push(elapsed);if(recentAnswerTimes.length>RAPID_STREAK)recentAnswerTimes.shift();
+    rapidNudge=recentAnswerTimes.length===RAPID_STREAK&&recentAnswerTimes.every(t=>t<RAPID_MS);
+  }
   render();
 }
 function fadeStage1Next(){fadeStreak++;if(fadeStreak>=FADE_REQ){fadeStage=2;fadeStreak=0;fadeWrongStreak=0;fadeDroppedBack=false}fadeNew()}
@@ -1185,8 +1197,22 @@ function fadeMarkMastered(topic){
   r.level=Math.min((r.level||0)+1,FADE_REVIEW_DAYS.length);
   r.due=srsToday()+FADE_REVIEW_DAYS[r.level-1];
   r.at=srsToday();
+  r.q=fadeStage4Count; // عدد الأسئلة المستقلة التي لزمت — سجلّ للتحقّق أن الإتقان لم يُصادَف
   st[topic]=r;fadeMasterySave(st);
 }
+// ترحيل لمرة واحدة: قبل وضع السقف كانت المرحلة الرابعة لا تنتهي إلا بخمس متتالية، فسجّل النظام
+// إتقان "المرآة" بعد ١٠٠ سؤال بدقة ٥٣٪ — عند هذه الدقة تُتوقَّع أربع سلاسل خماسية بالمصادفة وحدها،
+// فالشهادة غير مستحقة وتُسحب. الأنواع الخمسة الأخرى تحقّقنا من سجلّها: كلٌّ منها ٥/٥ من أول خمسة.
+const FADE_AUDIT_KEY="mawhiba_fade_audit_v1";
+function fadeAuditOnce(){
+  try{
+    if(localStorage.getItem(FADE_AUDIT_KEY))return;
+    const st=fadeMasteryLoad();
+    if(st.mirror&&st.mirror.q===undefined){delete st.mirror;fadeMasterySave(st)}
+    localStorage.setItem(FADE_AUDIT_KEY,"1");
+  }catch(e){}
+}
+fadeAuditOnce();
 // الخطأ في نوع متقن يُسقط الإتقان — يرجع النوع لقائمة التدريب العادية
 function fadeMasteryBreak(topic){
   const st=fadeMasteryLoad();
@@ -1199,8 +1225,13 @@ function fadeMasteryState(topic){
   if(!r)return{mastered:false,due:false};
   return{mastered:true,due:srsToday()>=r.due,level:r.level,daysLeft:Math.max(0,r.due-srsToday())};
 }
-function fadeStage4Next(){if(fadeMasteryStreak>=MASTERY_REQ){fadeMarkMastered(fadeTopic);mode="fadeDone";window.scrollTo(0,0);render();return}fadeNew()}
-function startFade(topic){mode="fade";fadeTopic=topic||fadeTopic||"seq";fadeStage=1;fadeStreak=0;fadeWrongStreak=0;fadeDroppedBack=false;fadeMasteryStreak=0;fadeStage4Support=false;fadeRecoveryStreak=0;window.scrollTo(0,0);fadeNew()}
+function fadeStage4Next(){
+  if(fadeMasteryStreak>=MASTERY_REQ){fadeNotYet=false;fadeMarkMastered(fadeTopic);mode="fadeDone";window.scrollTo(0,0);render();return}
+  // بلغت السقف بلا إتقان: نُنهي بصدق ونعيدها غداً بدل إبقائها تخمّن حتى تصادف خمساً متتالية
+  if(fadeStage4Count>=MASTERY_MAX_Q){fadeNotYet=true;mode="fadeDone";window.scrollTo(0,0);render();return}
+  fadeNew();
+}
+function startFade(topic){mode="fade";fadeTopic=topic||fadeTopic||"seq";fadeStage=1;fadeStreak=0;fadeWrongStreak=0;fadeDroppedBack=false;fadeMasteryStreak=0;fadeStage4Support=false;fadeRecoveryStreak=0;fadeStage4Count=0;fadeNotYet=false;fadeBestStreak=0;recentAnswerTimes=[];rapidNudge=false;window.scrollTo(0,0);fadeNew()}
 function goFadeMenu(){mode="fadeMenu";window.scrollTo(0,0);render()}
 function renderFadeMenu(){
   // نرتّب: غير المتقن أولاً، ثم المتقن المستحقّ للمراجعة، ثم المتقن الذي لم يحن موعده — فتتوجّه تلقائياً للأضعف
@@ -1226,6 +1257,25 @@ function renderFadeDone(){
   const topicLabel=FADE_TOPICS.find(t=>t.key===fadeTopic).label;
   const m=fadeMasteryState(fadeTopic);
   const days=m.mastered?FADE_REVIEW_DAYS[m.level-1]:FADE_REVIEW_DAYS[0];
+  if(fadeNotYet){
+    const got=fadeBestStreak;
+    app.innerHTML=`<div class="card" style="text-align:center">
+      <div style="font-size:44px;margin-bottom:6px">🌱</div>
+      <div style="font-weight:800;font-size:19px;margin-bottom:8px">${topicLabel} — لم يكتمل الإتقان بعد</div>
+      <div style="color:#64748B;font-size:14px;line-height:1.8;margin-bottom:12px">
+        حللتِ ${toAr(fadeStage4Count)} أسئلة مستقلة، وأطول سلسلة صحيحة متتالية بلغت ${toAr(got)} من ${toAr(MASTERY_REQ)}.
+        نتوقّف هنا عمداً: الاستمرار بعد هذا الحدّ يحوّل الحل إلى تخمين، والتخمين يدرّب على التخمين لا على القاعدة.
+      </div>
+      <div style="background:#FEF3C7;border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:#92400E;line-height:1.9">
+        📅 هذا النوع يبقى في مقدّمة قائمتك ويعود <b>غداً</b>.<br>
+        <span style="font-size:12px">راجعي شرح القاعدة في المرحلة الأولى قبل أن تعيديه — العودة بعد راحة أنفع من مئة محاولة متتالية.</span>
+      </div>
+      <button class="btn" style="background:#D97706" onclick="startFade(fadeTopic)">🔁 أعيدي من البداية (بالشرح)</button>
+      <button class="btn" style="background:#0891B2" onclick="goFadeMenu()">↔️ نوع آخر</button>
+      <button class="link-btn" onclick="home()">→ الرئيسية</button>
+    </div>`;
+    return;
+  }
   app.innerHTML=`<div class="card" style="text-align:center">
     <div style="font-size:44px;margin-bottom:6px">🏆</div>
     <div style="font-weight:800;font-size:19px;margin-bottom:8px">أتقنتِ ${topicLabel}!</div>
@@ -1280,6 +1330,7 @@ function renderFade(){
   } else {
     const isText=c.choiceKind==="text"; // خيارات نصية طويلة: خط أصغر ومحاذاة طبيعية بدل التوسيط المكبّر
     const ch=c.opts.map((o,i)=>{let bg="#fff",bd="#E2E8F0",col="#334155";if(fadeLocked){if(i===c.ai){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(i===fadePicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}return `<button class="choice" style="background:${bg};border-color:${bd};color:${col};${isText?'font-size:15px;font-weight:700;line-height:1.7;text-align:start':'font-size:18px;font-weight:800'}" onclick="fadeChoose(${i})" ${fadeLocked?'disabled':''}>${c.choiceKind?o:toAr(o)}</button>`}).join("");
+    const rapidBanner=fadeLocked&&rapidNudge?`<div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:12px;padding:12px 14px;margin-top:10px;font-size:13px;color:#92400E;line-height:1.7">⏱️ إجاباتك جاءت سريعة جداً — هذي أسئلة تحتاج قراءة وتفكير. خذي وقتك، فالتخمين السريع لا يعلّم القاعدة.</div>`:"";
     let hint="";
     if(fadeStage===2)hint=`<div style="background:#F0FDF4;border-inline-start:4px solid #10B981;border-radius:12px;padding:14px;margin-bottom:14px;font-size:15px">القاعدة معطاة: <b>${c.ruleTxt}</b>. طبّقيها لإيجاد الإجابة.</div>`;
     else if(fadeStage===3)hint=`<div style="background:#FEF3C7;border-radius:12px;padding:14px;margin-bottom:14px;font-size:15px;color:#B45309"><b>اكتشفي القاعدة بنفسك</b> ثم طبّقيها.</div>`;
@@ -1287,8 +1338,8 @@ function renderFade(){
     const why=fadeLocked?`<div class="why" style="margin-bottom:10px">${fadePicked===c.ai?"✓ "+(fadeStage===4?"حللتِها وحدك! 🌟":"أحسنتِ"):"الصحيحة بالأخضر"}: ${c.kind==="seq"?(c.op+" = "+toAr(c.ans)):c.steps[c.steps.length-1]}.</div><button class="btn" style="background:${fadeStage===4?'#059669':'#D97706'}" onclick="${fadeStage===4?'fadeStage4Next()':'fadeAdvance()'}">${fadeStage===4?'سؤال جديد ←':'التالي ←'}</button>`:"";
     const mtr=fadeStage<4?`<div style="font-size:13px;color:#64748B;text-align:center;margin-top:10px">جاوبي صح مرتين متتاليتين للانتقال (${toAr(fadeStreak)}/${toAr(FADE_REQ)})</div>`
       :fadeStage4Support?`<div style="font-size:13px;color:#854D0E;text-align:center;margin-top:10px">🌱 مراجعة: (${toAr(fadeRecoveryStreak)}/${toAr(RECOVERY_REQ)}) لإخفاء التذكير مرة أخرى</div>`
-      :`<div style="font-size:13px;color:#64748B;text-align:center;margin-top:10px">🎓 حل مستقل — (${toAr(fadeMasteryStreak)}/${toAr(MASTERY_REQ)}) متتالية لإتقان هذا النوع</div>`;
-    body=`${hint}${seqBox}<div class="q">${c.kind==="seq"?"ما العدد الناقص؟":c.prompt}</div><div class="choices">${ch}</div>${why}${mtr}`;
+      :`<div style="font-size:13px;color:#64748B;text-align:center;margin-top:10px">🎓 حل مستقل — (${toAr(fadeMasteryStreak)}/${toAr(MASTERY_REQ)}) متتالية لإتقان هذا النوع<br><span style="font-size:12px;color:#94A3B8">سؤال ${toAr(fadeStage4Count)} من ${toAr(MASTERY_MAX_Q)} كحدّ أقصى لهذه الجلسة</span></div>`;
+    body=`${hint}${seqBox}<div class="q">${c.kind==="seq"?"ما العدد الناقص؟":c.prompt}</div><div class="choices">${ch}</div>${rapidBanner}${why}${mtr}`;
   }
   const topicLabel=FADE_TOPICS.find(t=>t.key===fadeTopic).label;
   app.innerHTML=`<button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
