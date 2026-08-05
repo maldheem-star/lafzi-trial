@@ -970,16 +970,51 @@ function fadeMakeLogicSyll(){
     q:`بناءً على العبارتين أعلاه، ما النتيجة الصحيحة؟`};
 }
 const LOGIC_NAMES=["سارة","نورة","ليلى","مها","هند","ريم"];
-const LOGIC_RELS=[{more:"أطول",most:"الأطول"},{more:"أكبر",most:"الأكبر"},{more:"أسرع",most:"الأسرع"},{more:"أثقل",most:"الأثقل"}];
+const LOGIC_RELS=[
+  {more:"أطول",less:"أقصر",most:"الأطول",least:"الأقصر"},
+  {more:"أكبر",less:"أصغر",most:"الأكبر",least:"الأصغر"},
+  {more:"أسرع",less:"أبطأ",most:"الأسرع",least:"الأبطأ"},
+  {more:"أثقل",less:"أخفّ",most:"الأثقل",least:"الأخفّ"},
+];
+const LOGIC_UNKNOWN="لا يمكن معرفة ذلك";
+// المولّد القديم كان معطوباً: العبارات دائماً بترتيب السلسلة، والسؤال دائماً عن الطرف الأعلى،
+// فالإجابة الصحيحة هي الاسم الأول في النص كل مرة بلا استثناء. من يلاحظ ذلك يأخذ ١٠٠٪ بلا استدلال —
+// وهذا ما حدث فعلاً: "أتقنت" المنطق هنا بـ ٥/٥ وأخذت ٢٢٪ في المحاكاة.
+// أربعة كسور للاختصار: ترتيب العبارات مخلوط، والمقارنة تُعكس عشوائياً، والسؤال قد يكون عن الطرف
+// الأدنى، وقد تكون السلسلة مقطوعة فتكون الإجابة "لا يمكن معرفة ذلك".
 function fadeMakeLogicOrder(){
-  const [a,b,c]=shuffle(LOGIC_NAMES).slice(0,3);
   const r=pick(LOGIC_RELS);
-  const opts=shuffle([a,b,c,"لا يمكن معرفة ذلك"]);
-  return{kind:"logic",choiceKind:"text",opts,ai:opts.indexOf(a),prompt:`من ${r.most}؟`,
-    steps:[`من العبارة الأولى: ${a} فوق ${b} في الترتيب`,`من العبارة الثانية: ${b} فوق ${c}`,`نرتّبهم معاً: ${a} ثم ${b} ثم ${c} — إذن ${r.most} هي ${a}`],
-    ruleTxt:`رتّبي الأسماء في سلسلة واحدة حسب المقارنات المعطاة، ثم اقرئي الطرف المطلوب من السلسلة`,
-    passage:`${a} ${r.more} من ${b}.<br>${b} ${r.more} من ${c}.`,
-    q:`بناءً على العبارتين أعلاه، من ${r.most}؟`};
+  const stmt=(hi,lo)=>pick([`${hi} ${r.more} من ${lo}.`,`${lo} ${r.less} من ${hi}.`]);
+  const askMost=pick([true,false]);
+  const broken=Math.random()<0.25;
+  let names,lines,ans,steps;
+  if(broken){
+    // سلسلتان منفصلتان: لا رابط بين المجموعتين فلا يمكن تحديد الطرف — والانتباه لذلك هو المهارة
+    const [a,b,c,d]=shuffle(LOGIC_NAMES).slice(0,4);
+    lines=shuffle([stmt(a,b),stmt(c,d)]);
+    names=[a,b,c,d];ans=LOGIC_UNKNOWN;
+    steps=[`العبارة الأولى تقارن بين مجموعة، والثانية تقارن بين مجموعة أخرى`,
+           `لا توجد أي عبارة تربط المجموعتين ببعضهما`,
+           `فلا نستطيع ترتيب الجميع في سلسلة واحدة — إذن ${LOGIC_UNKNOWN}`];
+  }else{
+    const n=pick([3,3,4]);
+    const chain=shuffle(LOGIC_NAMES).slice(0,n); // chain[0] هو الأعلى وآخرها الأدنى
+    const pairs=[];for(let i=0;i<n-1;i++)pairs.push(stmt(chain[i],chain[i+1]));
+    lines=shuffle(pairs); // خلط ترتيب العبارات يكسر اختصار "الاسم الأول"
+    names=chain.slice();ans=askMost?chain[0]:chain[n-1];
+    steps=[`رتّبي كل مقارنة على حدة، ولا تعتمدي على ترتيب ظهور الأسماء في النص`,
+           `بربط المقارنات تصير السلسلة: ${chain.join(" ثم ")}`,
+           `المطلوب ${askMost?r.most:r.least}، وهو ${askMost?"أول":"آخر"} السلسلة — إذن ${ans}`];
+  }
+  // الخيارات: الإجابة + اسمان آخران + "لا يمكن معرفة ذلك" (فهي خيار دائم لا يكشف شيئاً بوجوده)
+  const others=names.filter(x=>x!==ans);
+  const opts=shuffle([ans,...shuffle(others).slice(0,ans===LOGIC_UNKNOWN?3:2),...(ans===LOGIC_UNKNOWN?[]:[LOGIC_UNKNOWN])]);
+  const askTxt=askMost?r.most:r.least;
+  return{kind:"logic",choiceKind:"text",opts,ai:opts.indexOf(ans),prompt:`من ${askTxt}؟`,
+    steps,
+    ruleTxt:`اربطي المقارنات في سلسلة واحدة ثم اقرئي الطرف المطلوب. وانتبهي: ترتيب العبارات لا يعني الترتيب، وإذا لم ترتبط المجموعات ببعضها فالجواب «${LOGIC_UNKNOWN}»`,
+    passage:lines.join("<br>"),
+    q:`بناءً على العبارات أعلاه، من ${askTxt}؟`};
 }
 function fadeMakeLogic(){return pick([fadeMakeLogicSyll,fadeMakeLogicOrder,fadeMakeLogicOrder])()}
 
@@ -1204,12 +1239,23 @@ function fadeMarkMastered(topic){
 // إتقان "المرآة" بعد ١٠٠ سؤال بدقة ٥٣٪ — عند هذه الدقة تُتوقَّع أربع سلاسل خماسية بالمصادفة وحدها،
 // فالشهادة غير مستحقة وتُسحب. الأنواع الخمسة الأخرى تحقّقنا من سجلّها: كلٌّ منها ٥/٥ من أول خمسة.
 const FADE_AUDIT_KEY="mawhiba_fade_audit_v1";
+// ترحيل ثانٍ: شهادة "الاستدلال المنطقي" أيضاً غير مستحقّة. ثلثا أسئلة المنطق كانت من مولّد
+// معطوب: العبارات دائماً بترتيب السلسلة والسؤال دائماً عن الطرف الأعلى، فالإجابة هي الاسم
+// الأول في النص كل مرة. من يلاحظ النمط يأخذ ٥/٥ بلا استدلال — ودرجتها ٢٢٪ في المحاكاة تؤكد
+// أن الشهادة لم تعكس مهارة. أُصلح المولّد، وتُسحب الشهادة لتُعاد على الأسئلة السليمة.
+const FADE_AUDIT2_KEY="mawhiba_fade_audit_v2_logic";
 function fadeAuditOnce(){
   try{
-    if(localStorage.getItem(FADE_AUDIT_KEY))return;
-    const st=fadeMasteryLoad();
-    if(st.mirror&&st.mirror.q===undefined){delete st.mirror;fadeMasterySave(st)}
-    localStorage.setItem(FADE_AUDIT_KEY,"1");
+    if(!localStorage.getItem(FADE_AUDIT_KEY)){
+      const st=fadeMasteryLoad();
+      if(st.mirror&&st.mirror.q===undefined){delete st.mirror;fadeMasterySave(st)}
+      localStorage.setItem(FADE_AUDIT_KEY,"1");
+    }
+    if(!localStorage.getItem(FADE_AUDIT2_KEY)){
+      const st=fadeMasteryLoad();
+      if(st.logic){delete st.logic;fadeMasterySave(st)}
+      localStorage.setItem(FADE_AUDIT2_KEY,"1");
+    }
   }catch(e){}
 }
 fadeAuditOnce();
@@ -1219,6 +1265,7 @@ function fadeMasteryBreak(topic){
   if(st[topic]){delete st[topic];fadeMasterySave(st)}
 }
 // صياغة عربية سليمة للعدد مع "يوم" (تمييز المفرد/المثنى/الجمع)
+function arSecs(n){return n===1?"ثانية واحدة":n===2?"ثانيتين":n<=10?`${toAr(n)} ثوانٍ`:`${toAr(n)} ثانية`}
 function arDays(n){return n===0?"اليوم":n===1?"يوم واحد":n===2?"يومين":n<=10?`${toAr(n)} أيام`:`${toAr(n)} يوماً`}
 function fadeMasteryState(topic){
   const r=fadeMasteryLoad()[topic];
@@ -2568,20 +2615,39 @@ const app=document.getElementById("app");
 // ===== إدارة الحمل المعرفي: كشف الإجابات السريعة المتتالية واقتراح استراحة (بحسب الجلسة الحالية فقط) =====
 let sessionAnswered=0,questionShownAt=0,recentAnswerTimes=[],rapidNudge=false,breakSuggest=false,breakShownFor=[];
 const BREAK_EVERY=20,RAPID_MS=2500,RAPID_STREAK=4;
+// بوّابة القراءة. البيانات كانت قاطعة: الفهم المقروء زمنه الوسيط ١٫٧ ثانية والدرجة ٢٨٪ —
+// أي عند مستوى التخمين تماماً (٢٥٪ من أربعة خيارات)، بينما المفردات ٦٧٪ لأنها لا تحتاج قراءة نص.
+// اللافتة التحذيرية لم تنفع لأنها تظهر بعد الإجابة. فالحل بنيوي: لا خيارات قبل أن يمرّ زمن القراءة.
+// ٩٠ كلمة/دقيقة سرعة قراءة صامتة متحفّظة لسادس ابتدائي، والحدّ الأدنى ٨ ثوانٍ والأقصى ٤٥.
+const GATE_MIN_WORDS=25,GATE_WPM=90,GATE_MIN_S=8,GATE_MAX_S=45;
+function gateSecondsFor(text){
+  const w=String(text||"").trim().split(/\s+/).filter(Boolean).length;
+  if(w<GATE_MIN_WORDS)return 0;
+  return Math.max(GATE_MIN_S,Math.min(GATE_MAX_S,Math.round(w/GATE_WPM*60)));
+}
+let gateSecs=0,gateLeft=0,gateTimer=null,gateSeen=false;
+function gateStop(){if(gateTimer){clearInterval(gateTimer);gateTimer=null}}
+function gateStart(text){
+  gateStop();gateSecs=gateSecondsFor(text);gateLeft=gateSecs;
+  if(!gateSecs)return;
+  gateTimer=setInterval(()=>{gateLeft--;if(gateLeft<=0){gateLeft=0;gateStop()}render()},1000);
+}
+function gateOpen(){return gateSecs===0||gateLeft<=0}
+function gateReveal(){gateLeft=0;gateStop();gateSeen=true;render()} // لا تتخطّى الزمن، تُستعمل بعده فقط
 // أنواع تتطلّب قراءة/تفكيراً أطول من مجرّد الاسترجاع (نص، علاقة، استنتاج) — لها حدّ أدنى فوري خاص
 // بدل انتظار ٤ إجابات متتالية سريعة؛ إجابة واحدة أسرع من الحدّ كافية لتنبيه الاستعجال
 const RAPID_MIN_BY_TYPE={reading:6000,logic:4000,analogy:4000};
 
 async function start(domKey){
   currentMode=domKey;mode="quiz";idx=0;picked=null;locked=false;score=0;done=false;answered=[];
-  recentAnswerTimes=[];rapidNudge=false;breakSuggest=false;
+  recentAnswerTimes=[];rapidNudge=false;breakSuggest=false;gateStop();gateSecs=0;gateLeft=0;gateSeen=false;
   const needsAI=(domKey==="verbal"||domKey==="science"||domKey==="full");
   if(needsAI){loading=true;render();}
   if(domKey==="full"){filtered=await buildFull()}
   else{filtered=await buildDomain(domKey,PER)}
-  loading=false;questionShownAt=Date.now();render();
+  loading=false;questionShownAt=Date.now();if(filtered.length)gateStart(filtered[0].q);render();
 }
-async function home(){mode="home";window.scrollTo(0,0);render();await loadWeakness();if(mode==="home")render()}
+async function home(){mode="home";gateStop();window.scrollTo(0,0);render();await loadWeakness();if(mode==="home")render()}
 function choose(i){
   if(locked)return;
   picked=i;locked=true;
@@ -2590,7 +2656,10 @@ function choose(i){
   if(ok)score++;
   answered[idx]=ok;
   const elapsed=Date.now()-questionShownAt;
-  logAnswer(q.d,q.qtype||"bank",ok,null,null,elapsed);
+  // أسئلة الذكاء الاصطناعي تُولَّد وقت الاختبار ولا توجد في الكود، فبلا حفظ نصّها يستحيل
+  // مراجعة ما أخطأت فيه. نحفظ نصّها وإجابتها المختارة (لا الصحيحة) للتشخيص لاحقاً.
+  logAnswer(q.d,q.qtype||"bank",ok,q.c&&q.c[i]!=null?String(q.c[i]):null,null,elapsed,
+    q.qtype?{q_text:String(q.q).slice(0,1200)}:null);
   recentAnswerTimes.push(elapsed);
   if(recentAnswerTimes.length>RAPID_STREAK)recentAnswerTimes.shift();
   sessionAnswered++;
@@ -2601,7 +2670,7 @@ function choose(i){
   if(breakSuggest)breakShownFor.push(sessionAnswered);
   render();
 }
-function next(){if(idx+1>=filtered.length){done=true;window.scrollTo(0,0);saveAttempt()}else{idx++;picked=null;locked=false;rapidNudge=false;breakSuggest=false;questionShownAt=Date.now()}render()}
+function next(){if(idx+1>=filtered.length){done=true;gateStop();window.scrollTo(0,0);saveAttempt()}else{idx++;picked=null;locked=false;rapidNudge=false;breakSuggest=false;questionShownAt=Date.now();gateStart(filtered[idx].q)}render()}
 function domainStats(){const acc={};Object.keys(DOMAINS).forEach(k=>acc[k]={r:0,t:0});filtered.forEach((q,i)=>{if(acc[q.d]){acc[q.d].t++;if(answered[i])acc[q.d].r++}});return acc}
 function weakestOf(acc){let key=null,pct=101;Object.keys(DOMAINS).forEach(k=>{if(acc[k].t){const p=acc[k].r/acc[k].t*100;if(p<pct){pct=p;key=k}}});return{key,pct}}
 
@@ -2837,6 +2906,17 @@ function renderQuiz(){
     :locked&&breakSuggest?`<div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:12px;padding:12px 14px;margin-top:10px;font-size:13px;color:#1D4ED8;line-height:1.7">🌿 جاوبتِ على ${toAr(sessionAnswered)} سؤالاً في هذه الجلسة. استراحة قصيرة (٥ دقائق) تساعدك على التركيز أكثر — لا داعي للاستعجال.</div>`
     :"";
   const btn=locked?`<button class="btn" style="background:${d.color}" onclick="next()">${idx+1>=filtered.length?"إنهاء ومشاهدة النتيجة":"السؤال التالي ←"}</button>`:"";
+  // بوّابة القراءة: تُخفي الخيارات حتى يمرّ زمن قراءة النص. الهدف منع استراتيجية «اقرئي الخيارات
+  // وخمّني» — وهي ما كانت تفعله فعلاً: ١٫٧ ثانية للسؤال ودرجة عند مستوى التخمين تماماً.
+  const gateBox=(!locked&&gateSecs&&!gateOpen())
+    ? `<div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:12px;padding:16px;margin:14px 0;text-align:center">
+         <div style="font-size:30px;font-weight:800;color:#1D4ED8;line-height:1.2">${toAr(gateLeft)}</div>
+         <div style="font-size:14px;color:#1E40AF;font-weight:700;margin-top:6px">اقرئي النص كاملاً أولاً</div>
+         <div style="font-size:12px;color:#3B82F6;margin-top:6px;line-height:1.7">الخيارات ستظهر بعد ${arSecs(gateLeft)}. النص فيه الجواب — والقراءة أسرع من التخمين على المدى الطويل.</div>
+       </div>`
+    : (!locked&&gateSecs&&gateOpen())
+    ? `<div style="font-size:12px;color:#059669;font-weight:700;margin:10px 0">✓ خذي وقتك — راجعي النص قبل أن تختاري</div>`
+    : "";
   app.innerHTML=`
   <button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
   <div class="bar">${prog}</div>
@@ -2844,9 +2924,12 @@ function renderQuiz(){
   <div class="card">
     <span class="tag" style="background:${d.soft};color:${d.color}">${d.name}</span>
     ${termsChipsHtml(quizTermsFor(q.q))}
-    <div class="q">${q.q}</div>
+    ${gateSecs
+      ? `<div style="text-align:start;font-size:16.5px;font-weight:500;line-height:2.05;color:#1E293B;background:#FCFCFD;border-inline-start:4px solid #93C5FD;border-radius:10px;padding:14px 16px;margin-bottom:14px">${q.q}</div>`
+      : `<div class="q">${q.q}</div>`}
     ${svg}
-    <div class="choices">${choices}</div>
+    ${gateBox}
+    ${gateOpen()?`<div class="choices">${choices}</div>`:""}
     ${explain}
     ${banner}
   </div>
