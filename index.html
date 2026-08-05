@@ -1871,6 +1871,48 @@ function srsUpdate(id,ok){
 }
 function lessonSeen(id){try{return (JSON.parse(localStorage.getItem("mawhiba_eng_lessons")||"[]")).includes(id)}catch(e){return false}}
 function lessonMark(id){try{const a=JSON.parse(localStorage.getItem("mawhiba_eng_lessons")||"[]");if(!a.includes(id)){a.push(id);localStorage.setItem("mawhiba_eng_lessons",JSON.stringify(a))}}catch(e){}}
+// ===== إعادة تدريس القاعدة عند تكرار الفشل فيها =====
+// كان الشرح يُعرض مرة واحدة في العمر، ثم يُوسم "شوهد" إلى الأبد ويكتفي النظام بإعادة الاختبار
+// عبر التباعد. لكن التباعد أداة استرجاع لما تعلّمته لا أداة تعليم: فأخذت ٢/١٤ في القواعد،
+// وتسعة من أصل أربعة عشر عنصراً كانت في الصندوق صفر — أي أخطأت فيها من قبل وأُعيدت بلا شرح.
+// الآن نتابع دقة كل قاعدة، فإن هبطت أُلغي وسم "شوهد" وعاد الشرح قبل أسئلتها.
+const LESSON_PERF_KEY="mawhiba_eng_lesson_perf";
+const LESSON_WINDOW=6, LESSON_MIN=3, LESSON_WEAK_PCT=40, RETEACH_CAP=2;
+function lessonPerfLoad(){try{return JSON.parse(localStorage.getItem(LESSON_PERF_KEY)||"{}")}catch(e){return{}}}
+function lessonPerfSave(o){try{localStorage.setItem(LESSON_PERF_KEY,JSON.stringify(o))}catch(e){}}
+function lessonRecord(lessonId,ok){
+  if(!lessonId)return;
+  const p=lessonPerfLoad(),r=p[lessonId]||{recent:[]};
+  r.recent=(r.recent||[]).concat(ok?1:0).slice(-LESSON_WINDOW);
+  p[lessonId]=r;lessonPerfSave(p);
+}
+function lessonWeak(id){
+  const r=lessonPerfLoad()[id];
+  if(!r)return false;
+  // القواعد المبذورة موسومة صراحةً لا بعدد محاولات ملفَّق: الدليل عليها من سجلّ الخادم
+  // (٩ من ١٤ عنصراً كانت في الصندوق صفر، أي فشل متكرّر سابق) لا من محاولتين فقط
+  if(r.forceWeak)return true;
+  if(!r.recent||r.recent.length<LESSON_MIN)return false;
+  const pct=100*r.recent.reduce((a,b)=>a+b,0)/r.recent.length;
+  return pct<=LESSON_WEAK_PCT;
+}
+// بعد إعادة التدريس نبدأ نافذة جديدة، وإلا عاد الشرح كل يوم على تاريخ قديم لا على أدائها بعده
+function lessonResetWindow(id){const p=lessonPerfLoad();if(p[id]){p[id].recent=[];delete p[id].forceWeak;p[id].retaught=srsToday();lessonPerfSave(p)}}
+function lessonNeeded(id){return !lessonSeen(id)||lessonWeak(id)}
+// بذرة من بيانات حقيقية: جلسة ٥ أغسطس أعطت ٢/١٤ في القواعد موزّعة على سبع قواعد. بلا هذه البذرة
+// لن يبدأ التتبّع إلا من الصفر، فتنتظر ثلاث محاولات فاشلة جديدة في كل قاعدة قبل أن يعود الشرح —
+// وهي أخطأت فيها فعلاً أمامنا. نبذر ما حدث لا ما نظنّه: صحيح/خطأ كما سُجّل بالضبط.
+const LESSON_SEED_KEY="mawhiba_eng_lesson_seed_v1";
+const LESSON_SEED={l_cond:[0,0],l_few:[0,0],l_rel:[0,0],l_pastprog:[0,0],l_pp_q:[1,0,0],l_pp_vs:[0],l_passive:[0]};
+function lessonSeedOnce(){
+  try{
+    if(localStorage.getItem(LESSON_SEED_KEY))return;
+    const p=lessonPerfLoad();
+    Object.keys(LESSON_SEED).forEach(k=>{if(!p[k])p[k]={recent:LESSON_SEED[k].slice(),forceWeak:true}});
+    lessonPerfSave(p);localStorage.setItem(LESSON_SEED_KEY,"1");
+  }catch(e){}
+}
+lessonSeedOnce();
 // يبني خطة اليوم: المستحق أولاً (الأهم علمياً)، ثم جديد بحد أقصى، مع بطاقة شرح قبل أول تدريب على أي قاعدة
 // المخزون = عناصر المنهج (تشمل عناصر إملاء حقيقية أصلاً)، بمعرّفات ثابتة.
 let _engPool=null;
@@ -1901,9 +1943,17 @@ function buildDailyPlan(){
   const order=["vocab","grammar","dict","reading"],woven=[];
   let any=true;while(any){any=false;order.forEach(t=>{const q=byType[t];if(q&&q.length){woven.push(q.shift());any=true}})}
   // إدراج بطاقة الشرح مرة واحدة قبل أول عنصر يعتمد عليها
-  const out=[],taught={};
+  const out=[],taught={};let reteach=0;
   woven.forEach(it=>{
-    if(it.lesson&&!taught[it.lesson]&&!lessonSeen(it.lesson)){out.push({t:"lesson",id:it.lesson});taught[it.lesson]=1}
+    if(it.lesson&&!taught[it.lesson]&&lessonNeeded(it.lesson)){
+      const again=lessonSeen(it.lesson);
+      // الشرح الجديد لا سقف له (محكوم بسقف الجديد أصلاً)، أما إعادة التدريس فاثنتان في اليوم:
+      // الأضعف أولاً حسب ترتيب التشبيك، والباقي يعود غداً — تعلُّم قاعدتين خير من سبع محاضرات
+      if(!again||reteach<RETEACH_CAP){
+        if(again)reteach++;
+        out.push({t:"lesson",id:it.lesson,again});taught[it.lesson]=1;
+      }
+    }
     out.push(engShuffleChoices(it));
   });
   return {items:out,secs,due:due.length,fresh:newCount};
@@ -1921,8 +1971,8 @@ function planChoose(i){
   if(planLocked)return;planPicked=i;planLocked=true;
   const it=planCur(),ok=i===it.a;
   if(ok)planScore++;
-  srsUpdate(it.id,ok);
-  logAnswer("eng_plan",it.t,ok,it.c?it.c[i]:null,it.id,null,{is_new:!!it._isNew,srs_box:it._box});
+  srsUpdate(it.id,ok);lessonRecord(it.lesson,ok);
+  logAnswer("eng_plan",it.t,ok,it.c?it.c[i]:null,it.id,null,{is_new:!!it._isNew,srs_box:it._box,lesson:it.lesson||null});
   render();
 }
 function planCheckDict(){
@@ -1936,7 +1986,7 @@ function planCheckDict(){
   logAnswer("eng_plan","dict",ok,val,it.id,null,{is_new:!!it._isNew,srs_box:it._box});
   render();
 }
-function planLessonDone(){const it=planCur();lessonMark(it.id);planNext()}
+function planLessonDone(){const it=planCur();lessonMark(it.id);lessonResetWindow(it.id);planNext()}
 function planNext(){
   if(planIdx+1>=planItems.length){planDone=true;window.scrollTo(0,0);render();return}
   planIdx++;planPicked=null;planLocked=false;planInput="";render();
@@ -1954,8 +2004,9 @@ function renderEngPlan(){
     const L=ENG_LESSONS[it.id];
     app.innerHTML=`${head}
     <div class="card">
-      <span class="tag" style="background:#E0E7FF;color:#4338CA">📘 شرح جديد · افهمي أولاً</span>
+      <span class="tag" style="background:${it.again?'#FEF3C7':'#E0E7FF'};color:${it.again?'#B45309':'#4338CA'}">${it.again?"🔁 نُعيد الشرح · هذي القاعدة تتكرّر أخطاؤها":"📘 شرح جديد · افهمي أولاً"}</span>
       <div style="font-size:18px;font-weight:800;color:#312E81;margin:12px 0 10px">${L.t}</div>
+      ${it.again?`<div style="background:#FEF3C7;border-radius:10px;padding:12px 14px;margin-bottom:10px;font-size:13px;color:#92400E;line-height:1.8">أخطأتِ في أسئلة هذه القاعدة أكثر من مرة، فلا فائدة من إعادة الاختبار قبل إعادة الفهم. اقرئيها بهدوء ثم تدرّبي.</div>`:""}
       <div style="background:#EEF2FF;border-radius:12px;padding:14px;font-size:15px;line-height:2;color:#312E81">${L.b}</div>
       <div style="background:#F0FDF4;border-inline-start:4px solid #10B981;border-radius:12px;padding:14px;margin-top:12px;font-size:16px;line-height:2;direction:ltr;text-align:left;font-family:Georgia,serif">${L.ex.map(e=>`<div>${e}</div>`).join("")}</div>
     </div>
