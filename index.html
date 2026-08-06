@@ -907,31 +907,44 @@ function fadeMakePyramid(){
     q:`هرم عددي: مجموع العددين السفليين × ٢ = العلوي. ما العدد الناقص؟`};
 }
 function equalAnglesSVG(total,k){
-  const O={x:100,y:165},startPhi=(180-total)/2,rayLen=75,arcR=22,labR=34,outerR=80;
+  // الهندسة محسوبة لا ثابتة: بأنصاف أقطار ثابتة كانت العلامات تتلاصق في ٧٥٪ من الحالات
+  // (أقلها ٦ بكسل) فيصير الرسم كتلة واحدة لا زوايا مميّزة — وهذا جزء من إرباك الشرح.
+  const thetaRad=(total/k)*Math.PI/180;
+  const arcR=Math.max(24,Math.min(80,18/thetaRad));   // تباعد العلامات ١٨ بكسل على الأقل
+  const rayLen=arcR+32,outerR=rayLen+16,labR=arcR+17;
+  const halfRad=(total/2)*Math.PI/180;
+  const W=Math.max(210,Math.round(2*(outerR*Math.sin(halfRad)+56)));
+  const H=Math.round(outerR+74);
+  const O={x:W/2,y:H-26},startPhi=(180-total)/2;
   let phis=[startPhi];for(let i=0;i<k;i++)phis.push(phis[phis.length-1]+total/k);
   let rays="",arcs="",labels="";
   phis.forEach(p=>{const pt=vAngleDeg(O,rayLen,p);rays+=`<line x1="${O.x}" y1="${O.y}" x2="${pt.x.toFixed(1)}" y2="${pt.y.toFixed(1)}" stroke="#1E293B" stroke-width="2.5"/>`});
   for(let i=0;i<k;i++){
-    const u1=uDir(phis[i]),u2=uDir(phis[i+1]),isUnk=i===0;
-    arcs+=`<path d="${arcPathBetween(O,u1,u2,arcR)}" fill="none" stroke="${isUnk?'#D97706':'#0D9488'}" stroke-width="2"/>`;
-    if(isUnk){const lp=bisectorPoint(O,u1,u2,labR);labels+=`<text x="${lp.x.toFixed(1)}" y="${lp.y.toFixed(1)}" font-size="15" font-weight="800" text-anchor="middle" dominant-baseline="middle" fill="#D97706">؟</text>`;}
+    const u1=uDir(phis[i]),u2=uDir(phis[i+1]),isUnk=i===0,col=isUnk?"#D97706":"#0D9488";
+    arcs+=`<path d="${arcPathBetween(O,u1,u2,arcR)}" fill="none" stroke="${col}" stroke-width="2.5"/>`;
+    // علامة التساوي: شرطة تقطع القوس، متطابقة على كل الزوايا بما فيها المطلوبة لأنها كلها متساوية فعلاً
+    const bp=bisectorPoint(O,u1,u2,arcR),dx=(bp.x-O.x)/arcR,dy=(bp.y-O.y)/arcR;
+    arcs+=`<line x1="${(bp.x-dx*5).toFixed(1)}" y1="${(bp.y-dy*5).toFixed(1)}" x2="${(bp.x+dx*5).toFixed(1)}" y2="${(bp.y+dy*5).toFixed(1)}" stroke="${col}" stroke-width="2.5"/>`;
+    // لا نكتب "=" على كل زاوية: الشرطات تكفي، والكتابة كانت تتراكم في الزوايا الضيّقة
+    if(isUnk){const lp=bisectorPoint(O,u1,u2,labR);
+      labels+=`<text x="${lp.x.toFixed(1)}" y="${lp.y.toFixed(1)}" font-size="16" font-weight="800" text-anchor="middle" dominant-baseline="middle" fill="#D97706">؟</text>`}
   }
   const uO1=uDir(phis[0]),uO2=uDir(phis[k]);
   const outerLabel=bisectorPoint(O,uO1,uO2,outerR);
   const outerArc=`<path d="${arcPathBetween(O,uO1,uO2,outerR-14)}" fill="none" stroke="#334155" stroke-width="1.5" stroke-dasharray="3 3"/>`;
-  const outerText=`<text x="${outerLabel.x.toFixed(1)}" y="${outerLabel.y.toFixed(1)}" font-size="12" font-weight="700" text-anchor="middle" fill="#334155">المجموع ${toAr(total)}°</text>`;
-  return `<svg viewBox="0 0 200 200" width="200" height="200">${rays}<circle cx="${O.x}" cy="${O.y}" r="3" fill="#1E293B"/>${arcs}${labels}${outerArc}${outerText}</svg>`;
+  const outerText=`<text x="${outerLabel.x.toFixed(1)}" y="${Math.max(14,outerLabel.y).toFixed(1)}" font-size="12.5" font-weight="700" text-anchor="middle" fill="#334155">المجموع ${toAr(total)}°</text>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">${rays}<circle cx="${O.x}" cy="${O.y}" r="3.5" fill="#1E293B"/>${arcs}${labels}${outerArc}${outerText}</svg>`;
 }
 function fadeMakeAngles(){
-  const k=pick([2,3,4]),part=pick([10,12,15,18,20,24,25,30,36,40,45]),total=part*k;
+  const k=pick([2,3,4]),part=pick([15,18,20,24,25,30,36,40,45]),total=part*k;
   if(total>170)return fadeMakeAngles();
   const ans=part;
   return{kind:"angles",ans,prompt:"ما قياس الزاوية الواحدة (المُعلَّمة بـ ؟)؟",
-    steps:[`كل الأقواس الخضراء بالرسم متساوية في القياس، ومجموع الزاوية الكبيرة كلها ${toAr(total)}°`,`الزاوية الواحدة = ${toAr(total)} ÷ ${toAr(k)} = ${toAr(part)}°`],
-    ruleTxt:`الزاوية الواحدة = مجموع الزاوية الكبيرة ÷ عدد الأجزاء المتساوية`,
+    steps:[`الأشعّة تقسم الزاوية الكبيرة (${toAr(total)}°) إلى ${toAr(k)} زوايا <b>كلها متساوية</b> — لاحظي الشرطة الصغيرة على كل قوس، وهي علامة التساوي`,`والزاوية البرتقالية (؟) واحدة منها، لا زاوية مختلفة`,`فقياس كل واحدة = ${toAr(total)} ÷ ${toAr(k)} = ${toAr(part)}°`],
+    ruleTxt:`الزوايا الـ${toAr(k)} كلها متساوية، فقياس الواحدة = مجموع الزاوية الكبيرة ÷ عددها`,
     distractors:[part+5,part-5,total],
     svg:equalAnglesSVG(total,k),
-    caption:`الأقواس الخضراء كلها متساوية في القياس، والقوس البرتقالي (؟) هو المطلوب إيجاده`,
+    caption:`الأقواس الـ${toAr(k)} كلها متساوية — الشرطة على كل قوس تعني ذلك، والبرتقالية إحداها وهي المطلوبة`,
     q:`زاوية كبيرة قياسها ${toAr(total)}° مقسومة بأشعّة إلى ${toAr(k)} زوايا متساوية. ما قياس الزاوية الواحدة؟`};
 }
 function fadeMakeMirror(){
@@ -1114,11 +1127,17 @@ function circleSVG(label,isDiameter){
   const line=isDiameter
     ?`<line x1="35" y1="70" x2="145" y2="70" stroke="#0D9488" stroke-width="2.5"/>`
     :`<line x1="90" y1="70" x2="145" y2="70" stroke="#0D9488" stroke-width="2.5"/>`;
+  // النصف الآخر متقطّعاً حين يكون المعطى نصف القطر: "٢ × نصف القطر" تصير مرئية بدل أن تُتخيَّل
+  const mirrorHalf=isDiameter?"":`<line x1="35" y1="70" x2="90" y2="70" stroke="#94A3B8" stroke-width="2" stroke-dasharray="4 3"/>
+    <text x="62" y="88" font-size="11" font-weight="700" fill="#64748B" text-anchor="middle">مثله</text>`;
   const labelX=isDiameter?90:118;
-  return `<svg viewBox="0 0 180 140" width="180" height="140">
+  // "القطر = ٢ × نق" تحت الشكل لا داخله: بداخله كانت تتجاوز حافة الدائرة وتتداخل مع خطّها
+  const foot=isDiameter?"":`<text x="90" y="146" font-size="12" font-weight="800" fill="#334155" text-anchor="middle">القطر = ٢ × نق</text>`;
+  return `<svg viewBox="0 0 180 ${isDiameter?140:156}" width="180" height="${isDiameter?140:156}">
     <circle cx="90" cy="70" r="55" fill="#EFF6FF" stroke="#1E293B" stroke-width="2.5"/>
-    ${line}<circle cx="90" cy="70" r="3" fill="#1E293B"/>
+    ${mirrorHalf}${line}<circle cx="90" cy="70" r="3" fill="#1E293B"/>
     <text x="${labelX}" y="58" font-size="14" font-weight="800" fill="#0D9488" text-anchor="middle">${label}</text>
+    ${foot}
   </svg>`;
 }
 // نستعمل π ≈ ٣٫١٤ حصراً (لا ٢٢/٧) لأنه التقريب اللي تتعلّمه الطالبة بمدرستها؛
@@ -1140,11 +1159,11 @@ function fadeMakeCircle(){
   }
   const usedAsIsRadius=round2(PI_APPROX*r); // مموّه: ضربت π في نصف القطر مباشرة بدل القطر (نسيت ×٢)
   return{kind:"circle",ans,prompt:"ما محيط الدائرة؟",
-    steps:[`القطر = ٢ × نصف القطر = ٢ × ${toAr(r)} = ${toAr(d)} سم`,`محيط الدائرة = π × القطر، وباستعمال π ≈ ٣٫١٤: المحيط = ٣٫١٤ × ${toAr(d)} = ${toAr(ans)} سم`],
+    steps:[`في الرسم: الخط الأخضر نصف القطر (${toAr(r)})، والمتقطّع مثله تماماً — ومعاً يصنعان القطر`,`فالقطر = ٢ × ${toAr(r)} = ${toAr(d)} سم`,`ومحيط الدائرة = π × القطر ≈ ٣٫١٤ × ${toAr(d)} = ${toAr(ans)} سم`],
     ruleTxt:`محيط الدائرة = π × القطر = π × (٢ × نصف القطر)`,
     distractors:[usedAsIsRadius,round2(ans+r),round2(ans-r)],
     svg:circleSVG(`نق = ${toAr(r)} سم`,false),
-    caption:`الخط الأخضر هو نصف قطر الدائرة (من المركز إلى الدائرة)`,
+    caption:`الأخضر نصف القطر، والمتقطّع مثله — مجموعهما القطر`,
     q:`دائرة نصف قطرها ${toAr(r)} سم. ما محيطها؟ (π ≈ ٣٫١٤)`};
 }
 function parallelogramSVG(baseLabel,heightLabel){
@@ -1167,22 +1186,26 @@ function fadeMakeParallelogram(){
     q:`متوازي أضلاع قاعدته ${toAr(b)} سم وارتفاعه ${toAr(h)} سم. ما مساحته؟`};
 }
 function triangleSVG(baseLabel,heightLabel){
-  return `<svg viewBox="0 0 200 120" width="200" height="120">
+  // النسخة الثانية للمثلث مرسومة باهتة: المثلثان معاً متوازي أضلاع، فتُرى "النصف" بدل أن تُقال.
+  return `<svg viewBox="0 0 250 132" width="100%" style="max-width:250px">
+    <polygon points="30,100 170,100 230,20 90,20" fill="#FFFBEB" stroke="#CBD5E1" stroke-width="1.5" stroke-dasharray="5 4"/>
     <polygon points="30,100 170,100 90,20" fill="#FEF3C7" stroke="#1E293B" stroke-width="2.5"/>
     <line x1="90" y1="100" x2="90" y2="20" stroke="#D97706" stroke-width="2" stroke-dasharray="4 3"/>
     <path d="M 90,100 L 90,91 L 99,91 L 99,100" fill="none" stroke="#D97706" stroke-width="1.5"/>
     <text x="100" y="115" font-size="13" font-weight="800" fill="#0D9488" text-anchor="middle">${baseLabel}</text>
     <text x="72" y="62" font-size="13" font-weight="800" fill="#D97706" text-anchor="middle">${heightLabel}</text>
+    <text x="186" y="66" font-size="11" font-weight="700" fill="#94A3B8" text-anchor="middle">نسخة مثله</text>
+    <text x="125" y="130" font-size="11" font-weight="700" fill="#64748B" text-anchor="middle">المثلثان معاً = متوازي أضلاع</text>
   </svg>`;
 }
 function fadeMakeTriangle(){
   const b=2*rand(2,7),h=rand(3,12),ans=b*h/2;
   return{kind:"triangle",ans,prompt:"ما مساحة المثلث؟",
-    steps:[`مساحة المثلث = نصف مساحة متوازي الأضلاع الذي له القاعدة والارتفاع نفسهما`,`= (القاعدة × الارتفاع) ÷ ٢ = (${toAr(b)} × ${toAr(h)}) ÷ ٢ = ${toAr(ans)} سم²`],
+    steps:[`في الرسم: المثلث الملوّن + نسخته الباهتة = متوازي أضلاع كامل، قاعدته ${toAr(b)} وارتفاعه ${toAr(h)}`,`مساحة متوازي الأضلاع = ${toAr(b)} × ${toAr(h)} = ${toAr(b*h)} سم²`,`والمثلث نصفه بالضبط: ${toAr(b*h)} ÷ ٢ = ${toAr(ans)} سم²`],
     ruleTxt:`مساحة المثلث = (القاعدة × الارتفاع) ÷ ٢`,
     distractors:[b*h,ans+b,ans-h],
     svg:triangleSVG(`القاعدة = ${toAr(b)} سم`,`الارتفاع = ${toAr(h)} سم`),
-    caption:`الخط المتقطّع هو الارتفاع (عمودي على القاعدة)`,
+    caption:`البرتقالي المتقطّع هو الارتفاع (عمودي على القاعدة)، والشكل الباهت نسخة المثلث نفسه`,
     q:`مثلث قاعدته ${toAr(b)} سم وارتفاعه ${toAr(h)} سم. ما مساحته؟`};
 }
 function boxSVG(lLabel,wLabel,hLabel){
