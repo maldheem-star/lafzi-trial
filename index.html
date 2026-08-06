@@ -2451,8 +2451,28 @@ function pronHallucinated(target,heard){
   }
   return false;
 }
+// Whisper يضيف أو يُسقط السين الأخيرة كثيراً (insect ← "Insects" أخذت صفراً وهي نطقتها صحيحة).
+// نقارن بجذر مبسّط ونعرض الكلمة الأصلية كما هي — والقاعدة متماثلة على الطرفين فلا تُنشئ تطابقاً كاذباً.
+function pronStem(w){return(w.length>=4&&w.endsWith("s")&&!w.endsWith("ss"))?w.slice(0,-1):w}
+// ترجيح الكلمات: التقييم المتساوي جعل "That wasn't very fair, certainly" تنجح بـ ٨٠٪ والكلمة
+// المفقودة هي friendly — أي جوهر الجملة. وجعل إسقاط "not" (الذي يقلب المعنى) يكلّف كأي أداة.
+const PRON_NEG=["not","no","never","none","nothing","nobody"];
+const PRON_FUNC=["i","you","he","she","it","we","they","me","him","her","us","them","my","your","his","its","our","their",
+  "a","an","the","this","that","these","those","of","to","in","on","at","for","from","with","by","as","and","or","but",
+  "is","am","are","was","were","be","been","do","does","did","have","has","had","can","could","will","would","shall",
+  "should","may","might","must","there","here","so","if","then","than","up","out"];
+// n = عدد كلمات الجملة. ترجيح النفي إنما يصحّ في جملة تامة يقلب معناها؛ أما في عبارة
+// قصيرة مثل "No problem!" فـ no ليست أداة نفي بل جزء من قالب ثابت، وترجيحها كان يجعل
+// من تقول "no" وحدها تتفوّق على من تقول "problem" وحدها — وهذا مقلوب.
+function pronWeight(w,n){
+  const st=pronStem(w);
+  if((n===undefined||n>=4)&&PRON_NEG.indexOf(st)>=0)return 3;
+  if(PRON_FUNC.indexOf(st)>=0)return 1;
+  return 2;                               // كلمات المعنى
+}
 // محاذاة بأطول سلسلة جزئية مشتركة: تتسامح مع كلمة زائدة أو ناقصة بدل إسقاط الجملة كلها
 function pronAlign(t,h){
+  t=t.map(pronStem);h=h.map(pronStem);
   const n=t.length,m=h.length;
   const dp=Array.from({length:n+1},()=>new Array(m+1).fill(0));
   for(let i=n-1;i>=0;i--)for(let j=m-1;j>=0;j--)dp[i][j]=t[i]===h[j]?dp[i+1][j+1]+1:Math.max(dp[i+1][j],dp[i][j+1]);
@@ -2472,8 +2492,10 @@ function pronScoreOf(target,heard,judged){
   if(!t.length)return{pct:0,hit:[],words:[],got:0,total:0,ok:false,by:"none"};
   const useJudge=Array.isArray(judged)&&judged.length===t.length;
   const hit=useJudge?judged.map(Boolean):pronAlign(t,pronWords(heard));
-  const got=hit.filter(Boolean).length,pct=Math.round(100*got/t.length);
-  return{pct,hit,words:t,got,total:t.length,ok:pct>=PRON_PASS,by:useJudge?"judge":"local"};
+  const w=t.map(x=>pronWeight(x,t.length)),wTot=w.reduce((a,b)=>a+b,0);
+  const wGot=hit.reduce((a,h,i)=>a+(h?w[i]:0),0);
+  const got=hit.filter(Boolean).length,pct=Math.round(100*wGot/wTot);
+  return{pct,hit,words:t,got,total:t.length,weights:w,ok:pct>=PRON_PASS,by:useJudge?"judge":"local"};
 }
 // ===== التسجيل: تبدأ وتتوقف بيدها بدل نافذة ثابتة كانت تقطع الكلام =====
 const PRON_MAX_MS=15000; // حدّ أمان فقط، لا نافذة إجبارية
@@ -2645,6 +2667,14 @@ const SPEAK_ITEMS=[
  {id:"sp_just_an_exam",en:"It's just an exam.",ar:"إنه مجرد اختبار."},
  {id:"sp_not_friendly",en:"That wasn't very friendly.",ar:"لم يكن ذلك ودّياً."},
  // جمل أطول (٧+ كلمات)
+ // جمل وسيطة (٥-٦ كلمات) تسدّ القفزة من أربع كلمات إلى ثمانٍ — وهي عبارات صفّية عامة
+ // لا من صفحة الكتاب، وموسومة بذلك حتى لا يُظنّ أنها من المنهج
+ {id:"sp_ask_something",en:"Can I ask you something?",ar:"هل أسألك شيئاً؟",src:"عام"},
+ {id:"sp_dont_understand",en:"I don't understand this word.",ar:"لا أفهم هذه الكلمة.",src:"عام"},
+ {id:"sp_good_idea",en:"That's a really good idea.",ar:"هذي فكرة جيدة جداً.",src:"عام"},
+ {id:"sp_say_again",en:"Can you say that again?",ar:"هل تعيد قول ذلك؟",src:"عام"},
+ {id:"sp_see_you_after",en:"I'll see you after class.",ar:"أراك بعد الحصة.",src:"عام"},
+ {id:"sp_try_again",en:"Do you want to try again?",ar:"هل تريد المحاولة مرة أخرى؟",src:"عام"},
  {id:"sp_stressed",en:"I'm just stressed at the moment.",ar:"أنا متوتّر في هذه اللحظة فقط."},
  {id:"sp_last_name",en:"I can't remember the teacher's last name.",ar:"لا أتذكّر اسم عائلة المعلّمة."},
  {id:"sp_friendlier",en:"Can I help you to be a bit friendlier?",ar:"هل أساعدك لتكون أكثر ودّاً؟"},
@@ -2786,8 +2816,11 @@ function renderSpeak(){
         const pct=sc?sc.pct:0,col=pct>=PRON_PASS?'#059669':pct>=50?'#B45309':'#DC2626';
         const title=pct>=PRON_PASS?"✓ ممتاز! جملة واضحة":pct>=50?"قريب — أعيديها مرة أخرى":"لم تصل الجملة، جرّبي ببطء";
         const words=sc&&sc.words.length?`<div style="direction:ltr;font-family:Georgia,serif;font-size:18px;font-weight:800;margin:10px 0;line-height:1.8">${sc.words.map((w,i)=>`<span style="color:${sc.hit[i]?'#059669':'#DC2626'};margin:0 4px">${w}</span>`).join("")}</div><div style="font-size:12px;color:#64748B">الأخضر وصل · الأحمر لم يصل — الكلمات الصحيحة ${toAr(sc.got)} من ${toAr(sc.total)}</div>`:"";
+        // لا كل الكلمات سواء: نسمّي أثقل كلمة فاتتها بدل أن تبحث عنها بين الأحمر
+        const keyMiss=sc&&sc.weights?sc.words.map((w,i)=>({w,ok:sc.hit[i],wt:sc.weights[i]})).filter(x=>!x.ok).sort((a,b)=>b.wt-a.wt)[0]:null;
+        const keyNote=keyMiss&&keyMiss.wt>=2?`<div style="margin-top:8px;font-size:13px;color:#9D174D;font-weight:700">أهم كلمة فاتتك: <b style="direction:ltr;display:inline-block">${keyMiss.w}</b>${keyMiss.wt===3?" — وهي أداة النفي، وإسقاطها يقلب معنى الجملة":""}</div>`:"";
         const note=speakResult.note?`<div style="margin-top:8px;font-size:14px;color:#7C2D12;background:#FFF7ED;border-radius:8px;padding:8px 10px">💡 ${speakResult.note}</div>`:"";
-        return `<div class="explain"><div class="explain-title" style="color:${col}">${title} · ${toAr(pct)}%</div><div class="explain-body">${words}${note}${speakResult.heard?`<div style="margin-top:8px;font-size:13px">سمعنا: <b style="direction:ltr;display:inline-block">"${speakResult.heard}"</b></div>`:""}</div></div>`;
+        return `<div class="explain"><div class="explain-title" style="color:${col}">${title} · ${toAr(pct)}%</div><div class="explain-body">${words}${keyNote}${note}${speakResult.heard?`<div style="margin-top:8px;font-size:13px">سمعنا: <b style="direction:ltr;display:inline-block">"${speakResult.heard}"</b></div>`:""}</div></div>`;
       })()
     ):"";
     const btns=speakResult

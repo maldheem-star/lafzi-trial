@@ -43,6 +43,7 @@ Accept these as the SAME word (they are transcription conventions, not pronuncia
 - contractions with or without the apostrophe: wasnt=wasn't, its=it's, dont=don't, im=I'm, cant=can't=cannot=can not
 - possessives with or without the apostrophe: teachers=teacher's
 - okay=OK, alright=all right
+- a missing or extra final -s: insects=insect, teachers=teacher (Whisper adds/drops it constantly)
 - digits vs number words: 2=two
 - British vs American spelling: colour=color
 
@@ -71,6 +72,10 @@ const JUDGE_SHOTS: { user: string; assistant: string }[] = [
   {
     user: `target words: ["that","was","great"]\ntranscript: "that were great"`,
     assistant: `{"words":[{"w":"that","said":true},{"w":"was","said":false},{"w":"great","said":true}],"garbled":false,"note":"قلتِ were والصواب was."}`,
+  },
+  {
+    user: `target words: ["insect"]\ntranscript: "Insects"`,
+    assistant: `{"words":[{"w":"insect","said":true}],"garbled":false,"note":""}`,
   },
   {
     user: `target words: ["thanks","bud"]\ntranscript: "thanks but"`,
