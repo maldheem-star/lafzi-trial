@@ -135,7 +135,16 @@ const pick=a=>a[Math.floor(Math.random()*a.length)];
 function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 const toAr=n=>String(n).replace(/[0-9]/g,d=>"٠١٢٣٤٥٦٧٨٩"[d]);
 function arSeq(a){return a.map(toAr).join(" ، ")}
-function mcNum(correct,cands){const opts=[correct];(cands||[]).forEach(x=>{x=Math.round(x);if(opts.length<4&&Number.isFinite(x)&&x>=0&&!opts.includes(x))opts.push(x)});let p=1;while(opts.length<4){[correct+p,correct-p].forEach(x=>{if(opts.length<4&&x>=0&&!opts.includes(x))opts.push(x)});p++;if(p>300)break}const sh=shuffle(opts);return{choices:sh.map(toAr),answer:sh.indexOf(correct)}}
+function mcNum(correct,cands){const opts=[correct];(cands||[]).forEach(x=>{x=Math.round(x);if(opts.length<4&&Number.isFinite(x)&&x>=0&&!opts.includes(x))opts.push(x)});let p=1;while(opts.length<4){[correct+p,correct-p].forEach(x=>{if(opts.length<4&&x>=0&&!opts.includes(x))opts.push(x)});p++;if(p>300)break}const sh=shuffle(opts);return{choices:sh.map(x=>Number.isInteger(x)?toAr(x):arDec(x)),answer:sh.indexOf(correct)}}
+function arDec(x){return toAr(String(round2(x))).replace(".","٫")}
+// خيارات عشرية: mcNum يقرّب للأعداد الصحيحة فيمحو الفاصلة — وهي بيت القصيد هنا
+function mcNumDec(correct,cands){
+  const opts=[round2(correct)];
+  (cands||[]).forEach(x=>{x=round2(x);if(opts.length<4&&Number.isFinite(x)&&x>0&&opts.indexOf(x)<0)opts.push(x)});
+  let p=1;
+  while(opts.length<4){[round2(correct+p),round2(correct-p)].forEach(x=>{if(opts.length<4&&x>0&&opts.indexOf(x)<0)opts.push(x)});p++;if(p>300)break}
+  const sh=shuffle(opts);return{choices:sh.map(arDec),answer:sh.indexOf(round2(correct))};
+}
 function qz(d,q,correct,cands,w){const m=mcNum(correct,cands);return{d,q,c:m.choices,a:m.answer,w}}
 
 // ===== مولّدات الرياضي =====
@@ -1150,7 +1159,7 @@ function fadeMakeCircle(){
   if(isDiameter){
     const usedAsRadius=round2(PI_APPROX*(d/2)); // مموّه: تعاملت مع القطر كأنه نصف القطر (نسيت ×٢)
     return{kind:"circle",ans,prompt:"ما محيط الدائرة؟",
-      steps:[`محيط الدائرة = π × القطر`,`باستعمال π ≈ ٣٫١٤: المحيط = ٣٫١٤ × ${toAr(d)} = ${toAr(ans)} سم`],
+      steps:[`محيط الدائرة = π × القطر`,`باستعمال π ≈ ٣٫١٤: المحيط = ٣٫١٤ × ${toAr(d)} = ${arDec(ans)} سم`],
       ruleTxt:`محيط الدائرة = π × القطر (π ≈ ٣٫١٤)`,
       distractors:[usedAsRadius,round2(ans+d),round2(ans-d)],
       svg:circleSVG(`قطر = ${toAr(d)} سم`,true),
@@ -1159,7 +1168,7 @@ function fadeMakeCircle(){
   }
   const usedAsIsRadius=round2(PI_APPROX*r); // مموّه: ضربت π في نصف القطر مباشرة بدل القطر (نسيت ×٢)
   return{kind:"circle",ans,prompt:"ما محيط الدائرة؟",
-    steps:[`في الرسم: الخط الأخضر نصف القطر (${toAr(r)})، والمتقطّع مثله تماماً — ومعاً يصنعان القطر`,`فالقطر = ٢ × ${toAr(r)} = ${toAr(d)} سم`,`ومحيط الدائرة = π × القطر ≈ ٣٫١٤ × ${toAr(d)} = ${toAr(ans)} سم`],
+    steps:[`في الرسم: الخط الأخضر نصف القطر (${toAr(r)})، والمتقطّع مثله تماماً — ومعاً يصنعان القطر`,`فالقطر = ٢ × ${toAr(r)} = ${toAr(d)} سم`,`ومحيط الدائرة = π × القطر ≈ ٣٫١٤ × ${toAr(d)} = ${arDec(ans)} سم`],
     ruleTxt:`محيط الدائرة = π × القطر = π × (٢ × نصف القطر)`,
     distractors:[usedAsIsRadius,round2(ans+r),round2(ans-r)],
     svg:circleSVG(`نق = ${toAr(r)} سم`,false),
@@ -1453,7 +1462,7 @@ function renderFade(){
     <div style="font-size:13px;color:#64748B;text-align:center;margin-top:10px">شاهدي مثالين للانتقال (${toAr(fadeStreak)}/${toAr(FADE_REQ)})</div>`;
   } else {
     const isText=c.choiceKind==="text"; // خيارات نصية طويلة: خط أصغر ومحاذاة طبيعية بدل التوسيط المكبّر
-    const ch=c.opts.map((o,i)=>{let bg="#fff",bd="#E2E8F0",col="#334155";if(fadeLocked){if(i===c.ai){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(i===fadePicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}return `<button class="choice" style="background:${bg};border-color:${bd};color:${col};${isText?'font-size:15px;font-weight:700;line-height:1.7;text-align:start':'font-size:18px;font-weight:800'}" onclick="fadeChoose(${i})" ${fadeLocked?'disabled':''}>${c.choiceKind?o:toAr(o)}</button>`}).join("");
+    const ch=c.opts.map((o,i)=>{let bg="#fff",bd="#E2E8F0",col="#334155";if(fadeLocked){if(i===c.ai){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(i===fadePicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}return `<button class="choice" style="background:${bg};border-color:${bd};color:${col};${isText?'font-size:15px;font-weight:700;line-height:1.7;text-align:start':'font-size:18px;font-weight:800'}" onclick="fadeChoose(${i})" ${fadeLocked?'disabled':''}>${c.choiceKind?o:(Number.isInteger(o)?toAr(o):arDec(o))}</button>`}).join("");
     const rapidBanner=fadeLocked&&rapidNudge?`<div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:12px;padding:12px 14px;margin-top:10px;font-size:13px;color:#92400E;line-height:1.7">⏱️ إجاباتك جاءت سريعة جداً — هذي أسئلة تحتاج قراءة وتفكير. خذي وقتك، فالتخمين السريع لا يعلّم القاعدة.</div>`:"";
     let hint="";
     if(fadeStage===2)hint=`<div style="background:#F0FDF4;border-inline-start:4px solid #10B981;border-radius:12px;padding:14px;margin-bottom:14px;font-size:15px">القاعدة معطاة: <b>${c.ruleTxt}</b>. طبّقيها لإيجاد الإجابة.</div>`;
@@ -1470,6 +1479,7 @@ function renderFade(){
   <div style="display:flex;gap:6px;margin-bottom:12px">${bar}</div>
   <div style="font-size:12px;font-weight:800;color:#D97706;margin-bottom:12px">${info.label}</div>
   <div class="card"><span class="tag" style="background:#FEF3C7;color:#D97706">تقوية ${topicLabel} · ${info.tag}</span>${fadeTermsRow(fadeTopic)}${body}</div>
+  ${fadeTopic==="circle"?`<button class="link-btn" style="color:#0D9488" onclick="startBasics('pimul')">✖️ الضرب في ٣٫١٤ صعب؟ تدرّبي عليه وحده (بلا آلة حاسبة)</button>`:""}
   <button class="link-btn" onclick="goFadeMenu()">🔁 غيّري نوع التقوية</button>`;
 }
 
@@ -1480,7 +1490,8 @@ const BASICS_SUBS={
   multdiv:{label:"عائلات الضرب والقسمة",short:"عائلات الضرب والقسمة"},
   addcarry:{label:"الجمع (عشرات/مئات)",short:"الجمع"},
   subborrow:{label:"الطرح (عشرات/مئات)",short:"الطرح"},
-  percent:{label:"أساسيات النسبة المئوية",short:"النسبة المئوية"}
+  percent:{label:"أساسيات النسبة المئوية",short:"النسبة المئوية"},
+  pimul:{label:"الضرب في ٣٫١٤ (بلا آلة حاسبة)",short:"الضرب في ٣٫١٤"}
 };
 const BASICS_TERMS={
   multdiv:[{ar:"ضرب",en:"multiplication"},{ar:"قسمة",en:"division"}],
@@ -1551,6 +1562,44 @@ function addPartialSteps(a,b){
          `اجمعي الآحاد وحدها: ${toAr(ao)} + ${toAr(bo)} = ${toAr(ones)}`,
          `اجمعي الناتجين: ${toAr(tens)} + ${toAr(ones)} = ${toAr(a+b)}`];
 }
+// ===== الضرب في ٣٫١٤ بلا آلة حاسبة =====
+// استعملت هيا الآلة في محيط الدائرة، وهذا قرار عقلاني: الطريقة العمودية لعدد عشري من ثلاث
+// خانات فوق طاقتها وهي بالكاد أتقنت الجمع بحمل. فنُزيل الصعوبة لا نطالبها بتحمّلها:
+//  ١) التقدير أولاً: المحيط أكبر قليلاً من ٣ أضعاف القطر — وهو مفهوم π نفسه، وأداة تحقّق
+//     من موضع الفاصلة. خطأ موضع الفاصلة هو الخطأ الكلاسيكي، وقاعدة "عُدّي المنازل" تُحفظ
+//     وتُنسى، بينما التقدير يُصلحها ذاتياً (Hiebert و Wearne).
+//  ٢) الضرب بلا فاصلة بتفكيك ٣١٤ = ٣٠٠ + ١٠ + ٤ — نفس مبدأ المجاميع الجزئية الذي تعلّمته
+//     في الجمع، فكرة واحدة تتوسّع لا حيلة ثالثة. وكل جزء من جدول الضرب.
+//  ٣) الفاصلة منزلتين في آخر خطوة — فلا حساب عشري إطلاقاً قبلها.
+function piMulSteps(d){
+  const p3=300*d,p1=10*d,p4=4*d,small=p1+p4,tot=314*d;
+  return[`قدّري أولاً: المحيط أكبر قليلاً من ٣ أضعاف القطر، و٣ × ${toAr(d)} = ${toAr(3*d)}`,
+         `انسي الفاصلة واضربي ٣١٤ مفكَّكاً: ٣٠٠ × ${toAr(d)} = ${toAr(p3)}`,
+         `١٠ × ${toAr(d)} = ${toAr(p1)}، و٤ × ${toAr(d)} = ${toAr(p4)}`,
+         `اجمعي الصغيرين: ${toAr(p1)} + ${toAr(p4)} = ${toAr(small)}، ثم ${toAr(p3)} + ${toAr(small)} = ${toAr(tot)}`,
+         `أعيدي الفاصلة منزلتين: <b>${arDec(tot/100)}</b> — وهو أكبر قليلاً من ${toAr(3*d)} كما قدّرنا ✓`];
+}
+// شريط ٣١٤ مفكَّكاً: تُرى القطع الثلاث بأحجامها بدل أن تُقال
+function piSplitSVG(d){
+  const W=320,H=104,x0=12,w=W-24;
+  const parts=[[300,"#0D9488","٣٠٠"],[10,"#7C3AED","١٠"],[4,"#D97706","٤"]];
+  // عرض أدنى لكل قطعة ثم توزيع الباقي بالتناسب. بالحدّ الأدنى وحده كان مجموع العروض يتجاوز
+  // الشريط فتخرج القطعة الثالثة (٤) خارج الإطار ولا تُرى أصلاً.
+  const minW=30,rest=w-minW*parts.length;
+  let acc=0,bars="";
+  parts.forEach(([v,c,lab])=>{
+    const bw=minW+rest*v/314,bx=x0+acc;acc+=bw;
+    bars+=`<rect x="${bx.toFixed(1)}" y="20" width="${bw.toFixed(1)}" height="30" rx="5" fill="${c}" opacity="0.9"/>
+      <text x="${(bx+bw/2).toFixed(1)}" y="40" font-size="13" font-weight="800" fill="#fff" text-anchor="middle">${lab}</text>
+      <text x="${(bx+bw/2).toFixed(1)}" y="66" font-size="11.5" font-weight="700" fill="${c}" text-anchor="middle">×${toAr(d)}</text>
+      <text x="${(bx+bw/2).toFixed(1)}" y="82" font-size="12" font-weight="800" fill="#334155" text-anchor="middle">${toAr(v*d)}</text>`;
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">
+    <text x="${W/2}" y="13" font-size="12" font-weight="800" fill="#334155" text-anchor="middle">٣١٤ = ٣٠٠ + ١٠ + ٤</text>
+    ${bars}
+    <text x="${W/2}" y="99" font-size="12.5" font-weight="800" fill="#0F172A" text-anchor="middle">المجموع ${toAr(314*d)} ← الفاصلة منزلتين ← ${arDec(314*d/100)}</text>
+  </svg>`;
+}
 function subAddUpStop(a,b){
   const up=Math.ceil(b/10)*10;
   // العشرة الوسيطة مفيدة فقط إذا وقعت فعلاً بين العددين: لو كان الأصغر مضاعفاً للعشرة
@@ -1613,6 +1662,8 @@ function subtractionSteps(a,b){
 function basicsMakeFamily(){const a=rand(2,9),b=rand(2,9);return{a,b,c:a*b}}
 function basicsMakeAddCarry(){const o1=rand(5,9),o2=rand(5,9),t1=rand(1,8),t2=rand(1,8);const a=t1*10+o1,b=t2*10+o2;return{a,b,c:a+b}}
 function basicsMakeSubBorrow(){const o2=rand(2,9),o1=rand(0,o2-1),t2=rand(1,7),t1=rand(t2+1,9);const a=t1*10+o1,b=t2*10+o2;return{a,b,c:a-b}}
+// القطر ٤..٤٠ كما في مولّد محيط الدائرة تماماً، فما تتدرّب عليه هنا هو ما تواجهه هناك
+function basicsMakePiMul(){const d=rand(2,20)*2;return{a:d,b:314,c:round2(PI_APPROX*d)}}
 function basicsMakePercent(){const a=pick([100,200,300,400,500,600,800,1000]),b=pick([10,20,25,30,40,50,60,70,75,80,90]);const onePercent=a/100,c=onePercent*b;return{a,b,c,onePercent}}
 function basicsFamilyQ(f){
   const kind=pick(["mul1","mul2","div1","div2"]);
@@ -1634,13 +1685,17 @@ function basicsPrep(){
   if(basicsSub==="multdiv"){const fq=basicsFamilyQ(f);basicsCur.qText=fq.text;ans=fq.ans}
   else if(basicsSub==="addcarry"){ans=f.c;basicsCur.qText=`${toAr(f.a)} + ${toAr(f.b)} = ؟`}
   else if(basicsSub==="subborrow"){ans=f.c;basicsCur.qText=`${toAr(f.a)} - ${toAr(f.b)} = ؟`}
+  else if(basicsSub==="pimul"){ans=f.c;basicsCur.qText=`٣٫١٤ × ${toAr(f.a)} = ؟`}
   else{ans=f.c;basicsCur.qText=`${toAr(f.b)}% من ${toAr(f.a)} = ؟`}
-  const m=basicsSub==="percent"?mcNum(ans,[ans+f.onePercent,ans-f.onePercent,f.a*f.b]):mcNum(ans,[ans+1,ans-1,ans+10]);
+  // مموّهات ٣٫١٤: الفاصلة في الموضع الخطأ (الخطأ الكلاسيكي)، ونسيان جزء من التفكيك
+  const m=basicsSub==="percent"?mcNum(ans,[ans+f.onePercent,ans-f.onePercent,f.a*f.b])
+    :basicsSub==="pimul"?mcNumDec(ans,[round2(ans*10),round2(ans/10),round2(3*f.a)])
+    :mcNum(ans,[ans+1,ans-1,ans+10]);
   basicsCur.opts=m.choices;basicsCur.ai=m.answer;
 }
 function basicsNew(){
   basicsShownAt=Date.now();
-  const gen=basicsSub==="multdiv"?basicsMakeFamily:basicsSub==="addcarry"?basicsMakeAddCarry:basicsSub==="subborrow"?basicsMakeSubBorrow:basicsMakePercent;
+  const gen=basicsSub==="multdiv"?basicsMakeFamily:basicsSub==="addcarry"?basicsMakeAddCarry:basicsSub==="subborrow"?basicsMakeSubBorrow:basicsSub==="pimul"?basicsMakePiMul:basicsMakePercent;
   basicsCur={fam:gen()};basicsLocked=false;basicsPicked=-1;basicsPrep();render();
 }
 // extra (اختياري): حقول إضافية مثل {is_new, srs_box} — تُميّز العنصر الجديد عن المُراجَع عند التحليل
@@ -1687,7 +1742,7 @@ function renderBasicsDone(){
         نتوقّف هنا عمداً: الاستمرار بعد هذا الحدّ يحوّل الحل إلى ضغط عشوائي.
       </div>
       <div style="background:#FEF3C7;border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:#92400E;line-height:1.9">
-        💡 جرّبي الطريقة السهلة في المثال المحلول: ${basicsSub==="addcarry"?"اجمعي العشرات ثم الآحاد بلا حمل":basicsSub==="subborrow"?"عُدّي للأعلى بدل الاستلاف":"استعملي القاعدة في المثال"}.
+        💡 جرّبي الطريقة السهلة في المثال المحلول: ${basicsSub==="addcarry"?"اجمعي العشرات ثم الآحاد بلا حمل":basicsSub==="subborrow"?"عُدّي للأعلى بدل الاستلاف":basicsSub==="pimul"?"قدّري ٣ × العدد أولاً، ثم اضربي ٣١٤ مفكَّكاً":"استعملي القاعدة في المثال"}.
       </div>
       <button class="btn" style="background:#D97706" onclick="startBasics(basicsSub)">🔁 أعيدي من البداية (بالشرح)</button>
       <button class="link-btn" onclick="home()">→ الرئيسية</button>
@@ -1717,6 +1772,7 @@ function renderBasics(){
   let visualBox="";
   if(showVisual){
     if(basicsSub==="multdiv")visualBox=`<div style="margin-bottom:14px">${groupsVisual(f.a,f.b)}</div>`;
+    else if(basicsSub==="pimul")visualBox=`<div style="display:flex;justify-content:center;margin-bottom:14px">${piSplitSVG(f.a)}</div>`;
     else if(basicsSub==="percent")visualBox=`<div style="display:flex;justify-content:center;margin-bottom:6px">${percentGridVisual(f.b)}</div><div style="text-align:center;font-size:12px;color:#64748B;margin-bottom:14px">المربعات الملوّنة = ٪${toAr(f.b)} من الشبكة (١٠٠ مربع)</div>`;
     else{
       const sign=basicsSub==="addcarry"?"+":"−";
@@ -1738,6 +1794,10 @@ function renderBasics(){
         +`<div style="text-align:center;margin:8px 0">${jumpLineSVG(f.b,up,f.a)}</div>`
         +steps.map((x,i)=>`<div>${toAr(i+1)}) ${x}.</div>`).join("")+altBox(subtractionSteps(f.a,f.b),"الطريقة العمودية (بالاستلاف)");
     }
+    else if(basicsSub==="pimul"){
+      explain=`<div style="font-weight:800;color:#065F46;margin-bottom:6px">الطريقة السهلة: قدّري، ثم اضربي بلا فاصلة، ثم أعيدي الفاصلة</div>`
+        +piMulSteps(f.a).map((x,i)=>`<div>${toAr(i+1)}) ${x}.</div>`).join("");
+    }
     else explain=`<div>١) ٪${toAr(f.b)} تعني ${toAr(f.b)} من كل ١٠٠ (كما في الشبكة الملوّنة أعلاه).</div><div>٢) قيمة ١٪ واحد من ${toAr(f.a)} = ${toAr(f.a)} ÷ ١٠٠ = ${toAr(f.onePercent)}.</div><div>٣) إذن ٪${toAr(f.b)} = ${toAr(f.onePercent)} × ${toAr(f.b)} = ${toAr(f.c)}.</div>`;
     body=`<div style="background:#EFF6FF;border-radius:14px;padding:16px;font-size:14px;line-height:1.8;color:#1E40AF;margin-bottom:16px">📘 هذا <b>مثال محلول</b>. اقرئي الحل خطوة بخطوة، ثم اضغطي «فهمت».</div>
     ${visualBox}
@@ -1753,6 +1813,8 @@ function renderBasics(){
       ?`الطريقة السهلة: اجمعي العشرات وحدها، ثم الآحاد وحدها، ثم اجمعي الناتجين. لا حمل ولا خانات.`
       :basicsSub==="subborrow"
       ?`الطريقة السهلة: لا تطرحي — عُدّي للأعلى من العدد الأصغر إلى أقرب عشرة، ثم منها إلى العدد الأكبر، واجمعي القفزتين.`
+      :basicsSub==="pimul"
+      ?`قدّري أولاً (الجواب أكبر قليلاً من ٣ × العدد)، ثم اضربي ٣١٤ مفكَّكاً إلى ٣٠٠ + ١٠ + ٤ بلا فاصلة، ثم أعيدي الفاصلة منزلتين وتحقّقي بالتقدير.`
       :`القاعدة: أوجدي قيمة ١٪ واحد أولاً بقسمة الرقم على ١٠٠ (${toAr(f.a)}÷١٠٠=${toAr(f.onePercent)})، ثم اضربيها في رقم النسبة (${toAr(f.onePercent)}×${toAr(f.b)}=${toAr(f.c)}).`;
     if(basicsStage===2)hint=`<div style="background:#F0FDF4;border-inline-start:4px solid #10B981;border-radius:12px;padding:14px;margin-bottom:14px;font-size:15px">${ruleText}</div>`;
     else if(basicsStage===3)hint=`<div style="background:#FEF3C7;border-radius:12px;padding:14px;margin-bottom:14px;font-size:15px;color:#B45309"><b>تذكّري القاعدة:</b> ${ruleText}</div>`;
