@@ -2056,7 +2056,7 @@ function lessonMark(id){try{const a=JSON.parse(localStorage.getItem("mawhiba_eng
 // وتسعة من أصل أربعة عشر عنصراً كانت في الصندوق صفر — أي أخطأت فيها من قبل وأُعيدت بلا شرح.
 // الآن نتابع دقة كل قاعدة، فإن هبطت أُلغي وسم "شوهد" وعاد الشرح قبل أسئلتها.
 const LESSON_PERF_KEY="mawhiba_eng_lesson_perf";
-const LESSON_WINDOW=6, LESSON_MIN=3, LESSON_WEAK_PCT=40, RETEACH_CAP=2;
+const LESSON_WINDOW=6, LESSON_MIN=3, LESSON_WEAK_PCT=40, RETEACH_CAP=2, RETEACH_ITEMS=3;
 function lessonPerfLoad(){try{return JSON.parse(localStorage.getItem(LESSON_PERF_KEY)||"{}")}catch(e){return{}}}
 function lessonPerfSave(o){try{localStorage.setItem(LESSON_PERF_KEY,JSON.stringify(o))}catch(e){}}
 function lessonRecord(lessonId,ok){
@@ -2116,7 +2116,18 @@ function buildDailyPlan(){
   // بدونها لا يمكن التمييز بين "عنصر جديد فطبيعي أن تخطئ فيه" و"عنصر سبق أن أتقنته فتراجعت فيه"
   const add=it=>{if(!fits(it))return false;const r=st[it.id];chosen.push(Object.assign({},it,{_isNew:!r,_box:r?r.box:null}));secs+=ENG_SECS[it.t]||30;return true};
   shuffle(due).forEach(add);
-  for(const it of fresh){if(newCount>=NEW_CAP)break;if(add(it))newCount++}
+  // القاعدة الضعيفة لا تُصلَح بانتظار موعد عناصرها. عناصر قاعدة أتقنتها قديماً تكون في صندوق
+  // عالٍ وموعدها بعد أسبوعين، فتبقى موسومة "ضعيفة" ولا يظهر شرحها أبداً — وهذا ما حدث فعلاً:
+  // سبع قواعد ضعيفة وبطاقة إعادة واحدة تظهر. فنسحب عناصرها إلى خطة اليوم استثناءً مقصوداً من
+  // قاعدة "لا تكرار قبل الاستحقاق"، لأن الغرض هنا تعليم لا استرجاع.
+  const weakRank=[...new Set(POOL.map(i=>i.lesson).filter(Boolean))].filter(lessonWeak)
+    .map(L=>{const r=lessonPerfLoad()[L]||{},rec=r.recent||[];
+      return{L,acc:rec.length?rec.reduce((a,b)=>a+b,0)/rec.length:0}})
+    .sort((a,b)=>a.acc-b.acc).slice(0,RETEACH_CAP).map(x=>x.L);
+  weakRank.forEach(L=>{
+    POOL.filter(i=>i.lesson===L&&!chosen.some(c=>c.id===i.id)).slice(0,RETEACH_ITEMS).forEach(add);
+  });
+  for(const it of fresh){if(newCount>=NEW_CAP)break;if(chosen.some(c=>c.id===it.id))continue;if(add(it))newCount++}
   // تشبيك: توزيع الأنواع بالتناوب بدل تجميع كل نوع معاً
   const byType={};chosen.forEach(i=>(byType[i.t]=byType[i.t]||[]).push(i));
   const order=["vocab","grammar","dict","reading"],woven=[];
