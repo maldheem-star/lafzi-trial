@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260806-2320";
+  var BUILD="build-20260807-0110";
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
   function fetchHtml(){return fetch(url(),{cache:"no-store"}).then(function(r){return r.text()})}
@@ -1499,6 +1499,16 @@ const BASICS_TERMS={
   subborrow:[{ar:"طرح",en:"subtraction"},{ar:"فرق",en:"difference"}],
   percent:[{ar:"نسبة مئوية",en:"percentage"}],
 };
+// المرحلة الخامسة تُكتَب لا تُختار: الاختيار من أربعة يسمح بالتخمين، وقد رأيناه فعلاً
+// (اختارت ٩٫٤٢ بدل ٩٤٫٢). الكتابة تُلزمها بإنتاج الجواب، فيصير القياس صادقاً.
+function parseArNum(s){
+  if(s==null)return NaN;
+  const t=String(s).trim().replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d))
+    .replace(/[٫،,]/g,".").replace(/[^0-9.\-]/g,"");
+  if(!/\d/.test(t))return NaN;
+  return parseFloat(t);
+}
+let basicsTyped="";
 let basicsSub="multdiv",basicsStage=1,basicsStreak=0,basicsCur=null,basicsLocked=false,basicsPicked=-1,basicsMasteryStreak=0,basicsMidSupport=false,basicsMidRecoveryStreak=0,basicsFinalSupport=false,basicsFinalRecoveryStreak=0,basicsFinalCount=0,basicsBestStreak=0,basicsNotYet=false,basicsShownAt=0;
 
 // إطار العشرة (Ten-Frame): يرتّب الكمية في صفّين من خمسة بدل نقاط عشوائية تُعدّ واحدة واحدة،
@@ -1511,6 +1521,41 @@ function tenFrameSVG(n,color){
     cells+=`<rect x="${x}" y="${y}" width="16" height="16" rx="3" fill="${filled?color:'#F1F5F9'}" stroke="${filled?color:'#CBD5E1'}" stroke-width="1.5"/>`;
   }
   return `<svg viewBox="0 0 103 43" width="103" height="43">${cells}<line x1="0" y1="23" x2="103" y2="23" stroke="#94A3B8" stroke-width="1" stroke-dasharray="2 2"/></svg>`;
+}
+// ===== مصفوفة القسمة التفاعلية =====
+// الفكرة المنقولة من التمثيلات الديناميكية: الشكل يستجيب ليدها لحظة بلحظة، فتبني هي القسمة
+// بدل أن تقرأها. والسؤال الذي تبنيه هو سؤال القسمة القياسية نفسه: كم مجموعة من «ب» داخل «أ»؟
+let divA=0,divB=1,divRows=0;
+function divArmArray(a,b){divA=a;divB=b;divRows=0}
+function divTryAdd(){if(divB>0&&(divRows+1)*divB<=divA){divRows++;return true}return false}
+function divAddRow(){if(divTryAdd())render()}
+function divDelRow(){if(divRows>0){divRows--;render()}}
+function divResetRows(){divRows=0;render()}
+function divDot(filled){return `<span style="display:inline-block;width:13px;height:13px;border-radius:50%;margin:2px;background:${filled?'#0D9488':'#E2E8F0'};border:1px solid ${filled?'#0D9488':'#CBD5E1'}"></span>`}
+function divArrayHTML(){
+  const a=divA,b=divB,placed=divRows*b,left=a-placed,done=left===0&&divRows>0;
+  let grid="";
+  for(let r=0;r<divRows;r++){
+    grid+=`<div style="display:flex;align-items:center;gap:6px;justify-content:center;margin:1px 0">
+      <span style="font-size:11px;color:#94A3B8;min-width:16px;text-align:end">${toAr(r+1)}</span>
+      <span style="direction:ltr">${Array.from({length:b},()=>divDot(true)).join("")}</span></div>`;
+  }
+  let pile="";for(let i=0;i<left;i++)pile+=divDot(false);
+  const canAdd=(divRows+1)*b<=a;
+  return `<div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:14px;padding:12px;margin-top:12px">
+    <div style="font-size:13px;color:#334155;font-weight:800;text-align:center;margin-bottom:8px">كوّني صفوفاً من ${toAr(b)} حتى تنتهي النقاط — كم صفّاً ستحتاجين؟</div>
+    ${grid||`<div style="font-size:12px;color:#94A3B8;text-align:center;padding:6px">لا صفوف بعد — اضغطي «+ صفّ»</div>`}
+    ${left?`<div style="margin-top:8px;padding-top:8px;border-top:1px dashed #CBD5E1"><div style="font-size:11px;color:#94A3B8;text-align:center;margin-bottom:2px">الباقي</div><div style="text-align:center;direction:ltr">${pile}</div></div>`:""}
+    <div style="display:flex;gap:8px;justify-content:center;margin-top:10px">
+      <button class="link-btn" style="margin:0;padding:8px 14px;border:1.5px solid #CBD5E1;border-radius:10px;font-weight:800;${divRows?'':'opacity:.4'}" onclick="divDelRow()">− صفّ</button>
+      <button class="link-btn" style="margin:0;padding:8px 14px;border:1.5px solid ${canAdd?'#0D9488':'#E2E8F0'};border-radius:10px;font-weight:800;color:${canAdd?'#0D9488':'#CBD5E1'}" onclick="divAddRow()">+ صفّ</button>
+      ${divRows?`<button class="link-btn" style="margin:0;padding:8px 12px" onclick="divResetRows()">↺</button>`:""}
+    </div>
+    <div style="text-align:center;margin-top:10px;font-size:14px;font-weight:800;color:${done?'#059669':'#475569'}">
+      ${done?`✓ ${toAr(divRows)} صفوف × ${toAr(b)} = ${toAr(a)} — إذن ${toAr(a)} ÷ ${toAr(b)} = <span style="color:#059669">${toAr(divRows)}</span>`
+            :`${toAr(divRows)} × ${toAr(b)} = ${toAr(placed)} · بقي ${toAr(left)}`}
+    </div>
+  </div>`;
 }
 function groupsVisual(n,m){
   let groups="";
@@ -1691,18 +1736,33 @@ function basicsPrep(){
   const m=basicsSub==="percent"?mcNum(ans,[ans+f.onePercent,ans-f.onePercent,f.a*f.b])
     :basicsSub==="pimul"?mcNumDec(ans,[round2(ans*10),round2(ans/10),round2(3*f.a)])
     :mcNum(ans,[ans+1,ans-1,ans+10]);
-  basicsCur.opts=m.choices;basicsCur.ai=m.answer;
+  basicsCur.opts=m.choices;basicsCur.ai=m.answer;basicsCur.ansVal=ans;
 }
 function basicsNew(){
   basicsShownAt=Date.now();
   const gen=basicsSub==="multdiv"?basicsMakeFamily:basicsSub==="addcarry"?basicsMakeAddCarry:basicsSub==="subborrow"?basicsMakeSubBorrow:basicsSub==="pimul"?basicsMakePiMul:basicsMakePercent;
-  basicsCur={fam:gen()};basicsLocked=false;basicsPicked=-1;basicsPrep();render();
+  basicsCur={fam:gen()};basicsLocked=false;basicsPicked=-1;basicsTyped="";basicsPrep();
+  if(basicsSub==="multdiv")divArmArray(basicsCur.fam.c,basicsCur.fam.b);
+  render();
+  if(basicsStage===5)setTimeout(()=>{const el=document.getElementById('basicsIn');if(el)el.focus()},50);
 }
+function basicsTypedStage(){return basicsStage===5}
 // extra (اختياري): حقول إضافية مثل {is_new, srs_box} — تُميّز العنصر الجديد عن المُراجَع عند التحليل
 function logAnswer(domain,qtype,isCorrect,response,itemId,elapsedMs,extra){try{fetch(`${SB_URL}/rest/v1/${TBL_LOG}`,{method:"POST",headers:{"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json","Prefer":"return-minimal"},body:JSON.stringify(Object.assign({student_alias:alias(),domain,qtype,is_correct:isCorrect,response:response==null?null:String(response),item_id:itemId||null,elapsed_ms:elapsedMs==null?null:Math.round(elapsedMs)},extra||{}))})}catch(e){}}
 function basicsChoose(i){
   if(basicsLocked)return;basicsLocked=true;basicsPicked=i;
-  const ok=i===basicsCur.ai;
+  basicsRecord(i===basicsCur.ai,basicsCur.opts?basicsCur.opts[i]:null);
+}
+// الحقل الفارغ لا يُحتسب محاولة: لا نُحرق عليها محاولة إتقان بضغطة غير مقصودة
+function basicsSubmit(){
+  if(basicsLocked)return;
+  const el=document.getElementById('basicsIn'),raw=(el?el.value:"").trim();
+  if(raw==="")return;
+  basicsTyped=raw;basicsLocked=true;
+  const v=parseArNum(raw);
+  basicsRecord(Number.isFinite(v)&&Math.abs(v-basicsCur.ansVal)<1e-6,raw);
+}
+function basicsRecord(ok,resp){
   if(basicsStage===5){basicsFinalCount++;if(basicsMasteryStreak+(ok?1:0)>basicsBestStreak)basicsBestStreak=basicsMasteryStreak+(ok?1:0)}
   if(ok)basicsStreak++;else basicsStreak=0;
   if(basicsStage===4){
@@ -1714,8 +1774,8 @@ function basicsChoose(i){
     else{basicsMasteryStreak++}
   }
   const elapsed=basicsShownAt?Date.now()-basicsShownAt:null;
-  // الرقم الذي اختارته فعلاً: بدونه أعرف أنها أخطأت ولا أعرف نوع الخطأ (نسيت الحمل؟ جمعت بلا حمل؟)
-  logAnswer("basics_"+basicsSub,"stage"+basicsStage,ok,basicsCur.opts?basicsCur.opts[i]:null,null,elapsed,{q_text:basicsCur.qText||null});
+  // الرقم الذي أنتجته فعلاً: بدونه أعرف أنها أخطأت ولا أعرف نوع الخطأ (نسيت الحمل؟ أخطأت موضع الفاصلة؟)
+  logAnswer("basics_"+basicsSub,"stage"+basicsStage,ok,resp,null,elapsed,{q_text:basicsCur.qText||null});
   if(elapsed!=null){
     recentAnswerTimes.push(elapsed);if(recentAnswerTimes.length>RAPID_STREAK)recentAnswerTimes.shift();
     rapidNudge=recentAnswerTimes.length===RAPID_STREAK&&recentAnswerTimes.every(t=>t<RAPID_MS);
@@ -1771,7 +1831,8 @@ function renderBasics(){
   const showVisual=basicsStage<=2||(basicsStage===5&&basicsFinalSupport);
   let visualBox="";
   if(showVisual){
-    if(basicsSub==="multdiv")visualBox=`<div style="margin-bottom:14px">${groupsVisual(f.a,f.b)}</div>`;
+    // في المرحلة الأولى تبني المصفوفة بيدها؛ وبعدها تُعرض جاهزة للمراجعة السريعة
+    if(basicsSub==="multdiv")visualBox=basicsStage===1?divArrayHTML()+`<div style="height:14px"></div>`:`<div style="margin-bottom:14px">${groupsVisual(f.a,f.b)}</div>`;
     else if(basicsSub==="pimul")visualBox=`<div style="display:flex;justify-content:center;margin-bottom:14px">${piSplitSVG(f.a)}</div>`;
     else if(basicsSub==="percent")visualBox=`<div style="display:flex;justify-content:center;margin-bottom:6px">${percentGridVisual(f.b)}</div><div style="text-align:center;font-size:12px;color:#64748B;margin-bottom:14px">المربعات الملوّنة = ٪${toAr(f.b)} من الشبكة (١٠٠ مربع)</div>`;
     else{
@@ -1820,12 +1881,25 @@ function renderBasics(){
     else if(basicsStage===3)hint=`<div style="background:#FEF3C7;border-radius:12px;padding:14px;margin-bottom:14px;font-size:15px;color:#B45309"><b>تذكّري القاعدة:</b> ${ruleText}</div>`;
     else if(basicsStage===4&&basicsMidSupport)hint=`<div style="background:#FEF9C3;border-inline-start:4px solid #EAB308;border-radius:12px;padding:14px;margin-bottom:14px;font-size:15px;color:#854D0E">🌱 القاعدة: ${ruleText} جاوبي صح مرتين ليختفي التذكير.</div>`;
     else if(basicsStage===5&&basicsFinalSupport)hint=`<div style="background:#FEF9C3;border-inline-start:4px solid #EAB308;border-radius:12px;padding:14px;margin-bottom:14px;font-size:15px;color:#854D0E">🌱 ما عليك، مراجعة سريعة: ${ruleText} جاوبي صح مرتين ليختفي التذكير.</div>`;
-    const why=basicsLocked?`<div class="why" style="margin-bottom:10px">${basicsPicked===basicsCur.ai?"✓ "+(basicsStage===5?"حللتِها وحدك! 🌟":"أحسنتِ"):"الصحيحة بالأخضر"}.</div><button class="btn" style="background:${basicsStage===5?'#059669':'#0D9488'}" onclick="${basicsStage===5?'basicsFinalNext()':'basicsAdvance()'}">${basicsStage===5?'سؤال جديد ←':'التالي ←'}</button>`:"";
+    const typed=basicsTypedStage();
+    const tOk=typed&&basicsLocked&&Math.abs(parseArNum(basicsTyped)-basicsCur.ansVal)<1e-6;
+    const ansTxt=Number.isInteger(basicsCur.ansVal)?toAr(basicsCur.ansVal):arDec(basicsCur.ansVal);
+    const dec=basicsSub==="pimul";
+    const field=typed?`<div style="text-align:center;margin:16px 0">
+      <input id="basicsIn" ${basicsLocked?`disabled value="${String(basicsTyped).replace(/[^0-9٠-٩.٫،,\-]/g,"").slice(0,12)}"`:""} type="text" inputmode="${dec?"decimal":"numeric"}" autocomplete="off"
+        style="width:170px;padding:14px;border-radius:12px;border:2px solid ${basicsLocked?(tOk?'#10B981':'#EF4444'):'#E2E8F0'};font-size:26px;text-align:center;font-weight:800"
+        onkeydown="if(event.key==='Enter')basicsSubmit()">
+      ${dec&&!basicsLocked?`<div style="font-size:12px;color:#94A3B8;margin-top:6px">اكتبي الفاصلة نقطةً أو فاصلة — كلاهما مقبول</div>`:""}
+      ${basicsLocked&&!tOk?`<div style="margin-top:10px;font-weight:800;color:#DC2626">الصحيح: ${ansTxt}</div>`:""}
+      ${basicsLocked?"":`<button class="btn" style="background:#059669;margin-top:14px" onclick="basicsSubmit()">تحقّقي ←</button>`}
+    </div>`:"";
+    const okNow=typed?tOk:basicsPicked===basicsCur.ai;
+    const why=basicsLocked?`<div class="why" style="margin-bottom:10px">${okNow?"✓ "+(basicsStage===5?"حللتِها وحدك! 🌟":"أحسنتِ"):(typed?"لا بأس — راجعي الطريقة ثم أعيدي":"الصحيحة بالأخضر")}.</div><button class="btn" style="background:${basicsStage===5?'#059669':'#0D9488'}" onclick="${basicsStage===5?'basicsFinalNext()':'basicsAdvance()'}">${basicsStage===5?'سؤال جديد ←':'التالي ←'}</button>`:"";
     const mtr=basicsStage<4?`<div style="font-size:13px;color:#64748B;text-align:center;margin-top:10px">جاوبي صح مرتين متتاليتين للانتقال (${toAr(basicsStreak)}/${toAr(BASICS_REQ)})</div>`
       :basicsStage===4?(basicsMidSupport?`<div style="font-size:13px;color:#854D0E;text-align:center;margin-top:10px">🌱 مراجعة: (${toAr(basicsMidRecoveryStreak)}/${toAr(RECOVERY_REQ)}) لإخفاء التذكير</div>`:`<div style="font-size:13px;color:#64748B;text-align:center;margin-top:10px">تدريب شبه مستقل — جاوبي صح مرتين متتاليتين للوصول للاستقلال الكامل (${toAr(basicsStreak)}/${toAr(BASICS_REQ)})</div>`)
       :basicsFinalSupport?`<div style="font-size:13px;color:#854D0E;text-align:center;margin-top:10px">🌱 مراجعة: (${toAr(basicsFinalRecoveryStreak)}/${toAr(RECOVERY_REQ)}) لإخفاء التذكير مرة أخرى</div>`
       :`<div style="font-size:13px;color:#64748B;text-align:center;margin-top:10px">🎓 حل مستقل — (${toAr(basicsMasteryStreak)}/${toAr(MASTERY_REQ)}) متتالية لإتقان هذا النوع</div>`;
-    body=`${hint}${visualBox}<div class="q" style="text-align:center">${basicsCur.qText}</div><div class="choices">${ch}</div>${why}${mtr}`;
+    body=`${hint}${visualBox}<div class="q" style="text-align:center">${basicsCur.qText}</div>${typed?field:`<div class="choices">${ch}</div>`}${why}${mtr}`;
   }
   const subLabel=BASICS_SUBS[basicsSub].label;
   const switchBtns=Object.keys(BASICS_SUBS).filter(k=>k!==basicsSub).map(k=>`<button class="link-btn" onclick="startBasics('${k}')">🔁 بدّلي إلى ${BASICS_SUBS[k].short}</button>`).join("");
@@ -3157,6 +3231,7 @@ function factCheck(){
   factInput=val;factLocked=true;
   const it=factCur(),ok=parseInt(val,10)===it.ans;
   if(ok)factScore++;
+  if(!ok&&it.op==="div")divArmArray(it.a,it.b);   // تبني المصفوفة بنفسها بدل أن تقرأ السُّلَّم فقط
   factLog.push({op:it.op,ok,ms,cue:factCueOn});
   factSrsUpdate(it.id,ok);
   logAnswer("fact_fluency",it.op,ok,val,it.id,ms,{q_text:`${it.a} ${FACT_OP_SYM[it.op]} ${it.b}`});
@@ -3175,7 +3250,8 @@ function renderFactPlan(){
   const bar=`<div class="bar">${factItems.map((_,i)=>`<div class="seg" style="background:${i<=factIdx?'#0D9488':'#E2E8F0'};opacity:${i<=factIdx?1:.5}"></div>`).join("")}</div>`;
   const head=`<button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>${bar}
   <div class="meta"><span>${toAr(factIdx+1)} من ${toAr(factItems.length)}</span><span>طلاقة الحقائق · ١٠ دقائق</span></div>`;
-  const hint=factLocked&&!ok?`<div class="explain"><div class="explain-title" style="color:#B45309">استراتيجية أسرع من العدّ:</div><div class="explain-body">${factStrategy(it.op,it.a,it.b,it.ans)}</div></div>`:"";
+  const arr=(factLocked&&!ok&&it.op==="div")?divArrayHTML():"";
+  const hint=factLocked&&!ok?`<div class="explain"><div class="explain-title" style="color:#B45309">استراتيجية أسرع من العدّ:</div><div class="explain-body">${factStrategy(it.op,it.a,it.b,it.ans)}${arr}</div></div>`:"";
   // التلميح المسبق: طريقة التفكير بلا الجواب — للحقيقة الجديدة أو التي أخطأت فيها آخر مرة فقط
   const cue=(!factLocked&&factCueOn)?`<div style="background:#FFFBEB;border-inline-start:4px solid #F59E0B;border-radius:12px;padding:12px 14px;margin:14px 0 0;font-size:14px;line-height:1.9;color:#92400E;text-align:start">💡 ${factCue(it.op,it.a,it.b)}</div>`:"";
   app.innerHTML=`${head}
