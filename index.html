@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260807-0720";
+  var BUILD="build-20260807-0910";
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
   function fetchHtml(){return fetch(url(),{cache:"no-store"}).then(function(r){return r.text()})}
@@ -2143,7 +2143,71 @@ function speakEnglish(text,onDone){
 }
 // ===== تشخيص الصوت: أداة تساعد لو النطق ما يشتغل على جهاز معيّن =====
 let audioDiagResult=null;
-function startAudioDiag(){mode="audiodiag";audioDiagResult=null;window.scrollTo(0,0);render()}
+function startAudioDiag(){mode="audiodiag";audioDiagResult=null;micDiagResult=null;window.scrollTo(0,0);render()}
+// ===== تشخيص الميكروفون =====
+// الضغطة التي "لا تفعل شيئاً" لها أسباب مختلفة تماماً وعلاجات مختلفة: إذن مرفوض سابقاً،
+// أو صفحة داخل متصفح مدمج، أو مصدر غير آمن. المتصفح يعرف السبب ويُسمّيه — كنّا نبتلع الاسم.
+let micDiagResult=null;
+const MIC_ERR_HELP={
+  no_api:{t:"واجهة الميكروفون غير موجودة أصلاً",f:"هذا يحدث حين تكون الصفحة داخل متصفح مدمج في تطبيق آخر (واتساب/تويتر)، أو على http بدل https. انسخي الرابط وافتحيه في Safari أو Chrome مباشرةً."},
+  insecure:{t:"الصفحة ليست على اتصال آمن",f:"الميكروفون يعمل على https فقط. افتحي الرابط بصيغة https://"},
+  iframe:{t:"الصفحة معروضة داخل إطار",f:"افتحي الرابط في تبويب مستقل لا داخل صفحة أخرى."},
+  NotAllowedError:{t:"الإذن مرفوض",f:"في Safari: اضغطي ﺃﺍ في شريط العنوان ← إعدادات الموقع ← الميكروفون ← السماح. ثم الإعدادات ← Safari ← الميكروفون ← اسأل/السماح. وفي Chrome: أيقونة القفل ← أذونات."},
+  SecurityError:{t:"الإذن محجوب لأسباب أمنية",f:"غالباً المصدر غير آمن أو داخل إطار. افتحي الرابط مباشرةً بصيغة https://"},
+  NotFoundError:{t:"لا يوجد ميكروفون",f:"الجهاز لا يعرض ميكروفوناً للمتصفح. أعيدي تشغيل المتصفح، أو جرّبي جهازاً آخر."},
+  NotReadableError:{t:"الميكروفون مشغول",f:"تطبيق آخر يستعمل الميكروفون (مكالمة أو تسجيل). أغلقيه ثم أعيدي المحاولة."},
+  AbortError:{t:"انقطعت المحاولة",f:"أعيدي المحاولة مرة أخرى."},
+  no_recorder:{t:"المتصفح لا يدعم تسجيل الصوت",f:"الإذن يعمل لكن MediaRecorder غير متاح. حدّثي المتصفح أو نظام الجهاز."}
+};
+async function runMicDiag(){
+  micDiagResult={running:true};render();
+  const o={proto:location.protocol,secure:!!window.isSecureContext,
+    inFrame:(function(){try{return window.top!==window.self}catch(e){return true}})(),
+    hasMD:!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia),
+    hasMR:typeof window.MediaRecorder!=="undefined"};
+  try{
+    if(navigator.permissions&&navigator.permissions.query){
+      const p=await navigator.permissions.query({name:"microphone"});o.perm=p&&p.state;
+    }
+  }catch(e){o.perm=null}
+  if(!o.hasMD){o.ok=false;o.why=o.inFrame?"iframe":(o.secure?"no_api":"insecure");micDiagResult=o;render();return}
+  try{
+    const st=await navigator.mediaDevices.getUserMedia({audio:true});
+    const tr=st.getAudioTracks()[0];
+    o.label=(tr&&tr.label)||"";o.tracks=st.getTracks().length;
+    st.getTracks().forEach(t=>t.stop());
+    o.ok=o.hasMR;if(!o.hasMR)o.why="no_recorder";
+  }catch(e){
+    o.ok=false;o.why=(e&&e.name)||"AbortError";o.msg=(e&&e.message)||"";
+  }
+  micDiagResult=o;render();
+}
+function micDiagHTML(){
+  const yn=v=>v?'<b style="color:#059669">نعم</b>':'<b style="color:#DC2626">لا</b>';
+  let box="";
+  if(micDiagResult&&micDiagResult.running)box=`<div style="background:#F1F5F9;border-radius:12px;padding:14px;margin-top:12px;font-size:14px">⏳ جارٍ الفحص… لو ظهر طلب إذن فاسمحي به.</div>`;
+  else if(micDiagResult){
+    const r=micDiagResult;
+    const rows=`<div style="font-size:13px;color:#475569;line-height:1.9;margin-top:12px">
+      اتصال آمن (https): ${yn(r.secure)} <span style="color:#94A3B8">(${r.proto})</span><br>
+      داخل إطار: ${r.inFrame?'<b style="color:#DC2626">نعم</b>':'<b style="color:#059669">لا</b>'}<br>
+      واجهة الميكروفون متاحة: ${yn(r.hasMD)}<br>
+      تسجيل الصوت مدعوم: ${yn(r.hasMR)}${r.perm?`<br>حالة الإذن: <b>${r.perm}</b>`:""}
+    </div>`;
+    if(r.ok)box=rows+`<div style="background:#ECFDF5;border-radius:12px;padding:14px;margin-top:12px;font-size:14px;color:#065F46">✓ الميكروفون يعمل والإذن ممنوح${r.label?` — الجهاز: ${r.label}`:""}.<br>فإن بقي زرّ 🎤 لا يستجيب فالمشكلة في مكان آخر، أخبريني بهذه النتيجة.</div>`;
+    else{
+      const h=MIC_ERR_HELP[r.why]||{t:"خطأ غير متوقّع: "+r.why,f:"أرسلي لي هذا الاسم كما هو."};
+      box=rows+`<div style="background:#FEF2F2;border-radius:12px;padding:14px;margin-top:12px;font-size:14px;color:#991B1B;line-height:1.9">
+        ✗ <b>${h.t}</b> <span style="color:#B91C1C;font-size:12px">(${r.why})</span><br>
+        <span style="color:#7F1D1D">${h.f}</span>${r.msg?`<br><span style="font-size:11px;color:#B91C1C">${r.msg}</span>`:""}</div>`;
+    }
+  }
+  return `<div style="margin-top:20px;padding-top:16px;border-top:1px dashed #E2E8F0">
+    <div style="font-weight:800;font-size:16px;margin-bottom:8px">🎤 تشخيص الميكروفون</div>
+    <button class="btn" style="background:#7C3AED" onclick="runMicDiag()">🎤 افحصي الميكروفون الآن</button>
+    ${box}
+  </div>`;
+}
 function runAudioDiag(){
   audioDiagResult={status:"⏳ جارٍ التجربة..."};render();
   speakEnglish("Hello, can you hear this?",(r)=>{audioDiagResult=r;render()});
@@ -2169,6 +2233,7 @@ function renderAudioDiag(){
     </div>
     <button class="btn" style="background:#0891B2" onclick="runAudioDiag()">🔊 جربي النطق الآن</button>
     ${resultBox}
+    ${micDiagHTML()}
     <div style="font-size:13px;color:#94A3B8;margin-top:18px;line-height:1.8">لو ظهر "فشل النطق فعلياً"، أو ظهر "نجح" لكن ما سمعتِ صوتاً: تأكدي إن صوت الجهاز غير مكتوم وبمستوى عالٍ كافٍ، وافتحي إعدادات الهاتف ← إعدادات إضافية/تحويل النص إلى كلام ← تأكدي إن حزمة الصوت الإنجليزي منزّلة (قد تحتاجين تنزيلها لأول مرة)، ثم أعيدي المحاولة.</div>
   </div>`;
 }
@@ -2907,7 +2972,8 @@ function renderPron(){
   const prog=pronSession.map((_,i)=>`<div class="seg" style="background:${i<=pronIdx?'#7C3AED':'#E2E8F0'};opacity:${i<=pronIdx?1:.5}"></div>`).join("");
   let inner;
   if(pronUnsupported){
-    inner=`<div style="background:#FEF3C7;border-radius:12px;padding:16px;font-size:14px;color:#92400E;line-height:1.8">متصفحك الحالي لا يدعم تسجيل الصوت. جرّبي متصفح حديث (Safari على آيفون أو Chrome).</div>`;
+    inner=`<div style="background:#FEF3C7;border-radius:12px;padding:16px;font-size:14px;color:#92400E;line-height:1.8">متصفحك الحالي لا يدعم تسجيل الصوت. جرّبي متصفح حديث (Safari على آيفون أو Chrome).</div>
+    <button class="btn" style="background:#7C3AED;margin-top:12px" onclick="startAudioDiag()">🔧 افحصي السبب بالضبط</button>`;
   }else{
     const feedback=pronResult?(pronResult.error
       ?(pronResult.notConfigured
@@ -2945,6 +3011,7 @@ function renderPron(){
     </div>`;
     inner=`
     <div style="font-size:12px;color:#94A3B8;margin-bottom:14px">تحقّق أساسي: هل نطقتِ الكلمة الصحيحة؟ (ليس تقييماً دقيقاً للهجة)</div>
+    <button class="link-btn" style="font-size:12px;margin:0 0 10px" onclick="startAudioDiag()">🔧 الصوت أو الميكروفون لا يعمل؟ افحصي هنا</button>
     <div style="display:flex;gap:12px;justify-content:center;align-items:center;margin:10px 0 18px">
       <button type="button" onclick="speakEnglish(pronSession[${pronIdx}].w)" style="background:#ECFEFF;border:1.5px solid #A5F3FC;color:#0891B2;border-radius:50%;width:56px;height:56px;font-size:22px;cursor:pointer">🔊</button>
       ${pronListening
