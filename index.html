@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260807-0230";
+  var BUILD="build-20260807-0420";
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
   function fetchHtml(){return fetch(url(),{cache:"no-store"}).then(function(r){return r.text()})}
@@ -1625,12 +1625,13 @@ function tenFrameSVG(n,color){
 // ===== مصفوفة القسمة التفاعلية =====
 // الفكرة المنقولة من التمثيلات الديناميكية: الشكل يستجيب ليدها لحظة بلحظة، فتبني هي القسمة
 // بدل أن تقرأها. والسؤال الذي تبنيه هو سؤال القسمة القياسية نفسه: كم مجموعة من «ب» داخل «أ»؟
-let divA=0,divB=1,divRows=0;
-function divArmArray(a,b){divA=a;divB=b;divRows=0}
+let divA=0,divB=1,divRows=0,divTaps=0;
+function divArmArray(a,b){divA=a;divB=b;divRows=0;divTaps=0}
 function divTryAdd(){if(divB>0&&(divRows+1)*divB<=divA){divRows++;return true}return false}
-function divAddRow(){if(divTryAdd())render()}
-function divDelRow(){if(divRows>0){divRows--;render()}}
-function divResetRows(){divRows=0;render()}
+function divAddRow(){if(divTryAdd()){divTaps++;render()}}
+function divDelRow(){if(divRows>0){divRows--;divTaps++;render()}}
+function divResetRows(){if(divRows>0)divTaps++;divRows=0;render()}
+function divComplete(){return divRows>0&&divB>0&&divRows*divB===divA}
 function divDot(filled){return `<span style="display:inline-block;width:13px;height:13px;border-radius:50%;margin:2px;background:${filled?'#0D9488':'#E2E8F0'};border:1px solid ${filled?'#0D9488':'#CBD5E1'}"></span>`}
 function divArrayHTML(){
   const a=divA,b=divB,placed=divRows*b,left=a-placed,done=left===0&&divRows>0;
@@ -3220,6 +3221,7 @@ const FACT_SRS_KEY="mawhiba_fact_srs";
 const FACT_SECS=12;          // تقدير واقعي لثانية الاسترجاع الواحدة لطالبة سادس
 const FACT_PLAN_SECS=10*60;  // ١٠ دقائق يومياً: جلسات قصيرة متكررة أفعل من جلسة طويلة متباعدة لبناء الطلاقة
 const FACT_NEW_CAP=10;
+const FACT_NEW_DIV_CAP=3;   // سقف الحقائق الجديدة في القسمة وحدها لكل جلسة
 function factSrsLoad(){try{return JSON.parse(localStorage.getItem(FACT_SRS_KEY)||"{}")}catch(e){return{}}}
 function factSrsSave(o){try{localStorage.setItem(FACT_SRS_KEY,JSON.stringify(o))}catch(e){}}
 function factSrsUpdate(id,ok){
@@ -3248,7 +3250,7 @@ function factBank(){if(!_factBank)_factBank=buildFactBank();return _factBank}
 const FACT_OP_SYM={add:"+",sub:"−",mul:"×",div:"÷"};
 const FACT_OP_TERMS={add:[{ar:"جمع",en:"addition"}],sub:[{ar:"طرح",en:"subtraction"}],mul:[{ar:"ضرب",en:"multiplication"}],div:[{ar:"قسمة",en:"division"}]};
 // استراتيجية فورية عند الخطأ: تعليم صريح لطريقة أسرع من العدّ، لا مجرد إعطاء الجواب
-function factStrategy(op,a,b,ans){
+function factStrategy(op,a,b,ans,noLadder){
   if(op==="add"){
     if(a===b)return `مضاعف: ${toAr(a)}+${toAr(a)}=${toAr(ans)} — احفظي المضاعفات فهي أسرع من العدّ`;
     if(Math.abs(a-b)===1){const s=Math.min(a,b);return `مضاعف قريب: ${toAr(s)}+${toAr(s)}=${toAr(2*s)}، والفرق واحد فقط، إذن الجواب ${toAr(2*s)}+١=${toAr(ans)}`;}
@@ -3271,7 +3273,8 @@ function factStrategy(op,a,b,ans){
     return `استعملي حقيقة أصغر تعرفينها: ${toAr(bigger)}×${toAr(smaller-1)}=${toAr(bigger*(smaller-1))} ثم أضيفي ${toAr(bigger)} أخرى = <b>${toAr(ans)}</b>`;
   }
   // القسمة أضعف عملياتها: نربطها صراحةً بجدول الضرب الذي تتقنه، ونُظهر سُلَّم العدّ بالقفزات كجسر مؤقّت
-  if(op==="div")return `القسمة ضرب معكوس: <b>${toAr(ans)}</b> × ${toAr(b)} = ${toAr(a)}، إذن ${toAr(a)} ÷ ${toAr(b)} = <b>${toAr(ans)}</b>${factSkipLadder(b,ans)}`;
+  // حين تُعرض المصفوفة التفاعلية تحته نُسقط السُّلَّم الساكن: تمثيلان لنفس الفكرة يزدحمان
+  if(op==="div")return `القسمة ضرب معكوس: <b>${toAr(ans)}</b> × ${toAr(b)} = ${toAr(a)}، إذن ${toAr(a)} ÷ ${toAr(b)} = <b>${toAr(ans)}</b>${noLadder?"":factSkipLadder(b,ans)}`;
   return "";
 }
 // سُلَّم القفزات: يُظهر أن ٣٦÷٤ هي "كم أربعة حتى نصل ٣٦" — تمثيل ملموس يسبق الاسترجاع الفوري (Baroody 2006)
@@ -3299,14 +3302,30 @@ function buildFactPlan(){
   const chosen=[];let secs=0,newCount=0;
   const add=it=>{if(secs+FACT_SECS>FACT_PLAN_SECS)return false;chosen.push(it);secs+=FACT_SECS;return true};
   shuffle(due).forEach(add);
-  for(const it of shuffle(fresh)){if(newCount>=FACT_NEW_CAP)break;if(add(it))newCount++}
+  // القسمة أضعف عملياتها: سبع حقائق قسمة جديدة متتالية في جلسة واحدة تدفع للتخمين لا للتعلّم.
+  // المُراجَع منها لا يُقيَّد — هو ما تحتاجه فعلاً — والمقيَّد هو الجديد غير المألوف.
+  let newDiv=0;
+  for(const it of shuffle(fresh)){
+    if(newCount>=FACT_NEW_CAP)break;
+    if(it.op==="div"&&newDiv>=FACT_NEW_DIV_CAP)continue;
+    if(add(it)){newCount++;if(it.op==="div")newDiv++}
+  }
   const byOp={};chosen.forEach(i=>(byOp[i.op]=byOp[i.op]||[]).push(i));
   const order=["add","sub","mul","div"],woven=[];
   let any=true;while(any){any=false;order.forEach(op=>{const q=byOp[op];if(q&&q.length){woven.push(q.shift());any=true}})}
   return {items:woven,secs,due:due.length,fresh:newCount};
 }
 let factItems=[],factIdx=0,factInput="",factLocked=false,factScore=0,factTotal=0,factDone=false,factMeta=null;
-let factShownAt=0,factCueOn=false,factLog=[];
+let factShownAt=0,factCueOn=false,factLog=[],factRemedyAt=0,factRemedyId=null;
+// بوّابة العلاج: بعد خطأ قسمة لا يظهر «التالي» حتى تُكمل المصفوفة.
+// نصيحةٌ بأن تتأمّل لم تنفع — بقيت على شاشة العلاج ثانيتين وسبع مرات كتبت «٥».
+// وإكمال المصفوفة ممكن دائماً: الزرّ يتوقّف عند المجموع بالضبط ولا يتجاوزه.
+function factGated(){
+  const it=factCur();
+  if(!factLocked||!it||it.op!=="div")return false;
+  if(parseInt(factInput,10)===it.ans)return false;
+  return !divComplete();
+}
 // تُسلَّح الحقيقة قبل عرضها: نبدأ عدّ الزمن، ونقرّر إظهار التلميح من حالة التباعد *قبل* أن تُجيب
 function factArm(){
   const it=factCur();
@@ -3331,13 +3350,23 @@ function factCheck(){
   factInput=val;factLocked=true;
   const it=factCur(),ok=parseInt(val,10)===it.ans;
   if(ok)factScore++;
-  if(!ok&&it.op==="div")divArmArray(it.a,it.b);   // تبني المصفوفة بنفسها بدل أن تقرأ السُّلَّم فقط
+  if(!ok&&it.op==="div"){divArmArray(it.a,it.b);factRemedyAt=Date.now();factRemedyId=it.id}
   factLog.push({op:it.op,ok,ms,cue:factCueOn});
   factSrsUpdate(it.id,ok);
   logAnswer("fact_fluency",it.op,ok,val,it.id,ms,{q_text:`${it.a} ${FACT_OP_SYM[it.op]} ${it.b}`});
   render();
 }
+// نقيس التفاعل مع المصفوفة بدل أن نستنتجه من فروق الأزمنة: كم ضغطة، وهل أُكملت، وكم مكثت
+function factLogRemedy(){
+  if(!factRemedyAt)return;
+  const dwell=Date.now()-factRemedyAt,done=divComplete();
+  factLog.push({op:"div",remedy:true,taps:divTaps,done,ms:dwell});
+  logAnswer("fact_fluency","array",done,String(divTaps),factRemedyId,dwell,{q_text:`${divA} ÷ ${divB}`});
+  factRemedyAt=0;factRemedyId=null;
+}
 function factNext(){
+  if(factGated())return;   // لا تخطٍّ قبل إكمال المصفوفة
+  factLogRemedy();
   if(factIdx+1>=factItems.length){factDone=true;window.scrollTo(0,0);render();return}
   factIdx++;factInput="";factLocked=false;factArm();render();
   setTimeout(()=>{const el=document.getElementById('factIn');if(el)el.focus()},50);
@@ -3351,7 +3380,7 @@ function renderFactPlan(){
   const head=`<button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>${bar}
   <div class="meta"><span>${toAr(factIdx+1)} من ${toAr(factItems.length)}</span><span>طلاقة الحقائق · ١٠ دقائق</span></div>`;
   const arr=(factLocked&&!ok&&it.op==="div")?divArrayHTML():"";
-  const hint=factLocked&&!ok?`<div class="explain"><div class="explain-title" style="color:#B45309">استراتيجية أسرع من العدّ:</div><div class="explain-body">${factStrategy(it.op,it.a,it.b,it.ans)}${arr}</div></div>`:"";
+  const hint=factLocked&&!ok?`<div class="explain"><div class="explain-title" style="color:#B45309">استراتيجية أسرع من العدّ:</div><div class="explain-body">${factStrategy(it.op,it.a,it.b,it.ans,!!arr)}${arr}</div></div>`:"";
   // التلميح المسبق: طريقة التفكير بلا الجواب — للحقيقة الجديدة أو التي أخطأت فيها آخر مرة فقط
   const cue=(!factLocked&&factCueOn)?`<div style="background:#FFFBEB;border-inline-start:4px solid #F59E0B;border-radius:12px;padding:12px 14px;margin:14px 0 0;font-size:14px;line-height:1.9;color:#92400E;text-align:start">💡 ${factCue(it.op,it.a,it.b)}</div>`:"";
   app.innerHTML=`${head}
@@ -3363,14 +3392,18 @@ function renderFactPlan(){
     ${factLocked?`<div style="margin-top:10px;font-weight:800;color:${ok?'#059669':'#DC2626'}">${ok?"✓ صحيح":"الصحيح: "+toAr(it.ans)}</div>`:""}
     ${cue}${hint}
   </div>
-  ${factLocked?`<button class="btn" style="background:#0D9488" onclick="factNext()">${factIdx+1>=factItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`:`<button class="btn" style="background:#0D9488" onclick="factCheck()">تحقّقي ←</button>`}`;
+  ${factLocked
+    ?(factGated()
+      ?`<div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:12px;padding:14px;text-align:center;font-size:14px;color:#92400E;line-height:1.8">🔒 أكملي الصفوف أعلاه ليظهر زرّ التالي<br><span style="font-size:12px">اضغطي «+ صفّ» حتى تنتهي النقاط — هذه هي القسمة نفسها</span></div>`
+      :`<button class="btn" style="background:#0D9488" onclick="factNext()">${factIdx+1>=factItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`)
+    :`<button class="btn" style="background:#0D9488" onclick="factCheck()">تحقّقي ←</button>`}`;
 }
 const FACT_OP_LABEL={add:"جمع",sub:"طرح",mul:"ضرب",div:"قسمة"};
 function factMedian(arr){if(!arr.length)return null;const s=arr.slice().sort((x,y)=>x-y),m=s.length>>1;return s.length%2?s[m]:Math.round((s[m-1]+s[m])/2)}
 // تفصيل حسب العملية: النسبة وحدها لا تكفي — الزمن يفرّق بين "خمّنت" و"حسبت ببطء"، والعلاج مختلف
 function factOpBreakdown(){
   return ["add","sub","mul","div"].map(op=>{
-    const rows=factLog.filter(l=>l.op===op);
+    const rows=factLog.filter(l=>l.op===op&&!l.remedy);   // سطور العلاج ليست أسئلة فلا تدخل النسبة
     if(!rows.length)return null;
     const r=rows.filter(l=>l.ok).length;
     const med=factMedian(rows.filter(l=>l.ms!=null).map(l=>l.ms));
@@ -3394,6 +3427,8 @@ function renderFactPlanResult(){
       <span style="min-width:62px;text-align:end;font-weight:800;color:${col}">${toAr(x.r)}/${toAr(x.t)}</span>
       <span style="min-width:58px;text-align:end;font-size:13px;color:#64748B">${x.med==null?"—":arDec(Math.round(x.med/100)/10)+" ث"}</span>
     </div>`}).join("");
+  const rem=factLog.filter(l=>l.remedy);
+  const remNote=rem.length?`<div style="background:#F0FDFA;border-inline-start:4px solid #0D9488;border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:#0F766E;line-height:1.8">🧩 بنيتِ مصفوفة القسمة <b>${toAr(rem.filter(r=>r.done).length)}</b> من ${toAr(rem.length)} مرة، بمتوسط ${toAr(Math.round(rem.reduce((s,r)=>s+r.taps,0)/rem.length))} ضغطة — كل مرة بنيتِها فيها رأيتِ القسمة بيدك لا بعينك.</div>`:"";
   const guessNote=guessTotal>=3?`<div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:#92400E;line-height:1.8">⏱️ ${toAr(guessTotal)} إجابات خاطئة جاءت في أقل من ٣ ثوانٍ — هذا تخمين لا حساب. حين لا تعرفين الحقيقة، استعملي الطريقة المكتوبة تحت السؤال بدل كتابة أول رقم يخطر لك.</div>`:"";
   const worstNote=(worst&&worst.pct<60)?`<div style="background:#EFF6FF;border-inline-start:4px solid #3B82F6;border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:#1E40AF;line-height:1.8">🎯 أضعف عملية اليوم: <b>${FACT_OP_LABEL[worst.op]}</b> (${toAr(worst.pct)}%). ${worst.op==="div"?"تذكّري أن القسمة ضرب معكوس — ٣٦ ÷ ٤ سؤالها «كم ٤ في ٣٦؟» وجوابها من جدول الضرب.":worst.op==="sub"?"في الطرح اصعدي من العدد الصغير إلى الكبير عبر العشرة بدل العدّ التنازلي.":"غداً ستتكرّر عليك هذه الحقائق تلقائياً حتى تثبت."}</div>`:"";
   app.innerHTML=`
@@ -3403,7 +3438,7 @@ function renderFactPlanResult(){
     ${opRows?`<div style="text-align:start;margin-bottom:14px">
       <div style="display:flex;gap:10px;font-size:12px;color:#94A3B8;font-weight:700;padding-bottom:4px"><span style="min-width:52px">العملية</span><span style="flex:1"></span><span style="min-width:62px;text-align:end">صحيح</span><span style="min-width:58px;text-align:end">الوسيط</span></div>
       ${opRows}</div>`:""}
-    ${guessNote}${worstNote}
+    ${remNote}${guessNote}${worstNote}
     <div style="background:#F0FDFA;border-radius:12px;padding:14px;margin-bottom:14px;font-size:14px;color:#0F766E;line-height:1.9">
       🔁 مستحقّ للمراجعة غداً: <b>${toAr(tomorrow)}</b> حقيقة<br>
       🏆 وصلت لمرحلة الترسيخ (١٦ يوماً فأكثر): <b>${toAr(mastered)}</b> حقيقة<br>
