@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260807-0910";
+  var BUILD="build-20260807-1040";
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
   function fetchHtml(){return fetch(url(),{cache:"no-store"}).then(function(r){return r.text()})}
@@ -27,9 +27,18 @@
     document.body.appendChild(d);
   }
   // عند التحميل: لو كان المتصفّح يعرض نسخة مخزّنة أقدم من الخادم، نُحدّث فوراً (لا عمل جارياً بعد)
+  // حارس: إعادة تحميل واحدة لكل جلسة تصفّح لا أكثر. بلا هذا الحارس، اختلافُ نسخةٍ بين
+  // عُقد الشبكة يُدخل الصفحة في حلقة إعادة تحميل تسرق كل لمسة فيبدو التطبيق ميتاً.
+  var GUARD="mawhiba_reload_guard";
+  function guardGet(){try{return parseInt(sessionStorage.getItem(GUARD)||"0",10)||0}catch(e){return 9}}
+  function guardSet(n){try{sessionStorage.setItem(GUARD,String(n))}catch(e){}}
   fetchHtml().then(function(html){
     baseLen=html.length;
-    if(html.indexOf(BUILD)===-1){location.href=location.pathname+"?_r="+Date.now()}
+    if(html.indexOf(BUILD)===-1){
+      if(guardGet()>=1){banner();return}
+      guardSet(1);
+      location.href=location.pathname+"?_r="+Date.now();
+    }else{try{sessionStorage.removeItem(GUARD)}catch(e){}}
   }).catch(function(){});
   // بعد ذلك: لا نُحدّث تلقائياً حتى لا نُضيّع إجابة جارية — نعرض شريطاً تضغطه هي
   function recheck(){
@@ -113,6 +122,37 @@
 <div class="wrap" id="app"></div>
 
 <script>
+// ===== إظهار الأخطاء بدل ابتلاعها =====
+// خطأ واحد في المستوى الأعلى كان كفيلاً بإيقاف تعريف بقية الملف، فتموت كل الأزرار في كل
+// الأقسام بلا أي أثر مرئي. الآن يُعرض الخطأ باسمه وموضعه على الشاشة، فيُرى بدل أن يُخمَّن.
+window.__ERRS=[];
+function appError(where,e){
+  try{
+    var msg=(e&&(e.message||e.reason&&e.reason.message))||String(e&&e.reason||e||"");
+    var line=(e&&e.lineno)?(" سطر "+e.lineno):"";
+    window.__ERRS.push({where:where,msg:msg,line:line});
+    var id="appErrBar",old=document.getElementById(id);
+    if(old)old.parentNode.removeChild(old);
+    var d=document.createElement("div");
+    d.id=id;
+    d.setAttribute("style","position:fixed;top:0;left:0;right:0;z-index:99999;background:#7F1D1D;color:#fff;"+
+      "padding:10px 40px 10px 12px;font:700 12px system-ui,sans-serif;text-align:start;direction:rtl;"+
+      "max-height:34vh;overflow:auto;box-shadow:0 2px 10px rgba(0,0,0,.3)");
+    d.innerHTML='<div style="font-size:13px;margin-bottom:4px">⚠️ حدث خطأ في التطبيق — أرسلي هذه الرسالة</div>'+
+      window.__ERRS.slice(-4).map(function(x){
+        return '<div style="font-weight:400;font-size:11.5px;line-height:1.7;direction:ltr;text-align:left">'+
+          x.where+': '+String(x.msg).slice(0,220)+x.line+'</div>'}).join("");
+    var b=document.createElement("button");
+    b.textContent="✕";
+    b.setAttribute("style","position:absolute;top:6px;inset-inline-end:8px;right:8px;background:transparent;border:none;color:#fff;font-size:18px;cursor:pointer;padding:2px 8px");
+    b.onclick=function(){d.parentNode&&d.parentNode.removeChild(d)};
+    d.appendChild(b);
+    (document.body||document.documentElement).appendChild(d);
+  }catch(_){}
+}
+window.addEventListener("error",function(ev){appError("خطأ",ev)});
+window.addEventListener("unhandledrejection",function(ev){appError("وعد",ev)});
+
 // ===== إعدادات =====
 const SB_URL="https://yzznkerweqkmhrtbidrl.supabase.co";
 const SB_KEY="sb_publishable_W9ijdHn1vHj3-rUDCx2U5Q_yq6ebbsI";
@@ -1486,7 +1526,7 @@ function fadeAuditOnce(){
     }
   }catch(e){}
 }
-fadeAuditOnce();
+try{fadeAuditOnce()}catch(e){appError('fadeAuditOnce',e)}
 // الخطأ في نوع متقن يُسقط الإتقان — يرجع النوع لقائمة التدريب العادية
 function fadeMasteryBreak(topic){
   const st=fadeMasteryLoad();
@@ -2480,7 +2520,7 @@ function lessonSeedOnce(){
     lessonPerfSave(p);localStorage.setItem(LESSON_SEED_KEY,"1");
   }catch(e){}
 }
-lessonSeedOnce();
+try{lessonSeedOnce()}catch(e){appError('lessonSeedOnce',e)}
 // يبني خطة اليوم: المستحق أولاً (الأهم علمياً)، ثم جديد بحد أقصى، مع بطاقة شرح قبل أول تدريب على أي قاعدة
 // المخزون = عناصر المنهج (تشمل عناصر إملاء حقيقية أصلاً)، بمعرّفات ثابتة.
 let _engPool=null;
