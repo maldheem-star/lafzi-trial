@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260807-0420";
+  var BUILD="build-20260807-0545";
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
   function fetchHtml(){return fetch(url(),{cache:"no-store"}).then(function(r){return r.text()})}
@@ -1181,18 +1181,51 @@ function fadeMakeCircle(){
 const LAB_D_MIN=6,LAB_D_MAX=30;          // مدى القطر داخل المختبر
 const LAB_S=290/(PI_APPROX*LAB_D_MAX);   // مقياس ثابت: أكبر محيط يملأ العرض بالضبط
 let labKind=null,labD=12,labB=8,labH=6;
+// قياس التجريب: كم قيمة مختلفة جرّبت فعلاً، وكم حركة، وأيّ مقبض لمست.
+// الثابت لا يُرى إلا عبر تغييرين على الأقل — قيمة واحدة تُري رقماً لا علاقة.
+const LAB_MIN_TRIES=3;   // القيمة الأولى + تغييران
+let labMoves=0,labSeen=null,labTouchB=false,labTouchH=false;
+function labKey(){return labKind==="circle"?String(labD):labB+"×"+labH}
 function labArm(kind,a,b){
   labKind=kind;
   if(kind==="circle"){labD=Math.min(LAB_D_MAX,Math.max(LAB_D_MIN,2*Math.round(a/2)))}
   else{labB=Math.min(14,Math.max(2,a));labH=Math.min(12,Math.max(2,b))}
+  labMoves=0;labSeen=[labKey()];labTouchB=false;labTouchH=false;
 }
-function labSetD(v){labD=Math.min(LAB_D_MAX,Math.max(LAB_D_MIN,parseInt(v,10)||LAB_D_MIN));labPaint()}
-function labSetB(v){labB=Math.min(14,Math.max(2,parseInt(v,10)||2));labPaint()}
-function labSetH(v){labH=Math.min(12,Math.max(2,parseInt(v,10)||2));labPaint()}
+function labNote(){const k=labKey();labMoves++;if(labSeen.indexOf(k)<0)labSeen.push(k)}
+function labSetD(v){
+  const nv=Math.min(LAB_D_MAX,Math.max(LAB_D_MIN,parseInt(v,10)||LAB_D_MIN));
+  if(nv!==labD){labD=nv;labNote()}
+  labPaint();
+}
+function labSetB(v){
+  const nv=Math.min(14,Math.max(2,parseInt(v,10)||2));
+  if(nv!==labB){labB=nv;labTouchB=true;labNote()}
+  labPaint();
+}
+function labSetH(v){
+  const nv=Math.min(12,Math.max(2,parseInt(v,10)||2));
+  if(nv!==labH){labH=nv;labTouchH=true;labNote()}
+  labPaint();
+}
+// الدائرة: ثلاث قيم مختلفة على الأقل. المثلث: كلا المقبضين، فالعلاقة ذات بُعدين.
+function labExplored(){
+  if(!labKind||!labSeen)return true;
+  return labKind==="circle"?labSeen.length>=LAB_MIN_TRIES:(labTouchB&&labTouchH);
+}
+// البوّابة على المثال الأول فقط: كسر عادة التخطّي لا عقوبة متكرّرة
+function labGated(){return mode==="fade"&&fadeStage===1&&!!labKind&&fadeStreak===0&&!labExplored()}
 function labPaint(){
-  const f=document.getElementById('labFig'),o=document.getElementById('labOut');
+  const f=document.getElementById('labFig'),o=document.getElementById('labOut'),g=document.getElementById('labGateBox');
   if(f)f.innerHTML=labFigSVG();
   if(o)o.innerHTML=labOutHTML();
+  // البوّابة تُحدَّث هنا أيضاً: لو انتظرنا render() كاملاً لانقطع السحب، ولو لم نُحدّثها
+  // لانفتحت في الحالة ولم يظهر زرّها على الشاشة
+  if(g)g.innerHTML=labGateHTML();
+}
+function labGateHTML(){
+  if(!labGated())return `<button class="btn" style="background:#059669" onclick="fadeStage1Next()">فهمت، مثال آخر ←</button>`;
+  return `<div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:12px;padding:14px;text-align:center;font-size:14px;color:#92400E;line-height:1.8">🔒 حرّكي ${labKind==="circle"?"المقبض وجرّبي قطرين آخرين":"المقبضين: القاعدة والارتفاع"}<br><span style="font-size:12px">${labKind==="circle"?"لتري أن المحيط يبقى ثلاثة أقطار وزيادة مهما كبرت الدائرة":"لتري أن المثلث يبقى نصف متوازي الأضلاع مهما تغيّرا"}</span></div>`;
 }
 // الدائرة: نفرد المحيط شريطاً مقسّماً بأقطار، فيُرى أن المحيط ثلاثة أقطار وزيادة صغيرة مهما تغيّر القطر
 function labCircleSVG(){
@@ -1399,7 +1432,17 @@ function fadeChoose(i){
   }
   render();
 }
-function fadeStage1Next(){fadeStreak++;if(fadeStreak>=FADE_REQ){fadeStage=2;fadeStreak=0;fadeWrongStreak=0;fadeDroppedBack=false}fadeNew()}
+// المرحلة الأولى كانت عمياء تماماً: لا سجلّ لها إطلاقاً، فلا أعرف كم مكثت في المثال المحلول
+// ولا هل جرّبت المختبر. الآن لكل مثال محلول سطره، ومعه ما جرّبته بالفعل.
+function fadeStage1Next(){
+  if(labGated())return;
+  const dwell=fadeShownAt?Date.now()-fadeShownAt:null;
+  logAnswer("fade_"+fadeTopic,"stage1",labKind?labExplored():null,labKind?String(labMoves):null,null,dwell,
+    {q_text:labKind?`${labKind}: ${labSeen.join(" · ")}`:null});
+  fadeStreak++;
+  if(fadeStreak>=FADE_REQ){fadeStage=2;fadeStreak=0;fadeWrongStreak=0;fadeDroppedBack=false}
+  fadeNew();
+}
 function fadeAdvance(){
   if(fadeStreak>=FADE_REQ&&fadeStage<4){fadeStage++;fadeStreak=0;fadeWrongStreak=0}
   else if(fadeWrongStreak>=FADE_STUCK&&fadeStage>1){fadeStage--;fadeStreak=0;fadeWrongStreak=0;fadeDroppedBack=true}
@@ -1558,7 +1601,7 @@ function renderFade(){
       ? `<div style="background:#F0FDF4;border-inline-start:4px solid #10B981;border-radius:12px;padding:16px;margin-bottom:16px;font-size:15px;line-height:2"><div>١) القاعدة: <b style="color:#059669">${c.ruleTxt}</b>.</div><div>٢) نطبّقها على آخر عدد: <b style="color:#059669">${c.op} = ${toAr(c.ans)}</b>.</div><div>٣) إذن الناقص هو <b style="color:#059669">${toAr(c.ans)}</b>.</div></div>`
       : `<div style="background:#F0FDF4;border-inline-start:4px solid #10B981;border-radius:12px;padding:16px;margin-bottom:16px;font-size:15px;line-height:2">${c.steps.map((s,i)=>`<div>${toAr(i+1)}) ${s}.</div>`).join("")}</div>`}
     ${labHTML()}
-    <button class="btn" style="background:#059669" onclick="fadeStage1Next()">فهمت، مثال آخر ←</button>
+    <div id="labGateBox">${labGateHTML()}</div>
     <div style="font-size:13px;color:#64748B;text-align:center;margin-top:10px">شاهدي مثالين للانتقال (${toAr(fadeStreak)}/${toAr(FADE_REQ)})</div>`;
   } else {
     const isText=c.choiceKind==="text"; // خيارات نصية طويلة: خط أصغر ومحاذاة طبيعية بدل التوسيط المكبّر
@@ -3304,11 +3347,21 @@ function buildFactPlan(){
   shuffle(due).forEach(add);
   // القسمة أضعف عملياتها: سبع حقائق قسمة جديدة متتالية في جلسة واحدة تدفع للتخمين لا للتعلّم.
   // المُراجَع منها لا يُقيَّد — هو ما تحتاجه فعلاً — والمقيَّد هو الجديد غير المألوف.
+  // والسحب بالتناوب بين العمليات لا بالخلط الأعمى: الخلط وحده كان يُخرج أحياناً جلسة
+  // بلا عملية كاملة، وهو نقيض التشبيك الذي بُني عليه القسم.
   let newDiv=0;
-  for(const it of shuffle(fresh)){
-    if(newCount>=FACT_NEW_CAP)break;
-    if(it.op==="div"&&newDiv>=FACT_NEW_DIV_CAP)continue;
-    if(add(it)){newCount++;if(it.op==="div")newDiv++}
+  const buckets={};["add","sub","mul","div"].forEach(o=>{buckets[o]=shuffle(fresh.filter(i=>i.op===o))});
+  let drew=true;
+  while(drew&&newCount<FACT_NEW_CAP){
+    drew=false;
+    for(const o of ["add","sub","mul","div"]){
+      if(newCount>=FACT_NEW_CAP)break;
+      if(o==="div"&&newDiv>=FACT_NEW_DIV_CAP)continue;
+      const it=buckets[o].shift();
+      if(!it)continue;
+      drew=true;
+      if(add(it)){newCount++;if(o==="div")newDiv++}
+    }
   }
   const byOp={};chosen.forEach(i=>(byOp[i.op]=byOp[i.op]||[]).push(i));
   const order=["add","sub","mul","div"],woven=[];
