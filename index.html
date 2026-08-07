@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260807-0545";
+  var BUILD="build-20260807-0720";
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
   function fetchHtml(){return fetch(url(),{cache:"no-store"}).then(function(r){return r.text()})}
@@ -1634,13 +1634,15 @@ const BASICS_SUBS={
   addcarry:{label:"الجمع (عشرات/مئات)",short:"الجمع"},
   subborrow:{label:"الطرح (عشرات/مئات)",short:"الطرح"},
   percent:{label:"أساسيات النسبة المئوية",short:"النسبة المئوية"},
-  pimul:{label:"الضرب في ٣٫١٤ (بلا آلة حاسبة)",short:"الضرب في ٣٫١٤"}
+  pimul:{label:"الضرب في ٣٫١٤ (بلا آلة حاسبة)",short:"الضرب في ٣٫١٤"},
+  pimul3:{label:"٣٫١٤ بين عددين (٤ × ٣٫١٤ × ٣)",short:"٣٫١٤ بين عددين"}
 };
 const BASICS_TERMS={
   multdiv:[{ar:"ضرب",en:"multiplication"},{ar:"قسمة",en:"division"}],
   addcarry:[{ar:"جمع",en:"addition"},{ar:"عشرات",en:"tens"}],
   subborrow:[{ar:"طرح",en:"subtraction"},{ar:"فرق",en:"difference"}],
   percent:[{ar:"نسبة مئوية",en:"percentage"}],
+  pimul3:[{ar:"الخاصية التبديلية",en:"commutative property"}],
 };
 // المرحلة الخامسة تُكتَب لا تُختار: الاختيار من أربعة يسمح بالتخمين، وقد رأيناه فعلاً
 // (اختارت ٩٫٤٢ بدل ٩٤٫٢). الكتابة تُلزمها بإنتاج الجواب، فيصير القياس صادقاً.
@@ -1789,6 +1791,38 @@ function piSplitSVG(d){
     <text x="${W/2}" y="99" font-size="12.5" font-weight="800" fill="#0F172A" text-anchor="middle">المجموع ${toAr(314*d)} ← الفاصلة منزلتين ← ${arDec(314*d/100)}</text>
   </svg>`;
 }
+// ===== ٣٫١٤ بين عددين صحيحين: ٤ × ٣٫١٤ × ٣ =====
+// شكواها أنها لا تعرف من أين تبدأ. والمفتاح خطوة واحدة: لا تضربي في ٣٫١٤ مرتين ولا في منتصف الطريق —
+// اجمعي الصحيحين أولاً (الخاصية التبديلية والتجميعية) فتعود المسألة إلى ٣٫١٤ × عدد واحد، وهي التي أتقنتها.
+function piMul3Steps(a,k){
+  const d=a*k,tot=314*d;
+  return[`رتّبي أولاً: الضرب لا يتغيّر بترتيبه، فاضربي العددين الصحيحين معاً: ${toAr(a)} × ${toAr(k)} = ${toAr(d)}`,
+         `صارت المسألة ٣٫١٤ × ${toAr(d)} — وهي التي تتقنينها`,
+         `قدّري: ٣ × ${toAr(d)} = ${toAr(3*d)}`,
+         `اضربي ٣١٤ مفكَّكاً: ٣٠٠ × ${toAr(d)} = ${toAr(300*d)}، و١٠ × ${toAr(d)} = ${toAr(10*d)}، و٤ × ${toAr(d)} = ${toAr(4*d)}`,
+         `اجمعي: ${toAr(10*d)} + ${toAr(4*d)} = ${toAr(14*d)}، ثم ${toAr(300*d)} + ${toAr(14*d)} = ${toAr(tot)}`,
+         `أعيدي الفاصلة منزلتين: <b>${arDec(tot/100)}</b> — أكبر قليلاً من ${toAr(3*d)} كما قدّرنا ✓`];
+}
+// خطوة إعادة الترتيب مرسومة: تُرى ٣٫١٤ وهي تُزاح جانباً حتى يلتقي الصحيحان
+function piReorderSVG(a,k){
+  const W=320,H=150,h=34,y1=26,y2=100,bw=74,xs=[20,123,226];
+  const box=(x,y,w,lab,fill,stroke,col)=>`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="9" fill="${fill}" stroke="${stroke}" stroke-width="2"/>`
+    +`<text x="${x+w/2}" y="${y+h/2+5}" font-size="15" font-weight="800" fill="${col}" text-anchor="middle">${lab}</text>`;
+  const sign=(x,y)=>`<text x="${x}" y="${y+h/2+6}" font-size="16" font-weight="800" fill="#64748B" text-anchor="middle">×</text>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">
+    <text x="${W/2}" y="16" font-size="11.5" font-weight="800" fill="#64748B" text-anchor="middle">كما هي مكتوبة</text>
+    ${box(xs[0],y1,bw,toAr(a),"#F0FDFA","#0D9488","#0F766E")}${sign((xs[0]+bw+xs[1])/2,y1)}
+    ${box(xs[1],y1,bw,"٣٫١٤","#FEF3C7","#D97706","#92400E")}${sign((xs[1]+bw+xs[2])/2,y1)}
+    ${box(xs[2],y1,bw,toAr(k),"#F0FDFA","#0D9488","#0F766E")}
+    <text x="${W/2}" y="${y1+h+22}" font-size="12" font-weight="800" fill="#0F766E" text-anchor="middle">الضرب لا يتغيّر بترتيبه ↓ اجمعي الصحيحين</text>
+    ${box(20,y2,150,`${toAr(a)} × ${toAr(k)} = ${toAr(a*k)}`,"#CCFBF1","#0D9488","#0F766E")}
+    ${sign(185,y2)}
+    ${box(200,y2,100,"٣٫١٤","#FEF3C7","#D97706","#92400E")}
+    <text x="${W/2}" y="${H-4}" font-size="12" font-weight="800" fill="#0F172A" text-anchor="middle">صارت ٣٫١٤ × ${toAr(a*k)} = ${arDec(round2(PI_APPROX*a*k))}</text>
+  </svg>`;
+}
+const PIMUL3_PAIRS=(function(){const o=[];for(let a=2;a<=9;a++)for(let k=2;k<=9;k++)if(a*k>=6&&a*k<=40)o.push([a,k]);return o})();
+function basicsMakePiMul3(){const p=pick(PIMUL3_PAIRS);return{a:p[0],k:p[1],d:p[0]*p[1],c:round2(PI_APPROX*p[0]*p[1])}}
 function subAddUpStop(a,b){
   const up=Math.ceil(b/10)*10;
   // العشرة الوسيطة مفيدة فقط إذا وقعت فعلاً بين العددين: لو كان الأصغر مضاعفاً للعشرة
@@ -1875,16 +1909,18 @@ function basicsPrep(){
   else if(basicsSub==="addcarry"){ans=f.c;basicsCur.qText=`${toAr(f.a)} + ${toAr(f.b)} = ؟`}
   else if(basicsSub==="subborrow"){ans=f.c;basicsCur.qText=`${toAr(f.a)} - ${toAr(f.b)} = ؟`}
   else if(basicsSub==="pimul"){ans=f.c;basicsCur.qText=`٣٫١٤ × ${toAr(f.a)} = ؟`}
+  else if(basicsSub==="pimul3"){ans=f.c;basicsCur.qText=`${toAr(f.a)} × ٣٫١٤ × ${toAr(f.k)} = ؟`}
   else{ans=f.c;basicsCur.qText=`${toAr(f.b)}% من ${toAr(f.a)} = ؟`}
   // مموّهات ٣٫١٤: الفاصلة في الموضع الخطأ (الخطأ الكلاسيكي)، ونسيان جزء من التفكيك
   const m=basicsSub==="percent"?mcNum(ans,[ans+f.onePercent,ans-f.onePercent,f.a*f.b])
     :basicsSub==="pimul"?mcNumDec(ans,[round2(ans*10),round2(ans/10),round2(3*f.a)])
+    :basicsSub==="pimul3"?mcNumDec(ans,[round2(PI_APPROX*Math.max(f.a,f.k)),f.d,round2(ans/10)])
     :mcNum(ans,[ans+1,ans-1,ans+10]);
   basicsCur.opts=m.choices;basicsCur.ai=m.answer;basicsCur.ansVal=ans;
 }
 function basicsNew(){
   basicsShownAt=Date.now();
-  const gen=basicsSub==="multdiv"?basicsMakeFamily:basicsSub==="addcarry"?basicsMakeAddCarry:basicsSub==="subborrow"?basicsMakeSubBorrow:basicsSub==="pimul"?basicsMakePiMul:basicsMakePercent;
+  const gen=basicsSub==="multdiv"?basicsMakeFamily:basicsSub==="addcarry"?basicsMakeAddCarry:basicsSub==="subborrow"?basicsMakeSubBorrow:basicsSub==="pimul"?basicsMakePiMul:basicsSub==="pimul3"?basicsMakePiMul3:basicsMakePercent;
   basicsCur={fam:gen()};basicsLocked=false;basicsPicked=-1;basicsTyped="";basicsPrep();
   if(basicsSub==="multdiv")divArmArray(basicsCur.fam.c,basicsCur.fam.b);
   render();
@@ -1978,6 +2014,8 @@ function renderBasics(){
     // في المرحلة الأولى تبني المصفوفة بيدها؛ وبعدها تُعرض جاهزة للمراجعة السريعة
     if(basicsSub==="multdiv")visualBox=basicsStage===1?divArrayHTML()+`<div style="height:14px"></div>`:`<div style="margin-bottom:14px">${groupsVisual(f.a,f.b)}</div>`;
     else if(basicsSub==="pimul")visualBox=`<div style="display:flex;justify-content:center;margin-bottom:14px">${piSplitSVG(f.a)}</div>`;
+    else if(basicsSub==="pimul3")visualBox=`<div style="display:flex;justify-content:center;margin-bottom:8px">${piReorderSVG(f.a,f.k)}</div>`
+      +(basicsStage===1?`<div style="display:flex;justify-content:center;margin-bottom:14px">${piSplitSVG(f.d)}</div>`:`<div style="height:6px"></div>`);
     else if(basicsSub==="percent")visualBox=`<div style="display:flex;justify-content:center;margin-bottom:6px">${percentGridVisual(f.b)}</div><div style="text-align:center;font-size:12px;color:#64748B;margin-bottom:14px">المربعات الملوّنة = ٪${toAr(f.b)} من الشبكة (١٠٠ مربع)</div>`;
     else{
       const sign=basicsSub==="addcarry"?"+":"−";
@@ -2003,6 +2041,10 @@ function renderBasics(){
       explain=`<div style="font-weight:800;color:#065F46;margin-bottom:6px">الطريقة السهلة: قدّري، ثم اضربي بلا فاصلة، ثم أعيدي الفاصلة</div>`
         +piMulSteps(f.a).map((x,i)=>`<div>${toAr(i+1)}) ${x}.</div>`).join("");
     }
+    else if(basicsSub==="pimul3"){
+      explain=`<div style="font-weight:800;color:#065F46;margin-bottom:6px">المفتاح: اجمعي الصحيحين أولاً — ولا تضربي في ٣٫١٤ إلا مرة واحدة</div>`
+        +piMul3Steps(f.a,f.k).map((x,i)=>`<div>${toAr(i+1)}) ${x}.</div>`).join("");
+    }
     else explain=`<div>١) ٪${toAr(f.b)} تعني ${toAr(f.b)} من كل ١٠٠ (كما في الشبكة الملوّنة أعلاه).</div><div>٢) قيمة ١٪ واحد من ${toAr(f.a)} = ${toAr(f.a)} ÷ ١٠٠ = ${toAr(f.onePercent)}.</div><div>٣) إذن ٪${toAr(f.b)} = ${toAr(f.onePercent)} × ${toAr(f.b)} = ${toAr(f.c)}.</div>`;
     body=`<div style="background:#EFF6FF;border-radius:14px;padding:16px;font-size:14px;line-height:1.8;color:#1E40AF;margin-bottom:16px">📘 هذا <b>مثال محلول</b>. اقرئي الحل خطوة بخطوة، ثم اضغطي «فهمت».</div>
     ${visualBox}
@@ -2020,6 +2062,8 @@ function renderBasics(){
       ?`الطريقة السهلة: لا تطرحي — عُدّي للأعلى من العدد الأصغر إلى أقرب عشرة، ثم منها إلى العدد الأكبر، واجمعي القفزتين.`
       :basicsSub==="pimul"
       ?`قدّري أولاً (الجواب أكبر قليلاً من ٣ × العدد)، ثم اضربي ٣١٤ مفكَّكاً إلى ٣٠٠ + ١٠ + ٤ بلا فاصلة، ثم أعيدي الفاصلة منزلتين وتحقّقي بالتقدير.`
+      :basicsSub==="pimul3"
+      ?`الضرب لا يتغيّر بترتيبه: اضربي العددين الصحيحين معاً أولاً (${toAr(f.a)} × ${toAr(f.k)} = ${toAr(f.d)})، فتعود المسألة إلى ٣٫١٤ × عدد واحد — ثم فكّكي ٣١٤ كالمعتاد. لا تضربي في ٣٫١٤ مرتين.`
       :`القاعدة: أوجدي قيمة ١٪ واحد أولاً بقسمة الرقم على ١٠٠ (${toAr(f.a)}÷١٠٠=${toAr(f.onePercent)})، ثم اضربيها في رقم النسبة (${toAr(f.onePercent)}×${toAr(f.b)}=${toAr(f.c)}).`;
     if(basicsStage===2)hint=`<div style="background:#F0FDF4;border-inline-start:4px solid #10B981;border-radius:12px;padding:14px;margin-bottom:14px;font-size:15px">${ruleText}</div>`;
     else if(basicsStage===3)hint=`<div style="background:#FEF3C7;border-radius:12px;padding:14px;margin-bottom:14px;font-size:15px;color:#B45309"><b>تذكّري القاعدة:</b> ${ruleText}</div>`;
