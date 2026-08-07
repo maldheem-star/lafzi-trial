@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260807-0110";
+  var BUILD="build-20260807-0230";
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
   function fetchHtml(){return fetch(url(),{cache:"no-store"}).then(function(r){return r.text()})}
@@ -1158,7 +1158,7 @@ function fadeMakeCircle(){
   const ans=round2(PI_APPROX*d);
   if(isDiameter){
     const usedAsRadius=round2(PI_APPROX*(d/2)); // مموّه: تعاملت مع القطر كأنه نصف القطر (نسيت ×٢)
-    return{kind:"circle",ans,prompt:"ما محيط الدائرة؟",
+    return{kind:"circle",ans,prompt:"ما محيط الدائرة؟",lab:d,
       steps:[`محيط الدائرة = π × القطر`,`باستعمال π ≈ ٣٫١٤: المحيط = ٣٫١٤ × ${toAr(d)} = ${arDec(ans)} سم`],
       ruleTxt:`محيط الدائرة = π × القطر (π ≈ ٣٫١٤)`,
       distractors:[usedAsRadius,round2(ans+d),round2(ans-d)],
@@ -1167,13 +1167,105 @@ function fadeMakeCircle(){
       q:`دائرة قطرها ${toAr(d)} سم. ما محيطها؟ (π ≈ ٣٫١٤)`};
   }
   const usedAsIsRadius=round2(PI_APPROX*r); // مموّه: ضربت π في نصف القطر مباشرة بدل القطر (نسيت ×٢)
-  return{kind:"circle",ans,prompt:"ما محيط الدائرة؟",
+  return{kind:"circle",ans,prompt:"ما محيط الدائرة؟",lab:d,
     steps:[`في الرسم: الخط الأخضر نصف القطر (${toAr(r)})، والمتقطّع مثله تماماً — ومعاً يصنعان القطر`,`فالقطر = ٢ × ${toAr(r)} = ${toAr(d)} سم`,`ومحيط الدائرة = π × القطر ≈ ٣٫١٤ × ${toAr(d)} = ${arDec(ans)} سم`],
     ruleTxt:`محيط الدائرة = π × القطر = π × (٢ × نصف القطر)`,
     distractors:[usedAsIsRadius,round2(ans+r),round2(ans-r)],
     svg:circleSVG(`نق = ${toAr(r)} سم`,false),
     caption:`الأخضر نصف القطر، والمتقطّع مثله — مجموعهما القطر`,
     q:`دائرة نصف قطرها ${toAr(r)} سم. ما محيطها؟ (π ≈ ٣٫١٤)`};
+}
+// ===== مختبر الأشكال: الشكل يستجيب ليدها والأرقام تتغيّر معه لحظياً =====
+// القاعدة تتحوّل من جملة تُحفظ إلى علاقة تُشاهَد وهي تتغيّر. ولا نُعيد بناء المزلاج نفسه
+// عند كل حركة — نُحدّث الرسم والأرقام فقط — وإلا انقطع السحب على الجوال في منتصفه.
+const LAB_D_MIN=6,LAB_D_MAX=30;          // مدى القطر داخل المختبر
+const LAB_S=290/(PI_APPROX*LAB_D_MAX);   // مقياس ثابت: أكبر محيط يملأ العرض بالضبط
+let labKind=null,labD=12,labB=8,labH=6;
+function labArm(kind,a,b){
+  labKind=kind;
+  if(kind==="circle"){labD=Math.min(LAB_D_MAX,Math.max(LAB_D_MIN,2*Math.round(a/2)))}
+  else{labB=Math.min(14,Math.max(2,a));labH=Math.min(12,Math.max(2,b))}
+}
+function labSetD(v){labD=Math.min(LAB_D_MAX,Math.max(LAB_D_MIN,parseInt(v,10)||LAB_D_MIN));labPaint()}
+function labSetB(v){labB=Math.min(14,Math.max(2,parseInt(v,10)||2));labPaint()}
+function labSetH(v){labH=Math.min(12,Math.max(2,parseInt(v,10)||2));labPaint()}
+function labPaint(){
+  const f=document.getElementById('labFig'),o=document.getElementById('labOut');
+  if(f)f.innerHTML=labFigSVG();
+  if(o)o.innerHTML=labOutHTML();
+}
+// الدائرة: نفرد المحيط شريطاً مقسّماً بأقطار، فيُرى أن المحيط ثلاثة أقطار وزيادة صغيرة مهما تغيّر القطر
+function labCircleSVG(){
+  // كل النصوص موسّطة: المحاذاة من الحافة تنقلب في سياق العربية فتُقصّ خارج الإطار
+  // الشريط موسّط تحت الدائرة تماماً: لو ثُبّت من الحافة انفصل بصرياً عنها كلما صغر القطر
+  const d=labD,r=d*LAB_S/2,cx=160,cy=56,bar=PI_APPROX*d*LAB_S,seg=d*LAB_S,x0=cx-bar/2,by=142;
+  let segs="";
+  for(let i=0;i<3;i++)segs+=`<rect x="${x0+i*seg}" y="${by}" width="${seg-1.5}" height="20" rx="3" fill="#0D9488" opacity="${0.55+i*0.15}"/>`;
+  const rest=bar-3*seg,restW=Math.max(2,rest-1);
+  segs+=`<rect x="${x0+3*seg}" y="${by}" width="${restW}" height="20" rx="2" fill="#F59E0B"/>`;
+  // الأقطار الصغيرة لا تتّسع لثلاث كلمات تحتها فتتراكب — نكتب وصفاً واحداً موسّطاً بدلها
+  const roomy=seg>=30;
+  let ticks=roomy
+    ?[0,1,2].map(i=>`<text x="${x0+i*seg+seg/2}" y="${by+33}" font-size="10" font-weight="800" fill="#0F766E" text-anchor="middle">قطر</text>`).join("")
+      +`<text x="${x0+3*seg+restW/2}" y="${by+33}" font-size="10" font-weight="800" fill="#B45309" text-anchor="middle">+</text>`
+    :`<text x="${cx}" y="${by+33}" font-size="10" font-weight="800" fill="#0F766E" text-anchor="middle">٣ أقطار <tspan fill="#B45309">+ زيادة</tspan></text>`;
+  return `<svg viewBox="0 0 320 186" width="100%" style="max-width:320px">
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="#EFF6FF" stroke="#1E293B" stroke-width="2.5"/>
+    <line x1="${cx-r}" y1="${cy}" x2="${cx+r}" y2="${cy}" stroke="#0D9488" stroke-width="2.5"/>
+    <circle cx="${cx}" cy="${cy}" r="2.5" fill="#1E293B"/>
+    <text x="${cx}" y="120" font-size="12" font-weight="800" fill="#0D9488" text-anchor="middle">القطر = ${toAr(d)}</text>
+    <text x="${cx}" y="136" font-size="11" font-weight="800" fill="#334155" text-anchor="middle">المحيط مفروداً:</text>
+    ${segs}${ticks}
+  </svg>`;
+}
+function labTriSVG(){
+  const b=labB,h=labH,Sx=10,Sy=8,x0=52,y0=124,skew=26,w=b*Sx,ht=h*Sy,ax=x0+skew;
+  const half=labKind==="triangle";
+  return `<svg viewBox="0 0 278 150" width="100%" style="max-width:278px">
+    <polygon points="${x0},${y0} ${x0+w},${y0} ${x0+w+skew},${y0-ht} ${ax},${y0-ht}"
+      fill="${half?'#FFFBEB':'#F0FDF4'}" stroke="${half?'#CBD5E1':'#1E293B'}" stroke-width="${half?1.5:2.5}" ${half?'stroke-dasharray="5 4"':''}/>
+    ${half?`<polygon points="${x0},${y0} ${x0+w},${y0} ${ax},${y0-ht}" fill="#FEF3C7" stroke="#1E293B" stroke-width="2.5"/>`:""}
+    <line x1="${ax}" y1="${y0}" x2="${ax}" y2="${y0-ht}" stroke="#D97706" stroke-width="2" stroke-dasharray="4 3"/>
+    <path d="M ${ax},${y0} L ${ax},${y0-9} L ${ax+9},${y0-9} L ${ax+9},${y0}" fill="none" stroke="#D97706" stroke-width="1.5"/>
+    <text x="${x0+w/2}" y="${y0+16}" font-size="12" font-weight="800" fill="#0D9488" text-anchor="middle">القاعدة = ${toAr(b)}</text>
+    <text x="26" y="${y0-ht/2}" font-size="12" font-weight="800" fill="#D97706" text-anchor="middle">ع = ${toAr(h)}</text>
+    ${half?`<text x="${x0+w+skew/2+10}" y="${y0-ht/2}" font-size="10" font-weight="700" fill="#94A3B8" text-anchor="middle">نسخة مثله</text>`:""}
+  </svg>`;
+}
+function labFigSVG(){return labKind==="circle"?labCircleSVG():labTriSVG()}
+function labOutHTML(){
+  if(labKind==="circle"){
+    const d=labD,c=round2(PI_APPROX*d),est=3*d;
+    return `<div style="font-size:15px;font-weight:800;color:#0F766E">المحيط = ٣٫١٤ × ${toAr(d)} = ${arDec(c)} سم</div>
+      <div style="font-size:13px;color:#475569;margin-top:6px">التقدير: ٣ × ${toAr(d)} = ${toAr(est)} — والمحيط أكبر منه بـ${arDec(round2(c-est))} فقط</div>
+      <div style="font-size:12px;color:#94A3B8;margin-top:4px">حرّكي القطر: يظلّ المحيط <b>ثلاثة أقطار وزيادة صغيرة</b> مهما كبرت الدائرة</div>`;
+  }
+  const b=labB,h=labH,par=b*h;
+  if(labKind==="triangle")
+    return `<div style="font-size:14px;color:#475569">متوازي الأضلاع = ${toAr(b)} × ${toAr(h)} = ${toAr(par)} سم²</div>
+      <div style="font-size:15px;font-weight:800;color:#B45309;margin-top:4px">والمثلث نصفه: ${toAr(par)} ÷ ٢ = ${toAr(par/2)} سم²</div>
+      <div style="font-size:12px;color:#94A3B8;margin-top:4px">حرّكي القاعدة أو الارتفاع: يبقى المثلث <b>نصف</b> متوازي الأضلاع دائماً</div>`;
+  return `<div style="font-size:15px;font-weight:800;color:#0F766E">المساحة = ${toAr(b)} × ${toAr(h)} = ${toAr(par)} سم²</div>
+    <div style="font-size:12px;color:#94A3B8;margin-top:4px">حرّكي الارتفاع: المساحة تتبع الارتفاع العمودي، لا طول الضلع المائل</div>`;
+}
+function labSlider(label,id,min,max,step,val,fn){
+  return `<div style="display:flex;align-items:center;gap:10px;margin-top:8px">
+    <span style="font-size:12px;font-weight:800;color:#475569;min-width:56px">${label}</span>
+    <input id="${id}" type="range" min="${min}" max="${max}" step="${step}" value="${val}"
+      style="flex:1;accent-color:#0D9488" oninput="${fn}(this.value)">
+  </div>`;
+}
+function labHTML(){
+  if(!labKind)return "";
+  const sliders=labKind==="circle"
+    ?labSlider("القطر","labRD",LAB_D_MIN,LAB_D_MAX,2,labD,"labSetD")
+    :labSlider("القاعدة","labRB",2,14,1,labB,"labSetB")+labSlider("الارتفاع","labRH",2,12,1,labH,"labSetH");
+  return `<div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:14px;padding:12px;margin-bottom:16px">
+    <div style="font-size:13px;font-weight:800;color:#334155;text-align:center;margin-bottom:6px">🔧 جرّبي بنفسك — حرّكي المقبض وشاهدي ما يتغيّر</div>
+    <div id="labFig" style="text-align:center">${labFigSVG()}</div>
+    <div id="labOut" style="text-align:center;line-height:1.9;margin-top:6px">${labOutHTML()}</div>
+    ${sliders}
+  </div>`;
 }
 function parallelogramSVG(baseLabel,heightLabel){
   return `<svg viewBox="0 0 200 120" width="200" height="120">
@@ -1186,7 +1278,7 @@ function parallelogramSVG(baseLabel,heightLabel){
 }
 function fadeMakeParallelogram(){
   const b=rand(4,14),h=rand(3,12),ans=b*h;
-  return{kind:"parallelogram",ans,prompt:"ما مساحة متوازي الأضلاع؟",
+  return{kind:"parallelogram",ans,prompt:"ما مساحة متوازي الأضلاع؟",labB:b,labH:h,
     steps:[`مساحة متوازي الأضلاع = القاعدة × الارتفاع`,`المساحة = ${toAr(b)} × ${toAr(h)} = ${toAr(ans)} سم²`],
     ruleTxt:`مساحة متوازي الأضلاع = القاعدة × الارتفاع (الارتفاع عمودي على القاعدة، وليس طول الضلع المائل)`,
     distractors:[ans+b,2*(b+h),ans-h],
@@ -1209,7 +1301,7 @@ function triangleSVG(baseLabel,heightLabel){
 }
 function fadeMakeTriangle(){
   const b=2*rand(2,7),h=rand(3,12),ans=b*h/2;
-  return{kind:"triangle",ans,prompt:"ما مساحة المثلث؟",
+  return{kind:"triangle",ans,prompt:"ما مساحة المثلث؟",labB:b,labH:h,
     steps:[`في الرسم: المثلث الملوّن + نسخته الباهتة = متوازي أضلاع كامل، قاعدته ${toAr(b)} وارتفاعه ${toAr(h)}`,`مساحة متوازي الأضلاع = ${toAr(b)} × ${toAr(h)} = ${toAr(b*h)} سم²`,`والمثلث نصفه بالضبط: ${toAr(b*h)} ÷ ٢ = ${toAr(ans)} سم²`],
     ruleTxt:`مساحة المثلث = (القاعدة × الارتفاع) ÷ ٢`,
     distractors:[b*h,ans+b,ans-h],
@@ -1278,7 +1370,14 @@ function fadePrep(){
   else{d=fadeCur.distractors;} // الوسيط/النسبة المئوية/المكعّب/الهرم: مموّهات محسوبة عند الإنشاء
   const opts=shuffle([fadeCur.ans,...fadeDedupe(fadeCur.ans,d)]);fadeCur.opts=opts;fadeCur.ai=opts.indexOf(fadeCur.ans);
 }
-function fadeNew(){fadeCur=fadeMakeQuestion();fadeLocked=false;fadePicked=-1;fadePrep();fadeShownAt=Date.now();render()}
+function fadeNew(){
+  fadeCur=fadeMakeQuestion();fadeLocked=false;fadePicked=-1;fadePrep();fadeShownAt=Date.now();
+  // المختبر يبدأ من أرقام المسألة التي أمامها، فلا ينفصل التجريب عن السؤال
+  if(fadeCur.kind==="circle")labArm("circle",fadeCur.lab||12);
+  else if(fadeCur.kind==="triangle"||fadeCur.kind==="parallelogram")labArm(fadeCur.kind,fadeCur.labB||8,fadeCur.labH||6);
+  else labKind=null;
+  render();
+}
 function fadeChoose(i){
   if(fadeLocked)return;fadeLocked=true;fadePicked=i;
   const ok=i===fadeCur.ai;
@@ -1458,6 +1557,7 @@ function renderFade(){
     ${c.kind==="seq"
       ? `<div style="background:#F0FDF4;border-inline-start:4px solid #10B981;border-radius:12px;padding:16px;margin-bottom:16px;font-size:15px;line-height:2"><div>١) القاعدة: <b style="color:#059669">${c.ruleTxt}</b>.</div><div>٢) نطبّقها على آخر عدد: <b style="color:#059669">${c.op} = ${toAr(c.ans)}</b>.</div><div>٣) إذن الناقص هو <b style="color:#059669">${toAr(c.ans)}</b>.</div></div>`
       : `<div style="background:#F0FDF4;border-inline-start:4px solid #10B981;border-radius:12px;padding:16px;margin-bottom:16px;font-size:15px;line-height:2">${c.steps.map((s,i)=>`<div>${toAr(i+1)}) ${s}.</div>`).join("")}</div>`}
+    ${labHTML()}
     <button class="btn" style="background:#059669" onclick="fadeStage1Next()">فهمت، مثال آخر ←</button>
     <div style="font-size:13px;color:#64748B;text-align:center;margin-top:10px">شاهدي مثالين للانتقال (${toAr(fadeStreak)}/${toAr(FADE_REQ)})</div>`;
   } else {
