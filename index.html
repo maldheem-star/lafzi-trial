@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260807-1210";
+  var BUILD="build-20260807-1340";
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
   function fetchHtml(){return fetch(url(),{cache:"no-store"}).then(function(r){return r.text()})}
@@ -2237,6 +2237,58 @@ async function runMicDiag(){
   }
   micDiagResult=o;render();
 }
+// ===== تعداد الدوال =====
+// دوال التشخيص مُعرَّفة مبكراً في الملف، ودوال التسجيل متأخّرة بسبعمئة سطر. فلو توقّف تنفيذ
+// الملف في المنتصف لعملت شاشة التشخيص ومات زرّ 🎤 — وهو ما يبدو عطلاً في الزرّ وليس كذلك.
+// هذا التعداد يكشف الحقيقة في سطر واحد بدل عشر رسائل تخمين.
+const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEngPlan","startDictation",
+  "startPronunciation","startSpeaking","startAudioDiag","runMicDiag","fetchTimeout",
+  "pronStart","pronStop","pronReset","speakStart","speakStop","speakReset","speakEnglish",
+  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD"];
+function censusMissing(){return CENSUS.filter(function(n){return typeof window[n]!=="function"})}
+function censusHTML(){
+  var miss=censusMissing();
+  if(!miss.length)return `<div style="background:#ECFDF5;border-radius:12px;padding:12px 14px;margin-top:12px;font-size:13px;color:#065F46">✓ كل دوال التطبيق (${toAr(CENSUS.length)}) معرَّفة — فالملف نُفّذ كاملاً.</div>`;
+  return `<div style="background:#FEF2F2;border-radius:12px;padding:12px 14px;margin-top:12px;font-size:13px;color:#991B1B;line-height:1.9">
+    ✗ <b>${toAr(miss.length)} دالة غير معرَّفة</b> — توقّف تنفيذ الملف قبل الوصول إليها، ولهذا لا تستجيب أزرارها.
+    <div style="direction:ltr;text-align:left;font-size:11.5px;margin-top:6px">${miss.join(", ")}</div>
+    <div style="margin-top:6px">أرسلي هذه القائمة كما هي.</div></div>`;
+}
+// تتبّع حيّ لمسار التسجيل: يُظهر أين يتوقّف بالضبط بدل صمتٍ لا يُفسَّر
+let micTrace=[];
+function traceAdd(t){micTrace.push(t);const el=document.getElementById('micTrace');if(el)el.innerHTML=traceHTML()}
+function traceHTML(){
+  if(!micTrace.length)return "";
+  return `<div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:12px;padding:12px;margin-top:10px;font-size:13px;line-height:1.9;text-align:start">`
+    +micTrace.map(function(x){return "<div>"+x+"</div>"}).join("")+`</div>`;
+}
+async function traceRecord(){
+  micTrace=[];traceAdd("١) وصلت الضغطة إلى الكود ✓");
+  if(typeof pronStart!=="function"){traceAdd("✗ <b>pronStart غير معرَّفة</b> — هنا العطل: الزرّ سليم والدالة غير موجودة.");return}
+  traceAdd("٢) دالة التسجيل موجودة ✓");
+  if(!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)){traceAdd("✗ واجهة الميكروفون غير متاحة");return}
+  let stream=null;
+  try{
+    traceAdd("٣) نطلب الميكروفون…");
+    stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    traceAdd("٤) فُتح الميكروفون ✓");
+  }catch(e){traceAdd("✗ رُفض الميكروفون: "+((e&&e.name)||e));return}
+  try{
+    if(typeof MediaRecorder==="undefined"){traceAdd("✗ MediaRecorder غير مدعوم");stream.getTracks().forEach(t=>t.stop());return}
+    const chunks=[];
+    const rec=new MediaRecorder(stream);
+    rec.ondataavailable=function(e){if(e.data&&e.data.size)chunks.push(e.data)};
+    const stopped=new Promise(function(res){rec.onstop=res});
+    rec.start();traceAdd("٥) بدأ التسجيل — تكلّمي الآن ثلاث ثوانٍ…");
+    await new Promise(function(r){setTimeout(r,3000)});
+    rec.stop();await stopped;
+    stream.getTracks().forEach(t=>t.stop());
+    const size=chunks.reduce(function(s,c){return s+c.size},0);
+    traceAdd("٦) توقّف التسجيل ✓ — حجم الصوت: <b>"+toAr(size)+"</b> بايت");
+    traceAdd(size>500?"✓ <b>التسجيل يعمل تماماً.</b> فإن بقي زرّ 🎤 صامتاً فالعطل في الزرّ نفسه لا في الميكروفون — أخبريني."
+                     :"⚠️ التسجيل عمل لكن الصوت شبه فارغ — تحقّقي أن الميكروفون غير مغطّى.");
+  }catch(e){traceAdd("✗ فشل التسجيل: "+((e&&e.name)||e)+" — "+((e&&e.message)||""))}
+}
 function micDiagHTML(){
   const yn=v=>v?'<b style="color:#059669">نعم</b>':'<b style="color:#DC2626">لا</b>';
   let box="";
@@ -2261,6 +2313,13 @@ function micDiagHTML(){
     <div style="font-weight:800;font-size:16px;margin-bottom:8px">🎤 تشخيص الميكروفون</div>
     <button class="btn" style="background:#7C3AED" onclick="runMicDiag()">🎤 افحصي الميكروفون الآن</button>
     ${box}
+    ${censusHTML()}
+    <div style="margin-top:16px;padding-top:14px;border-top:1px dashed #E2E8F0">
+      <div style="font-weight:800;font-size:15px;margin-bottom:6px">⏺️ اختبار زرّ التسجيل خطوة بخطوة</div>
+      <div style="font-size:12px;color:#94A3B8;margin-bottom:8px">يُظهر أين يتوقّف المسار بالضبط — يسجّل ثلاث ثوانٍ ثم يتوقّف وحده</div>
+      <button class="btn" style="background:#0D9488" onclick="traceRecord()">⏺️ ابدئي الاختبار</button>
+      <div id="micTrace">${traceHTML()}</div>
+    </div>
   </div>`;
 }
 function runAudioDiag(){
