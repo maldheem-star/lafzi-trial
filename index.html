@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260808-1420";
+  var BUILD="build-20260808-1650";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -2054,7 +2054,26 @@ function basicsNew(){
 }
 function basicsTypedStage(){return basicsStage===5}
 // extra (اختياري): حقول إضافية مثل {is_new, srs_box} — تُميّز العنصر الجديد عن المُراجَع عند التحليل
-function logAnswer(domain,qtype,isCorrect,response,itemId,elapsedMs,extra){try{fetch(`${SB_URL}/rest/v1/${TBL_LOG}`,{method:"POST",headers:{"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json","Prefer":"return-minimal"},body:JSON.stringify(Object.assign({student_alias:alias(),domain,qtype,is_correct:isCorrect,response:response==null?null:String(response),item_id:itemId||null,elapsed_ms:elapsedMs==null?null:Math.round(elapsedMs)},extra||{}))})}catch(e){}}
+// حقل إضافي لعمود غير موجود يجعل PostgREST يرفض السطر كلّه بـ400 — لا الحقل وحده. وبما أن
+// النداء صامت، تختفي إجاباتها من السجلّ بلا أي أثر ظاهر. حدث هذا فعلاً حين أضفتُ engine قبل
+// إنشاء عموده. فالآن: إن فشل السطر الكامل نُعيد إرسال الحقول الأساسية وحدها — الإضافيّات
+// تحسينٌ للتحليل، وفقدانها أهون ألف مرة من فقدان الإجابة نفسها.
+function logPost(row){
+  return fetch(`${SB_URL}/rest/v1/${TBL_LOG}`,{method:"POST",headers:{"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json","Prefer":"return-minimal"},body:JSON.stringify(row)});
+}
+function logAnswer(domain,qtype,isCorrect,response,itemId,elapsedMs,extra){
+  const base={student_alias:alias(),domain,qtype,is_correct:isCorrect,
+    response:response==null?null:String(response),item_id:itemId||null,
+    elapsed_ms:elapsedMs==null?null:Math.round(elapsedMs)};
+  const full=Object.assign({},base,extra||{});
+  try{
+    logPost(full).then(function(r){
+      if(r&&!r.ok&&extra&&Object.keys(extra).length){
+        try{logPost(base).catch(function(){})}catch(e){}
+      }
+    }).catch(function(){});
+  }catch(e){}
+}
 function basicsChoose(i){
   if(basicsLocked||pctGated())return;basicsLocked=true;basicsPicked=i;
   basicsRecord(i===basicsCur.ai,basicsCur.opts?basicsCur.opts[i]:null);
