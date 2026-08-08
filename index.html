@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260808-1810";
+  var BUILD="build-20260809-0020";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -2015,10 +2015,10 @@ function pctBandBoxHTML(){
 }
 function basicsFamilyQ(f){
   const kind=pick(["mul1","mul2","div1","div2"]);
-  if(kind==="mul1")return{text:`${toAr(f.a)} × ${toAr(f.b)} = ؟`,ans:f.c};
-  if(kind==="mul2")return{text:`${toAr(f.b)} × ${toAr(f.a)} = ؟`,ans:f.c};
-  if(kind==="div1")return{text:`${toAr(f.c)} ÷ ${toAr(f.a)} = ؟`,ans:f.b};
-  return{text:`${toAr(f.c)} ÷ ${toAr(f.b)} = ؟`,ans:f.a};
+  if(kind==="mul1")return{text:`${toAr(f.a)} × ${toAr(f.b)} = ؟`,ans:f.c,op:"mul"};
+  if(kind==="mul2")return{text:`${toAr(f.b)} × ${toAr(f.a)} = ؟`,ans:f.c,op:"mul"};
+  if(kind==="div1")return{text:`${toAr(f.c)} ÷ ${toAr(f.a)} = ؟`,ans:f.b,op:"div",da:f.c,db:f.a};
+  return{text:`${toAr(f.c)} ÷ ${toAr(f.b)} = ؟`,ans:f.a,op:"div",da:f.c,db:f.b};
 }
 // نعرض الطريقة العمودية بديلاً مطويّاً لا بديلاً مفروضاً: من تعلّمتها في المدرسة تجدها،
 // ومن أرهقتها لا تراها إلا إذا فتحتها بنفسها
@@ -2030,7 +2030,11 @@ function basicsPrep(){
   const f=basicsCur.fam;
   if(basicsStage===1){basicsCur.opts=null;basicsCur.ai=-1;return}
   let ans;
-  if(basicsSub==="multdiv"){const fq=basicsFamilyQ(f);basicsCur.qText=fq.text;ans=fq.ans}
+  if(basicsSub==="multdiv"){const fq=basicsFamilyQ(f);basicsCur.qText=fq.text;ans=fq.ans;
+    basicsCur.op=fq.op;
+    // المصفوفة تُسلَّح بالقسمة المعروضة نفسها: العائلة الواحدة تُنتج ٣٦÷٤ و٣٦÷٩، وتسليح
+    // الأولى بينما المعروض الثانية يجعل العلاج عن سؤال آخر غير الذي أخطأت فيه
+    if(fq.op==="div")divArmArray(fq.da,fq.db);}
   else if(basicsSub==="addcarry"){ans=f.c;basicsCur.qText=`${toAr(f.a)} + ${toAr(f.b)} = ؟`}
   else if(basicsSub==="subborrow"){ans=f.c;basicsCur.qText=`${toAr(f.a)} - ${toAr(f.b)} = ؟`}
   else if(basicsSub==="pimul"){ans=f.c;basicsCur.qText=`٣٫١٤ × ${toAr(f.a)} = ؟`}
@@ -2046,13 +2050,49 @@ function basicsPrep(){
 function basicsNew(){
   basicsShownAt=Date.now();
   const gen=basicsSub==="multdiv"?basicsMakeFamily:basicsSub==="addcarry"?basicsMakeAddCarry:basicsSub==="subborrow"?basicsMakeSubBorrow:basicsSub==="pimul"?basicsMakePiMul:basicsSub==="pimul3"?basicsMakePiMul3:basicsMakePercent;
-  basicsCur={fam:gen()};basicsLocked=false;basicsPicked=-1;basicsTyped="";basicsPrep();
-  if(basicsSub==="multdiv")divArmArray(basicsCur.fam.c,basicsCur.fam.b);
+  basicsCur={fam:gen()};basicsLocked=false;basicsPicked=-1;basicsTyped="";
+  divRemedyAt=0;pctWarn="";pctWarned=false;
+  if(basicsSub==="multdiv"&&basicsStage===1)divArmArray(basicsCur.fam.c,basicsCur.fam.b);
+  basicsPrep();
   if(basicsSub==="percent")pctArm();
   render();
   if(basicsStage===5)setTimeout(()=>{const el=document.getElementById('basicsIn');if(el)el.focus()},50);
 }
 function basicsTypedStage(){return basicsStage===5}
+// ===== بوّابة القسمة في الأساسيات =====
+// المصفوفة وبوّابتها رفعتا القسمة من ٣٨٪ إلى ٩٣٪ — لكنهما كانتا في قسم الطلاقة وحده.
+// وفي جلسة ٨ أغسطس: القسمة في الطلاقة ٢/٢، وفي الأساسيات/المرحلة الخامسة ١١/١٥، وخطآن
+// منها شكلهما واحد (١٨÷٦ ← ٩ و٢٤÷٦ ← ١٢، أي قسمت على ٢ بدل المقسوم عليه). فالدواء كان
+// موجوداً وغير موصول بالمكان الذي تسقط فيه.
+let divRemedyAt=0;
+function basicsAnsOk(){
+  if(!basicsCur)return false;
+  return basicsTypedStage()?(Math.abs(parseArNum(basicsTyped)-basicsCur.ansVal)<1e-6)
+                           :(basicsPicked===basicsCur.ai);
+}
+function basicsDivGated(){
+  if(basicsSub!=="multdiv"||!basicsLocked||!basicsCur||basicsCur.op!=="div")return false;
+  if(basicsStage<4)return false;           // المراحل الأولى فيها الشرح والرسم أصلاً
+  if(basicsAnsOk())return false;
+  return !divComplete();
+}
+function basicsDivLogRemedy(){
+  if(!divRemedyAt)return;
+  const dwell=Date.now()-divRemedyAt;
+  logAnswer("basics_multdiv","array",divComplete(),String(divTaps),null,dwell,
+    {q_text:`${divA} ÷ ${divB}`});
+  divRemedyAt=0;
+}
+// ===== النسبة: مقارنة الجواب بالنطاق الذي اختارته هي =====
+// ٧٠٪ من ٦٠٠: اختارت «بين ٣٠٠ و٦٠٠» ثم كتبت ٦٠ — حدّدت المنطقة الصحيحة وكتبت خارجها،
+// ولم يوقفها شيء. البوّابة جعلتها تُقدّر، ولم تجعلها تُقابل جوابها بتقديرها.
+let pctWarn="",pctWarned=false;
+function pctBandRange(a,i){return [[0,a/4],[a/4,a/2],[a/2,a],[a,Infinity]][i]}
+function pctOutsideOwnBand(v){
+  if(!pctGateOn()||pctBandPick<0||!Number.isFinite(v))return false;
+  const r=pctBandRange(basicsCur.fam.a,pctBandPick);
+  return !(v>=r[0]&&v<=r[1]);
+}
 // extra (اختياري): حقول إضافية مثل {is_new, srs_box} — تُميّز العنصر الجديد عن المُراجَع عند التحليل
 // حقل إضافي لعمود غير موجود يجعل PostgREST يرفض السطر كلّه بـ400 — لا الحقل وحده. وبما أن
 // النداء صامت، تختفي إجاباتها من السجلّ بلا أي أثر ظاهر. حدث هذا فعلاً حين أضفتُ engine قبل
@@ -2083,8 +2123,14 @@ function basicsSubmit(){
   if(basicsLocked||pctGated())return;
   const el=document.getElementById('basicsIn'),raw=(el?el.value:"").trim();
   if(raw==="")return;
-  basicsTyped=raw;basicsLocked=true;
   const v=parseArNum(raw);
+  // تحذير واحد لا حبس: إن أصرّت على الرقم نفسه مرّت وسُجّل — الغرض أن تُقابل لا أن تُمنع
+  if(!pctWarned&&pctOutsideOwnBand(v)){
+    const r=pctBandRange(basicsCur.fam.a,pctBandPick);
+    pctWarn=`اخترتِ أن الجواب ${pctBands(basicsCur.fam.a)[pctBandPick]}، وكتبتِ ${toAr(v)} — وهو خارج ما قدّرتِه بنفسك. راجعي حسابك، أو اضغطي «تحقّقي» مرة أخرى إن كنتِ متأكّدة.`;
+    pctWarned=true;render();return;
+  }
+  pctWarn="";basicsTyped=raw;basicsLocked=true;
   basicsRecord(Number.isFinite(v)&&Math.abs(v-basicsCur.ansVal)<1e-6,raw);
 }
 function basicsRecord(ok,resp){
@@ -2098,6 +2144,7 @@ function basicsRecord(ok,resp){
     else if(basicsFinalSupport){basicsFinalRecoveryStreak++;if(basicsFinalRecoveryStreak>=RECOVERY_REQ){basicsFinalSupport=false;basicsFinalRecoveryStreak=0}}
     else{basicsMasteryStreak++}
   }
+  if(basicsSub==="multdiv"&&basicsCur&&basicsCur.op==="div"&&basicsStage>=4&&!ok&&!divRemedyAt)divRemedyAt=Date.now();
   const elapsed=basicsShownAt?Date.now()-basicsShownAt:null;
   // الرقم الذي أنتجته فعلاً: بدونه أعرف أنها أخطأت ولا أعرف نوع الخطأ (نسيت الحمل؟ أخطأت موضع الفاصلة؟)
   // محاولات النطاق تُقاس: إن بقيت أكثر من واحدة فالخلل في حسّ الحجم لا في الحساب
@@ -2110,8 +2157,14 @@ function basicsRecord(ok,resp){
   render();
 }
 function basicsStage1Next(){basicsStreak++;if(basicsStreak>=BASICS_REQ){basicsStage=2;basicsStreak=0}basicsNew()}
-function basicsAdvance(){if(basicsStreak>=BASICS_REQ&&basicsStage<5){basicsStage++;basicsStreak=0}basicsNew()}
+function basicsAdvance(){
+  if(basicsDivGated())return;
+  basicsDivLogRemedy();
+  if(basicsStreak>=BASICS_REQ&&basicsStage<5){basicsStage++;basicsStreak=0}basicsNew();
+}
 function basicsFinalNext(){
+  if(basicsDivGated())return;
+  basicsDivLogRemedy();
   if(basicsMasteryStreak>=MASTERY_REQ){basicsNotYet=false;mode="basicsDone";window.scrollTo(0,0);render();return}
   // نفس سقف التقوية: بلا حدّ كانت المرحلة المستقلة لا تنتهي إلا بخمس متتالية، فتتحوّل إلى ضغط عشوائي
   if(basicsFinalCount>=MASTERY_MAX_Q){basicsNotYet=true;mode="basicsDone";window.scrollTo(0,0);render();return}
@@ -2229,6 +2282,7 @@ function renderBasics(){
         style="width:170px;padding:14px;border-radius:12px;border:2px solid ${basicsLocked?(tOk?'#10B981':'#EF4444'):'#E2E8F0'};font-size:26px;text-align:center;font-weight:800"
         onkeydown="if(event.key==='Enter')basicsSubmit()">
       ${dec&&!basicsLocked?`<div style="font-size:12px;color:#94A3B8;margin-top:6px">اكتبي الفاصلة نقطةً أو فاصلة — كلاهما مقبول</div>`:""}
+      ${pctWarn?`<div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:12px;padding:12px 14px;margin-top:12px;font-size:14px;color:#92400E;line-height:1.8;text-align:start">⚖️ ${pctWarn}</div>`:""}
       ${basicsLocked&&!tOk?`<div style="margin-top:10px;font-weight:800;color:#DC2626">الصحيح: ${ansTxt}</div>`:""}
       ${basicsLocked?"":`<button class="btn" style="background:#059669;margin-top:14px" onclick="basicsSubmit()">تحقّقي ←</button>`}
     </div>`:"";
@@ -2237,7 +2291,12 @@ function renderBasics(){
     const diag=(!okNow&&basicsLocked&&basicsSub==="percent")
       ?percentDiagnose(f.a,f.b,f.c,typed?basicsTyped:(basicsCur.opts?basicsCur.opts[basicsPicked]:null)):"";
     const diagBox=diag?`<div style="background:#FEF2F2;border-inline-start:4px solid #EF4444;border-radius:12px;padding:12px 14px;margin-bottom:10px;font-size:14px;line-height:1.8;color:#991B1B"><b>أين اختلّت:</b> ${diag}</div>`:"";
-    const why=basicsLocked?`${diagBox}<div class="why" style="margin-bottom:10px">${okNow?"✓ "+(basicsStage===5?"حللتِها وحدك! 🌟":"أحسنتِ"):(typed?"لا بأس — راجعي الطريقة ثم أعيدي":"الصحيحة بالأخضر")}.</div><button class="btn" style="background:${basicsStage===5?'#059669':'#0D9488'}" onclick="${basicsStage===5?'basicsFinalNext()':'basicsAdvance()'}">${basicsStage===5?'سؤال جديد ←':'التالي ←'}</button>`:"";
+    const divGate=basicsDivGated();
+    const divBox=(basicsSub==="multdiv"&&basicsLocked&&basicsCur.op==="div"&&basicsStage>=4&&!okNow)
+      ?`<div style="background:#FEF2F2;border-inline-start:4px solid #EF4444;border-radius:12px;padding:12px 14px;margin-bottom:10px;font-size:14px;line-height:1.8;color:#991B1B">
+          <b>لنراها بدل أن نحفظها:</b> كوّني الصفوف حتى تنتهي النقاط — العدد الذي تصلين إليه هو الجواب.
+         </div>${divArrayHTML()}<div style="height:12px"></div>`:"";
+    const why=basicsLocked?`${diagBox}${divBox}<div class="why" style="margin-bottom:10px">${okNow?"✓ "+(basicsStage===5?"حللتِها وحدك! 🌟":"أحسنتِ"):(typed?"لا بأس — راجعي الطريقة ثم أعيدي":"الصحيحة بالأخضر")}.</div>${divGate?`<div style="text-align:center;font-size:13px;color:#B45309;font-weight:800;margin-top:8px">أكملي المصفوفة أعلاه للانتقال</div>`:`<button class="btn" style="background:${basicsStage===5?'#059669':'#0D9488'}" onclick="${basicsStage===5?'basicsFinalNext()':'basicsAdvance()'}">${basicsStage===5?'سؤال جديد ←':'التالي ←'}</button>`}`:"";
     const mtr=basicsStage<4?`<div style="font-size:13px;color:#64748B;text-align:center;margin-top:10px">جاوبي صح مرتين متتاليتين للانتقال (${toAr(basicsStreak)}/${toAr(BASICS_REQ)})</div>`
       :basicsStage===4?(basicsMidSupport?`<div style="font-size:13px;color:#854D0E;text-align:center;margin-top:10px">🌱 مراجعة: (${toAr(basicsMidRecoveryStreak)}/${toAr(RECOVERY_REQ)}) لإخفاء التذكير</div>`:`<div style="font-size:13px;color:#64748B;text-align:center;margin-top:10px">تدريب شبه مستقل — جاوبي صح مرتين متتاليتين للوصول للاستقلال الكامل (${toAr(basicsStreak)}/${toAr(BASICS_REQ)})</div>`)
       :basicsFinalSupport?`<div style="font-size:13px;color:#854D0E;text-align:center;margin-top:10px">🌱 مراجعة: (${toAr(basicsFinalRecoveryStreak)}/${toAr(RECOVERY_REQ)}) لإخفاء التذكير مرة أخرى</div>`
@@ -2362,7 +2421,7 @@ async function runMicDiag(){
 const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEngPlan","startDictation",
   "startPronunciation","startSpeaking","startAudioDiag","runMicDiag","fetchTimeout",
   "pronStart","pronStop","pronReset","speakStart","speakStop","speakReset","speakEnglish",
-  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck"];
+  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand"];
 function censusMissing(){return CENSUS.filter(function(n){return typeof window[n]!=="function"})}
 function censusHTML(){
   var miss=censusMissing();
