@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260808-1105";
+  var BUILD="build-20260808-1420";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -2297,7 +2297,7 @@ function ttsNoticeHTML(){
 }
 // ===== تشخيص الصوت: أداة تساعد لو النطق ما يشتغل على جهاز معيّن =====
 let audioDiagResult=null;
-function startAudioDiag(){mode="audiodiag";audioDiagResult=null;micDiagResult=null;window.scrollTo(0,0);render()}
+function startAudioDiag(){mode="audiodiag";audioDiagResult=null;micDiagResult=null;azDiag=null;window.scrollTo(0,0);render()}
 // ===== تشخيص الميكروفون =====
 // الضغطة التي "لا تفعل شيئاً" لها أسباب مختلفة تماماً وعلاجات مختلفة: إذن مرفوض سابقاً،
 // أو صفحة داخل متصفح مدمج، أو مصدر غير آمن. المتصفح يعرف السبب ويُسمّيه — كنّا نبتلع الاسم.
@@ -2343,7 +2343,7 @@ async function runMicDiag(){
 const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEngPlan","startDictation",
   "startPronunciation","startSpeaking","startAudioDiag","runMicDiag","fetchTimeout",
   "pronStart","pronStop","pronReset","speakStart","speakStop","speakReset","speakEnglish",
-  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand"];
+  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag"];
 function censusMissing(){return CENSUS.filter(function(n){return typeof window[n]!=="function"})}
 function censusHTML(){
   var miss=censusMissing();
@@ -2388,6 +2388,62 @@ async function traceRecord(){
                      :"⚠️ التسجيل عمل لكن الصوت شبه فارغ — تحقّقي أن الميكروفون غير مغطّى.");
   }catch(e){traceAdd("✗ فشل التسجيل: "+((e&&e.name)||e)+" — "+((e&&e.message)||""))}
 }
+// ===== فحص Azure من الجهاز نفسه =====
+// لا أستطيع اختبار Azure من مكاني: المفتاح سرّ في أسرار المشروع، وشبكتي محجوبة عن Supabase.
+// فبدل أن أزعم أن الربط يعمل، أضع فحصاً يُنفَّذ بضغطة ويقول ما حدث بالضبط — بما فيه رمز
+// الخطأ الخام من Azure، حتى يكون التشخيص من الجهاز لا من تخميني.
+let azDiag=null;
+const AZ_DIAG_HELP={
+  not_configured:"المفتاح أو المنطقة غير محفوظين في أسرار Supabase. الاسمان المطلوبان: AZURE_SPEECH_KEY و AZURE_SPEECH_REGION.",
+  azure_auth:"Azure رفض المفتاح. تأكّد أن المفتاح المحفوظ يخصّ المورد نفسه، وأن المنطقة المحفوظة هي منطقة ذلك المورد بالضبط.",
+  azure_quota:"انتهت الحصّة المجانية لهذا الشهر على مورد Azure.",
+  azure_bad_request:"Azure رفض الطلب — الأرجح أن المنطقة المحفوظة لا تطابق منطقة المورد.",
+  azure_timeout:"Azure لم يردّ خلال المهلة.",
+  azure_unreachable:"تعذّر الوصول إلى Azure من الخادم.",
+  bad_audio:"الصوت المُرسَل ليس WAV سليماً — عطل في مُرمِّز التطبيق لا في Azure.",
+  wav_empty:"لم يُلتقط صوت خام (Web Audio لم يعمل على هذا المتصفّح).",
+  network:"تعذّر الوصول إلى الدالة من المتصفّح.",
+};
+async function runAzureDiag(){
+  azDiag={running:true};render();
+  if(!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)){azDiag={fail:"no_mic"};render();return}
+  let stream=null;
+  try{stream=await navigator.mediaDevices.getUserMedia({audio:true})}
+  catch(e){azDiag={fail:"mic_denied",detail:(e&&e.name)||String(e)};render();return}
+  const tapped=wavTapStart(stream);
+  if(!tapped){try{stream.getTracks().forEach(t=>t.stop())}catch(e){}azDiag={fail:"wav_empty"};render();return}
+  azDiag={running:true,recording:true};render();
+  await new Promise(r=>setTimeout(r,3000));
+  wavTapStop();
+  try{stream.getTracks().forEach(t=>t.stop())}catch(e){}
+  const bl=wavBlob();
+  azDiag={running:true,bytes:bl?bl.size:0};render();
+  const res=await azureTry("hello");
+  if(res.data)azDiag={ok:true,bytes:bl?bl.size:0,pron:res.data.pron,heard:res.data.heard,rate:res.data.audio&&res.data.audio.rate};
+  else azDiag={fail:res.fail,detail:res.detail,bytes:bl?bl.size:0};
+  render();
+}
+function azDiagHTML(){
+  let box="";
+  if(azDiag&&azDiag.running){
+    box=`<div style="background:#F1F5F9;border-radius:12px;padding:14px;margin-top:12px;font-size:14px">${azDiag.recording?"🔴 يسجّل ثلاث ثوانٍ — قولي <b style=\"direction:ltr;display:inline-block\">hello</b>":"⏳ نُرسل إلى Azure…"}</div>`;
+  }else if(azDiag&&azDiag.ok){
+    box=`<div style="background:#ECFDF5;border-radius:12px;padding:14px;margin-top:12px;font-size:14px;color:#065F46;line-height:1.9">
+      ✓ <b>Azure يعمل.</b> الدرجة: ${toAr(azDiag.pron||0)}/١٠٠ · سمع: <b style="direction:ltr;display:inline-block">"${azDiag.heard||""}"</b>
+      <div style="font-size:12px;color:#047857">الصوت المُرسَل: ${toAr(azDiag.bytes||0)} بايت بمعدّل ${toAr(azDiag.rate||0)}</div></div>`;
+  }else if(azDiag){
+    const h=AZ_DIAG_HELP[azDiag.fail]||"سبب غير متوقّع — أرسل هذا الرمز كما هو.";
+    box=`<div style="background:#FEF2F2;border-radius:12px;padding:14px;margin-top:12px;font-size:14px;color:#991B1B;line-height:1.9">
+      ✗ <b>${h}</b> <span style="font-size:12px;color:#B91C1C">(${azDiag.fail}${azDiag.detail?" · "+azDiag.detail:""})</span>
+      <div style="font-size:12px;color:#B91C1C">الصوت المُرسَل: ${toAr(azDiag.bytes||0)} بايت</div>
+      <div style="font-size:12px;color:#7F1D1D;margin-top:6px">التمرين نفسه لا يتعطّل — يرجع تلقائياً إلى المحرّك الاحتياطي.</div></div>`;
+  }
+  return `<div style="margin-top:16px;padding-top:14px;border-top:1px dashed #E2E8F0">
+    <div style="font-weight:800;font-size:15px;margin-bottom:6px">🌟 فحص تقييم النطق الدقيق (Azure)</div>
+    <div style="font-size:12px;color:#94A3B8;margin-bottom:8px">يسجّل ثلاث ثوانٍ ويُرسلها فعلاً، ثم يقول ما ردّ به Azure بالضبط</div>
+    <button class="btn" style="background:#7C3AED" onclick="runAzureDiag()" ${azDiag&&azDiag.running?"disabled":""}>🌟 افحصي Azure الآن</button>
+    ${box}</div>`;
+}
 // تحديث قسري: بعض المتصفّحات تُبقي نسخة مخزّنة رغم إعادة التحميل العادية
 function hardReload(){
   try{if(window.caches&&caches.keys)caches.keys().then(function(ks){ks.forEach(function(k){caches.delete(k)})})}catch(e){}
@@ -2430,6 +2486,7 @@ function micDiagHTML(){
       <button class="btn" style="background:#0D9488" onclick="traceRecord()">⏺️ ابدئي الاختبار</button>
       <div id="micTrace">${traceHTML()}</div>
     </div>
+    ${azDiagHTML()}
   </div>`;
 }
 function runAudioDiag(){
@@ -2995,13 +3052,9 @@ function startPronunciation(){
   mode="pron";pronSession=shuffle(DICTATION_A1).slice(0,8);pronIdx=0;pronResult=null;pronListening=false;pronScore=0;pronDone=false;
   pronBusy=false;pronElapsed=0;if(pronTimer){clearInterval(pronTimer);pronTimer=null}
   pronUnsupported=!micSupported();
-  azureResult=null;azureBusy=false;azureRecording=false;
   window.scrollTo(0,0);render();
   if(!pronUnsupported)setTimeout(()=>speakEnglish(pronSession[0].w),300);
 }
-// ===== تقييم دقيق تجريبي عبر Azure AI Speech (اختياري، يحتاج مفتاحاً مُعدّاً في المشروع) =====
-const PRON_FN_URL=SB_URL+"/functions/v1/assess-pronunciation";
-let azureRecording=false,azureBusy=false,azureResult=null;
 function blobToBase64(blob){
   return new Promise((resolve,reject)=>{
     const reader=new FileReader();
@@ -3009,30 +3062,6 @@ function blobToBase64(blob){
     reader.onerror=reject;
     reader.readAsDataURL(blob);
   });
-}
-async function azureAssess(){
-  if(azureBusy)return;
-  azureResult=null;azureBusy=true;azureRecording=true;render();
-  try{
-    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
-    const chunks=[];
-    const rec=new MediaRecorder(stream);
-    rec.ondataavailable=(e)=>{if(e.data&&e.data.size>0)chunks.push(e.data)};
-    const stopped=new Promise(resolve=>{rec.onstop=resolve});
-    rec.start();
-    await new Promise(r=>setTimeout(r,2500));
-    rec.stop();
-    stream.getTracks().forEach(t=>t.stop());
-    await stopped;
-    azureRecording=false;render();
-    const blob=new Blob(chunks,{type:rec.mimeType||"audio/webm"});
-    const b64=await blobToBase64(blob);
-    const res=await fetchTimeout(PRON_FN_URL,{method:"POST",headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({audio:b64,mimeType:blob.type,referenceText:pronSession[pronIdx].w})});
-    azureResult=await res.json();
-  }catch(e){
-    azureResult={error:"client_error",message:String(e&&e.message||e)};
-  }
-  azureBusy=false;azureRecording=false;render();
 }
 // ===== تقييم النطق كلمة بكلمة بدل المطابقة التامة =====
 // المطابقة التامة تخطئ في الاتجاهين: Whisper مدرَّب على النسخ لا التقييم فيُصلح الكلام ويعطي "صح" كاذباً،
@@ -3121,6 +3150,81 @@ function pronScoreOf(target,heard,judged){
   const got=hit.filter(Boolean).length,pct=Math.round(100*wGot/wTot);
   return{pct,hit,words:t,got,total:t.length,weights:w,ok:pct>=PRON_PASS,by:useJudge?"judge":"local"};
 }
+// ===== Azure AI Speech: تقييم الصوت نفسه لا نصّه =====
+// Whisper يَنسخ فتعرف «قالت الكلمة أو لا». Azure يُقيّم النطق فيقول «الـ th خرجت s».
+// القيد الذي حكم التصميم: نقطة REST في Azure لا تقبل WebM (أندرويد) ولا MP4/AAC (آيفون) —
+// تقبل WAV/PCM. فنُركّب مأخذاً موازياً عبر Web Audio على التيّار نفسه يبني WAV بيده،
+// ونترك MediaRecorder كما هو لمسار Groq. هكذا لو انكسر WAV بقي المسار العامل عاملاً.
+const AZURE_FN_URL=SB_URL+"/functions/v1/assess-azure";
+let azureLastFail="";
+const WAV_RATE=16000;
+let wavCtx=null,wavProc=null,wavSrc=null,wavGain=null,wavBuf=[],wavInRate=0,wavOn=false;
+function wavTapStart(stream){
+  try{
+    const AC=window.AudioContext||window.webkitAudioContext;
+    if(!AC||!stream)return false;
+    wavCtx=new AC();wavInRate=wavCtx.sampleRate;wavBuf=[];
+    wavSrc=wavCtx.createMediaStreamSource(stream);
+    wavProc=(wavCtx.createScriptProcessor||wavCtx.createJavaScriptNode).call(wavCtx,4096,1,1);
+    wavProc.onaudioprocess=function(e){if(wavOn)wavBuf.push(new Float32Array(e.inputBuffer.getChannelData(0)))};
+    // مكسب صفري قبل المخرج: ScriptProcessor لا يعمل في بعض المتصفّحات ما لم يكن موصولاً،
+    // والوصل المباشر بالمخرج يُعيد صوت الميكروفون إلى السمّاعة فيُحدث صفيراً
+    wavGain=wavCtx.createGain();wavGain.gain.value=0;
+    wavSrc.connect(wavProc);wavProc.connect(wavGain);wavGain.connect(wavCtx.destination);
+    wavOn=true;return true;
+  }catch(e){wavTapStop();return false}
+}
+function wavTapStop(){
+  wavOn=false;
+  try{if(wavProc){wavProc.onaudioprocess=null;wavProc.disconnect()}}catch(e){}
+  try{if(wavGain)wavGain.disconnect()}catch(e){}
+  try{if(wavSrc)wavSrc.disconnect()}catch(e){}
+  try{if(wavCtx&&wavCtx.state!=="closed")wavCtx.close()}catch(e){}
+  wavProc=null;wavGain=null;wavSrc=null;wavCtx=null;
+}
+function wavEncode(chunks,inRate,outRate){
+  let n=0;for(let i=0;i<chunks.length;i++)n+=chunks[i].length;
+  if(!n||!inRate)return null;
+  const all=new Float32Array(n);let o=0;
+  for(let i=0;i<chunks.length;i++){all.set(chunks[i],o);o+=chunks[i].length}
+  const ratio=inRate/outRate,outLen=Math.max(1,Math.floor(all.length/ratio)),pcm=new Int16Array(outLen);
+  for(let i=0;i<outLen;i++){
+    // متوسط النافذة لا عيّنة مفردة: أخذ عيّنة واحدة من كل نافذة يُدخل تشويش الطيّ (aliasing)
+    const s0=Math.floor(i*ratio),s1=Math.min(all.length,Math.floor((i+1)*ratio));
+    let sum=0,c=0;for(let j=s0;j<s1;j++){sum+=all[j];c++}
+    let v=c?sum/c:0;if(v>1)v=1;if(v<-1)v=-1;
+    pcm[i]=v<0?v*0x8000:v*0x7FFF;
+  }
+  const buf=new ArrayBuffer(44+pcm.length*2),dv=new DataView(buf);
+  const ws=function(off,s){for(let i=0;i<s.length;i++)dv.setUint8(off+i,s.charCodeAt(i))};
+  ws(0,"RIFF");dv.setUint32(4,36+pcm.length*2,true);ws(8,"WAVE");
+  ws(12,"fmt ");dv.setUint32(16,16,true);dv.setUint16(20,1,true);dv.setUint16(22,1,true);
+  dv.setUint32(24,outRate,true);dv.setUint32(28,outRate*2,true);dv.setUint16(32,2,true);dv.setUint16(34,16,true);
+  ws(36,"data");dv.setUint32(40,pcm.length*2,true);
+  new Int16Array(buf,44).set(pcm);
+  return new Blob([buf],{type:"audio/wav"});
+}
+function wavBlob(){return wavEncode(wavBuf,wavInRate,WAV_RATE)}
+// ترجمة رمز الفونيم إلى ما تفهمه طفلة: «th» لا «t h» ولا «θ»
+const PHONEME_AR={th:"th (لسانك بين أسنانك)",dh:"th المجهورة (this)",s:"s",z:"z",sh:"sh",zh:"zh (vision)",
+  ch:"ch",jh:"j",r:"r",l:"l",n:"n",m:"m",ng:"ng (sing)",v:"v (شفتك على أسنانك)",f:"f",w:"w",y:"y",
+  p:"p",b:"b",t:"t",d:"d",k:"k",g:"g",hh:"h",
+  iy:"ee (see)",ih:"i (sit)",eh:"e (bed)",ae:"a (cat)",aa:"aa (father)",ah:"u (cup)",ao:"aw (saw)",
+  uw:"oo (food)",uh:"u (book)",ow:"oh (go)",ey:"ay (say)",ay:"ai (my)",aw:"ow (now)",oy:"oy (boy)",er:"er (her)"};
+function phonemeLabel(p){const k=String(p||"").toLowerCase().replace(/[0-9]/g,"");return PHONEME_AR[k]||k}
+// نُحوّل ردّ Azure إلى شكل النتيجة نفسه الذي تعرفه الواجهة، فلا تتفرّع الواجهة على المحرّك
+function azureToScore(target,data){
+  const t=pronWords(target);
+  const aw=(data.words||[]).filter(function(x){return String(x.err||"")!=="Insertion"});
+  // المحاذاة مشروطة بتساوي العدد: لو اختلف، سقطت الدرجة على الكلمة الخطأ فنعود للمقارنة النصية
+  const hit=aw.length===t.length?aw.map(function(x){return x.score>=60&&x.err!=="Omission"}):pronAlign(t,pronWords(data.lexical||data.heard||""));
+  const w=t.map(function(x){return pronWeight(x,t.length)}),wTot=w.reduce(function(a,b){return a+b},0);
+  const wGot=hit.reduce(function(a,h,i){return a+(h?w[i]:0)},0);
+  // درجة Azure الصوتية هي المعتمدة حين تحاذت الكلمات؛ وإلا فنسبة الكلمات كما في مسار Groq
+  const pct=aw.length===t.length&&typeof data.pron==="number"&&data.pron>0?data.pron:Math.round(100*wGot/wTot);
+  return{pct,hit,words:t,got:hit.filter(Boolean).length,total:t.length,weights:w,ok:pct>=PRON_PASS,by:"azure",
+    accuracy:data.accuracy,fluency:data.fluency,completeness:data.completeness,weak:data.weak||[]};
+}
 // ===== التسجيل: تبدأ وتتوقف بيدها بدل نافذة ثابتة كانت تقطع الكلام =====
 const PRON_MAX_MS=15000; // حدّ أمان فقط، لا نافذة إجبارية
 let pronRec=null,pronStream=null,pronChunks=[],pronTimer=null,pronElapsed=0,pronBusy=false;
@@ -3134,6 +3238,7 @@ async function pronStart(){
     pronRec=new MediaRecorder(pronStream);
     pronRec.ondataavailable=(e)=>{if(e.data&&e.data.size>0)pronChunks.push(e.data)};
     pronRec.onstop=()=>{pronFinish()};
+    wavTapStart(pronStream); // مأخذ Azure الموازي — فشله لا يمنع التسجيل
     pronRec.start();
     pronListening=true;pronElapsed=0;
     pronTimer=setInterval(()=>{pronElapsed+=0.25;if(pronElapsed*1000>=PRON_MAX_MS){pronStop();return}render()},250);
@@ -3151,14 +3256,42 @@ function pronStop(){
   try{if(pronRec&&pronRec.state!=="inactive")pronRec.stop();else{pronBusy=false}}catch(e){pronBusy=false}
   render();
 }
+// Azure أولاً لأنه يُقيّم الصوت، وGroq احتياطاً لأنه مُجرَّب وعامل.
+// أي تعثّر في Azure — بلا مفتاح، أو منطقة خطأ، أو حصّة، أو صوت غير مقروء — يعود بها إلى المسار العامل
+// بلا أن ترى هي شيئاً. الغرض ألا يكون الربط الجديد نقطة عطل جديدة.
+async function azureTry(target){
+  let blob=null;
+  try{blob=wavBlob()}catch(e){return{fail:"wav_encode"}}
+  if(!blob||blob.size<1000)return{fail:"wav_empty"};
+  try{
+    const b64=await blobToBase64(blob);
+    const res=await fetchTimeout(AZURE_FN_URL,{method:"POST",headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({audio:b64,referenceText:target})});
+    const d=await res.json();
+    if(!d||d.error)return{fail:(d&&d.error)||"no_response",detail:d&&(d.detail||d.status)};
+    if(d.noSpeech)return{fail:"no_speech"};
+    if(!d.ok)return{fail:"not_ok"};
+    return{data:d};
+  }catch(e){return{fail:"network",detail:String(e&&e.message||e)}}
+}
 async function pronFinish(){
   const target=pronSession[pronIdx]?pronSession[pronIdx].w:"";
   if(pronStream){try{pronStream.getTracks().forEach(t=>t.stop())}catch(e){}pronStream=null}
+  wavTapStop();
   if(pronElapsed*1000<PRON_MIN_MS){ // أُغلق الزر قبل أن تتكلّم: لا نحتسبها خطأً
     pronResult={heard:"",ok:false,tooShort:true};pronBusy=false;
     logAnswer("pronunciation_a1","discarded",false,"[too_short]",target,Math.round(pronElapsed*1000));
     render();return;
   }
+  const az=await azureTry(target);
+  if(az.data){
+    const sc=azureToScore(target,az.data);
+    pronResult={heard:az.data.heard||az.data.lexical||"",ok:sc.ok,sc,note:"",engine:"azure"};
+    if(sc.ok)pronScore++;
+    logAnswer("pronunciation_a1","word",sc.ok,az.data.heard||"",target,Math.round(pronElapsed*1000),
+      {score_pct:sc.pct,engine:"azure"});
+    pronBusy=false;render();return;
+  }
+  azureLastFail=az.fail||"";
   try{
     const blob=new Blob(pronChunks,{type:(pronRec&&pronRec.mimeType)||"audio/webm"});
     const b64=await blobToBase64(blob);
@@ -3171,9 +3304,9 @@ async function pronFinish(){
       logAnswer("pronunciation_a1","discarded",false,data.heard||"[low_confidence]",target,Math.round(pronElapsed*1000));
     }else if(data&&data.ok){
       const sc=pronScoreOf(target,data.heard,data.judged);
-      pronResult={heard:data.heard,ok:sc.ok,sc,note:data.note||""};
+      pronResult={heard:data.heard,ok:sc.ok,sc,note:data.note||"",engine:"groq"};
       if(sc.ok)pronScore++;
-      logAnswer("pronunciation_a1","word",sc.ok,data.heard,target,Math.round(pronElapsed*1000),{score_pct:sc.pct});
+      logAnswer("pronunciation_a1","word",sc.ok,data.heard,target,Math.round(pronElapsed*1000),{score_pct:sc.pct,engine:"groq",azure_fail:azureLastFail||null});
     }else if(data&&data.error==="not_configured"){
       pronResult={heard:"",ok:false,error:true,notConfigured:true};
       logAnswer("pronunciation_a1","word",false,"[not_configured]",target);
@@ -3187,7 +3320,6 @@ async function pronFinish(){
   pronBusy=false;render();
 }
 function pronNext(){
-  azureResult=null;azureBusy=false;azureRecording=false;
   if(pronTimer){clearInterval(pronTimer);pronTimer=null}
   pronListening=false;pronBusy=false;
   if(pronIdx+1>=pronSession.length){pronDone=true;window.scrollTo(0,0);render();return}
@@ -3214,29 +3346,15 @@ function renderPron(){
         const title=pct>=PRON_PASS?"✓ نطق صحيح":pct>=50?"قريب — أعيدي المحاولة":"لم يُسمع النطق المطلوب";
         // تلوين كلمة بكلمة: تشوف بالضبط أي كلمة وصلت وأيها لا، بدل "صح/خطأ" مبهم
         const wordsHtml=sc&&sc.words.length?`<div style="direction:ltr;font-family:Georgia,serif;font-size:19px;font-weight:800;margin:10px 0;line-height:1.7">${sc.words.map((w,i)=>`<span style="color:${sc.hit[i]?'#059669':'#DC2626'};margin:0 4px">${w}</span>`).join("")}</div><div style="font-size:12px;color:#64748B">الأخضر نُطق صحيحاً · الأحمر لم يصل${sc.total>1?` — ${toAr(sc.got)} من ${toAr(sc.total)} كلمات`:""}</div>`:"";
-        return `<div class="explain"><div class="explain-title" style="color:${col}">${title} · ${toAr(pct)}%</div><div class="explain-body">${wordsHtml}${pronResult.heard?`<div style="margin-top:8px;font-size:13px">سمعنا: <b style="direction:ltr;display:inline-block">"${pronResult.heard}"</b></div>`:""}<div style="margin-top:6px;font-size:13px">المطلوب: <b style="direction:ltr;display:inline-block">${item.w}</b> (${item.m}).</div></div></div>`;
+        // Azure وحده يُعطي درجة لكل صوت — وهذا هو الفرق الذي يستحقّ العرض
+        const azBox=(sc&&sc.by==="azure")?`<div style="margin-top:10px;background:#F5F3FF;border-radius:10px;padding:10px 12px">
+            <div style="font-size:12px;color:#4C1D95;font-weight:700">الدقة ${toAr(sc.accuracy||0)} · الطلاقة ${toAr(sc.fluency||0)} · الاكتمال ${toAr(sc.completeness||0)}</div>
+            ${(sc.weak&&sc.weak.length)?`<div style="margin-top:8px;font-size:13px;color:#5B21B6;line-height:1.9">الأصوات التي تحتاج تدريباً:${sc.weak.map(x=>`<div>• <b style="direction:ltr;display:inline-block">${phonemeLabel(x.p)}</b> في <b style="direction:ltr;display:inline-block">${x.w}</b> — ${toAr(x.score)}/١٠٠</div>`).join("")}</div>`:`<div style="margin-top:6px;font-size:12px;color:#059669">كل الأصوات خرجت واضحة ✓</div>`}
+          </div>`:"";
+        return `<div class="explain"><div class="explain-title" style="color:${col}">${title} · ${toAr(pct)}%</div><div class="explain-body">${wordsHtml}${pronResult.heard?`<div style="margin-top:8px;font-size:13px">سمعنا: <b style="direction:ltr;display:inline-block">"${pronResult.heard}"</b></div>`:""}<div style="margin-top:6px;font-size:13px">المطلوب: <b style="direction:ltr;display:inline-block">${item.w}</b> (${item.m}).</div>${azBox}</div></div>`;
       })()
     ):"";
     const nextBtn=pronResult?`<button class="btn" style="background:#7C3AED" onclick="pronNext()">${pronIdx+1>=pronSession.length?"إنهاء ومشاهدة النتيجة":pronResult.error?"تخطّي هذه الكلمة ←":"الكلمة التالية ←"}</button>`:"";
-    let azureBody="";
-    if(azureResult){
-      const s=v=>(v==null?"—":toAr(Math.round(v)));
-      if(azureResult.ok){
-        azureBody=`<div style="margin-top:14px;background:#F5F3FF;border-radius:12px;padding:14px;text-align:center">
-          <div style="font-weight:800;margin-bottom:8px;color:#6D28D9">الدرجة الإجمالية: ${s(azureResult.pronScore)}/١٠٠</div>
-          <div style="font-size:13px;color:#4C1D95">الدقة: ${s(azureResult.accuracyScore)} · الطلاقة: ${s(azureResult.fluencyScore)} · الاكتمال: ${s(azureResult.completenessScore)}</div>
-        </div>`;
-      }else if(azureResult.error==="not_configured"){
-        azureBody=`<div style="margin-top:12px;font-size:13px;color:#94A3B8">التقييم الدقيق غير مفعّل بعد على هذا الحساب.</div>`;
-      }else{
-        azureBody=`<div style="margin-top:12px;font-size:13px;color:#B45309">تعذّر الحصول على تقييم دقيق الآن. جرّبي زر التحقّق الأساسي 🎤 بدلاً منه.</div>`;
-      }
-    }
-    const azureSection=`<div style="margin-top:18px;padding-top:16px;border-top:1px dashed #E2E8F0">
-      <div style="font-size:12px;color:#94A3B8;margin-bottom:10px">🌟 تقييم دقيق تجريبي (Azure) — يقيس دقّة النطق الفعلية، لا مجرد التعرّف على الكلمة</div>
-      <button type="button" onclick="azureAssess()" ${azureBusy?"disabled":""} style="background:${azureBusy?'#DDD6FE':'#7C3AED'};color:#fff;border:none;border-radius:12px;padding:10px 22px;font-size:14px;font-weight:700;cursor:pointer">${azureRecording?"🔴 يسجّل... انطقي الآن":azureBusy?"...جارٍ التقييم":"🌟 سجّلي للتقييم الدقيق"}</button>
-      ${azureBody}
-    </div>`;
     inner=`
     <div style="font-size:12px;color:#94A3B8;margin-bottom:14px">تحقّق أساسي: هل نطقتِ الكلمة الصحيحة؟ (ليس تقييماً دقيقاً للهجة)</div>
     ${ttsNoticeHTML()}
@@ -3253,8 +3371,7 @@ function renderPron(){
     </div>
     <div style="font-size:13px;color:${pronListening?'#DC2626':'#64748B'};margin-bottom:14px;font-weight:${pronListening?'800':'400'}">${pronListening?`🔴 يسجّل… ${toAr(pronElapsed.toFixed(1)).replace('.','٫')} ث — اضغطي ⏹️ عند انتهائك`:pronBusy?"…جارٍ التحقّق":(ttsBroken?"اقرئي الكلمة أعلاه، ثم اضغطي 🎤 وانطقيها — وأوقفي التسجيل بنفسك":"اضغطي 🔊 لتسمعي، ثم 🎤 وانطقي — وأوقفي التسجيل بنفسك")}</div>
     ${pronBusy?`<button class="link-btn" style="font-size:12px;margin:0 0 10px" onclick="pronReset()">✕ إلغاء والمحاولة ثانية</button>`:""}
-    ${feedback}${nextBtn}
-    ${azureSection}`;
+    ${feedback}${nextBtn}`;
   }
   app.innerHTML=`<button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
   <div class="bar">${prog}</div>
