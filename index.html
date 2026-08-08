@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260807-1520";
+  var BUILD="build-20260807-1705";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -2168,7 +2168,7 @@ document.addEventListener("touchend",unlockTTS,{capture:true,once:true});
 document.addEventListener("click",unlockTTS,{capture:true,once:true});
 function speakEnglish(text,onDone){
   try{
-    if(!text||!('speechSynthesis' in window)){if(onDone)onDone({ok:false,reason:'unsupported'});return}
+    if(!text||!('speechSynthesis' in window)){ttsMark(false);if(onDone)onDone({ok:false,reason:'unsupported'});return}
     const synth=window.speechSynthesis;
     let triedFallback=false,started=false,retried=false;
     const attempt=(forceNoLang)=>{
@@ -2179,10 +2179,10 @@ function speakEnglish(text,onDone){
       const usVoice=voices.find(v=>v.lang==='en-US')||voices.find(v=>v.lang&&v.lang.startsWith('en'));
       if(!forceNoLang){u.lang='en-US';u.rate=0.85;try{if(usVoice)u.voice=usVoice}catch(e){}}
       else{u.rate=0.85} // لا نفرض لغة/صوتاً غير متوفرين على الجهاز، نترك المتصفح يختار افتراضياً
-      u.onstart=()=>{started=true;if(onDone)onDone({ok:true,voicesCount:voices.length,hasEnVoice:!!usVoice,voiceName:usVoice&&usVoice.name,fallback:!!forceNoLang})};
+      u.onstart=()=>{started=true;ttsMark(true);if(onDone)onDone({ok:true,voicesCount:voices.length,hasEnVoice:!!usVoice,voiceName:usVoice&&usVoice.name,fallback:!!forceNoLang})};
       u.onerror=(e)=>{
         if(!forceNoLang&&!triedFallback){triedFallback=true;attempt(true);return}
-        if(onDone)onDone({ok:false,reason:'speak_error',errorType:e&&e.error,voicesCount:voices.length,hasEnVoice:!!usVoice});
+        ttsMark(false);if(onDone)onDone({ok:false,reason:'speak_error',errorType:e&&e.error,voicesCount:voices.length,hasEnVoice:!!usVoice});
       };
       synth.resume();
       synth.speak(u);
@@ -2195,7 +2195,22 @@ function speakEnglish(text,onDone){
     if(!voicesReady){
       setTimeout(()=>{if(!started&&!retried){retried=true;attempt(false)}},700);
     }
-  }catch(e){if(onDone)onDone({ok:false,reason:'exception',message:String(e&&e.message||e)})}
+  }catch(e){ttsMark(false);if(onDone)onDone({ok:false,reason:'exception',message:String(e&&e.message||e)})}
+}
+// ===== راية عطل النطق =====
+// حين يفشل تحويل النص إلى صوت على الجهاز، كانت أقسام الاستماع تصمت بلا تفسير.
+// الآن تُرفع راية تُغيّر الشاشة نفسها: تُعرض الكلمة مكتوبة، ويُشرح السبب وعلاجه.
+let ttsBroken=false,ttsChecked=false;
+function ttsMark(ok){
+  const was=ttsBroken;ttsBroken=!ok;ttsChecked=true;
+  if(was!==ttsBroken&&(mode==="pron"||mode==="dictation"||mode==="speak"||mode==="engplan"))render();
+}
+function ttsNoticeHTML(){
+  if(!ttsBroken)return "";
+  return `<div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:12px;padding:12px 14px;margin-bottom:12px;font-size:13px;color:#92400E;line-height:1.8;text-align:start">
+    🔇 <b>الصوت لا يعمل على هذا الجهاز</b> — اقرئي الكلمة المكتوبة وانطقيها.
+    <button class="link-btn" style="font-size:12px;margin:6px 0 0;padding:0" onclick="startAudioDiag()">لماذا؟ وكيف أُصلحه ←</button>
+  </div>`;
 }
 // ===== تشخيص الصوت: أداة تساعد لو النطق ما يشتغل على جهاز معيّن =====
 let audioDiagResult=null;
@@ -3141,6 +3156,11 @@ function renderPron(){
     </div>`;
     inner=`
     <div style="font-size:12px;color:#94A3B8;margin-bottom:14px">تحقّق أساسي: هل نطقتِ الكلمة الصحيحة؟ (ليس تقييماً دقيقاً للهجة)</div>
+    ${ttsNoticeHTML()}
+    <!-- الكلمة مكتوبة دائماً: تمرين النطق ليس اختبار استماع، وحين يفشل الصوت على الجهاز
+         كانت الشاشة تطلب نطق كلمة لا سبيل لمعرفتها إطلاقاً -->
+    <div style="font-size:34px;font-weight:800;letter-spacing:1px;direction:ltr;color:#1E293B;margin:6px 0 2px">${item.w}</div>
+    <div style="font-size:14px;color:#64748B;margin-bottom:10px">${item.m}</div>
     <button class="link-btn" style="font-size:12px;margin:0 0 10px" onclick="startAudioDiag()">🔧 الصوت أو الميكروفون لا يعمل؟ افحصي هنا</button>
     <div style="display:flex;gap:12px;justify-content:center;align-items:center;margin:10px 0 18px">
       <button type="button" onclick="speakEnglish(pronSession[${pronIdx}].w)" style="background:#ECFEFF;border:1.5px solid #A5F3FC;color:#0891B2;border-radius:50%;width:56px;height:56px;font-size:22px;cursor:pointer">🔊</button>
@@ -3148,7 +3168,7 @@ function renderPron(){
         ? `<button type="button" onclick="pronStop()" style="background:#DC2626;color:#fff;border:none;border-radius:50%;width:72px;height:72px;font-size:26px;cursor:pointer;box-shadow:0 0 0 6px rgba(220,38,38,.18)">⏹️</button>`
         : `<button type="button" onclick="pronStart()" ${pronBusy?"disabled":""} style="background:${pronBusy?'#C4B5FD':'#7C3AED'};color:#fff;border:none;border-radius:50%;width:72px;height:72px;font-size:26px;cursor:pointer">🎤</button>`}
     </div>
-    <div style="font-size:13px;color:${pronListening?'#DC2626':'#64748B'};margin-bottom:14px;font-weight:${pronListening?'800':'400'}">${pronListening?`🔴 يسجّل… ${toAr(pronElapsed.toFixed(1)).replace('.','٫')} ث — اضغطي ⏹️ عند انتهائك`:pronBusy?"…جارٍ التحقّق":"اضغطي 🔊 لتسمعي، ثم 🎤 وانطقي — وأوقفي التسجيل بنفسك"}</div>
+    <div style="font-size:13px;color:${pronListening?'#DC2626':'#64748B'};margin-bottom:14px;font-weight:${pronListening?'800':'400'}">${pronListening?`🔴 يسجّل… ${toAr(pronElapsed.toFixed(1)).replace('.','٫')} ث — اضغطي ⏹️ عند انتهائك`:pronBusy?"…جارٍ التحقّق":(ttsBroken?"اقرئي الكلمة أعلاه، ثم اضغطي 🎤 وانطقيها — وأوقفي التسجيل بنفسك":"اضغطي 🔊 لتسمعي، ثم 🎤 وانطقي — وأوقفي التسجيل بنفسك")}</div>
     ${pronBusy?`<button class="link-btn" style="font-size:12px;margin:0 0 10px" onclick="pronReset()">✕ إلغاء والمحاولة ثانية</button>`:""}
     ${feedback}${nextBtn}
     ${azureSection}`;
