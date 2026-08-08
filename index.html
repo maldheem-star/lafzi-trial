@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260808-1650";
+  var BUILD="build-20260808-1810";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -2362,7 +2362,7 @@ async function runMicDiag(){
 const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEngPlan","startDictation",
   "startPronunciation","startSpeaking","startAudioDiag","runMicDiag","fetchTimeout",
   "pronStart","pronStop","pronReset","speakStart","speakStop","speakReset","speakEnglish",
-  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag"];
+  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck"];
 function censusMissing(){return CENSUS.filter(function(n){return typeof window[n]!=="function"})}
 function censusHTML(){
   var miss=censusMissing();
@@ -2745,7 +2745,7 @@ function lessonMark(id){try{const a=JSON.parse(localStorage.getItem("mawhiba_eng
 // وتسعة من أصل أربعة عشر عنصراً كانت في الصندوق صفر — أي أخطأت فيها من قبل وأُعيدت بلا شرح.
 // الآن نتابع دقة كل قاعدة، فإن هبطت أُلغي وسم "شوهد" وعاد الشرح قبل أسئلتها.
 const LESSON_PERF_KEY="mawhiba_eng_lesson_perf";
-const LESSON_WINDOW=6, LESSON_MIN=3, LESSON_WEAK_PCT=40, RETEACH_CAP=2, RETEACH_ITEMS=3;
+const LESSON_WINDOW=6, LESSON_MIN=3, LESSON_WEAK_PCT=40, RETEACH_CAP=4, RETEACH_ITEMS=3;
 function lessonPerfLoad(){try{return JSON.parse(localStorage.getItem(LESSON_PERF_KEY)||"{}")}catch(e){return{}}}
 function lessonPerfSave(o){try{localStorage.setItem(LESSON_PERF_KEY,JSON.stringify(o))}catch(e){}}
 function lessonRecord(lessonId,ok){
@@ -2837,20 +2837,116 @@ function buildDailyPlan(){
   });
   return {items:out,secs,due:due.length,fresh:newCount};
 }
+// ===== الخطأ الثابت على مستوى السؤال =====
+// إعادة التدريس كانت على مستوى الدرس، والخطأ على مستوى السؤال — فضاع بينهما. مثال من سجلّها:
+// u1_g3 وu1_g4 تُصيبهما دائماً، وu1_g1 وu1_g2 صفر من ستّ، وكلها في درس المبني للمجهول.
+// فمتوسّط الدرس ٥٠٪ ولا يتجاوز عتبة الضعف، والشرح لا يعود أبداً.
+// والأدهى: ثلاثة عشر سؤالاً لم تُصبها ولا مرة، وفي ثمانية منها أعطت الجواب الخاطئ نفسه حرفياً
+// في كل محاولة — "write" ثلاث مرات. فسطر الشرح بعد الإجابة لا يُغيّر شيئاً، ثبت ذلك عملياً.
+const ITEM_ERR_KEY="mawhiba_eng_item_err_v1";
+const ITEM_STUCK_AT=2;   // خطآن على السؤال نفسه ⇒ لم يعد خطأً عارضاً
+function itemErrLoad(){try{return JSON.parse(localStorage.getItem(ITEM_ERR_KEY)||"{}")}catch(e){return{}}}
+function itemErrSave(o){try{localStorage.setItem(ITEM_ERR_KEY,JSON.stringify(o))}catch(e){}}
+function itemErrRecord(id,ok,answer){
+  if(!id)return;
+  const m=itemErrLoad(),r=m[id]||{wrong:0,last:null,same:0};
+  if(ok){delete m[id]}
+  else{
+    r.same=(r.last!==null&&r.last===answer)?(r.same||0)+1:0;
+    r.wrong=(r.wrong||0)+1;r.last=answer==null?null:String(answer);
+    m[id]=r;
+  }
+  itemErrSave(m);
+}
+function itemStuck(id){const r=itemErrLoad()[id];return !!(r&&r.wrong>=ITEM_STUCK_AT)}
+function itemErrOf(id){return itemErrLoad()[id]||null}
+function itemClear(id){const m=itemErrLoad();if(m[id]){delete m[id];itemErrSave(m)}}
+// بذرة من سجلّ الخادم لا من تخمين: هذه أسئلتها التي لم تُصبها ولا مرة، ومعها جوابها الخاطئ
+// المتكرّر كما سُجّل بالضبط. بلا البذرة تنتظر البوّابة خطأين جديدين في كل سؤال قبل أن تعمل —
+// وهي أخطأت فيها فعلاً أمامنا مرّتين وثلاثاً.
+const ITEM_SEED_KEY="mawhiba_eng_item_seed_v1";
+const ITEM_SEED={u1_g1:["eat",3],u1_g2:["write",3],u2_g2:["gave",2],u2_g3:["any",3],
+  u3_g2:["since",2],u3_g3:["for",2],u4_g1:["traveled",2],u4_g2:["rings",2],u4_g3:["what",2],
+  u5_g1:["quicklier",2],u5_g2:["more good",2],u6_g1:["opened",2],u6_g2:["take",2]};
+function itemSeedOnce(){
+  try{
+    if(localStorage.getItem(ITEM_SEED_KEY))return;
+    const m=itemErrLoad();
+    Object.keys(ITEM_SEED).forEach(function(k){
+      if(!m[k])m[k]={wrong:ITEM_SEED[k][1],last:ITEM_SEED[k][0],same:ITEM_SEED[k][1]-1};
+    });
+    itemErrSave(m);localStorage.setItem(ITEM_SEED_KEY,"1");
+  }catch(e){}
+}
+try{itemSeedOnce()}catch(e){}
+// ===== بوّابة التصحيح: بطاقة تُسمّي خطأها، ثم تمرينان بخيارين، ثم يعود السؤال =====
+// الخياران اثنان لا أربعة عمداً: الغرض مقابلة صريحة بين جوابها الخاطئ والصواب، لا اختبار جديد.
+let fixOn=false,fixStep=0,fixItem=null,fixDrills=[],fixPicked=null,fixLocked=false,fixWrong=0;
+function fixBuild(it){
+  const err=itemErrOf(it.id),bad=err&&err.last?err.last:null;
+  const right=it.c[it.a];
+  const POOL=engPool();
+  // تمرين ١: الجملة نفسها — جوابها الخاطئ مقابل الصواب
+  const d1Bad=(bad&&it.c.indexOf(bad)>=0&&bad!==right)?bad:it.c.find(function(c){return c!==right});
+  const drills=[{q:it.q,listen:it.listen||null,right,bad:d1Bad,w:it.w||""}];
+  // تمرين ٢: جملة أخرى من الدرس نفسه — لئلا يكون النجاح حفظاً لجملة واحدة
+  const sib=POOL.filter(function(x){return x.lesson&&x.lesson===it.lesson&&x.id!==it.id&&x.c&&x.c.length>1})[0];
+  if(sib){
+    const sr=sib.c[sib.a],sb=sib.c.find(function(c){return c!==sr});
+    drills.push({q:sib.q,listen:sib.listen||null,right:sr,bad:sb,w:sib.w||""});
+  }
+  return drills;
+}
+function fixStart(it){
+  fixOn=true;fixStep=0;fixItem=it;fixDrills=fixBuild(it);fixPicked=null;fixLocked=false;fixWrong=0;
+  logAnswer("eng_plan","fix_open",null,itemErrOf(it.id)?itemErrOf(it.id).last:null,it.id,null,{lesson:it.lesson||null});
+  render();
+}
+let fixOkFlag=false;
+// ترتيب الخيارين يُثبَّت عند دخول التمرين لا عند كل رسم — وإلا قفزا تحت إصبعها
+function fixArm(step){
+  const d=fixDrills[step-1];
+  if(d&&!d._opts){const first=Math.random()<0.5;d._opts=first?[d.right,d.bad]:[d.bad,d.right];d._ai=first?0:1}
+  fixPicked=null;fixLocked=false;
+}
+function fixCardDone(){fixStep=1;fixArm(1);render()}
+function fixChoose(i){
+  if(fixLocked)return;
+  const d=fixDrills[fixStep-1];
+  fixPicked=i;fixLocked=true;fixOkFlag=(i===d._ai);
+  if(!fixOkFlag)fixWrong++;
+  logAnswer("eng_plan","fix_drill",fixOkFlag,d._opts[i],fixItem.id,null,{lesson:fixItem.lesson||null});
+  render();
+}
+function fixNext(){
+  // فشل التمرين يُعيد البطاقة: لا تُمرَّر إلى السؤال وهي لم تُمسك القاعدة بعد
+  if(!fixOkFlag){
+    fixDrills.forEach(function(d){delete d._opts;delete d._ai});
+    fixStep=0;fixPicked=null;fixLocked=false;render();return;
+  }
+  if(fixStep<fixDrills.length){fixStep++;fixArm(fixStep);render();return}
+  fixOn=false;fixItem=null;fixPicked=null;fixLocked=false;render();
+}
+function fixNeeded(it){return !!(it&&it.t==="grammar"&&itemStuck(it.id))}
 let planItems=[],planIdx=0,planPicked=null,planLocked=false,planScore=0,planTotal=0,planDone=false,planInput="",planMeta=null;
 function startEngPlan(){
   const p=buildDailyPlan();
   planItems=p.items;planMeta=p;planIdx=0;planPicked=null;planLocked=false;planScore=0;planDone=false;planInput="";
   planTotal=planItems.filter(i=>i.t!=="lesson").length;
-  mode="engplan";window.scrollTo(0,0);render();
-  const f=planItems[0];if(f&&f.t==="dict")setTimeout(()=>speakEnglish(f.w),400);
+  fixOn=false;fixItem=null;fixStep=0;
+  mode="engplan";window.scrollTo(0,0);
+  const f=planItems[0];
+  if(fixNeeded(f)){fixStart(f);return}
+  render();
+  if(f&&f.t==="dict")setTimeout(()=>speakEnglish(f.w),400);
 }
 function planCur(){return planItems[planIdx]}
 function planChoose(i){
-  if(planLocked)return;planPicked=i;planLocked=true;
+  if(planLocked||fixOn)return;planPicked=i;planLocked=true;
   const it=planCur(),ok=i===it.a;
   if(ok)planScore++;
   srsUpdate(it.id,ok);lessonRecord(it.lesson,ok);
+  itemErrRecord(it.id,ok,it.c?it.c[i]:null);
   logAnswer("eng_plan",it.t,ok,it.c?it.c[i]:null,it.id,null,{is_new:!!it._isNew,srs_box:it._box,lesson:it.lesson||null});
   render();
 }
@@ -2868,12 +2964,57 @@ function planCheckDict(){
 function planLessonDone(){const it=planCur();lessonMark(it.id);lessonResetWindow(it.id);planNext()}
 function planNext(){
   if(planIdx+1>=planItems.length){planDone=true;window.scrollTo(0,0);render();return}
-  planIdx++;planPicked=null;planLocked=false;planInput="";render();
-  const it=planCur();if(it&&it.t==="dict")setTimeout(()=>speakEnglish(it.w),300);
+  planIdx++;planPicked=null;planLocked=false;planInput="";
+  const it=planCur();
+  // السؤال العالق لا تُعرض خياراته حتى تمرّ ببطاقة التصحيح وتمرينيها
+  if(fixNeeded(it)){fixStart(it);return}
+  render();
+  if(it&&it.t==="dict")setTimeout(()=>speakEnglish(it.w),300);
 }
 function planRepeat(){const it=planCur();if(it&&it.t==="dict")speakEnglish(it.w)}
+function renderFix(){
+  const it=fixItem,L=ENG_LESSONS[it.lesson],err=itemErrOf(it.id),bad=err&&err.last?err.last:null;
+  const head=`<button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
+  <div class="meta"><span>تصحيح موجَّه</span><span>${toAr(fixStep)} من ${toAr(fixDrills.length)}</span></div>`;
+  if(fixStep===0){
+    const times=err&&err.wrong?err.wrong:2;
+    app.innerHTML=`${head}
+    <div class="card">
+      <span class="tag" style="background:#FEE2E2;color:#B91C1C">🎯 هذا السؤال بالذات يتكرّر خطؤه</span>
+      <div style="background:#FEF2F2;border-inline-start:4px solid #EF4444;border-radius:12px;padding:14px;margin:12px 0;font-size:15px;line-height:1.9;color:#991B1B">
+        أجبتِ عن هذا السؤال <b>${toAr(times)}</b> مرات${bad?` وكانت إجابتك <b style="direction:ltr;display:inline-block">"${bad}"</b> في كل مرة`:""} — ولم تكن صحيحة.
+        <div style="margin-top:6px;font-size:13px;color:#7F1D1D">فلا فائدة من إعادة السؤال قبل تصحيح الفكرة نفسها.</div>
+      </div>
+      ${L?`<div style="font-size:17px;font-weight:800;color:#312E81;margin-bottom:8px">${L.t}</div>
+      <div style="background:#EEF2FF;border-radius:12px;padding:14px;font-size:15px;line-height:2;color:#312E81">${L.b}</div>`:""}
+      <div style="background:#F0FDF4;border-inline-start:4px solid #10B981;border-radius:12px;padding:14px;margin-top:12px;font-size:14px;line-height:1.9;color:#065F46">
+        <b>الصواب هنا:</b> <span style="direction:ltr;display:inline-block;font-family:Georgia,serif;font-size:16px">${it.c[it.a]}</span>
+        ${it.w?`<div style="margin-top:6px">${it.w}</div>`:""}
+      </div>
+      ${it.listen?`<button type="button" onclick="speakEnglish(fixItem.listen)" style="background:#ECFEFF;border:1.5px solid #A5F3FC;color:#0891B2;border-radius:10px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;margin-top:12px;font-family:inherit">🔊 استمعي للجملة الصحيحة</button>`:""}
+    </div>
+    <button class="btn" style="background:#4338CA" onclick="fixCardDone()">فهمت — تدرّبي عليها ←</button>`;
+    return;
+  }
+  const d=fixDrills[fixStep-1];
+  const btns=d._opts.map(function(o,i){
+    let bg="#fff",bd="#E2E8F0",col="#334155";
+    if(fixLocked){if(i===d._ai){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(i===fixPicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}
+    return `<button class="choice" style="background:${bg};border-color:${bd};color:${col};font-size:17px" onclick="fixChoose(${i})" ${fixLocked?"disabled":""}>${o}</button>`;
+  }).join("");
+  app.innerHTML=`${head}
+  <div class="card">
+    <span class="tag" style="background:#E0E7FF;color:#4338CA">✍️ تدريب موجَّه · خياران فقط</span>
+    <div class="q">${d.q}</div>
+    ${d.listen?`<button type="button" onclick="speakEnglish(fixDrills[${fixStep-1}].listen)" style="background:#ECFEFF;border:1.5px solid #A5F3FC;color:#0891B2;border-radius:10px;padding:7px 16px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:14px;font-family:inherit">🔊 استمعي</button>`:""}
+    <div class="choices">${btns}</div>
+    ${fixLocked?`<div class="explain"><div class="explain-title" style="color:${fixOkFlag?'#059669':'#B45309'}">${fixOkFlag?"✓ صحيح":"لا — الصحيحة بالأخضر"}</div><div class="explain-body">${d.w||""}${fixOkFlag?"":`<div style="margin-top:6px;font-size:13px;color:#B45309">سنعيد الشرح مرة أخرى ثم نحاول.</div>`}</div></div>`:""}
+  </div>
+  ${fixLocked?`<button class="btn" style="background:${fixOkFlag?'#059669':'#B45309'}" onclick="fixNext()">${!fixOkFlag?"أعيدي الشرح ←":(fixStep<fixDrills.length?"تدريب آخر ←":"عودة للسؤال ←")}</button>`:""}`;
+}
 function renderEngPlan(){
   if(planDone)return renderEngPlanResult();
+  if(fixOn&&fixItem)return renderFix();
   const it=planCur();
   const answered=planItems.slice(0,planIdx).filter(x=>x.t!=="lesson").length;
   const prog=`<div class="bar">${planItems.map((_,i)=>`<div class="seg" style="background:${i<=planIdx?'#4338CA':'#E2E8F0'};opacity:${i<=planIdx?1:.5}"></div>`).join("")}</div>`;
@@ -2988,10 +3129,10 @@ function dictDiff(typed,correct){
   return correct.split("").map((ch,i)=>`<span style="color:${t[i]===ch?'#059669':'#DC2626'}">${ch}</span>`).join("");
 }
 let dictSession=[],dictIdx=0,dictInput="",dictLocked=false,dictScore=0,dictDone=false;
-let dictStage=1,dictStreak=0,dictMiss=0;
+let dictStage=1,dictStreak=0,dictMiss=0,dictShownAt=0;
 function startDictation(){
   mode="dictation";dictSession=shuffle(DICTATION_A1).slice(0,10);dictIdx=0;dictInput="";dictLocked=false;dictScore=0;dictDone=false;
-  dictStage=dictStageGet();dictStreak=0;dictMiss=0;
+  dictStage=dictStageGet();dictStreak=0;dictMiss=0;dictShownAt=Date.now();
   window.scrollTo(0,0);render();
   setTimeout(()=>speakEnglish(dictSession[0].w),300);
 }
@@ -3003,7 +3144,9 @@ function dictCheck(){
   dictInput=val;dictLocked=true;
   const dictOk=val===dictSession[dictIdx].w.toLowerCase();
   if(dictOk)dictScore++;
-  logAnswer("dictation_a1","stage"+dictStage,dictOk);
+  // الكلمة وما كتبته: بدونهما أعرف أنها أخطأت ولا أعرف كيف — حرف ناقص؟ حرف متحرّك خطأ؟
+  logAnswer("dictation_a1","stage"+dictStage,dictOk,val,dictSession[dictIdx].w,
+    dictShownAt?Date.now()-dictShownAt:null,{q_text:dictSession[dictIdx].w});
   // تدرّج المرحلة: صعود بإتقان متتالٍ، ونزول تلقائي عند تكرار الخطأ حتى لا تعلق على مستوى أصعب من قدرتها
   if(dictOk){
     dictMiss=0;dictStreak++;
@@ -3016,7 +3159,7 @@ function dictCheck(){
 }
 function dictNext(){
   if(dictIdx+1>=dictSession.length){dictDone=true;window.scrollTo(0,0);render();return}
-  dictIdx++;dictInput="";dictLocked=false;render();
+  dictIdx++;dictInput="";dictLocked=false;dictShownAt=Date.now();render();
   setTimeout(()=>speakEnglish(dictSession[dictIdx].w),300);
 }
 function renderDictation(){
