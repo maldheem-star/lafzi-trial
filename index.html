@@ -13,7 +13,8 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260807-1340";
+  var BUILD="build-20260807-1520";
+  try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
   function fetchHtml(){return fetch(url(),{cache:"no-store"}).then(function(r){return r.text()})}
@@ -2289,6 +2290,12 @@ async function traceRecord(){
                      :"⚠️ التسجيل عمل لكن الصوت شبه فارغ — تحقّقي أن الميكروفون غير مغطّى.");
   }catch(e){traceAdd("✗ فشل التسجيل: "+((e&&e.name)||e)+" — "+((e&&e.message)||""))}
 }
+// تحديث قسري: بعض المتصفّحات تُبقي نسخة مخزّنة رغم إعادة التحميل العادية
+function hardReload(){
+  try{if(window.caches&&caches.keys)caches.keys().then(function(ks){ks.forEach(function(k){caches.delete(k)})})}catch(e){}
+  try{sessionStorage.removeItem("mawhiba_reload_guard")}catch(e){}
+  location.replace(location.pathname+"?_r="+Date.now());
+}
 function micDiagHTML(){
   const yn=v=>v?'<b style="color:#059669">نعم</b>':'<b style="color:#DC2626">لا</b>';
   let box="";
@@ -2309,7 +2316,12 @@ function micDiagHTML(){
         <span style="color:#7F1D1D">${h.f}</span>${r.msg?`<br><span style="font-size:11px;color:#B91C1C">${r.msg}</span>`:""}</div>`;
     }
   }
-  return `<div style="margin-top:20px;padding-top:16px;border-top:1px dashed #E2E8F0">
+  return `<div style="background:#0F172A;color:#fff;border-radius:12px;padding:10px 12px;margin-top:16px;font-size:12px;text-align:center;line-height:1.9">
+      النسخة التي تعمل الآن: <b style="direction:ltr;display:inline-block">${window.__BUILD||"غير معروفة"}</b>
+      <div style="font-size:11px;color:#94A3B8">إن لم تطابق ما أخبرتك به فأنت على نسخة مخزّنة</div>
+      <button class="btn" style="background:#2563EB;margin-top:8px;padding:9px" onclick="hardReload()">🔄 تحديث قسري للنسخة الأحدث</button>
+    </div>
+  <div style="margin-top:20px;padding-top:16px;border-top:1px dashed #E2E8F0">
     <div style="font-weight:800;font-size:16px;margin-bottom:8px">🎤 تشخيص الميكروفون</div>
     <button class="btn" style="background:#7C3AED" onclick="runMicDiag()">🎤 افحصي الميكروفون الآن</button>
     ${box}
