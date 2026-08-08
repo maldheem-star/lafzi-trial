@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260807-1705";
+  var BUILD="build-20260808-0230";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -3437,15 +3437,22 @@ const BREAK_EVERY=20,RAPID_MS=2500,RAPID_STREAK=4;
 // اللافتة التحذيرية لم تنفع لأنها تظهر بعد الإجابة. فالحل بنيوي: لا خيارات قبل أن يمرّ زمن القراءة.
 // ٩٠ كلمة/دقيقة سرعة قراءة صامتة متحفّظة لسادس ابتدائي، والحدّ الأدنى ٨ ثوانٍ والأقصى ٤٥.
 const GATE_MIN_WORDS=25,GATE_WPM=90,GATE_MIN_S=8,GATE_MAX_S=45;
-function gateSecondsFor(text){
+// حدّ أدنى بحسب نوع السؤال لا بطوله وحده. حدّ الـ٢٥ كلمة كان لا يُطلق على نصوص
+// الفهم المقروء والاستدلال هنا (١٥–٢٠ كلمة)، فمرّت في ثانية ونصف. والدليل من بياناتها:
+// النصّ الذي قرأته ٨٠ ثانية أصابته، واللذان مرّا في ١٫٦ و٢٫٤ ثانية أخطأتهما.
+const GATE_FLOOR_BY_TYPE={reading:12,logic:10};
+let gateKind="";
+function gateSecondsFor(text,qtype){
   const w=String(text||"").trim().split(/\s+/).filter(Boolean).length;
-  if(w<GATE_MIN_WORDS)return 0;
-  return Math.max(GATE_MIN_S,Math.min(GATE_MAX_S,Math.round(w/GATE_WPM*60)));
+  const byLen=w>=GATE_MIN_WORDS?Math.max(GATE_MIN_S,Math.round(w/GATE_WPM*60)):0;
+  const floor=GATE_FLOOR_BY_TYPE[qtype]||0;
+  return Math.min(GATE_MAX_S,Math.max(byLen,floor));
 }
 let gateSecs=0,gateLeft=0,gateTimer=null,gateSeen=false;
 function gateStop(){if(gateTimer){clearInterval(gateTimer);gateTimer=null}}
-function gateStart(text){
-  gateStop();gateSecs=gateSecondsFor(text);gateLeft=gateSecs;
+function gateStart(text,qtype){
+  gateKind=qtype||"";
+  gateStop();gateSecs=gateSecondsFor(text,qtype);gateLeft=gateSecs;
   if(!gateSecs)return;
   gateTimer=setInterval(()=>{gateLeft--;if(gateLeft<=0){gateLeft=0;gateStop()}render()},1000);
 }
@@ -3462,7 +3469,7 @@ async function start(domKey){
   if(needsAI){loading=true;render();}
   if(domKey==="full"){filtered=await buildFull()}
   else{filtered=await buildDomain(domKey,PER)}
-  loading=false;questionShownAt=Date.now();if(filtered.length)gateStart(filtered[0].q);render();
+  loading=false;questionShownAt=Date.now();if(filtered.length)gateStart(filtered[0].q,filtered[0].qtype);render();
 }
 async function home(){mode="home";gateStop();window.scrollTo(0,0);render();await loadWeakness();if(mode==="home")render()}
 function choose(i){
@@ -3487,7 +3494,7 @@ function choose(i){
   if(breakSuggest)breakShownFor.push(sessionAnswered);
   render();
 }
-function next(){if(idx+1>=filtered.length){done=true;gateStop();window.scrollTo(0,0);saveAttempt()}else{idx++;picked=null;locked=false;rapidNudge=false;breakSuggest=false;questionShownAt=Date.now();gateStart(filtered[idx].q)}render()}
+function next(){if(idx+1>=filtered.length){done=true;gateStop();window.scrollTo(0,0);saveAttempt()}else{idx++;picked=null;locked=false;rapidNudge=false;breakSuggest=false;questionShownAt=Date.now();gateStart(filtered[idx].q,filtered[idx].qtype)}render()}
 function domainStats(){const acc={};Object.keys(DOMAINS).forEach(k=>acc[k]={r:0,t:0});filtered.forEach((q,i)=>{if(acc[q.d]){acc[q.d].t++;if(answered[i])acc[q.d].r++}});return acc}
 function weakestOf(acc){let key=null,pct=101;Object.keys(DOMAINS).forEach(k=>{if(acc[k].t){const p=acc[k].r/acc[k].t*100;if(p<pct){pct=p;key=k}}});return{key,pct}}
 
@@ -3841,8 +3848,8 @@ function renderQuiz(){
   const gateBox=(!locked&&gateSecs&&!gateOpen())
     ? `<div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:12px;padding:16px;margin:14px 0;text-align:center">
          <div style="font-size:30px;font-weight:800;color:#1D4ED8;line-height:1.2">${toAr(gateLeft)}</div>
-         <div style="font-size:14px;color:#1E40AF;font-weight:700;margin-top:6px">اقرئي النص كاملاً أولاً</div>
-         <div style="font-size:12px;color:#3B82F6;margin-top:6px;line-height:1.7">الخيارات ستظهر بعد ${arSecs(gateLeft)}. النص فيه الجواب — والقراءة أسرع من التخمين على المدى الطويل.</div>
+         <div style="font-size:14px;color:#1E40AF;font-weight:700;margin-top:6px">${gateKind==="logic"?"اقرئي المقدّمة كاملة ثم استنتجي":"اقرئي النص كاملاً أولاً"}</div>
+         <div style="font-size:12px;color:#3B82F6;margin-top:6px;line-height:1.7">الخيارات ستظهر بعد ${arSecs(gateLeft)}. ${gateKind==="logic"?"الاستنتاج لا يُخمَّن — اقرئي ما أُعطي لك بدقّة.":"النص فيه الجواب — والقراءة أسرع من التخمين على المدى الطويل."}</div>
        </div>`
     : (!locked&&gateSecs&&gateOpen())
     ? `<div style="font-size:12px;color:#059669;font-weight:700;margin:10px 0">✓ خذي وقتك — راجعي النص قبل أن تختاري</div>`
