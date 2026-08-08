@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260807-1040";
+  var BUILD="build-20260807-1210";
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
   function fetchHtml(){return fetch(url(),{cache:"no-store"}).then(function(r){return r.text()})}
@@ -149,6 +149,21 @@ function appError(where,e){
     d.appendChild(b);
     (document.body||document.documentElement).appendChild(d);
   }catch(_){}
+}
+// ===== جلب بمهلة =====
+// طلبٌ بلا مهلة يُبقي علم "جارٍ التحقّق" مرفوعاً إلى الأبد، فيُرسَم زرّ التسجيل معطّلاً
+// ولا يستجيب للمس إطلاقاً — وهو عطلٌ يبدو للمستعملة كأن الزرّ نفسه مكسور.
+const NET_TIMEOUT_MS=25000;
+function fetchTimeout(url,opts,ms){
+  ms=ms||NET_TIMEOUT_MS;
+  if(typeof AbortController==="undefined"){
+    return Promise.race([fetch(url,opts),
+      new Promise(function(_,rej){setTimeout(function(){rej(new Error("timeout"))},ms)})]);
+  }
+  var c=new AbortController(),t=setTimeout(function(){c.abort()},ms);
+  var o={};for(var k in opts)o[k]=opts[k];o.signal=c.signal;
+  return fetch(url,o).then(function(r){clearTimeout(t);return r},
+                           function(e){clearTimeout(t);throw (e&&e.name==="AbortError")?new Error("timeout"):e});
 }
 window.addEventListener("error",function(ev){appError("خطأ",ev)});
 window.addEventListener("unhandledrejection",function(ev){appError("وعد",ev)});
@@ -2843,7 +2858,7 @@ async function azureAssess(){
     azureRecording=false;render();
     const blob=new Blob(chunks,{type:rec.mimeType||"audio/webm"});
     const b64=await blobToBase64(blob);
-    const res=await fetch(PRON_FN_URL,{method:"POST",headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({audio:b64,mimeType:blob.type,referenceText:pronSession[pronIdx].w})});
+    const res=await fetchTimeout(PRON_FN_URL,{method:"POST",headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({audio:b64,mimeType:blob.type,referenceText:pronSession[pronIdx].w})});
     azureResult=await res.json();
   }catch(e){
     azureResult={error:"client_error",message:String(e&&e.message||e)};
@@ -2956,6 +2971,10 @@ async function pronStart(){
     render();
   }catch(e){pronListening=false;pronResult={heard:"",ok:false,error:true};render()}
 }
+function pronReset(){pronBusy=false;pronListening=false;if(pronTimer){clearInterval(pronTimer);pronTimer=null}
+  if(pronStream){try{pronStream.getTracks().forEach(function(t){t.stop()})}catch(e){}pronStream=null}render()}
+function speakReset(){speakBusy=false;speakListening=false;if(speakTimer){clearInterval(speakTimer);speakTimer=null}
+  if(speakStream){try{speakStream.getTracks().forEach(function(t){t.stop()})}catch(e){}speakStream=null}render()}
 function pronStop(){
   if(!pronListening)return;
   pronListening=false;pronBusy=true;
@@ -2974,7 +2993,7 @@ async function pronFinish(){
   try{
     const blob=new Blob(pronChunks,{type:(pronRec&&pronRec.mimeType)||"audio/webm"});
     const b64=await blobToBase64(blob);
-    const res=await fetch(PRON_GROQ_FN_URL,{method:"POST",headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({audio:b64,mimeType:blob.type,referenceText:target,targetWords:pronWords(target)})});
+    const res=await fetchTimeout(PRON_GROQ_FN_URL,{method:"POST",headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({audio:b64,mimeType:blob.type,referenceText:target,targetWords:pronWords(target)})});
     const data=await res.json();
     // الإهمال: إما ثقة Whisper نفسه منخفضة، أو حكم النموذج أنه ليس محاولة للجملة، أو كشفنا المحلّي
     const bad=data&&data.ok&&(data.lowConfidence||data.garbled||pronHallucinated(target,data.heard));
@@ -3059,6 +3078,7 @@ function renderPron(){
         : `<button type="button" onclick="pronStart()" ${pronBusy?"disabled":""} style="background:${pronBusy?'#C4B5FD':'#7C3AED'};color:#fff;border:none;border-radius:50%;width:72px;height:72px;font-size:26px;cursor:pointer">🎤</button>`}
     </div>
     <div style="font-size:13px;color:${pronListening?'#DC2626':'#64748B'};margin-bottom:14px;font-weight:${pronListening?'800':'400'}">${pronListening?`🔴 يسجّل… ${toAr(pronElapsed.toFixed(1)).replace('.','٫')} ث — اضغطي ⏹️ عند انتهائك`:pronBusy?"…جارٍ التحقّق":"اضغطي 🔊 لتسمعي، ثم 🎤 وانطقي — وأوقفي التسجيل بنفسك"}</div>
+    ${pronBusy?`<button class="link-btn" style="font-size:12px;margin:0 0 10px" onclick="pronReset()">✕ إلغاء والمحاولة ثانية</button>`:""}
     ${feedback}${nextBtn}
     ${azureSection}`;
   }
@@ -3196,7 +3216,7 @@ async function speakFinish(){
   try{
     const blob=new Blob(speakChunks,{type:(speakRec&&speakRec.mimeType)||"audio/webm"});
     const b64=await blobToBase64(blob);
-    const res=await fetch(PRON_GROQ_FN_URL,{method:"POST",headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({audio:b64,mimeType:blob.type,referenceText:target,targetWords:pronWords(target)})});
+    const res=await fetchTimeout(PRON_GROQ_FN_URL,{method:"POST",headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({audio:b64,mimeType:blob.type,referenceText:target,targetWords:pronWords(target)})});
     const data=await res.json();
     const bad=data&&data.ok&&(data.lowConfidence||data.garbled||pronHallucinated(target,data.heard));
     if(bad){
@@ -3280,6 +3300,7 @@ function renderSpeak(){
         : `<button type="button" onclick="speakStart()" ${speakBusy?"disabled":""} style="background:${speakBusy?'#F9A8D4':'#DB2777'};color:#fff;border:none;border-radius:50%;width:72px;height:72px;font-size:26px;cursor:pointer">🎤</button>`}
     </div>
     <div style="font-size:13px;color:${speakListening?'#DC2626':'#64748B'};margin-bottom:12px;font-weight:${speakListening?'800':'400'}">${speakListening?`🔴 يسجّل… ${toAr(speakElapsed.toFixed(1)).replace('.','٫')} ث — اضغطي ⏹️ عند انتهائك`:speakBusy?"…جارٍ التحقّق":"اضغطي 🔊 لتسمعي، ثم 🎤 وقوليها كاملة"}</div>
+    ${speakBusy?`<button class="link-btn" style="font-size:12px;margin:0 0 10px" onclick="speakReset()">✕ إلغاء والمحاولة ثانية</button>`:""}
     ${fb}${btns}`;
   }
   app.innerHTML=`<button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
