@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260808-0230";
+  var BUILD="build-20260808-1105";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -1944,6 +1944,75 @@ function basicsMakeSubBorrow(){const o2=rand(2,9),o1=rand(0,o2-1),t2=rand(1,7),t
 // القطر ٤..٤٠ كما في مولّد محيط الدائرة تماماً، فما تتدرّب عليه هنا هو ما تواجهه هناك
 function basicsMakePiMul(){const d=rand(2,20)*2;return{a:d,b:314,c:round2(PI_APPROX*d)}}
 function basicsMakePercent(){const a=pick([100,200,300,400,500,600,800,1000]),b=pick([10,20,25,30,40,50,60,70,75,80,90]);const onePercent=a/100,c=onePercent*b;return{a,b,c,onePercent}}
+// ===== النسبة المئوية: مرساة الـ١٠٪ بدل مرساة الـ١٪ =====
+// طريقة «أوجدي ١٪ ثم اضربي في النسبة» تُنتج ضرباً ذهنياً بعددين من منزلتين (٣ × ٧٠ = ٢١٠)،
+// وهناك بالضبط كانت تسقط: أجابت ١٠ عن ٤٠٪ من ١٠٠٠ و٥ عن ٩٠٪ من ٥٠٠ — أي توقّفت عند ١٪.
+// مرساة الـ١٠٪ تُبقي الضرب برقم واحد: ١٠٪ من ٣٠٠ = ٣٠ (احذفي صفراً)، ثم ٧ × ٣٠ = ٢١٠.
+function percentSteps(a,b){
+  const ans=a*b/100;
+  if(b===50)return [`٥٠٪ = النصف تماماً`,`نصف ${toAr(a)} = ${toAr(a)} ÷ ٢ = <b>${toAr(ans)}</b>`];
+  if(b===25)return [`٢٥٪ = الرُّبع`,`رُبع ${toAr(a)} = ${toAr(a)} ÷ ٤ = <b>${toAr(ans)}</b>`];
+  if(b===75)return [`٧٥٪ = ثلاثة أرباع`,`الرُّبع = ${toAr(a)} ÷ ٤ = ${toAr(a/4)}`,`٣ × ${toAr(a/4)} = <b>${toAr(ans)}</b>`];
+  const ten=a/10,k=b/10;
+  return [`١٠٪ = احذفي صفراً واحداً ⇐ ١٠٪ من ${toAr(a)} = ${toAr(ten)}`,
+          `${toAr(b)}٪ فيها ${toAr(k)} عشرات`,
+          `${toAr(k)} × ${toAr(ten)} = <b>${toAr(ans)}</b>`];
+}
+function percentRule(a,b){
+  if(b===50)return `٥٠٪ = النصف. نصف ${toAr(a)} = ${toAr(a/2)}.`;
+  if(b===25)return `٢٥٪ = الرُّبع. رُبع ${toAr(a)} = ${toAr(a/4)}.`;
+  if(b===75)return `٧٥٪ = ثلاثة أرباع: أوجدي الرُّبع (${toAr(a)}÷٤=${toAr(a/4)}) ثم اضربيه في ٣.`;
+  return `المرساة: ١٠٪ = احذفي صفراً (١٠٪ من ${toAr(a)} = ${toAr(a/10)})، ثم اضربي في عدد العشرات في النسبة (${toAr(b/10)}).`;
+}
+// ===== بوّابة التقدير =====
+// اثنا عشر من أخطائها الأربعة عشر تُلتقط بفحص حجم واحد قبل الحساب: ٥٠٪ من ١٠٠٠ ← ٥٠٠٠٠،
+// و٧٠٪ من ٣٠٠ ← ٧٠. كلاهما مستحيل قبل أن يكون خطأً حسابياً. فتُلزَم بتحديد موضع الجواب أولاً.
+// النطاق الرابع «أكبر من الكل» مستحيل دائماً — وهو بالضبط فخّ الضرب بلا قسمة على ١٠٠.
+function pctBands(a){return[`أقل من ${toAr(a/4)}`,`بين ${toAr(a/4)} و${toAr(a/2)}`,`بين ${toAr(a/2)} و${toAr(a)}`,`أكبر من ${toAr(a)}`]}
+function pctBandOf(a,b){const ans=a*b/100;return ans<a/4?0:ans<=a/2?1:ans<a?2:3}
+function pctBandWhy(a,b,i){
+  const c=pctBandOf(a,b);
+  if(i===3)return `مستحيل — ${toAr(b)}٪ أقل من ١٠٠٪، فالجواب لا يتجاوز ${toAr(a)} أبداً.`;
+  if(i<c)return `أصغر من اللازم — ${toAr(b)}٪ من ${toAr(a)} أكبر من ذلك.`;
+  return `أكبر من اللازم — ${toAr(b)}٪ من ${toAr(a)} أصغر من ذلك.`;
+}
+let pctBandPick=-1,pctBandTries=0,pctBandAt=0;
+function pctArm(){pctBandPick=-1;pctBandTries=0;pctBandAt=Date.now()}
+function pctGateOn(){return basicsSub==="percent"&&basicsStage>=4&&!!basicsCur&&!!basicsCur.fam}
+function pctBandOk(){return pctGateOn()&&pctBandPick===pctBandOf(basicsCur.fam.a,basicsCur.fam.b)}
+function pctGated(){return pctGateOn()&&!basicsLocked&&!pctBandOk()}
+function pctPickBand(i){
+  if(!pctGateOn()||basicsLocked||pctBandOk())return;
+  pctBandPick=i;pctBandTries++;render();
+}
+// تشخيص الخطأ بالاسم: تكرار القاعدة لا يُفيد من أخطأت خطأً بعينه — تسميته تُفيد
+function percentDiagnose(a,b,ans,resp){
+  const v=parseArNum(resp);
+  if(!Number.isFinite(v)||Math.abs(v-ans)<1e-6)return "";
+  const eq=x=>Math.abs(v-x)<1e-6;
+  if(eq(a*b))return `ضربتِ ${toAr(a)} × ${toAr(b)} ونسيتِ القسمة على ١٠٠.`;
+  if(eq(a/100))return `هذه قيمة ١٪ فقط — بقي أن تضربيها في ${toAr(b)}.`;
+  if(eq(b))return `هذا رقم النسبة نفسه لا الجواب. ${toAr(b)}٪ تعني «${toAr(b)} من كل ١٠٠»، و${toAr(a)} ليست ١٠٠.`;
+  if(eq(a/10))return `هذه ١٠٪ فقط — والمطلوب ${toAr(b)}٪.`;
+  if(eq(ans*10)||eq(ans/10))return `الأرقام صحيحة والمنزلة خطأ — عُدّي الأصفار.`;
+  if(v>a)return `الجواب أكبر من ${toAr(a)} كلها — مستحيل، لأن ${toAr(b)}٪ أقل من ١٠٠٪.`;
+  if(b>50&&v<a/2)return `${toAr(b)}٪ أكثر من النصف، فالجواب لا بدّ أن يكون أكبر من ${toAr(a/2)}.`;
+  if(b<50&&v>a/2)return `${toAr(b)}٪ أقل من النصف، فالجواب لا بدّ أن يكون أصغر من ${toAr(a/2)}.`;
+  return "";
+}
+function pctBandBoxHTML(){
+  const a=basicsCur.fam.a,b=basicsCur.fam.b,labels=pctBands(a),done=pctBandOk();
+  const btns=labels.map((L,i)=>{
+    const isPick=pctBandPick===i,good=done&&i===pctBandOf(a,b);
+    const bd=good?"#10B981":isPick?"#EF4444":"#CBD5E1",bg=good?"#ECFDF5":isPick?"#FEF2F2":"#fff",col=good?"#065F46":isPick?"#991B1B":"#334155";
+    return `<button class="link-btn" style="margin:0;flex:1 1 45%;padding:12px 8px;border:2px solid ${bd};background:${bg};color:${col};border-radius:12px;font-weight:800;font-size:14px" onclick="pctPickBand(${i})" ${done?"disabled":""}>${L}</button>`;
+  }).join("");
+  const fb=done?`<div style="text-align:center;margin-top:10px;font-size:13px;font-weight:800;color:#059669">✓ الجواب يقع هنا — الآن احسبيه بالضبط</div>`
+    :pctBandPick>=0?`<div style="text-align:center;margin-top:10px;font-size:13px;font-weight:800;color:#DC2626">${pctBandWhy(a,b,pctBandPick)}</div>`:"";
+  return `<div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:14px;padding:14px;margin-bottom:14px">
+    <div style="font-size:14px;font-weight:800;color:#1E40AF;text-align:center;margin-bottom:10px">قبل الحساب: أين يقع الجواب تقريباً؟</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px">${btns}</div>${fb}</div>`;
+}
 function basicsFamilyQ(f){
   const kind=pick(["mul1","mul2","div1","div2"]);
   if(kind==="mul1")return{text:`${toAr(f.a)} × ${toAr(f.b)} = ؟`,ans:f.c};
@@ -1979,6 +2048,7 @@ function basicsNew(){
   const gen=basicsSub==="multdiv"?basicsMakeFamily:basicsSub==="addcarry"?basicsMakeAddCarry:basicsSub==="subborrow"?basicsMakeSubBorrow:basicsSub==="pimul"?basicsMakePiMul:basicsSub==="pimul3"?basicsMakePiMul3:basicsMakePercent;
   basicsCur={fam:gen()};basicsLocked=false;basicsPicked=-1;basicsTyped="";basicsPrep();
   if(basicsSub==="multdiv")divArmArray(basicsCur.fam.c,basicsCur.fam.b);
+  if(basicsSub==="percent")pctArm();
   render();
   if(basicsStage===5)setTimeout(()=>{const el=document.getElementById('basicsIn');if(el)el.focus()},50);
 }
@@ -1986,12 +2056,12 @@ function basicsTypedStage(){return basicsStage===5}
 // extra (اختياري): حقول إضافية مثل {is_new, srs_box} — تُميّز العنصر الجديد عن المُراجَع عند التحليل
 function logAnswer(domain,qtype,isCorrect,response,itemId,elapsedMs,extra){try{fetch(`${SB_URL}/rest/v1/${TBL_LOG}`,{method:"POST",headers:{"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json","Prefer":"return-minimal"},body:JSON.stringify(Object.assign({student_alias:alias(),domain,qtype,is_correct:isCorrect,response:response==null?null:String(response),item_id:itemId||null,elapsed_ms:elapsedMs==null?null:Math.round(elapsedMs)},extra||{}))})}catch(e){}}
 function basicsChoose(i){
-  if(basicsLocked)return;basicsLocked=true;basicsPicked=i;
+  if(basicsLocked||pctGated())return;basicsLocked=true;basicsPicked=i;
   basicsRecord(i===basicsCur.ai,basicsCur.opts?basicsCur.opts[i]:null);
 }
 // الحقل الفارغ لا يُحتسب محاولة: لا نُحرق عليها محاولة إتقان بضغطة غير مقصودة
 function basicsSubmit(){
-  if(basicsLocked)return;
+  if(basicsLocked||pctGated())return;
   const el=document.getElementById('basicsIn'),raw=(el?el.value:"").trim();
   if(raw==="")return;
   basicsTyped=raw;basicsLocked=true;
@@ -2011,7 +2081,9 @@ function basicsRecord(ok,resp){
   }
   const elapsed=basicsShownAt?Date.now()-basicsShownAt:null;
   // الرقم الذي أنتجته فعلاً: بدونه أعرف أنها أخطأت ولا أعرف نوع الخطأ (نسيت الحمل؟ أخطأت موضع الفاصلة؟)
-  logAnswer("basics_"+basicsSub,"stage"+basicsStage,ok,resp,null,elapsed,{q_text:basicsCur.qText||null});
+  // محاولات النطاق تُقاس: إن بقيت أكثر من واحدة فالخلل في حسّ الحجم لا في الحساب
+  const respOut=pctGateOn()&&resp!=null?String(resp)+" · نطاق×"+toAr(pctBandTries):resp;
+  logAnswer("basics_"+basicsSub,"stage"+basicsStage,ok,respOut,null,elapsed,{q_text:basicsCur.qText||null});
   if(elapsed!=null){
     recentAnswerTimes.push(elapsed);if(recentAnswerTimes.length>RAPID_STREAK)recentAnswerTimes.shift();
     rapidNudge=recentAnswerTimes.length===RAPID_STREAK&&recentAnswerTimes.every(t=>t<RAPID_MS);
@@ -2101,7 +2173,11 @@ function renderBasics(){
       explain=`<div style="font-weight:800;color:#065F46;margin-bottom:6px">المفتاح: اجمعي الصحيحين أولاً — ولا تضربي في ٣٫١٤ إلا مرة واحدة</div>`
         +piMul3Steps(f.a,f.k).map((x,i)=>`<div>${toAr(i+1)}) ${x}.</div>`).join("");
     }
-    else explain=`<div>١) ٪${toAr(f.b)} تعني ${toAr(f.b)} من كل ١٠٠ (كما في الشبكة الملوّنة أعلاه).</div><div>٢) قيمة ١٪ واحد من ${toAr(f.a)} = ${toAr(f.a)} ÷ ١٠٠ = ${toAr(f.onePercent)}.</div><div>٣) إذن ٪${toAr(f.b)} = ${toAr(f.onePercent)} × ${toAr(f.b)} = ${toAr(f.c)}.</div>`;
+    else explain=`<div style="font-weight:800;color:#065F46;margin-bottom:6px">الطريقة السهلة: مرساة الـ١٠٪ — ضربٌ برقم واحد لا برقمين</div>`
+      +`<div style="margin-bottom:6px">٪${toAr(f.b)} تعني ${toAr(f.b)} من كل ١٠٠ (كما في الشبكة الملوّنة أعلاه).</div>`
+      +percentSteps(f.a,f.b).map((x,i)=>`<div>${toAr(i+1)}) ${x}.</div>`).join("")
+      +`<div style="margin-top:8px;font-size:13px;color:#475569">تحقّقي بالحجم: ${toAr(f.b)}٪ ${f.b<50?"أقل من نصف":f.b===50?"نصف":"أكثر من نصف"} ${toAr(f.a)}، و${toAr(f.c)} ${f.b<50?"أصغر":f.b===50?"يساوي":"أكبر"} من ${toAr(f.a/2)} ✓</div>`
+      +altBox([`قيمة ١٪ = ${toAr(f.a)} ÷ ١٠٠ = ${toAr(f.onePercent)}`,`${toAr(f.onePercent)} × ${toAr(f.b)} = ${toAr(f.c)}`],"طريقة ١٪ (ضربٌ برقمين)");
     body=`<div style="background:#EFF6FF;border-radius:14px;padding:16px;font-size:14px;line-height:1.8;color:#1E40AF;margin-bottom:16px">📘 هذا <b>مثال محلول</b>. اقرئي الحل خطوة بخطوة، ثم اضغطي «فهمت».</div>
     ${visualBox}
     <div style="background:#F0FDF4;border-inline-start:4px solid #10B981;border-radius:12px;padding:16px;margin-bottom:16px;font-size:15px;line-height:2">${explain}</div>
@@ -2120,7 +2196,7 @@ function renderBasics(){
       ?`قدّري أولاً (الجواب أكبر قليلاً من ٣ × العدد)، ثم اضربي ٣١٤ مفكَّكاً إلى ٣٠٠ + ١٠ + ٤ بلا فاصلة، ثم أعيدي الفاصلة منزلتين وتحقّقي بالتقدير.`
       :basicsSub==="pimul3"
       ?`الضرب لا يتغيّر بترتيبه: اضربي العددين الصحيحين معاً أولاً (${toAr(f.a)} × ${toAr(f.k)} = ${toAr(f.d)})، فتعود المسألة إلى ٣٫١٤ × عدد واحد — ثم فكّكي ٣١٤ كالمعتاد. لا تضربي في ٣٫١٤ مرتين.`
-      :`القاعدة: أوجدي قيمة ١٪ واحد أولاً بقسمة الرقم على ١٠٠ (${toAr(f.a)}÷١٠٠=${toAr(f.onePercent)})، ثم اضربيها في رقم النسبة (${toAr(f.onePercent)}×${toAr(f.b)}=${toAr(f.c)}).`;
+      :percentRule(f.a,f.b);
     if(basicsStage===2)hint=`<div style="background:#F0FDF4;border-inline-start:4px solid #10B981;border-radius:12px;padding:14px;margin-bottom:14px;font-size:15px">${ruleText}</div>`;
     else if(basicsStage===3)hint=`<div style="background:#FEF3C7;border-radius:12px;padding:14px;margin-bottom:14px;font-size:15px;color:#B45309"><b>تذكّري القاعدة:</b> ${ruleText}</div>`;
     else if(basicsStage===4&&basicsMidSupport)hint=`<div style="background:#FEF9C3;border-inline-start:4px solid #EAB308;border-radius:12px;padding:14px;margin-bottom:14px;font-size:15px;color:#854D0E">🌱 القاعدة: ${ruleText} جاوبي صح مرتين ليختفي التذكير.</div>`;
@@ -2138,12 +2214,19 @@ function renderBasics(){
       ${basicsLocked?"":`<button class="btn" style="background:#059669;margin-top:14px" onclick="basicsSubmit()">تحقّقي ←</button>`}
     </div>`:"";
     const okNow=typed?tOk:basicsPicked===basicsCur.ai;
-    const why=basicsLocked?`<div class="why" style="margin-bottom:10px">${okNow?"✓ "+(basicsStage===5?"حللتِها وحدك! 🌟":"أحسنتِ"):(typed?"لا بأس — راجعي الطريقة ثم أعيدي":"الصحيحة بالأخضر")}.</div><button class="btn" style="background:${basicsStage===5?'#059669':'#0D9488'}" onclick="${basicsStage===5?'basicsFinalNext()':'basicsAdvance()'}">${basicsStage===5?'سؤال جديد ←':'التالي ←'}</button>`:"";
+    // تسمية الخطأ بعينه: «ضربتِ ٥٠ × ١٠٠٠ ونسيتِ ÷١٠٠» تُصلح ما لا تُصلحه إعادة القاعدة نفسها
+    const diag=(!okNow&&basicsLocked&&basicsSub==="percent")
+      ?percentDiagnose(f.a,f.b,f.c,typed?basicsTyped:(basicsCur.opts?basicsCur.opts[basicsPicked]:null)):"";
+    const diagBox=diag?`<div style="background:#FEF2F2;border-inline-start:4px solid #EF4444;border-radius:12px;padding:12px 14px;margin-bottom:10px;font-size:14px;line-height:1.8;color:#991B1B"><b>أين اختلّت:</b> ${diag}</div>`:"";
+    const why=basicsLocked?`${diagBox}<div class="why" style="margin-bottom:10px">${okNow?"✓ "+(basicsStage===5?"حللتِها وحدك! 🌟":"أحسنتِ"):(typed?"لا بأس — راجعي الطريقة ثم أعيدي":"الصحيحة بالأخضر")}.</div><button class="btn" style="background:${basicsStage===5?'#059669':'#0D9488'}" onclick="${basicsStage===5?'basicsFinalNext()':'basicsAdvance()'}">${basicsStage===5?'سؤال جديد ←':'التالي ←'}</button>`:"";
     const mtr=basicsStage<4?`<div style="font-size:13px;color:#64748B;text-align:center;margin-top:10px">جاوبي صح مرتين متتاليتين للانتقال (${toAr(basicsStreak)}/${toAr(BASICS_REQ)})</div>`
       :basicsStage===4?(basicsMidSupport?`<div style="font-size:13px;color:#854D0E;text-align:center;margin-top:10px">🌱 مراجعة: (${toAr(basicsMidRecoveryStreak)}/${toAr(RECOVERY_REQ)}) لإخفاء التذكير</div>`:`<div style="font-size:13px;color:#64748B;text-align:center;margin-top:10px">تدريب شبه مستقل — جاوبي صح مرتين متتاليتين للوصول للاستقلال الكامل (${toAr(basicsStreak)}/${toAr(BASICS_REQ)})</div>`)
       :basicsFinalSupport?`<div style="font-size:13px;color:#854D0E;text-align:center;margin-top:10px">🌱 مراجعة: (${toAr(basicsFinalRecoveryStreak)}/${toAr(RECOVERY_REQ)}) لإخفاء التذكير مرة أخرى</div>`
       :`<div style="font-size:13px;color:#64748B;text-align:center;margin-top:10px">🎓 حل مستقل — (${toAr(basicsMasteryStreak)}/${toAr(MASTERY_REQ)}) متتالية لإتقان هذا النوع</div>`;
-    body=`${hint}${visualBox}<div class="q" style="text-align:center">${basicsCur.qText}</div>${typed?field:`<div class="choices">${ch}</div>`}${why}${mtr}`;
+    // الخيارات/الحقل لا تُرسَم إطلاقاً قبل تحديد النطاق — كبوّابة مصفوفة القسمة تماماً
+    const pctBox=pctGateOn()?pctBandBoxHTML():"";
+    const ansArea=pctGated()?"":(typed?field:`<div class="choices">${ch}</div>`);
+    body=`${hint}${visualBox}<div class="q" style="text-align:center">${basicsCur.qText}</div>${pctBox}${ansArea}${why}${mtr}`;
   }
   const subLabel=BASICS_SUBS[basicsSub].label;
   const switchBtns=Object.keys(BASICS_SUBS).filter(k=>k!==basicsSub).map(k=>`<button class="link-btn" onclick="startBasics('${k}')">🔁 بدّلي إلى ${BASICS_SUBS[k].short}</button>`).join("");
@@ -2260,7 +2343,7 @@ async function runMicDiag(){
 const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEngPlan","startDictation",
   "startPronunciation","startSpeaking","startAudioDiag","runMicDiag","fetchTimeout",
   "pronStart","pronStop","pronReset","speakStart","speakStop","speakReset","speakEnglish",
-  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD"];
+  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand"];
 function censusMissing(){return CENSUS.filter(function(n){return typeof window[n]!=="function"})}
 function censusHTML(){
   var miss=censusMissing();
