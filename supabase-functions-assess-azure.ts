@@ -72,13 +72,26 @@ Deno.serve(async (req) => {
     const referenceText = String(body.referenceText || "").trim();
     if (!audioB64 || !referenceText) return jsonOut({ error: "missing_audio_or_reference" }, 400);
 
-    const KEY = (Deno.env.get("AZURE_SPEECH_KEY") || "").trim();
+    // رؤوس HTTP تقبل ByteString فقط (≤ U+00FF). ومحرف واحد غير مرئي ملتصق بالمفتاح — علامة
+    // اتجاه (U+200F) أو مسافة غير فاصلة (U+00A0) تأتي مع اللصق من صفحة عربية — يجعل fetch
+    // يرمي TypeError قبل أن يُرسل الطلب أصلاً، فيبدو العطل شبكياً وهو ليس كذلك.
+    // مفاتيح Azure حروف وأرقام ASCII، فالتنظيف آمن ولا يُتلف مفتاحاً سليماً.
+    const KEY_RAW = (Deno.env.get("AZURE_SPEECH_KEY") || "").trim();
+    const KEY = KEY_RAW.replace(/[^\x21-\x7E]/g, "");
+    // نُبلغ عن المحارف المحذوفة برموزها لا بمحتوى المفتاح — تشخيصٌ بلا كشف للسرّ
+    const keyBad = Array.from(KEY_RAW).filter((c) => !/[\x21-\x7E]/.test(c))
+      .map((c) => "U+" + (c.codePointAt(0) || 0).toString(16).toUpperCase().padStart(4, "0"));
     // التقليم مقصود: لصق القيمة في لوحة الأسرار يجرّ معه مسافة أو سطراً جديداً كثيراً، فيصير
     // اسم المضيف غير قابل للحلّ ويرمي fetch استثناءً غامضاً بدل أن يردّ Azure بخطأ مفهوم
     const REGION_RAW = Deno.env.get("AZURE_SPEECH_REGION") || "";
     const REGION = REGION_RAW.trim().toLowerCase();
     // 200 لا 500: انعدام المفتاح ليس عطلاً، بل إشارة للتطبيق أن يرجع إلى Groq بلا ضجيج
     if (!KEY) return jsonOut({ error: "not_configured", detail: "AZURE_SPEECH_KEY missing" });
+    // مفتاح Azure سلسلة حروف وأرقام طويلة. ما عداه لُصق خطأً أو نُسخ ناقصاً
+    if (!/^[A-Za-z0-9]{20,}$/.test(KEY)) {
+      return jsonOut({ error: "azure_bad_key", detail: "قيمة المفتاح ليست بشكل مفتاح Azure",
+        keyRawLength: KEY_RAW.length, keyCleanLength: KEY.length, keyBad });
+    }
     if (!REGION) return jsonOut({ error: "not_configured", detail: "AZURE_SPEECH_REGION missing" });
     // مناطق Azure أحرفٌ صغيرة وأرقام بلا فراغ. ما عداه يُنتج مضيفاً لا يُحَلّ، فنقولها صراحةً
     if (!/^[a-z][a-z0-9]+$/.test(REGION)) {
@@ -120,7 +133,8 @@ Deno.serve(async (req) => {
       const aborted = String(e).includes("abort");
       return jsonOut({ error: aborted ? "azure_timeout" : "azure_unreachable",
         detail: String(e).slice(0, 160), region: REGION,
-        rawLength: REGION_RAW.length, trimmedLength: REGION.length, host: `${REGION}.stt.speech.microsoft.com` });
+        rawLength: REGION_RAW.length, trimmedLength: REGION.length, host: `${REGION}.stt.speech.microsoft.com`,
+        keyRawLength: KEY_RAW.length, keyCleanLength: KEY.length, keyBad });
     }
     clearTimeout(t);
 
@@ -167,6 +181,7 @@ Deno.serve(async (req) => {
       words,
       weak: weakest(words),
       audio: { rate: info.rate, channels: info.channels, bits: info.bits, bytes: bytes.length },
+      keyCleaned: keyBad.length ? keyBad : undefined,
     });
   } catch (e) {
     return jsonOut({ error: "server_error", message: String(e).slice(0, 300) }, 500);

@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260809-0140";
+  var BUILD="build-20260809-0215";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -2479,6 +2479,7 @@ const AZ_DIAG_HELP={
   azure_timeout:"Azure لم يردّ خلال المهلة.",
   azure_unreachable:"اسم المضيف لم يُحَلّ — أي أن قيمة المنطقة المحفوظة ليست منطقة Azure حقيقية.",
   azure_bad_region:"قيمة المنطقة تحوي محرفاً غير مسموح (مسافة أو حرف كبير أو رمز).",
+  azure_bad_key:"قيمة المفتاح المحفوظة ليست بشكل مفتاح Azure — الأرجح أنها نُسخت ناقصة.",
   bad_audio:"الصوت المُرسَل ليس WAV سليماً — عطل في مُرمِّز التطبيق لا في Azure.",
   wav_empty:"لم يُلتقط صوت خام (Web Audio لم يعمل على هذا المتصفّح).",
   network:"تعذّر الوصول إلى الدالة من المتصفّح.",
@@ -2498,7 +2499,8 @@ async function runAzureDiag(){
   const bl=wavBlob();
   azDiag={running:true,bytes:bl?bl.size:0};render();
   const res=await azureTry("hello");
-  if(res.data)azDiag={ok:true,bytes:bl?bl.size:0,pron:res.data.pron,heard:res.data.heard,rate:res.data.audio&&res.data.audio.rate};
+  if(res.data)azDiag={ok:true,bytes:bl?bl.size:0,pron:res.data.pron,heard:res.data.heard,
+    rate:res.data.audio&&res.data.audio.rate,keyCleaned:res.data.keyCleaned||null};
   else azDiag={fail:res.fail,detail:res.detail,info:res.info||null,bytes:bl?bl.size:0};
   render();
 }
@@ -2509,7 +2511,8 @@ function azDiagHTML(){
   }else if(azDiag&&azDiag.ok){
     box=`<div style="background:#ECFDF5;border-radius:12px;padding:14px;margin-top:12px;font-size:14px;color:#065F46;line-height:1.9">
       ✓ <b>Azure يعمل.</b> الدرجة: ${toAr(azDiag.pron||0)}/١٠٠ · سمع: <b style="direction:ltr;display:inline-block">"${azDiag.heard||""}"</b>
-      <div style="font-size:12px;color:#047857">الصوت المُرسَل: ${toAr(azDiag.bytes||0)} بايت بمعدّل ${toAr(azDiag.rate||0)}</div></div>`;
+      <div style="font-size:12px;color:#047857">الصوت المُرسَل: ${toAr(azDiag.bytes||0)} بايت بمعدّل ${toAr(azDiag.rate||0)}</div>
+      ${(azDiag.keyCleaned&&azDiag.keyCleaned.length)?`<div style="font-size:12px;color:#B45309;margin-top:6px">ملاحظة: المفتاح المحفوظ فيه ${toAr(azDiag.keyCleaned.length)} محرف غير مرئي (${azDiag.keyCleaned.join("، ")}) — نُنظّفه تلقائياً، والأفضل إعادة لصقه نظيفاً.</div>`:""}</div>`;
   }else if(azDiag){
     const h=AZ_DIAG_HELP[azDiag.fail]||"سبب غير متوقّع — أرسل هذا الرمز كما هو.";
     box=`<div style="background:#FEF2F2;border-radius:12px;padding:14px;margin-top:12px;font-size:14px;color:#991B1B;line-height:1.9">
@@ -2519,6 +2522,11 @@ function azDiagHTML(){
         المنطقة المستعملة: «<b style="direction:ltr;display:inline-block">${azDiag.info.region||"(فارغة)"}</b>»
         ${azDiag.info.rawLength!=null&&azDiag.info.rawLength!==azDiag.info.trimmedLength?`<br><b>⚠️ القيمة المحفوظة فيها ${toAr(azDiag.info.rawLength-azDiag.info.trimmedLength)} محرف زائد (مسافة أو سطر جديد)</b>`:""}
         ${azDiag.info.host?`<br>العنوان: <span style="direction:ltr;display:inline-block">${azDiag.info.host}</span>`:""}
+      </div>`:""}
+      ${(azDiag.info&&azDiag.info.keyBad&&azDiag.info.keyBad.length)?`<div style="background:#fff;border:1px solid #FCA5A5;border-radius:8px;padding:8px 10px;margin-top:8px;font-size:12px;color:#7F1D1D;line-height:1.8">
+        <b>⚠️ المفتاح المحفوظ فيه ${toAr(azDiag.info.keyBad.length)} محرف غير مرئي</b> (${azDiag.info.keyBad.join("، ")})
+        <br>طوله ${toAr(azDiag.info.keyRawLength||0)} وبعد التنظيف ${toAr(azDiag.info.keyCleanLength||0)}.
+        <br>احذف السرّ وأعِد لصقه من Azure مباشرةً لا من محادثة أو صفحة عربية.
       </div>`:""}
       <div style="font-size:12px;color:#7F1D1D;margin-top:6px">التمرين نفسه لا يتعطّل — يرجع تلقائياً إلى المحرّك الاحتياطي.</div></div>`;
   }
