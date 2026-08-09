@@ -86,13 +86,24 @@ Deno.serve(async (req) => {
     const REGION_RAW = Deno.env.get("AZURE_SPEECH_REGION") || "";
     const REGION = REGION_RAW.trim().toLowerCase();
     // 200 لا 500: انعدام المفتاح ليس عطلاً، بل إشارة للتطبيق أن يرجع إلى Groq بلا ضجيج
-    if (!KEY) return jsonOut({ error: "not_configured", detail: "AZURE_SPEECH_KEY missing" });
+    // «فارغ» و«مكوَّن كلّه من محارف غير مرئية» يُنتجان الرسالة نفسها ما لم نُبلغ بالطول —
+    // وهذا ما جعل الحالتين تبدوان واحدة. الطول يفصل بينهما بضغطة واحدة.
+    if (!KEY) {
+      return jsonOut({ error: "not_configured",
+        detail: KEY_RAW.length ? "AZURE_SPEECH_KEY present but contains no usable characters"
+                               : "AZURE_SPEECH_KEY missing or empty",
+        keyRawLength: KEY_RAW.length, keyCleanLength: 0, keyBad,
+        regionPresent: !!REGION_RAW.trim() });
+    }
     // مفتاح Azure سلسلة حروف وأرقام طويلة. ما عداه لُصق خطأً أو نُسخ ناقصاً
     if (!/^[A-Za-z0-9]{20,}$/.test(KEY)) {
       return jsonOut({ error: "azure_bad_key", detail: "قيمة المفتاح ليست بشكل مفتاح Azure",
         keyRawLength: KEY_RAW.length, keyCleanLength: KEY.length, keyBad });
     }
-    if (!REGION) return jsonOut({ error: "not_configured", detail: "AZURE_SPEECH_REGION missing" });
+    if (!REGION) return jsonOut({ error: "not_configured",
+      detail: REGION_RAW.length ? "AZURE_SPEECH_REGION present but blank after trim"
+                                : "AZURE_SPEECH_REGION missing or empty",
+      regionRawLength: REGION_RAW.length, keyCleanLength: KEY.length });
     // مناطق Azure أحرفٌ صغيرة وأرقام بلا فراغ. ما عداه يُنتج مضيفاً لا يُحَلّ، فنقولها صراحةً
     if (!/^[a-z][a-z0-9]+$/.test(REGION)) {
       return jsonOut({ error: "azure_bad_region", detail: `قيمة المنطقة غير صالحة`,

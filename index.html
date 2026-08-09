@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260809-0215";
+  var BUILD="build-20260809-0325";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -2473,6 +2473,7 @@ async function traceRecord(){
 let azDiag=null;
 const AZ_DIAG_HELP={
   not_configured:"المفتاح أو المنطقة غير محفوظين في أسرار Supabase. الاسمان المطلوبان: AZURE_SPEECH_KEY و AZURE_SPEECH_REGION.",
+  key_all_invisible:"السرّ محفوظ فعلاً لكنه لا يحوي حرفاً واحداً صالحاً — كلّه محارف غير مرئية. أي أن اللصق لم يُدخل المفتاح.",
   azure_auth:"Azure رفض المفتاح. تأكّد أن المفتاح المحفوظ يخصّ المورد نفسه، وأن المنطقة المحفوظة هي منطقة ذلك المورد بالضبط.",
   azure_quota:"انتهت الحصّة المجانية لهذا الشهر على مورد Azure.",
   azure_bad_request:"Azure رفض الطلب — الأرجح أن المنطقة المحفوظة لا تطابق منطقة المورد.",
@@ -2523,7 +2524,13 @@ function azDiagHTML(){
         ${azDiag.info.rawLength!=null&&azDiag.info.rawLength!==azDiag.info.trimmedLength?`<br><b>⚠️ القيمة المحفوظة فيها ${toAr(azDiag.info.rawLength-azDiag.info.trimmedLength)} محرف زائد (مسافة أو سطر جديد)</b>`:""}
         ${azDiag.info.host?`<br>العنوان: <span style="direction:ltr;display:inline-block">${azDiag.info.host}</span>`:""}
       </div>`:""}
-      ${(azDiag.info&&azDiag.info.keyBad&&azDiag.info.keyBad.length)?`<div style="background:#fff;border:1px solid #FCA5A5;border-radius:8px;padding:8px 10px;margin-top:8px;font-size:12px;color:#7F1D1D;line-height:1.8">
+      ${(azDiag.info&&azDiag.info.keyRawLength!=null&&azDiag.fail==="not_configured")?`<div style="background:#fff;border:1px solid #FCA5A5;border-radius:8px;padding:8px 10px;margin-top:8px;font-size:12px;color:#7F1D1D;line-height:1.9">
+        ${azDiag.info.keyRawLength===0
+          ? `<b>القياس: السرّ غائب فعلاً</b> — الطول صفر. أضِف AZURE_SPEECH_KEY من جديد.`
+          : `<b>القياس: السرّ محفوظ (طوله ${toAr(azDiag.info.keyRawLength)}) لكن لا حرف صالح فيه</b> — كلّه محارف غير مرئية${(azDiag.info.keyBad&&azDiag.info.keyBad.length)?` (${azDiag.info.keyBad.slice(0,4).join("، ")}${azDiag.info.keyBad.length>4?"…":""})`:""}. اللصق لم يُدخل المفتاح — انسخه من زرّ النسخ في Azure لا بالتحديد باليد.`}
+        ${azDiag.info.regionPresent!=null?`<br>المنطقة: ${azDiag.info.regionPresent?"محفوظة ✓":"غائبة"}`:""}
+      </div>`:""}
+      ${(azDiag.info&&azDiag.info.keyBad&&azDiag.info.keyBad.length&&azDiag.fail!=="not_configured")?`<div style="background:#fff;border:1px solid #FCA5A5;border-radius:8px;padding:8px 10px;margin-top:8px;font-size:12px;color:#7F1D1D;line-height:1.8">
         <b>⚠️ المفتاح المحفوظ فيه ${toAr(azDiag.info.keyBad.length)} محرف غير مرئي</b> (${azDiag.info.keyBad.join("، ")})
         <br>طوله ${toAr(azDiag.info.keyRawLength||0)} وبعد التنظيف ${toAr(azDiag.info.keyCleanLength||0)}.
         <br>احذف السرّ وأعِد لصقه من Azure مباشرةً لا من محادثة أو صفحة عربية.
