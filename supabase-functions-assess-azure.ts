@@ -179,7 +179,21 @@ Deno.serve(async (req) => {
       return jsonOut({ ok: true, noSpeech: true, recognitionStatus: status, heard: "" });
     }
     const best = (j.NBest && j.NBest[0]) || {};
-    const pa = best.PronunciationAssessment || {};
+    // Azure قد يتعرّف على الكلام ويُهمل تقييم النطق (ترويسة مرفوضة، أو الميزة غير متاحة
+    // على هذه المنطقة/الفئة). حينها تعود الدرجات أصفاراً — وقد أعطت «Race.» صفراً وهي
+    // نطقٌ صحيح. فنُصرّح بغياب التقييم بدل أن نُمرّر أصفاراً تبدو حكماً على أدائها.
+    const pa = best.PronunciationAssessment || null;
+    const wordsRaw = (best.Words || []) as Record<string, unknown>[];
+    const anyWordScore = wordsRaw.some((w) =>
+      (w.PronunciationAssessment as Record<string, unknown> | undefined)?.AccuracyScore != null);
+    if (!pa && !anyWordScore) {
+      return jsonOut({ ok: true, noAssessment: true,
+        heard: String(best.Display || j.DisplayText || ""),
+        lexical: String(best.Lexical || ""),
+        // مفاتيح الردّ الخام: تكشف ما أعادته Azure فعلاً بلا تخمين
+        nbestKeys: Object.keys(best), hasWords: wordsRaw.length,
+        region: REGION });
+    }
     const words: WordOut[] = (best.Words || []).map((w: Record<string, unknown>) => {
       const wpa = (w.PronunciationAssessment || {}) as Record<string, unknown>;
       return {
@@ -198,10 +212,10 @@ Deno.serve(async (req) => {
       engine: "azure",
       heard: String(best.Display || j.DisplayText || ""),
       lexical: String(best.Lexical || ""),
-      pron: Math.round(Number(pa.PronScore ?? 0)),
-      accuracy: Math.round(Number(pa.AccuracyScore ?? 0)),
-      fluency: Math.round(Number(pa.FluencyScore ?? 0)),
-      completeness: Math.round(Number(pa.CompletenessScore ?? 0)),
+      pron: Math.round(Number(pa?.PronScore ?? 0)),
+      accuracy: Math.round(Number(pa?.AccuracyScore ?? 0)),
+      fluency: Math.round(Number(pa?.FluencyScore ?? 0)),
+      completeness: Math.round(Number(pa?.CompletenessScore ?? 0)),
       words,
       weak: weakest(words),
       audio: { rate: info.rate, channels: info.channels, bits: info.bits, bytes: bytes.length },

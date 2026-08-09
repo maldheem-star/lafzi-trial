@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260809-0450";
+  var BUILD="build-20260809-0435";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -2481,6 +2481,8 @@ const AZ_DIAG_HELP={
   azure_unreachable:"اسم المضيف لم يُحَلّ — أي أن قيمة المنطقة المحفوظة ليست منطقة Azure حقيقية.",
   azure_bad_region:"قيمة المنطقة تحوي محرفاً غير مسموح (مسافة أو حرف كبير أو رمز).",
   azure_bad_key:"قيمة المفتاح المحفوظة ليست بشكل مفتاح Azure — الأرجح أنها نُسخت ناقصة.",
+  azure_no_assessment:"Azure تعرّف على الكلام لكنه لم يُرجع تقييم النطق إطلاقاً — الأرجح أن الميزة غير متاحة على هذه المنطقة أو الفئة المجانية.",
+  azure_zero_scores:"Azure أرجع تقييماً كل أرقامه صفر — لا يُعتدّ به.",
   bad_audio:"الصوت المُرسَل ليس WAV سليماً — عطل في مُرمِّز التطبيق لا في Azure.",
   wav_empty:"لم يُلتقط صوت خام (Web Audio لم يعمل على هذا المتصفّح).",
   network:"تعذّر الوصول إلى الدالة من المتصفّح.",
@@ -3545,7 +3547,14 @@ async function azureTry(target){
     const d=await res.json();
     if(!d||d.error)return{fail:(d&&d.error)||"no_response",detail:d&&(d.detail||d.message||d.status),info:d};
     if(d.noSpeech)return{fail:"no_speech"};
+    // تعرّف بلا تقييم: أصفار Azure ليست حكماً على نطقها. أعطت «Race.» صفراً وهي صحيحة،
+    // بينما «Chess, chess.» نجحت لأنها سقطت إلى المقارنة النصّية. فنعدّه تعثّراً ونرجع لـGroq.
+    if(d.noAssessment)return{fail:"azure_no_assessment",detail:(d.nbestKeys||[]).join(","),info:d};
     if(!d.ok)return{fail:"not_ok"};
+    // حارس أخير: تقييم حاضر لكن كل أرقامه صفر ⇒ لا نُصدّقه
+    if(typeof d.pron==="number"&&d.pron===0&&(d.words||[]).every(function(w){return !w.score})){
+      return{fail:"azure_zero_scores",info:d};
+    }
     return{data:d};
   }catch(e){return{fail:"network",detail:String(e&&e.message||e)}}
 }
