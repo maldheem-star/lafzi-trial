@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260809-0435";
+  var BUILD="build-20260809-2245";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -3932,18 +3932,43 @@ const GATE_MIN_WORDS=25,GATE_WPM=90,GATE_MIN_S=8,GATE_MAX_S=45;
 // الفهم المقروء والاستدلال هنا (١٥–٢٠ كلمة)، فمرّت في ثانية ونصف. والدليل من بياناتها:
 // النصّ الذي قرأته ٨٠ ثانية أصابته، واللذان مرّا في ١٫٦ و٢٫٤ ثانية أخطأتهما.
 const GATE_FLOOR_BY_TYPE={reading:12,logic:10};
+// الكمّي: ٢١ من ٧٦ صحيحة حين تُجيب في أقل من خمس ثوانٍ (٢٨٪)، و٦ من ٨ حين تتجاوزها (٧٥٪).
+// أربعة وثمانون سؤالاً — فالفرق ليس صدفة، وهو نفس نمط الفهم المقروء قبل بوّابته.
+// لكن ليس كل سؤال كمّي يحتاج تفكيراً: «٧ × ٨» استرجاع. فنُبوِّب متعدّد الخطوات وحده.
+// الزمن من الدليل لا من التماثل مع القراءة: الفارق عندها عند خمس ثوانٍ (٢٨٪ تحتها،
+// ٧٥٪ فوقها). فثمانٍ تضعها فوق العتبة بهامش، بلا انتظار زائد على اثني عشر سؤالاً.
+// والرسم أطول لأنه يحتاج قراءة شكل قبل الحساب.
+const QUANT_GATE_SEC=8, QUANT_GATE_SVG_SEC=12;
+function quantMultiStep(it){
+  if(!it)return false;
+  if(it.svg)return true;                                  // رسم ⇒ قراءة شكل ثم حساب
+  const q=String(it.q||"");
+  const words=q.trim().split(/\s+/).filter(Boolean).length;
+  const nums=(q.match(/[0-9٠-٩]+/g)||[]).length;
+  // «٧ × ٨ = ؟» فيها رقمان وهي استرجاع محض، فعدّ الأرقام وحده يُبوِّب ما لا يستحقّ.
+  // المسألة اللفظية تحتاج جملة: سبع كلمات فأكثر. والمتتاليات تُلتقط بكثرة أرقامها.
+  return words>=7||nums>=4;
+}
+// المفردات لا تُبوَّب عمداً رغم ١/٣ في الجلسة: على عشرين سؤالاً كانت ٩/١٦ حين أسرعت
+// و١/٤ حين أبطأت — أي أن البطء عندها علامة صعوبة لا تسرّع، فالبوّابة تؤخّرها بلا فائدة.
+// الدليل عكس ما توقّعتُ، فاتّبعتُه.
 let gateKind="";
-function gateSecondsFor(text,qtype){
-  const w=String(text||"").trim().split(/\s+/).filter(Boolean).length;
+function gateSecondsFor(it,qtypeArg){
+  // يقبل عنصر السؤال كاملاً (للرسم والمجال) أو نصّاً ونوعاً كما كان
+  const item=(it&&typeof it==="object")?it:{q:it,qtype:qtypeArg};
+  const text=String(item.q||""),qtype=item.qtype;
+  const w=text.trim().split(/\s+/).filter(Boolean).length;
   const byLen=w>=GATE_MIN_WORDS?Math.max(GATE_MIN_S,Math.round(w/GATE_WPM*60)):0;
-  const floor=GATE_FLOOR_BY_TYPE[qtype]||0;
+  let floor=GATE_FLOOR_BY_TYPE[qtype]||0;
+  if(item.d==="quant"&&quantMultiStep(item))floor=Math.max(floor,item.svg?QUANT_GATE_SVG_SEC:QUANT_GATE_SEC);
   return Math.min(GATE_MAX_S,Math.max(byLen,floor));
 }
 let gateSecs=0,gateLeft=0,gateTimer=null,gateSeen=false;
 function gateStop(){if(gateTimer){clearInterval(gateTimer);gateTimer=null}}
-function gateStart(text,qtype){
-  gateKind=qtype||"";
-  gateStop();gateSecs=gateSecondsFor(text,qtype);gateLeft=gateSecs;
+function gateStart(it,qtypeArg){
+  const item=(it&&typeof it==="object")?it:{q:it,qtype:qtypeArg};
+  gateKind=(item.d==="quant"&&quantMultiStep(item))?"quant":(item.qtype||"");
+  gateStop();gateSecs=gateSecondsFor(item);gateLeft=gateSecs;
   if(!gateSecs)return;
   gateTimer=setInterval(()=>{gateLeft--;if(gateLeft<=0){gateLeft=0;gateStop()}render()},1000);
 }
@@ -3960,7 +3985,7 @@ async function start(domKey){
   if(needsAI){loading=true;render();}
   if(domKey==="full"){filtered=await buildFull()}
   else{filtered=await buildDomain(domKey,PER)}
-  loading=false;questionShownAt=Date.now();if(filtered.length)gateStart(filtered[0].q,filtered[0].qtype);render();
+  loading=false;questionShownAt=Date.now();if(filtered.length)gateStart(filtered[0]);render();
 }
 async function home(){mode="home";gateStop();window.scrollTo(0,0);render();await loadWeakness();if(mode==="home")render()}
 function choose(i){
@@ -3973,8 +3998,10 @@ function choose(i){
   const elapsed=Date.now()-questionShownAt;
   // أسئلة الذكاء الاصطناعي تُولَّد وقت الاختبار ولا توجد في الكود، فبلا حفظ نصّها يستحيل
   // مراجعة ما أخطأت فيه. نحفظ نصّها وإجابتها المختارة (لا الصحيحة) للتشخيص لاحقاً.
+  // كان النصّ يُحفظ لأسئلة الذكاء الاصطناعي وحدها (التي لها qtype)، فبقي الكمّي بلا نصّ —
+  // ورأيتُ ١/١٢ ولم أستطع أن أعرف أي أسئلة كانت. النصّ يُحفظ الآن لكل سؤال.
   logAnswer(q.d,q.qtype||"bank",ok,q.c&&q.c[i]!=null?String(q.c[i]):null,null,elapsed,
-    q.qtype?{q_text:String(q.q).slice(0,1200)}:null);
+    {q_text:String(q.q||"").slice(0,1200)});
   recentAnswerTimes.push(elapsed);
   if(recentAnswerTimes.length>RAPID_STREAK)recentAnswerTimes.shift();
   sessionAnswered++;
@@ -3985,7 +4012,7 @@ function choose(i){
   if(breakSuggest)breakShownFor.push(sessionAnswered);
   render();
 }
-function next(){if(idx+1>=filtered.length){done=true;gateStop();window.scrollTo(0,0);saveAttempt()}else{idx++;picked=null;locked=false;rapidNudge=false;breakSuggest=false;questionShownAt=Date.now();gateStart(filtered[idx].q,filtered[idx].qtype)}render()}
+function next(){if(idx+1>=filtered.length){done=true;gateStop();window.scrollTo(0,0);saveAttempt()}else{idx++;picked=null;locked=false;rapidNudge=false;breakSuggest=false;questionShownAt=Date.now();gateStart(filtered[idx])}render()}
 function domainStats(){const acc={};Object.keys(DOMAINS).forEach(k=>acc[k]={r:0,t:0});filtered.forEach((q,i)=>{if(acc[q.d]){acc[q.d].t++;if(answered[i])acc[q.d].r++}});return acc}
 function weakestOf(acc){let key=null,pct=101;Object.keys(DOMAINS).forEach(k=>{if(acc[k].t){const p=acc[k].r/acc[k].t*100;if(p<pct){pct=p;key=k}}});return{key,pct}}
 
@@ -4339,8 +4366,8 @@ function renderQuiz(){
   const gateBox=(!locked&&gateSecs&&!gateOpen())
     ? `<div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:12px;padding:16px;margin:14px 0;text-align:center">
          <div style="font-size:30px;font-weight:800;color:#1D4ED8;line-height:1.2">${toAr(gateLeft)}</div>
-         <div style="font-size:14px;color:#1E40AF;font-weight:700;margin-top:6px">${gateKind==="logic"?"اقرئي المقدّمة كاملة ثم استنتجي":"اقرئي النص كاملاً أولاً"}</div>
-         <div style="font-size:12px;color:#3B82F6;margin-top:6px;line-height:1.7">الخيارات ستظهر بعد ${arSecs(gateLeft)}. ${gateKind==="logic"?"الاستنتاج لا يُخمَّن — اقرئي ما أُعطي لك بدقّة.":"النص فيه الجواب — والقراءة أسرع من التخمين على المدى الطويل."}</div>
+         <div style="font-size:14px;color:#1E40AF;font-weight:700;margin-top:6px">${gateKind==="quant"?"اقرئي المسألة وحُلّيها على الورقة":gateKind==="logic"?"اقرئي المقدّمة كاملة ثم استنتجي":"اقرئي النص كاملاً أولاً"}</div>
+         <div style="font-size:12px;color:#3B82F6;margin-top:6px;line-height:1.7">الخيارات ستظهر بعد ${arSecs(gateLeft)}. ${gateKind==="quant"?"احسبي أولاً ثم ابحثي عن جوابك بين الخيارات — لا العكس.":gateKind==="logic"?"الاستنتاج لا يُخمَّن — اقرئي ما أُعطي لك بدقّة.":"النص فيه الجواب — والقراءة أسرع من التخمين على المدى الطويل."}</div>
        </div>`
     : (!locked&&gateSecs&&gateOpen())
     ? `<div style="font-size:12px;color:#059669;font-weight:700;margin:10px 0">✓ خذي وقتك — راجعي النص قبل أن تختاري</div>`
