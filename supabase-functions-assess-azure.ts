@@ -21,6 +21,16 @@ const CORS = {
 const jsonOut = (o: unknown, status = 200) =>
   new Response(JSON.stringify(o), { status, headers: { ...CORS, "Content-Type": "application/json" } });
 
+// بصمة القيمة كما تعرضها لوحة أسرار Supabase (SHA256). عرضها يُثبت أن الدالة تقرأ نفس ما
+// خُزّن حرفاً بحرف — فتنتهي مسألة «هل بلغها المفتاح سليماً؟» بالمقارنة بالعين لا بالجدل.
+// البصمة غير قابلة للعكس، ولوحة Supabase تعرضها كاملة أصلاً.
+async function sha256Hex(s: string): Promise<string> {
+  try {
+    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
+    return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
+  } catch (_e) { return ""; }
+}
+
 function base64ToBytes(b64: string): Uint8Array {
   const bin = atob(b64);
   const bytes = new Uint8Array(bin.length);
@@ -93,12 +103,14 @@ Deno.serve(async (req) => {
         detail: KEY_RAW.length ? "AZURE_SPEECH_KEY present but contains no usable characters"
                                : "AZURE_SPEECH_KEY missing or empty",
         keyRawLength: KEY_RAW.length, keyCleanLength: 0, keyBad,
+        keySha256: await sha256Hex(KEY_RAW),
         regionPresent: !!REGION_RAW.trim() });
     }
     // مفتاح Azure سلسلة حروف وأرقام طويلة. ما عداه لُصق خطأً أو نُسخ ناقصاً
     if (!/^[A-Za-z0-9]{20,}$/.test(KEY)) {
       return jsonOut({ error: "azure_bad_key", detail: "قيمة المفتاح ليست بشكل مفتاح Azure",
-        keyRawLength: KEY_RAW.length, keyCleanLength: KEY.length, keyBad });
+        keyRawLength: KEY_RAW.length, keyCleanLength: KEY.length, keyBad,
+        keySha256: await sha256Hex(KEY_RAW) });
     }
     if (!REGION) return jsonOut({ error: "not_configured",
       detail: REGION_RAW.length ? "AZURE_SPEECH_REGION present but blank after trim"
@@ -156,7 +168,8 @@ Deno.serve(async (req) => {
         : res.status === 429 ? "azure_quota"
         : res.status === 400 ? "azure_bad_request"
         : "azure_http";
-      return jsonOut({ error: kind, status: res.status, detail, region: REGION });
+      return jsonOut({ error: kind, status: res.status, detail, region: REGION,
+        keyCleanLength: KEY.length, keySha256: await sha256Hex(KEY_RAW) });
     }
 
     const j = await res.json();
