@@ -72,11 +72,19 @@ Deno.serve(async (req) => {
     const referenceText = String(body.referenceText || "").trim();
     if (!audioB64 || !referenceText) return jsonOut({ error: "missing_audio_or_reference" }, 400);
 
-    const KEY = Deno.env.get("AZURE_SPEECH_KEY");
-    const REGION = Deno.env.get("AZURE_SPEECH_REGION");
+    const KEY = (Deno.env.get("AZURE_SPEECH_KEY") || "").trim();
+    // التقليم مقصود: لصق القيمة في لوحة الأسرار يجرّ معه مسافة أو سطراً جديداً كثيراً، فيصير
+    // اسم المضيف غير قابل للحلّ ويرمي fetch استثناءً غامضاً بدل أن يردّ Azure بخطأ مفهوم
+    const REGION_RAW = Deno.env.get("AZURE_SPEECH_REGION") || "";
+    const REGION = REGION_RAW.trim().toLowerCase();
     // 200 لا 500: انعدام المفتاح ليس عطلاً، بل إشارة للتطبيق أن يرجع إلى Groq بلا ضجيج
     if (!KEY) return jsonOut({ error: "not_configured", detail: "AZURE_SPEECH_KEY missing" });
     if (!REGION) return jsonOut({ error: "not_configured", detail: "AZURE_SPEECH_REGION missing" });
+    // مناطق Azure أحرفٌ صغيرة وأرقام بلا فراغ. ما عداه يُنتج مضيفاً لا يُحَلّ، فنقولها صراحةً
+    if (!/^[a-z][a-z0-9]+$/.test(REGION)) {
+      return jsonOut({ error: "azure_bad_region", detail: `قيمة المنطقة غير صالحة`,
+        region: REGION, rawLength: REGION_RAW.length, trimmedLength: REGION.length });
+    }
 
     const bytes = base64ToBytes(audioB64);
     const info = wavInfo(bytes);
@@ -110,7 +118,9 @@ Deno.serve(async (req) => {
     } catch (e) {
       clearTimeout(t);
       const aborted = String(e).includes("abort");
-      return jsonOut({ error: aborted ? "azure_timeout" : "azure_unreachable", message: String(e).slice(0, 200) });
+      return jsonOut({ error: aborted ? "azure_timeout" : "azure_unreachable",
+        detail: String(e).slice(0, 160), region: REGION,
+        rawLength: REGION_RAW.length, trimmedLength: REGION.length, host: `${REGION}.stt.speech.microsoft.com` });
     }
     clearTimeout(t);
 
