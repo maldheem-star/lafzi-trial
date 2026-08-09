@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260809-0325";
+  var BUILD="build-20260809-0450";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -2962,18 +2962,26 @@ try{itemSeedOnce()}catch(e){}
 // ===== بوّابة التصحيح: بطاقة تُسمّي خطأها، ثم تمرينان بخيارين، ثم يعود السؤال =====
 // الخياران اثنان لا أربعة عمداً: الغرض مقابلة صريحة بين جوابها الخاطئ والصواب، لا اختبار جديد.
 let fixOn=false,fixStep=0,fixItem=null,fixDrills=[],fixPicked=null,fixLocked=false,fixWrong=0;
+// ثلاثة خيارات لا اثنان: الخياران يُلقّحان ضدّ خطئها المعروف وحده. وقد نجحت في تمرينَي
+// u3_g3 (since مقابل for) ثم أخطأت في السؤال نفسه فاختارت «while» — مموّه ثالث لم يمرّ
+// عليها في التدريب إطلاقاً. فنُدخل مموّهاً آخر من خيارات السؤال نفسه.
+function fixOpts(choices,rightVal,preferBad){
+  const others=choices.filter(function(c){return c!==rightVal});
+  const bad=(preferBad&&others.indexOf(preferBad)>=0)?preferBad:others[0];
+  const third=others.filter(function(c){return c!==bad})[0];
+  return [rightVal,bad,third].filter(function(c){return c!=null});
+}
 function fixBuild(it){
   const err=itemErrOf(it.id),bad=err&&err.last?err.last:null;
   const right=it.c[it.a];
   const POOL=engPool();
-  // تمرين ١: الجملة نفسها — جوابها الخاطئ مقابل الصواب
-  const d1Bad=(bad&&it.c.indexOf(bad)>=0&&bad!==right)?bad:it.c.find(function(c){return c!==right});
-  const drills=[{q:it.q,listen:it.listen||null,right,bad:d1Bad,w:it.w||""}];
+  // تمرين ١: الجملة نفسها — الصواب وجوابها الخاطئ ومموّه ثالث
+  const drills=[{q:it.q,listen:it.listen||null,right,opts:fixOpts(it.c,right,bad),w:it.w||""}];
   // تمرين ٢: جملة أخرى من الدرس نفسه — لئلا يكون النجاح حفظاً لجملة واحدة
   const sib=POOL.filter(function(x){return x.lesson&&x.lesson===it.lesson&&x.id!==it.id&&x.c&&x.c.length>1})[0];
   if(sib){
-    const sr=sib.c[sib.a],sb=sib.c.find(function(c){return c!==sr});
-    drills.push({q:sib.q,listen:sib.listen||null,right:sr,bad:sb,w:sib.w||""});
+    const sr=sib.c[sib.a];
+    drills.push({q:sib.q,listen:sib.listen||null,right:sr,opts:fixOpts(sib.c,sr,null),w:sib.w||""});
   }
   return drills;
 }
@@ -2986,7 +2994,7 @@ let fixOkFlag=false;
 // ترتيب الخيارين يُثبَّت عند دخول التمرين لا عند كل رسم — وإلا قفزا تحت إصبعها
 function fixArm(step){
   const d=fixDrills[step-1];
-  if(d&&!d._opts){const first=Math.random()<0.5;d._opts=first?[d.right,d.bad]:[d.bad,d.right];d._ai=first?0:1}
+  if(d&&!d._opts){d._opts=shuffle(d.opts.slice());d._ai=d._opts.indexOf(d.right)}
   fixPicked=null;fixLocked=false;
 }
 function fixCardDone(){fixStep=1;fixArm(1);render()}
@@ -3084,7 +3092,7 @@ function renderFix(){
   }).join("");
   app.innerHTML=`${head}
   <div class="card">
-    <span class="tag" style="background:#E0E7FF;color:#4338CA">✍️ تدريب موجَّه · خياران فقط</span>
+    <span class="tag" style="background:#E0E7FF;color:#4338CA">✍️ تدريب موجَّه</span>
     <div class="q">${d.q}</div>
     ${d.listen?`<button type="button" onclick="speakEnglish(fixDrills[${fixStep-1}].listen)" style="background:#ECFEFF;border:1.5px solid #A5F3FC;color:#0891B2;border-radius:10px;padding:7px 16px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:14px;font-family:inherit">🔊 استمعي</button>`:""}
     <div class="choices">${btns}</div>
@@ -3348,6 +3356,32 @@ function pronHallucinated(target,heard){
 }
 // Whisper يضيف أو يُسقط السين الأخيرة كثيراً (insect ← "Insects" أخذت صفراً وهي نطقتها صحيحة).
 // نقارن بجذر مبسّط ونعرض الكلمة الأصلية كما هي — والقاعدة متماثلة على الطرفين فلا تُنشئ تطابقاً كاذباً.
+// ===== متى تُهمَل المحاولة؟ =====
+// كانت الثقة المنخفضة وحدها تُسقط المحاولة. لكن تسجيل كلمة مفردة قصير بطبيعته فتنخفض ثقة
+// Whisper فيه دائماً — وانخفاضها *مع وجود كلام* هو بالضبط علامة النطق الخاطئ لا علامة الضجيج.
+// النتيجة أن race ← "Rice." أُهملت، وهي نطقها الفعلي وخطأُ حركةٍ صريح كان يجب أن تراه.
+// فنُفرّق الآن بإشارة Whisper نفسها: no_speech_prob تقول «هل هناك كلام أصلاً؟»، و avg_logprob
+// تقول «هل النسخ موثوق؟». الأولى وحدها سبب للإهمال، والثانية دليلٌ على خطأ يستحقّ العرض.
+const PRON_NOSPEECH_MAX=0.6;
+const PRON_DISCARD_AR={
+  empty:"لم نسمع شيئاً",
+  silence:"التسجيل بلا كلام واضح",
+  garbled:"التسجيل ليس محاولة للكلمة",
+  loop:"تكرار متواصل — الأرجح ضجيج",
+  noise:"سمعنا كلاماً طويلاً لا علاقة له بالكلمة"
+};
+function pronDiscardReason(target,data){
+  const heard=String(data&&data.heard||"").trim();
+  if(!heard)return "empty";
+  if(data.garbled)return "garbled";
+  if(pronHallucinated(target,heard))return "loop";
+  const ns=(data.conf&&typeof data.conf.noSpeech==="number")?data.conf.noSpeech:0;
+  if(ns>PRON_NOSPEECH_MAX)return "silence";
+  // نصّ أطول بكثير من الهدف مع ثقة منخفضة: هلوسة Whisper المعروفة على الصمت
+  const t=pronWords(target),h=pronWords(heard);
+  if(data.lowConfidence&&h.length>Math.max(3,t.length*2))return "noise";
+  return ""; // محاولة حقيقية — تُقيَّم ولو كانت خاطئة، فالخطأ هو ما تحتاج رؤيته
+}
 function pronStem(w){return(w.length>=4&&w.endsWith("s")&&!w.endsWith("ss"))?w.slice(0,-1):w}
 // ترجيح الكلمات: التقييم المتساوي جعل "That wasn't very fair, certainly" تنجح بـ ٨٠٪ والكلمة
 // المفقودة هي friendly — أي جوهر الجملة. وجعل إسقاط "not" (الذي يقلب المعنى) يكلّف كأي أداة.
@@ -3540,10 +3574,10 @@ async function pronFinish(){
     const res=await fetchTimeout(PRON_GROQ_FN_URL,{method:"POST",headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({audio:b64,mimeType:blob.type,referenceText:target,targetWords:pronWords(target)})});
     const data=await res.json();
     // الإهمال: إما ثقة Whisper نفسه منخفضة، أو حكم النموذج أنه ليس محاولة للجملة، أو كشفنا المحلّي
-    const bad=data&&data.ok&&(data.lowConfidence||data.garbled||pronHallucinated(target,data.heard));
-    if(bad){
-      pronResult={heard:data.heard||"",ok:false,noisy:true};
-      logAnswer("pronunciation_a1","discarded",false,data.heard||"[low_confidence]",target,Math.round(pronElapsed*1000));
+    const why=(data&&data.ok)?pronDiscardReason(target,data):"";
+    if(why){
+      pronResult={heard:data.heard||"",ok:false,noisy:true,why};
+      logAnswer("pronunciation_a1","discarded",false,(data.heard||"[empty]")+" · "+why,target,Math.round(pronElapsed*1000),{engine:"groq"});
     }else if(data&&data.ok){
       const sc=pronScoreOf(target,data.heard,data.judged);
       pronResult={heard:data.heard,ok:sc.ok,sc,note:data.note||"",engine:"groq"};
@@ -3577,7 +3611,13 @@ function renderPron(){
     inner=`<div style="background:#FEF3C7;border-radius:12px;padding:16px;font-size:14px;color:#92400E;line-height:1.8">متصفحك الحالي لا يدعم تسجيل الصوت. جرّبي متصفح حديث (Safari على آيفون أو Chrome).</div>
     <button class="btn" style="background:#7C3AED;margin-top:12px" onclick="startAudioDiag()">🔧 افحصي السبب بالضبط</button>`;
   }else{
-    const feedback=pronResult?(pronResult.error
+    // المحاولة المُهمَلة تُقال بسببها ولا تُحتسب — لا تُعرض كأنها صفر في النطق
+    const feedback=pronResult?(pronResult.noisy
+      ?`<div class="explain"><div class="explain-title" style="color:#B45309">لم تُحتسب هذه المحاولة</div><div class="explain-body">
+          ${PRON_DISCARD_AR[pronResult.why]||"التسجيل غير واضح"}${pronResult.heard?` — سمعنا: <b style="direction:ltr;display:inline-block">"${pronResult.heard}"</b>`:""}.
+          <div style="margin-top:6px;font-size:13px">أعيدي التسجيل: اقتربي من الميكروفون وانطقي <b style="direction:ltr;display:inline-block">${item.w}</b> بصوت واضح.</div>
+          <div style="margin-top:4px;font-size:12px;color:#64748B">لم تُحسب عليك — لا صح ولا خطأ.</div></div></div>`
+      :pronResult.error
       ?(pronResult.notConfigured
         ?`<div class="explain"><div class="explain-title" style="color:#B45309">التحقّق غير مفعّل حالياً</div><div class="explain-body">هذه الميزة تحتاج إعداداً من طرفنا. جرّبي لاحقاً.</div></div>`
         :`<div class="explain"><div class="explain-title" style="color:#B45309">تعذّر تسجيل صوتك</div><div class="explain-body">تأكدي من السماح للميكروفون للمتصفح، وحاولي مرة أخرى.</div></div>`)
