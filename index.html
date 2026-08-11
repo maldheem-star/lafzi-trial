@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260811-0745";
+  var BUILD="build-20260811-0810";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -3720,7 +3720,11 @@ function renderPron(){
     ):"";
     const nextBtn=pronResult?`<button class="btn" style="background:#7C3AED" onclick="pronNext()">${pronIdx+1>=pronSession.length?"إنهاء ومشاهدة النتيجة":pronResult.error?"تخطّي هذه الكلمة ←":"الكلمة التالية ←"}</button>`:"";
     inner=`
-    <div style="font-size:12px;color:#94A3B8;margin-bottom:14px">تحقّق أساسي: هل نطقتِ الكلمة الصحيحة؟ (ليس تقييماً دقيقاً للهجة)</div>
+    <!-- الوصف يتبع المحرّك الذي حكم فعلاً: Azure يُقيّم كل صوت داخل الكلمة، وGroq
+         يقارن الكلمة كلّها. قول «تحقّق أساسي» بعد تقييم صوتيّ يبخس ما وصلها. -->
+    <div style="font-size:12px;color:#94A3B8;margin-bottom:14px">${(pronResult&&pronResult.engine==="azure")
+      ?"تقييم صوتيّ: درجة لكل صوت داخل الكلمة، لا صح/خطأ فقط"
+      :"تحقّق أساسي: هل نطقتِ الكلمة الصحيحة؟ (ليس تقييماً دقيقاً للهجة)"}</div>
     ${ttsNoticeHTML()}
     <!-- الكلمة مكتوبة دائماً: تمرين النطق ليس اختبار استماع، وحين يفشل الصوت على الجهاز
          كانت الشاشة تطلب نطق كلمة لا سبيل لمعرفتها إطلاقاً -->
