@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260811-1815";
+  var BUILD="build-20260811-2010";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -133,8 +133,8 @@
 // وتغييرها كان سيُضيّع شهر عمل.
 const PROFILES=[
   {id:"haya",name:"هيا",alias:"بنتي",emoji:"🌸",color:"#DB2777",g:"f"},
-  {id:"mohammed",name:"محمد",alias:"محمد",emoji:"⚽",color:"#0E7490",g:"m"},
-  {id:"elias",name:"إلياس",alias:"إلياس",emoji:"🚀",color:"#7C3AED",g:"m"},
+  {id:"mohammed",name:"محمد",alias:"محمد",emoji:"⚽",color:"#0E7490",g:"m",only:"coach"},
+  {id:"elias",name:"إلياس",alias:"إلياس",emoji:"🚀",color:"#7C3AED",g:"m",only:"coach"},
 ];
 // الهويّة من الرابط وحده، ولا تُحفَظ. لكلٍّ صفحته: mohammed.html و elias.html،
 // وهيا في الرئيسية. ولو حُفظت الهويّة لكان آخر من فتح الجهاز يُدخِل الآخرين في صفحته.
@@ -2456,7 +2456,7 @@ async function runMicDiag(){
 const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEngPlan","startDictation",
   "startPronunciation","startSpeaking","startAudioDiag","runMicDiag","fetchTimeout",
   "pronStart","pronStop","pronReset","speakStart","speakStop","speakReset","speakEnglish",
-  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","copyAzRaw","esc","weakPhonemeStr","num0","profileBarHTML","learnerInfo","toMasc","genderizeText","genderizeNode","genderizeInit","lsGet","lsSet","lsDel","pkey","cxShuffleOrder","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary"];
+  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","copyAzRaw","esc","weakPhonemeStr","num0","profileBarHTML","renderHomeCoachOnly","learnerInfo","toMasc","genderizeText","genderizeNode","genderizeInit","lsGet","lsSet","lsDel","pkey","cxShuffleOrder","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary"];
 function censusMissing(){return CENSUS.filter(function(n){return typeof window[n]!=="function"})}
 function censusHTML(){
   var miss=censusMissing();
@@ -4890,7 +4890,10 @@ async function start(domKey){
   else{filtered=await buildDomain(domKey,PER)}
   loading=false;questionShownAt=Date.now();if(filtered.length)gateStart(filtered[0]);render();
 }
-async function home(){mode="home";gateStop();window.scrollTo(0,0);render();await loadWeakness();if(mode==="home")render()}
+async function home(){mode="home";gateStop();window.scrollTo(0,0);render();
+  // صفحة المحادثة وحدها لا تعرض اقتراح التقوية، فلا داعي لجلب النتائج أصلاً
+  if(profileOf().only==="coach")return;
+  await loadWeakness();if(mode==="home")render()}
 function choose(i){
   if(locked)return;
   picked=i;locked=true;
@@ -5203,7 +5206,34 @@ function growthMsg(modeKey,pct){try{const key="mawhiba_best_"+modeKey;const prev
 // ===== العرض =====
 function render(){if(mode==="home")return renderHome();if(mode==="engplan")return renderEngPlan();if(mode==="factplan")return renderFactPlan();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="speak")return renderSpeak();if(mode==="coach")return renderCoach();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
 
+// صفحة الأخوين قسمٌ واحد: المحادثة. بقيّة الأقسام بُنيت على أخطائها هي — بنك
+// أسئلتها، وتباعدها، ومنهج صفّها السادس — فوضعها أمام ولدٍ آخر يُشغله بما ليس له.
+// ورابط تشخيص الصوت يبقى: بلا ميكروفون لا محادثة أصلاً، فهو جزء من القسم لا قسم.
+function renderHomeCoachOnly(){
+  const p=profileOf();
+  app.innerHTML=`
+  ${profileBarHTML()}
+  <div class="hero" style="background:linear-gradient(135deg,${p.color},#0F172A)">
+    <h1>تكلّم بالإنجليزية</h1>
+    <p>محادثة حرّة مع شريك يردّ عليك بالإنجليزية، ويعلّمك أسلوب الكلام — ونقيس وضوح أصواتك في كل جملة.</p>
+    <div class="alias"><label>اسمك:</label><input id="aliasIn" value="${alias()}" placeholder="${p.name}" oninput="saveAlias(this.value)"></div>
+  </div>
+  <div class="modes">
+    <button class="mode full" style="background:${p.color};border-color:${p.color}" onclick="startCoach()"><span class="m-name">🗣️ ابدأ المحادثة</span><div class="m-sub">اختر موقفاً، ثم تكلّم — ثماني جمل في الجلسة</div></button>
+  </div>
+  <button class="link-btn" onclick="startAudioDiag()">🔊 الصوت ما يشتغل؟ اضغط هنا لتشخيص السبب</button>
+  <div class="tips">
+    <h3>💡 كيف تستفيد أكثر</h3>
+    <ul>
+      <li>تكلّم بجملة كاملة لا بكلمة — الشريك يردّ على ما تقوله لا على ما تختاره.</li>
+      <li>إن أخطأت فلن يوقفك؛ سيُعيد جملتك صحيحةً ويواصل، فانتبه لصياغته.</li>
+      <li>كل ثالثة جملة تصلك نصيحة أسلوب (💡) — اقرأها وجرّبها في الجملة التالية.</li>
+      <li>قرّب فمك من الميكروفون: وضوح الصوت هو ما نقيسه.</li>
+    </ul>
+  </div>`;
+}
 function renderHome(){
+  if(profileOf().only==="coach")return renderHomeCoachOnly();
   app.innerHTML=`
   ${profileBarHTML()}
   <div class="hero">
