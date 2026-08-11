@@ -82,6 +82,25 @@ function systemFor(subject: string, age: number) {
   ].join("\n");
 }
 
+// وضع المحادثة: شريك يتكلّم معها بالإنجليزية البسيطة. الغرض أن تتكلّم لا أن تُختبر،
+// فالتصحيح يأتي بإعادة الصياغة (recast) لا بالمقاطعة — وهو ما يفعله المتحدّث الأصلي
+// حين يسمع خطأً: يُعيد الجملة صحيحةً ويواصل، فتسمع الصواب بلا أن تشعر بالتوقيف.
+function systemChat(scene: string, level: string) {
+  return [
+    `أنتِ شريكة محادثة إنجليزية لطفلة عمرها ١١ سنة، مستواها ${level}.`,
+    `الموقف: ${scene}`,
+    "",
+    "قواعد ملزمة:",
+    "1. Reply in ENGLISH only. Simple words, present tense when possible.",
+    "2. One or two short sentences, then ONE question to keep her talking.",
+    "3. If her sentence has a mistake, do not stop to correct it. Repeat her idea",
+    "   back correctly inside your reply, then continue naturally.",
+    "4. Never write Arabic. Never explain grammar here.",
+    "5. Stay in the situation. Do not break character or mention being an AI.",
+    "6. Keep every reply under 25 words.",
+  ].join("\n");
+}
+
 // الطلب الأول: نُعطي النموذج السؤال وجوابها والصواب — ثم يبدأ هو بالسؤال عن سببها
 function openingFor(b: Record<string, unknown>) {
   const L: string[] = [];
@@ -134,10 +153,17 @@ Deno.serve(async (req) => {
 
     const question = clip(b.question);
     const studentAnswer = clip(b.studentAnswer, 400);
-    if (!question || !studentAnswer) return jsonOut({ error: "missing_question_or_answer" }, 400);
+    if (!studentAnswer || (!question && String(b.mode || "") !== "chat")) {
+      return jsonOut({ error: "missing_question_or_answer" }, 400);
+    }
 
     const subject = clip(b.subject, 60) || "لغة إنجليزية";
     const age = Number(b.age) > 0 ? Number(b.age) : 11;
+    // وضعان: تصحيح خطأ (الافتراضي) ومحادثة. النظام يختلف بينهما اختلافاً جوهرياً
+    const chat = String(b.mode || "") === "chat";
+    const sysText = chat
+      ? systemChat(clip(b.scene, 200) || "a friendly everyday conversation", clip(b.level, 20) || "A2")
+      : systemFor(subject, age);
     // النموذج: سرّ عامّ TUTOR_MODEL، أو سرّ خاصّ بالمزوّد، أو الافتراضي
     const model = (Deno.env.get("TUTOR_MODEL") || "").trim()
       || (Deno.env.get(provider.toUpperCase() + "_MODEL") || "").trim()
@@ -151,8 +177,9 @@ Deno.serve(async (req) => {
 
     // تاريخ الحوار يصل من العميل ويعود إليه: الدالة بلا ذاكرة عمداً، فلا حالة تُدار هنا
     const history = Array.isArray(b.history) ? (b.history as Record<string, unknown>[]).slice(-MAX_TURNS) : [];
-    const opening = openingFor({ question, studentAnswer, choices: b.choices,
-      correctAnswer: clip(b.correctAnswer, 200), priorErrors: clip(b.priorErrors, 300) });
+    const opening = chat ? studentAnswer
+      : openingFor({ question, studentAnswer, choices: b.choices,
+          correctAnswer: clip(b.correctAnswer, 200), priorErrors: clip(b.priorErrors, 300) });
     const turns: Record<string, unknown>[] = history.length ? history : [{ role: "user", text: opening }];
 
     let url: string, headers: Record<string, string>, body: unknown;
@@ -160,7 +187,7 @@ Deno.serve(async (req) => {
       url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
       headers = { "x-goog-api-key": KEY, "Content-Type": "application/json" };
       body = {
-        systemInstruction: { parts: [{ text: systemFor(subject, age) }] },
+        systemInstruction: { parts: [{ text: sysText }] },
         contents: turns.map((m) => ({ role: String(m.role) === "model" ? "model" : "user",
           parts: [{ text: clip(m.text) }] })),
         generationConfig: { temperature: 0.6, maxOutputTokens: 300, topP: 0.9 },
@@ -175,7 +202,7 @@ Deno.serve(async (req) => {
       headers = { "Authorization": `Bearer ${KEY}`, "Content-Type": "application/json" };
       body = {
         model,
-        messages: [{ role: "system", content: systemFor(subject, age) }].concat(
+        messages: [{ role: "system", content: sysText }].concat(
           turns.map((m) => ({ role: String(m.role) === "model" ? "assistant" : "user", content: clip(m.text) }))),
         temperature: 0.6, max_tokens: 300, top_p: 0.9,
       };

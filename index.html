@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260811-1355";
+  var BUILD="build-20260811-1450";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -2427,7 +2427,7 @@ async function runMicDiag(){
 const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEngPlan","startDictation",
   "startPronunciation","startSpeaking","startAudioDiag","runMicDiag","fetchTimeout",
   "pronStart","pronStop","pronReset","speakStart","speakStop","speakReset","speakEnglish",
-  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","copyAzRaw","esc","weakPhonemeStr","num0","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor"];
+  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","copyAzRaw","esc","weakPhonemeStr","num0","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary"];
 function censusMissing(){return CENSUS.filter(function(n){return typeof window[n]!=="function"})}
 function censusHTML(){
   var miss=censusMissing();
@@ -3473,6 +3473,197 @@ function tutorDiagHTML(){
     <div style="font-size:12px;color:#94A3B8;margin-bottom:8px">يُرسل سؤالاً حقيقياً ويعرض ردّه كما هو</div>
     <button class="btn" style="background:#4338CA" onclick="runTutorDiag()" ${tuDiag&&tuDiag.running?"disabled":""}>🧑‍🏫 افحصي المعلّم الآن</button>
     ${box}</div>`;
+}
+// ============ مدرّب المحادثة ============
+// حلقة واحدة تجمع ما بنيناه متفرّقاً: الميكروفون، وتفريغ Whisper، وتقييم Azure الصوتي،
+// والمعلّم شريكاً للحديث. تتكلّم بحرّية فيردّ عليها بالإنجليزية، ونقيس نطقها في الأثناء.
+//
+// تقييم النطق هنا يستعمل **ما قالته هي** مرجعاً (نصّ Whisper)، لأن الحديث الحرّ بلا نصّ
+// مرجعي مكتوب سلفاً. ومعنى ذلك أنه يقيس **وضوح أصواتها** لا صحّة اختيارها للكلمات —
+// وهذا مقصود: الكلمات يُصلحها الشريك بإعادة الصياغة، والأصوات لا يُصلحها إلا القياس.
+const COACH_SCENES=[
+  {id:"cafe",ar:"في المقهى ☕",en:"You are a friendly barista in a small café. The student is a customer ordering a drink.",
+   opener:"Hi! Welcome to Sunny Café. What would you like to drink today?"},
+  {id:"school",ar:"صديقة جديدة في المدرسة 🎒",en:"You are a new classmate at school meeting the student for the first time.",
+   opener:"Hi! I'm new here. What's your name?"},
+  {id:"shop",ar:"في المتجر 🛍️",en:"You are a shop assistant. The student is looking for something to buy.",
+   opener:"Good morning! Can I help you find something?"},
+  {id:"doctor",ar:"عند الطبيبة 🩺",en:"You are a kind doctor. The student is a patient who does not feel well.",
+   opener:"Hello! Please sit down. How are you feeling today?"},
+  {id:"trip",ar:"نتكلّم عن رحلة ✈️",en:"You are a friend asking the student about a trip she took.",
+   opener:"You went on a trip last week! Where did you go?"},
+  {id:"pet",ar:"عن الحيوانات الأليفة 🐈",en:"You are a friend who loves animals, talking with the student about pets.",
+   opener:"I have a cat named Luna. Do you have a pet at home?"},
+];
+const COACH_MAX_TURNS=8; // جلسة قصيرة تنتهي بخلاصة، لا محادثة بلا نهاية
+let coachScene=null,coachMsgs=[],coachBusy=false,coachListening=false,coachElapsed=0,
+    coachRec=null,coachStream=null,coachChunks=[],coachTimer=null,coachFail="",coachDone=false,coachUnsupported=false;
+function startCoach(){
+  mode="coach";coachScene=null;coachMsgs=[];coachBusy=false;coachListening=false;
+  coachFail="";coachDone=false;coachUnsupported=!micSupported();
+  window.scrollTo(0,0);render();
+}
+function coachPick(i){
+  coachScene=COACH_SCENES[i];
+  coachMsgs=[{role:"model",text:coachScene.opener}];
+  logAnswer("coach","open",null,coachScene.id,coachScene.id,null,{lesson:coachScene.id});
+  render();setTimeout(()=>speakEnglish(coachScene.opener),400);
+}
+function coachSay(t){speakEnglish(t)}
+function coachReset(){coachBusy=false;coachListening=false;
+  if(coachTimer){clearInterval(coachTimer);coachTimer=null}
+  if(coachStream){try{coachStream.getTracks().forEach(function(t){t.stop()})}catch(e){}coachStream=null}
+  wavTapStop();render()}
+async function coachStart(){
+  if(coachListening||coachBusy||coachDone)return;
+  if(!micSupported()){coachUnsupported=true;render();return}
+  coachFail="";
+  try{
+    coachStream=await navigator.mediaDevices.getUserMedia({audio:true});
+    coachChunks=[];
+    coachRec=new MediaRecorder(coachStream);
+    coachRec.ondataavailable=function(e){if(e.data&&e.data.size>0)coachChunks.push(e.data)};
+    coachRec.onstop=function(){coachFinish()};
+    wavTapStart(coachStream); // مأخذ Azure الموازي — فشله لا يمنع المحادثة
+    coachRec.start();
+    coachListening=true;coachElapsed=0;
+    coachTimer=setInterval(function(){coachElapsed+=0.25;
+      if(coachElapsed*1000>=COACH_MAX_MS){coachStop();return}render()},250);
+    render();
+  }catch(e){coachListening=false;coachFail="mic";render()}
+}
+const COACH_MAX_MS=20000, COACH_MIN_MS=700;
+function coachStop(){
+  if(!coachListening)return;
+  coachListening=false;coachBusy=true;
+  if(coachTimer){clearInterval(coachTimer);coachTimer=null}
+  try{if(coachRec&&coachRec.state!=="inactive")coachRec.stop();else{coachBusy=false}}catch(e){coachBusy=false}
+  render();
+}
+async function coachFinish(){
+  if(coachStream){try{coachStream.getTracks().forEach(function(t){t.stop()})}catch(e){}coachStream=null}
+  wavTapStop();
+  const ms=Math.round(coachElapsed*1000);
+  if(ms<COACH_MIN_MS){coachBusy=false;coachFail="short";render();return}
+  // ١) ماذا قالت؟ نصّ Whisper هو مصدر الحقيقة، ولا مرجع مكتوب في الحديث الحرّ
+  let heard="";
+  try{
+    const blob=new Blob(coachChunks,{type:(coachRec&&coachRec.mimeType)||"audio/webm"});
+    const b64=await blobToBase64(blob);
+    const res=await fetchTimeout(PRON_GROQ_FN_URL,{method:"POST",
+      headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},
+      // الدالّة تشترط مرجعاً غير فارغ ولا تستعمله في التفريغ، فنُمرّر وسماً بلا كلمات هدف
+      body:JSON.stringify({audio:b64,mimeType:blob.type,referenceText:"conversation",targetWords:[]})});
+    const d=await res.json();
+    if(!d||d.error){coachBusy=false;coachFail=d&&d.error==="not_configured"?"nokey":"stt";render();return}
+    if(d.lowConfidence||!String(d.heard||"").trim()){coachBusy=false;coachFail="unclear";render();return}
+    heard=String(d.heard).trim();
+  }catch(e){coachBusy=false;coachFail="stt";render();return}
+  // ٢) كيف كان نطقها؟ مرجع Azure هو نصّها نفسه
+  let pct=null,weak=[];
+  try{
+    const az=await azureTry(heard);
+    if(az.data){const sc=azureToScore(heard,az.data);pct=sc.pct;weak=sc.weak||[]}
+  }catch(e){}
+  coachMsgs.push({role:"user",text:heard,pct:pct,weak:weak});
+  logAnswer("coach","say",null,heard.slice(0,600),coachScene?coachScene.id:null,ms,
+    {lesson:coachScene?coachScene.id:null,score_pct:num0(pct),weak_phonemes:weakPhonemeStr(weak)});
+  render();
+  // ٣) ماذا يردّ الشريك؟
+  try{
+    const hist=coachMsgs.map(function(m){return{role:m.role,text:m.text}});
+    const res=await fetchTimeout(TUTOR_FN_URL,{method:"POST",
+      headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},
+      body:JSON.stringify({mode:"chat",scene:coachScene.en,level:"A2",
+        question:coachScene.en,studentAnswer:heard,history:hist})});
+    const d=await res.json();
+    if(d&&d.reply){
+      coachMsgs.push({role:"model",text:d.reply});
+      logAnswer("coach","reply",null,String(d.reply).slice(0,600),coachScene.id,null,{lesson:coachScene.id});
+      coachBusy=false;
+      if(coachMsgs.filter(function(m){return m.role==="user"}).length>=COACH_MAX_TURNS)coachDone=true;
+      render();setTimeout(function(){speakEnglish(d.reply)},300);
+      return;
+    }
+    coachFail=(d&&d.error)==="not_configured"?"nokey":"reply";
+  }catch(e){coachFail="reply"}
+  coachBusy=false;render();
+}
+// خلاصة الجلسة: أكثر الأصوات تكراراً في قائمة الضعف — وهو السؤال الذي لم يكن له جواب قبل اليوم
+function coachWeakSummary(){
+  const tally={};
+  coachMsgs.forEach(function(m){(m.weak||[]).forEach(function(x){
+    const k=String(x.p||"");if(!k)return;
+    if(!tally[k])tally[k]={n:0,sum:0};
+    tally[k].n++;tally[k].sum+=Number(x.score||0);
+  })});
+  return Object.keys(tally).map(function(k){return{p:k,n:tally[k].n,avg:Math.round(tally[k].sum/tally[k].n)}})
+    .sort(function(a,b){return b.n-a.n||a.avg-b.avg}).slice(0,3);
+}
+const COACH_FAIL_AR={mic:"لم نصل إلى الميكروفون — اسمحي للمتصفّح باستعماله.",
+  short:"التسجيل قصير جداً — اضغطي، تكلّمي، ثم أوقفي.",
+  unclear:"لم نسمع كلاماً واضحاً — اقتربي من الميكروفون وأعيدي.",
+  stt:"تعذّر تفريغ الصوت. حاولي مرة أخرى.",
+  reply:"تعذّر الوصول إلى شريك الحديث. حاولي مرة أخرى.",
+  nokey:"المحادثة غير مُفعّلة بعد."};
+function renderCoach(){
+  const head=`<button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>`;
+  if(coachUnsupported){
+    app.innerHTML=`${head}<div class="card"><div class="q">المحادثة تحتاج ميكروفوناً</div>
+      <div style="font-size:14px;color:#475569;line-height:1.9">متصفّحك لا يدعم التسجيل. جرّبي Safari على الآيفون أو Chrome على أندرويد.</div></div>`;
+    return;
+  }
+  if(!coachScene){
+    app.innerHTML=`${head}
+    <div class="card">
+      <span class="tag" style="background:#DBEAFE;color:#1D4ED8">🗣️ تكلّمي بالإنجليزية</span>
+      <div class="q" style="font-size:19px">اختاري موقفاً وابدئي الحديث</div>
+      <div style="font-size:13px;color:#64748B;line-height:1.9;margin-bottom:12px">
+        تتكلّمين بحرّية، ويردّ عليكِ الشريك بالإنجليزية — ونقيس وضوح أصواتك في كل جملة.
+      </div>
+      <div class="choices">${COACH_SCENES.map(function(s,i){
+        return `<button class="choice" onclick="coachPick(${i})">${s.ar}</button>`}).join("")}</div>
+    </div>`;
+    return;
+  }
+  const bubbles=coachMsgs.map(function(m){
+    const me=m.role==="user";
+    const chip=(me&&m.pct!=null)?`<div style="font-size:11px;margin-top:6px;color:${m.pct>=80?'#059669':m.pct>=60?'#B45309':'#DC2626'}">
+        وضوح الأصوات ${toAr(m.pct)}٪${(m.weak&&m.weak.length)?` · أضعفها <b style="direction:ltr;display:inline-block">${esc(phonemeLabel(m.weak[0].p))}</b>`:""}</div>`:"";
+    return `<div style="display:flex;justify-content:${me?'flex-start':'flex-end'};margin:8px 0">
+      <div style="max-width:88%;background:${me?'#EEF2FF':'#F0FDF4'};border:1.5px solid ${me?'#C7D2FE':'#A7F3D0'};
+        border-radius:16px;padding:11px 13px">
+        <div style="direction:ltr;text-align:left;font-family:Georgia,serif;font-size:16px;line-height:1.7;color:${me?'#312E81':'#065F46'}">${esc(m.text)}</div>
+        ${!me?`<button type="button" onclick="coachSay(${JSON.stringify(m.text).replace(/"/g,'&quot;')})" style="background:none;border:none;color:#0891B2;font-size:12px;cursor:pointer;padding:4px 0 0;font-family:inherit">🔊 أعيدي</button>`:""}
+        ${chip}
+      </div></div>`;
+  }).join("");
+  if(coachDone){
+    const w=coachWeakSummary(),said=coachMsgs.filter(function(m){return m.role==="user"});
+    const avg=said.filter(function(m){return m.pct!=null});
+    app.innerHTML=`${head}
+    <div class="card" style="text-align:center">
+      <div style="font-size:44px">🗣️</div>
+      <div style="font-size:19px;font-weight:800;color:#312E81;margin:8px 0">تكلّمتِ ${toAr(said.length)} مرات بالإنجليزية</div>
+      ${avg.length?`<div style="font-size:15px;color:#334155">وضوح أصواتك: <b>${toAr(Math.round(avg.reduce(function(a,m){return a+m.pct},0)/avg.length))}٪</b></div>`:""}
+      ${w.length?`<div style="background:#F5F3FF;border-radius:12px;padding:12px;margin-top:12px;text-align:right;font-size:14px;color:#4C1D95;line-height:1.9">
+        الأصوات التي تكرّر ضعفها:${w.map(function(x){return `<div>• <b style="direction:ltr;display:inline-block">${esc(phonemeLabel(x.p))}</b> — ${toAr(x.n)} مرات، بمعدّل ${toAr(x.avg)}/١٠٠</div>`}).join("")}</div>`
+        :`<div style="font-size:14px;color:#059669;margin-top:10px">كل أصواتك خرجت واضحة ✓</div>`}
+    </div>
+    <button class="btn" style="background:#4338CA" onclick="startCoach()">موقف آخر ←</button>`;
+    return;
+  }
+  const btn=coachListening
+    ? `<button class="btn" style="background:#DC2626" onclick="coachStop()">⏹️ توقّفي (${toAr(Math.floor(coachElapsed))} ث)</button>`
+    : coachBusy ? `<button class="btn" style="background:#94A3B8" disabled>⏳ لحظة…</button>`
+    : `<button class="btn" style="background:#059669" onclick="coachStart()">🎤 تكلّمي</button>`;
+  app.innerHTML=`${head}
+  <div class="meta"><span>${coachScene.ar}</span><span>${toAr(coachMsgs.filter(function(m){return m.role==="user"}).length)} من ${toAr(COACH_MAX_TURNS)}</span></div>
+  <div class="card">${bubbles}
+    ${coachFail?`<div style="background:#FEF2F2;border-radius:10px;padding:9px 11px;font-size:13px;color:#991B1B;margin-top:8px">${COACH_FAIL_AR[coachFail]||coachFail}</div>`:""}
+  </div>
+  ${btn}
+  <button class="btn" style="background:#64748B" onclick="coachDone=true;render()">إنهاء ومشاهدة الخلاصة</button>`;
 }
 function renderContrast(){
   const P=cxPair;
@@ -4832,7 +5023,7 @@ function bumpStreak(){const st=getStreak();const t=todayStr();if(st.last===t)ret
 function growthMsg(modeKey,pct){try{const key="mawhiba_best_"+modeKey;const prev=parseInt(localStorage.getItem(key)||"-1");let msg="";if(prev<0){msg="أول محاولة في هذا القسم — انطلاقة موفّقة! 🌱"}else if(pct>prev){msg=`تحسّنتِ عن أفضل نتيجة سابقة (${toAr(prev)}%)! تقدّم رائع 📈`}else if(pct===prev){msg="ثبات على أفضل مستوى سابق 💪"}else{msg="واصلي، كل محاولة تبني مهارتك 🌟"}if(pct>prev)localStorage.setItem(key,String(pct));return msg}catch(e){return""}}
 
 // ===== العرض =====
-function render(){if(mode==="home")return renderHome();if(mode==="engplan")return renderEngPlan();if(mode==="factplan")return renderFactPlan();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="speak")return renderSpeak();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
+function render(){if(mode==="home")return renderHome();if(mode==="engplan")return renderEngPlan();if(mode==="factplan")return renderFactPlan();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="speak")return renderSpeak();if(mode==="coach")return renderCoach();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
 
 function renderHome(){
   app.innerHTML=`
@@ -4856,6 +5047,7 @@ function renderHome(){
     <button class="mode full" style="background:#4338CA;border-color:#4338CA" onclick="startEngPlan()"><span class="m-name">⭐ خطة الإنجليزية اليومية · ٤٠ دقيقة</span><div class="m-sub">شرح ثم تدريب، بتباعد ذكي — لا يتكرّر أي عنصر إلا في يوم استحقاقه (منهج الصف السادس)</div></button>
     <button class="mode full" style="background:#0E7490;border-color:#0E7490" onclick="startDictation()"><span class="m-name">✍️ إملاء بالإنجليزية</span><div class="m-sub">استمعي للكلمة، ثم اكتبيها — مستوى A1</div></button>
     <button class="mode full" style="background:#7C3AED;border-color:#7C3AED" onclick="startPronunciation()"><span class="m-name">🎤 تمرين النطق</span><div class="m-sub">تحقّق أساسي هل نطقتِ الكلمة صح (يحتاج ميكروفون) — وليس تصحيح لهجة دقيق</div></button>
+    <button class="mode full" style="background:#0E7490;border-color:#0E7490" onclick="startCoach()"><span class="m-name">🗣️ تكلّمي بالإنجليزية</span><div class="m-sub">محادثة حرّة مع شريك يردّ عليكِ بالإنجليزية — ونقيس وضوح أصواتك في كل جملة</div></button>
     <button class="mode full" style="background:#DB2777;border-color:#DB2777" onclick="startSpeaking()"><span class="m-name">🗣️ التحدّث · جمل من كتابك</span><div class="m-sub">جمل قصيرة جاهزة من وحدة Welcome: تسمعينها ثم تقولينها كاملة — تبدأ بالنص أمامك وتنتهي بالسمع فقط</div></button>
   </div>
   <button class="link-btn" onclick="startAudioDiag()">🔊 الصوت ما يشتغل؟ اضغطي هنا لتشخيص السبب</button>
