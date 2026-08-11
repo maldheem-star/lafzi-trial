@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260811-1235";
+  var BUILD="build-20260811-1320";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -3351,7 +3351,7 @@ async function tutorCall(history){
     const d=await res.json();
     if(!d||d.error)return{fail:(d&&d.error)||"no_response",info:d};
     if(!d.reply)return{fail:"empty"};
-    return{reply:d.reply,model:d.model};
+    return{reply:d.reply,model:d.model,engine:d.engine};
   }catch(e){return{fail:"network",detail:String(e&&e.message||e)}}
 }
 async function tutorStart(ctx){
@@ -3392,15 +3392,15 @@ function tutorOpening(){
   return L.join("\n");
 }
 const TUTOR_FAIL_AR={
-  not_configured:"المعلّم غير مُفعّل بعد (مفتاح Gemini غير محفوظ).",
-  gemini_auth:"Gemini رفض المفتاح أو المشروع.",
-  gemini_bad_model:"اسم النموذج المحفوظ غير موجود — عدّل السرّ GEMINI_MODEL.",
+  not_configured:"المعلّم غير مُفعّل بعد (لا مفتاح محفوظاً لأي مزوّد).",
+  tutor_auth:"المزوّد رفض المفتاح.",
+  tutor_bad_model:"اسم النموذج المحفوظ غير موجود — عدّل السرّ GROQ_MODEL أو GEMINI_MODEL.",
   // «نفد الرصيد» غير «تجاوزتِ الحدّ لهذه الدقيقة»، وعلاجهما مختلف: الأول شحن
   // والثاني انتظار. قول «انتهت الحصّة» وحده يُرسل صاحبه لينتظر ما لن يأتي.
-  gemini_quota:"نفد رصيد مشروع Gemini أو تجاوزنا حدّ الطلبات — راجع الفوترة في AI Studio.",
-  gemini_timeout:"Gemini لم يردّ خلال المهلة.",
-  gemini_unreachable:"تعذّر الوصول إلى Gemini.",
-  gemini_no_text:"Gemini لم يُعِد نصّاً (الأرجح حجب من مرشّحات الأمان).",
+  tutor_quota:"تجاوزنا حدّ الطلبات أو نفد الرصيد — انظر نصّ الخطأ أدناه.",
+  tutor_timeout:"المزوّد لم يردّ خلال المهلة.",
+  tutor_unreachable:"تعذّر الوصول إلى المزوّد.",
+  tutor_no_text:"المزوّد لم يُعِد نصّاً (الأرجح حجب من مرشّحات الأمان).",
   network:"تعذّر الوصول إلى الدالّة من المتصفّح.",
 };
 function tutorBoxHTML(){
@@ -3449,14 +3449,14 @@ async function runTutorDiag(){
     studentAnswer:"just",correctAnswer:"yet",itemId:"diag",age:11};
   const r=await tutorCall([]);
   tuCtx=save;
-  tuDiag=r.fail?{fail:r.fail,info:r.info||null}:{ok:true,reply:r.reply,model:r.model};
+  tuDiag=r.fail?{fail:r.fail,info:r.info||null}:{ok:true,reply:r.reply,model:r.model,engine:r.engine};
   render();
 }
 function tutorDiagHTML(){
   let box="";
   if(tuDiag&&tuDiag.running)box=`<div style="background:#F1F5F9;border-radius:12px;padding:14px;margin-top:12px;font-size:14px">⏳ نسأل المعلّم…</div>`;
   else if(tuDiag&&tuDiag.ok)box=`<div style="background:#ECFDF5;border-radius:12px;padding:14px;margin-top:12px;font-size:14px;color:#065F46;line-height:1.9">
-      ✓ <b>المعلّم يعمل.</b> النموذج: <span style="direction:ltr;display:inline-block">${esc(tuDiag.model||"")}</span>
+      ✓ <b>المعلّم يعمل.</b> المزوّد: <b>${esc(tuDiag.engine||"")}</b> · النموذج: <span style="direction:ltr;display:inline-block">${esc(tuDiag.model||"")}</span>
       <div style="background:#fff;border-radius:10px;padding:10px;margin-top:8px;color:#065F46">${esc(tuDiag.reply||"")}</div></div>`;
   else if(tuDiag){
     const i=tuDiag.info||{};
@@ -3464,7 +3464,7 @@ function tutorDiagHTML(){
       ✗ <b>${TUTOR_FAIL_AR[tuDiag.fail]||"سبب غير متوقّع"}</b> <span style="font-size:12px">(${esc(tuDiag.fail)})</span>
       ${i.keyName?`<div style="font-size:12px">المفتاح وُجد باسم: <b style="direction:ltr;display:inline-block">${esc(i.keyName)}</b></div>`:""}
       ${(i.checked&&!i.keyName)?`<div style="font-size:12px">بُحث عن: <span style="direction:ltr;display:inline-block">${esc(i.checked.join(", "))}</span> — ولم يُوجد أيّها.</div>`:""}
-      ${i.model?`<div style="font-size:12px">النموذج المطلوب: <span style="direction:ltr;display:inline-block">${esc(i.model)}</span></div>`:""}
+      ${i.model?`<div style="font-size:12px">المزوّد: <b>${esc(i.provider||"")}</b> · النموذج المطلوب: <span style="direction:ltr;display:inline-block">${esc(i.model)}</span></div>`:""}
       ${i.detail?`<div style="font-size:11px;color:#B91C1C;direction:ltr;text-align:left;margin-top:6px;max-height:160px;overflow:auto;background:#fff;border-radius:8px;padding:8px;white-space:pre-wrap;word-break:break-all">${esc(i.detail)}</div><button class="btn" style="background:#991B1B;margin-top:8px;padding:8px 14px;font-size:13px" onclick="copyTuErr()">📋 انسخ نصّ الخطأ</button>`:""}
       <div style="font-size:12px;margin-top:6px">التمارين لا تتعطّل — تعمل ببطاقاتها كما كانت.</div></div>`;
   }
