@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260811-1145";
+  var BUILD="build-20260811-1210";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -3395,7 +3395,9 @@ const TUTOR_FAIL_AR={
   not_configured:"المعلّم غير مُفعّل بعد (مفتاح Gemini غير محفوظ).",
   gemini_auth:"Gemini رفض المفتاح أو المشروع.",
   gemini_bad_model:"اسم النموذج المحفوظ غير موجود — عدّل السرّ GEMINI_MODEL.",
-  gemini_quota:"انتهت حصّة Gemini لهذه الفترة.",
+  // «نفد الرصيد» غير «تجاوزتِ الحدّ لهذه الدقيقة»، وعلاجهما مختلف: الأول شحن
+  // والثاني انتظار. قول «انتهت الحصّة» وحده يُرسل صاحبه لينتظر ما لن يأتي.
+  gemini_quota:"نفد رصيد مشروع Gemini أو تجاوزنا حدّ الطلبات — راجع الفوترة في AI Studio.",
   gemini_timeout:"Gemini لم يردّ خلال المهلة.",
   gemini_unreachable:"تعذّر الوصول إلى Gemini.",
   gemini_no_text:"Gemini لم يُعِد نصّاً (الأرجح حجب من مرشّحات الأمان).",
