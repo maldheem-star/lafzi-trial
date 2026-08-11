@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260811-0620";
+  var BUILD="build-20260811-0745";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -2487,8 +2487,9 @@ const AZ_DIAG_HELP={
   azure_unreachable:"اسم المضيف لم يُحَلّ — أي أن قيمة المنطقة المحفوظة ليست منطقة Azure حقيقية.",
   azure_bad_region:"قيمة المنطقة تحوي محرفاً غير مسموح (مسافة أو حرف كبير أو رمز).",
   azure_bad_key:"قيمة المفتاح المحفوظة ليست بشكل مفتاح Azure — الأرجح أنها نُسخت ناقصة.",
-  azure_no_assessment:"Azure تعرّف على الكلام لكنه لم يُرجع تقييم النطق إطلاقاً — الأرجح أن الميزة غير متاحة على هذه المنطقة أو الفئة المجانية.",
-  azure_zero_scores:"Azure أرجع تقييماً كل أرقامه صفر — لا يُعتدّ به.",
+  azure_no_assessment:"Azure تعرّف على الكلام لكنه لم يُرجع تقييم النطق إطلاقاً — أرسل «الردّ الخام» أدناه.",
+  azure_zero_scores:"Azure أرجع تقييماً كل أرقامه صفر بلا أصوات — لا يُعتدّ به.",
+  no_speech:"الصوت وصل إلى Azure لكنه لم يسمع كلاماً فيه — تكلّمي أثناء التسجيل وقرّبي الجهاز.",
   bad_audio:"الصوت المُرسَل ليس WAV سليماً — عطل في مُرمِّز التطبيق لا في Azure.",
   wav_empty:"لم يُلتقط صوت خام (Web Audio لم يعمل على هذا المتصفّح).",
   network:"تعذّر الوصول إلى الدالة من المتصفّح.",
@@ -2561,6 +2562,11 @@ function azDiagHTML(){
         <b>⚠️ المفتاح المحفوظ فيه ${toAr(azDiag.info.keyBad.length)} محرف غير مرئي</b> (${azDiag.info.keyBad.join("، ")})
         <br>طوله ${toAr(azDiag.info.keyRawLength||0)} وبعد التنظيف ${toAr(azDiag.info.keyCleanLength||0)}.
         <br>احذف السرّ وأعِد لصقه من Azure مباشرةً لا من محادثة أو صفحة عربية.
+      </div>`:""}
+      ${(azDiag.fail==="no_speech"&&azDiag.info)?`<div style="background:#fff;border:1px solid #FCA5A5;border-radius:8px;padding:8px 10px;margin-top:8px;font-size:12px;color:#7F1D1D;line-height:1.8">
+        وصل الصوت كاملاً (${toAr(Math.round((azDiag.info.durationMs||0)/100)/10)} ثانية) لكن Azure لم يجد فيه كلاماً.
+        ${azDiag.info.snr!=null?`<br>نسبة الإشارة إلى الضجيج: <b>${toAr(Math.round(azDiag.info.snr))}</b>${azDiag.info.snr<=0?" — أي أن التسجيل صامت فعلاً":""}`:""}
+        <br>ابدئي الكلام بعد ظهور «🔴 يسجّل» مباشرة، وقولي <b style="direction:ltr;display:inline-block">hello</b> بصوت واضح.
       </div>`:""}
       ${(azDiag.fail==="azure_no_assessment"&&azDiag.info&&azDiag.info.raw)?`<div style="background:#fff;border:1px solid #FCA5A5;border-radius:8px;padding:8px 10px;margin-top:8px;font-size:12px;color:#7F1D1D;line-height:1.8">
         <b>ردّ Azure الخام</b> — هذا ما أعاده حرفاً بحرف. أرسله لمن يفحص العطل.
@@ -3611,13 +3617,15 @@ async function azureTry(target){
     const res=await fetchTimeout(AZURE_FN_URL,{method:"POST",headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({audio:b64,referenceText:target})});
     const d=await res.json();
     if(!d||d.error)return{fail:(d&&d.error)||"no_response",detail:d&&(d.detail||d.message||d.status),info:d};
-    if(d.noSpeech)return{fail:"no_speech"};
+    if(d.noSpeech)return{fail:"no_speech",detail:d.recognitionStatus||"",info:d};
     // تعرّف بلا تقييم: أصفار Azure ليست حكماً على نطقها. أعطت «Race.» صفراً وهي صحيحة،
     // بينما «Chess, chess.» نجحت لأنها سقطت إلى المقارنة النصّية. فنعدّه تعثّراً ونرجع لـGroq.
     if(d.noAssessment)return{fail:"azure_no_assessment",detail:(d.nbestKeys||[]).join(","),info:d};
     if(!d.ok)return{fail:"not_ok"};
-    // حارس أخير: تقييم حاضر لكن كل أرقامه صفر ⇒ لا نُصدّقه
-    if(typeof d.pron==="number"&&d.pron===0&&(d.words||[]).every(function(w){return !w.score})){
+    // حارس أخير: صفرٌ بلا أصوات ⇒ لم يُقيَّم شيء. أمّا صفرٌ ومعه أصوات فهو حكم حقيقي
+    // على نطقها (نطقت كلمة أخرى مثلاً) ونُصدّقه — الأصوات هي الدليل على أن التقييم جرى
+    const anyPh=(d.words||[]).some(function(w){return (w.phonemes||[]).length>0});
+    if(typeof d.pron==="number"&&d.pron===0&&!anyPh&&(d.words||[]).every(function(w){return !w.score})){
       return{fail:"azure_zero_scores",info:d};
     }
     return{data:d};

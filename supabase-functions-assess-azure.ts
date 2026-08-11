@@ -179,14 +179,38 @@ Deno.serve(async (req) => {
       return jsonOut({ ok: true, noSpeech: true, recognitionStatus: status, heard: "" });
     }
     const best = (j.NBest && j.NBest[0]) || {};
+    // ——— الشكلان ———
+    // Azure يُعيد درجات التقييم بشكلين مختلفين حسب الطريق:
+    //   SDK  : NBest[0].PronunciationAssessment.{PronScore,AccuracyScore,...}  (متداخل)
+    //   REST : NBest[0].{PronScore,AccuracyScore,...}                          (مُسطَّح)
+    // كُتبت هذه الدالة على الشكل المتداخل وهي تُنادي REST، فكان التقييم يصل كاملاً
+    // ونحن نقرؤه في مكانٍ فارغ فنحسبه غائباً. هذا سبب azure_no_assessment كلّه —
+    // لا المنطقة ولا الفئة ولا المفتاح. فنقرأ الشكلين معاً ولا نفترض أيّهما.
+    const paOf = (o: Record<string, unknown>) =>
+      (o && (o.PronunciationAssessment as Record<string, unknown>)) || o || {};
+    const numOf = (o: Record<string, unknown>, k: string) => {
+      const v = paOf(o)[k];
+      return v == null ? null : Number(v);
+    };
     // Azure قد يتعرّف على الكلام ويُهمل تقييم النطق (ترويسة مرفوضة، أو الميزة غير متاحة
     // على هذه المنطقة/الفئة). حينها تعود الدرجات أصفاراً — وقد أعطت «Race.» صفراً وهي
     // نطقٌ صحيح. فنُصرّح بغياب التقييم بدل أن نُمرّر أصفاراً تبدو حكماً على أدائها.
-    const pa = best.PronunciationAssessment || null;
     const wordsRaw = (best.Words || []) as Record<string, unknown>[];
-    const anyWordScore = wordsRaw.some((w) =>
-      (w.PronunciationAssessment as Record<string, unknown> | undefined)?.AccuracyScore != null);
-    if (!pa && !anyWordScore) {
+    const heardText = String(best.Display || j.DisplayText || "");
+    const lexText = String(best.Lexical || "");
+    // RecognitionStatus=Success لا يعني أنها تكلّمت. الصمت يعود بنصّ «.» وثقة صفر
+    // ونسبة إشارة إلى ضجيج صفر وكل كلمة Omission — وكنّا نُمرّره درجةً صفراً كأنّه حكم
+    // على نطقها. الصمت ليس خطأً في النطق، فنفصله ونُعيده بلا درجة.
+    const spoke = /[a-z0-9]/i.test(lexText || heardText);
+    if (!spoke) {
+      return jsonOut({ ok: true, noSpeech: true, recognitionStatus: "SuccessButSilent",
+        heard: heardText, snr: best.SNR != null ? Number(best.SNR) : (j.SNR != null ? Number(j.SNR) : null),
+        durationMs: j.Duration ? Math.round(Number(j.Duration) / 10000) : null,
+        bytes: bytes.length });
+    }
+    const paTop = numOf(best as Record<string, unknown>, "PronScore");
+    const anyWordScore = wordsRaw.some((w) => numOf(w, "AccuracyScore") != null);
+    if (paTop == null && !anyWordScore) {
       return jsonOut({ ok: true, noAssessment: true,
         heard: String(best.Display || j.DisplayText || ""),
         lexical: String(best.Lexical || ""),
@@ -197,28 +221,28 @@ Deno.serve(async (req) => {
         raw: JSON.stringify(j).slice(0, 2000),
         region: REGION });
     }
-    const words: WordOut[] = (best.Words || []).map((w: Record<string, unknown>) => {
-      const wpa = (w.PronunciationAssessment || {}) as Record<string, unknown>;
-      return {
-        w: String(w.Word || ""),
-        score: Math.round(Number(wpa.AccuracyScore ?? 0)),
-        err: String(wpa.ErrorType || "None"),
-        phonemes: ((w.Phonemes || []) as Record<string, unknown>[]).map((p) => ({
-          p: String(p.Phoneme || ""),
-          score: Math.round(Number((p.PronunciationAssessment as Record<string, unknown> || {}).AccuracyScore ?? 0)),
-        })),
-      };
-    });
+    const words: WordOut[] = wordsRaw.map((w) => ({
+      w: String(w.Word || ""),
+      score: Math.round(numOf(w, "AccuracyScore") ?? 0),
+      err: String(paOf(w).ErrorType || "None"),
+      phonemes: ((w.Phonemes || []) as Record<string, unknown>[]).map((p) => ({
+        p: String(p.Phoneme || ""),
+        score: Math.round(numOf(p, "AccuracyScore") ?? 0),
+      })),
+    }));
 
     return jsonOut({
       ok: true,
       engine: "azure",
-      heard: String(best.Display || j.DisplayText || ""),
-      lexical: String(best.Lexical || ""),
-      pron: Math.round(Number(pa?.PronScore ?? 0)),
-      accuracy: Math.round(Number(pa?.AccuracyScore ?? 0)),
-      fluency: Math.round(Number(pa?.FluencyScore ?? 0)),
-      completeness: Math.round(Number(pa?.CompletenessScore ?? 0)),
+      heard: heardText,
+      lexical: lexText,
+      pron: Math.round(paTop ?? 0),
+      accuracy: Math.round(numOf(best as Record<string, unknown>, "AccuracyScore") ?? 0),
+      fluency: Math.round(numOf(best as Record<string, unknown>, "FluencyScore") ?? 0),
+      completeness: Math.round(numOf(best as Record<string, unknown>, "CompletenessScore") ?? 0),
+      // نسبة الإشارة إلى الضجيج تأتي في جذر الردّ لا داخل NBest — وهي أصدق مؤشّر على
+      // «هل التقط الميكروفون صوتاً أصلاً؟» حين تبدو الدرجة منخفضة بلا سبب
+      snr: best.SNR != null ? Number(best.SNR) : (j.SNR != null ? Number(j.SNR) : null),
       words,
       weak: weakest(words),
       audio: { rate: info.rate, channels: info.channels, bits: info.bits, bytes: bytes.length },

@@ -1,5 +1,38 @@
 # Azure Speech — Pronunciation Assessment returns no scores (REST, short audio)
 
+## RESOLVED — 2026-08-11. The cause was our own response parser.
+
+Capturing the raw Azure response settled it in one request. Azure was returning the
+pronunciation assessment **all along**, in the REST response shape:
+
+```json
+"NBest": [{ "Confidence": 0, "Lexical": ".", "Display": ".",
+            "AccuracyScore": 0, "FluencyScore": 0, "CompletenessScore": 0, "PronScore": 0,
+            "Words": [{ "Word": "hello", "AccuracyScore": 0, "ErrorType": "Omission", "Phonemes": [] }] }]
+```
+
+The scores sit **flat on `NBest[0]`**. Our function read them from
+`NBest[0].PronunciationAssessment.*` — the shape the **Speech SDK** returns, not the
+shape REST returns. That object never exists over REST, so `pa` was always `null`,
+every score defaulted to `0`, and the later guard reported `azure_no_assessment`.
+
+Region (`centralindia`), pricing tier, key, header, and audio format were never the
+problem. Sections 5–8 below are kept as a record of what was ruled out and how, but the
+open questions in §7 are moot.
+
+**Fix:** read both shapes — `(o.PronunciationAssessment) || o` — for the utterance, each
+word, and each phoneme. Also added: a silence check, because `RecognitionStatus:
+"Success"` with `DisplayText: "."`, `Confidence: 0`, `SNR: 0` and `ErrorType: "Omission"`
+means *no speech reached the microphone*, which must not be scored as a pronunciation
+failure. That is exactly what the captured sample above was.
+
+**Correction to §4 below:** the inference that "`Words` comes back without scores" was
+wrong in its detail. `Words` comes back *with* `AccuracyScore` — sitting one level up
+from where the code looked. The observation that drove the inference (single utterances
+scoring 0, doubled ones scoring 100) was real; the explanation for it was not.
+
+---
+
 *(تقرير لعرضه على مهندس أو نموذج آخر. كل ما فيه مقيس من سجلّات حقيقية، ولا يحتوي أي مفتاح.)*
 
 ## 1. What we are trying to do
