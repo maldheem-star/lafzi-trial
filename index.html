@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260811-1450";
+  var BUILD="build-20260811-1540";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -2427,7 +2427,7 @@ async function runMicDiag(){
 const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEngPlan","startDictation",
   "startPronunciation","startSpeaking","startAudioDiag","runMicDiag","fetchTimeout",
   "pronStart","pronStop","pronReset","speakStart","speakStop","speakReset","speakEnglish",
-  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","copyAzRaw","esc","weakPhonemeStr","num0","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary"];
+  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","copyAzRaw","esc","weakPhonemeStr","num0","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary"];
 function censusMissing(){return CENSUS.filter(function(n){return typeof window[n]!=="function"})}
 function censusHTML(){
   var miss=censusMissing();
@@ -3026,6 +3026,7 @@ function fixBuild(it){
   return drills;
 }
 function fixStart(it){
+  fixCountThisPlan++;
   fixOn=true;fixStep=0;fixItem=it;fixDrills=fixBuild(it);fixPicked=null;fixLocked=false;fixWrong=0;
   logAnswer("eng_plan","fix_open",null,itemErrOf(it.id)?itemErrOf(it.id).last:null,it.id,null,{lesson:it.lesson||null});
   render();
@@ -3055,7 +3056,14 @@ function fixNext(){
   if(fixStep<fixDrills.length){fixStep++;fixArm(fixStep);render();return}
   fixOn=false;fixItem=null;fixPicked=null;fixLocked=false;render();
 }
-function fixNeeded(it){return !!(it&&it.t==="grammar"&&itemStuck(it.id))}
+// حدٌّ للعلاج داخل الجلسة: في جلسة ٩:٤٠ فُتحت أربع بوّابات تصحيح و٢٤ تمرين علاج
+// مقابل ثمانية أسئلة محسوبة فقط — فابتلع العلاجُ التمرينَ نفسه. البوّابة نافعة، لكن
+// أربعاً منها في ثلاث دقائق تُرهق ولا تُعلّم، والباقي يُعالَج في الجلسة القادمة.
+const FIX_MAX_PER_PLAN=2;
+let fixCountThisPlan=0;
+function fixNeeded(it){
+  return !!(it&&it.t==="grammar"&&fixCountThisPlan<FIX_MAX_PER_PLAN&&itemStuck(it.id));
+}
 
 // ============ محرّك التقابل ============
 // التشخيص الذي بناه: أخطاؤها في القواعد ليست ثغرات بل التباسات ثنائية. في few/little
@@ -3276,7 +3284,7 @@ function startEngPlan(){
   planItems=p.items;planMeta=p;planIdx=0;planPicked=null;planLocked=false;planScore=0;planDone=false;planInput="";
   planTotal=planItems.filter(i=>i.t!=="lesson").length;
   fixOn=false;fixItem=null;fixStep=0;
-  cxOn=false;cxPair=null;cxStep=0;cxDoneThisPlan=false;
+  cxOn=false;cxPair=null;cxStep=0;cxDoneThisPlan=false;fixCountThisPlan=0;
   mode="engplan";window.scrollTo(0,0);
   const f=planItems[0];
   planShownAt=Date.now();planGateStart(f);
@@ -4678,6 +4686,21 @@ function quantMultiStep(it){
 // و١/٤ حين أبطأت — أي أن البطء عندها علامة صعوبة لا تسرّع، فالبوّابة تؤخّرها بلا فائدة.
 // الدليل عكس ما توقّعتُ، فاتّبعتُه.
 let gateKind="";
+// المرونة: ٤ من ١٢ بمتوسّط ٢٫٨ ثانية، وإحدى عشرة إجابة من اثنتي عشرة تحت خمس ثوانٍ.
+// وأخطاؤها لم تكن جهلاً بل صدى لرقم في السؤال: «٤٢° مقسومة إلى ٣» فأجابت ٤٢° في
+// ١٫٤ ثانية، و«★ + ● + ● = ٢٠ و● = ٦» فأجابت ٦. والدليل القاطع أنها تعرف الحلّ:
+// السؤال نفسه بقسمة على اثنين أصابته في ١٫٧ ثانية. فالعائق اندفاع لا مفهوم.
+//
+// ما يُبوَّب: ما فيه رسم (يحتاج مسحاً بصرياً) أو رقمان فأكثر (يحتاج حساباً).
+// وما لا يُبوَّب: استرجاع الكلمات («ما ضدّ كلمة…») — كالمفردات تماماً، بطؤها فيها
+// علامة جهل لا تسرّع، فالبوّابة تُؤخّرها بلا فائدة.
+const FLEX_GATE_SEC=8, FLEX_GATE_SVG_SEC=12;
+function flexMultiStep(it){
+  if(!it)return false;
+  if(it.svg)return true;
+  const q=String(it.q||"");
+  return (q.match(/[0-9٠-٩]+/g)||[]).length>=2;
+}
 function gateSecondsFor(it,qtypeArg){
   // يقبل عنصر السؤال كاملاً (للرسم والمجال) أو نصّاً ونوعاً كما كان
   const item=(it&&typeof it==="object")?it:{q:it,qtype:qtypeArg};
@@ -4686,13 +4709,15 @@ function gateSecondsFor(it,qtypeArg){
   const byLen=w>=GATE_MIN_WORDS?Math.max(GATE_MIN_S,Math.round(w/GATE_WPM*60)):0;
   let floor=GATE_FLOOR_BY_TYPE[qtype]||0;
   if(item.d==="quant"&&quantMultiStep(item))floor=Math.max(floor,item.svg?QUANT_GATE_SVG_SEC:QUANT_GATE_SEC);
+  if(item.d==="flex"&&flexMultiStep(item))floor=Math.max(floor,item.svg?FLEX_GATE_SVG_SEC:FLEX_GATE_SEC);
   return Math.min(GATE_MAX_S,Math.max(byLen,floor));
 }
 let gateSecs=0,gateLeft=0,gateTimer=null,gateSeen=false;
 function gateStop(){if(gateTimer){clearInterval(gateTimer);gateTimer=null}}
 function gateStart(it,qtypeArg){
   const item=(it&&typeof it==="object")?it:{q:it,qtype:qtypeArg};
-  gateKind=(item.d==="quant"&&quantMultiStep(item))?"quant":(item.qtype||"");
+  gateKind=(item.d==="quant"&&quantMultiStep(item))?"quant"
+    :(item.d==="flex"&&flexMultiStep(item))?"flex":(item.qtype||"");
   gateStop();gateSecs=gateSecondsFor(item);gateLeft=gateSecs;
   if(!gateSecs)return;
   gateTimer=setInterval(()=>{gateLeft--;if(gateLeft<=0){gateLeft=0;gateStop()}render()},1000);
@@ -5101,8 +5126,8 @@ function renderQuiz(){
   const gateBox=(!locked&&gateSecs&&!gateOpen())
     ? `<div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:12px;padding:16px;margin:14px 0;text-align:center">
          <div style="font-size:30px;font-weight:800;color:#1D4ED8;line-height:1.2">${toAr(gateLeft)}</div>
-         <div style="font-size:14px;color:#1E40AF;font-weight:700;margin-top:6px">${gateKind==="quant"?"اقرئي المسألة وحُلّيها على الورقة":gateKind==="logic"?"اقرئي المقدّمة كاملة ثم استنتجي":"اقرئي النص كاملاً أولاً"}</div>
-         <div style="font-size:12px;color:#3B82F6;margin-top:6px;line-height:1.7">الخيارات ستظهر بعد ${arSecs(gateLeft)}. ${gateKind==="quant"?"احسبي أولاً ثم ابحثي عن جوابك بين الخيارات — لا العكس.":gateKind==="logic"?"الاستنتاج لا يُخمَّن — اقرئي ما أُعطي لك بدقّة.":"النص فيه الجواب — والقراءة أسرع من التخمين على المدى الطويل."}</div>
+         <div style="font-size:14px;color:#1E40AF;font-weight:700;margin-top:6px">${gateKind==="quant"?"اقرئي المسألة وحُلّيها على الورقة":gateKind==="flex"?"تأمّلي الشكل والأرقام قبل الخيارات":gateKind==="logic"?"اقرئي المقدّمة كاملة ثم استنتجي":"اقرئي النص كاملاً أولاً"}</div>
+         <div style="font-size:12px;color:#3B82F6;margin-top:6px;line-height:1.7">الخيارات ستظهر بعد ${arSecs(gateLeft)}. ${gateKind==="quant"?"احسبي أولاً ثم ابحثي عن جوابك بين الخيارات — لا العكس.":gateKind==="flex"?"الجواب ليس رقماً مذكوراً في السؤال — اعملي عليه أولاً.":gateKind==="logic"?"الاستنتاج لا يُخمَّن — اقرئي ما أُعطي لك بدقّة.":"النص فيه الجواب — والقراءة أسرع من التخمين على المدى الطويل."}</div>
        </div>`
     : (!locked&&gateSecs&&gateOpen())
     ? `<div style="font-size:12px;color:#059669;font-weight:700;margin:10px 0">✓ خذي وقتك — راجعي النص قبل أن تختاري</div>`
