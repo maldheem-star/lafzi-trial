@@ -26,6 +26,8 @@ const jsonOut = (o: unknown, status = 200) =>
   new Response(JSON.stringify(o), { status, headers: { ...CORS, "Content-Type": "application/json" } });
 
 const DEFAULT_MODEL = "gemini-flash-latest";
+const KEY_NAMES = ["GEMINI_API_KEY", "GOOGLE_API_KEY", "GOOGLE_GENAI_API_KEY",
+  "GOOGLE_GEMINI_API_KEY", "GEMINI_KEY", "GOOGLE_AI_API_KEY"];
 const MAX_TURNS = 8;        // حوار قصير: هدفه تصحيح فكرة لا محادثة مفتوحة
 const MAX_CHARS = 1200;     // حدّ لكل نصّ يصل من العميل — لا نُمرّر ما لا نعرف حجمه
 
@@ -69,16 +71,22 @@ Deno.serve(async (req) => {
   try {
     const b = await req.json().catch(() => ({})) as Record<string, unknown>;
 
-    const KEY_RAW = (Deno.env.get("GEMINI_API_KEY") || "").trim();
+    // المفتاح قد يكون محفوظاً باسم اختاره غيرنا (دالّة توليد الأسئلة أقدم من هذه).
+    // فنبحث في الأسماء الشائعة ونُبلغ بالاسم الذي وُجد — الاسم لا القيمة.
+    let keyName = "", KEY_RAW = "";
+    for (const n of KEY_NAMES) {
+      const v = (Deno.env.get(n) || "").trim();
+      if (v) { keyName = n; KEY_RAW = v; break; }
+    }
     // نفس درس Azure: محرف غير مرئي واحد ملتصق بالمفتاح يجعل الطلب يفشل فشلاً غامضاً
     const KEY = KEY_RAW.replace(/[^\x21-\x7E]/g, "");
     const keyBad = Array.from(KEY_RAW).filter((c) => !/[\x21-\x7E]/.test(c))
       .map((c) => "U+" + (c.codePointAt(0) || 0).toString(16).toUpperCase().padStart(4, "0"));
     if (!KEY) {
       return jsonOut({ error: "not_configured",
-        detail: KEY_RAW.length ? "GEMINI_API_KEY present but contains no usable characters"
-                               : "GEMINI_API_KEY missing or empty",
-        keyRawLength: KEY_RAW.length, keyBad });
+        detail: KEY_RAW.length ? `${keyName} present but contains no usable characters`
+                               : "no Gemini key found under any known name",
+        keyRawLength: KEY_RAW.length, keyBad, keyName, checked: KEY_NAMES });
     }
 
     const question = clip(b.question);
@@ -145,7 +153,7 @@ Deno.serve(async (req) => {
       return jsonOut({ error: "gemini_no_text", finishReason: String(cand.finishReason || ""),
         blockReason: String((j.promptFeedback && j.promptFeedback.blockReason) || ""), model });
     }
-    return jsonOut({ ok: true, engine: "gemini", model, reply: text,
+    return jsonOut({ ok: true, engine: "gemini", model, keyName, reply: text,
       turns: history.length ? Math.floor(history.length / 2) + 1 : 1 });
   } catch (e) {
     return jsonOut({ error: "server_error", message: String(e).slice(0, 300) }, 500);

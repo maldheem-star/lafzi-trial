@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260811-1030";
+  var BUILD="build-20260811-1145";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -2427,7 +2427,7 @@ async function runMicDiag(){
 const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEngPlan","startDictation",
   "startPronunciation","startSpeaking","startAudioDiag","runMicDiag","fetchTimeout",
   "pronStart","pronStop","pronReset","speakStart","speakStop","speakReset","speakEnglish",
-  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","copyAzRaw","esc","weakPhonemeStr","num0","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish"];
+  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","copyAzRaw","esc","weakPhonemeStr","num0","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable"];
 function censusMissing(){return CENSUS.filter(function(n){return typeof window[n]!=="function"})}
 function censusHTML(){
   var miss=censusMissing();
@@ -2625,6 +2625,7 @@ function micDiagHTML(){
       <div id="micTrace">${traceHTML()}</div>
     </div>
     ${azDiagHTML()}
+    ${tutorDiagHTML()}
   </div>`;
 }
 function runAudioDiag(){
@@ -3324,6 +3325,142 @@ function planNext(){
   if(it&&it.t==="dict")setTimeout(()=>speakEnglish(it.w),300);
 }
 function planRepeat(){const it=planCur();if(it&&it.t==="dict")speakEnglish(it.w)}
+// المعلّم يُستدعى بعنصر الخطة كما هو — لا شيء مكتوب خصّيصاً لهذا الدرس أو ذاك
+function planAskTutor(){
+  const it=planCur();if(!it||!planLocked||planPicked===it.a)return;
+  const err=itemErrOf(it.id);
+  tutorStart({subject:"لغة إنجليزية",question:String(it.q||""),choices:it.c||null,
+    studentAnswer:it.c?it.c[planPicked]:String(planInput||""),correctAnswer:it.c?it.c[it.a]:String(it.w||""),
+    priorErrors:(err&&err.last)?`اختارت «${err.last}» ${toAr(err.wrong)} مرات في هذا السؤال`:"",
+    itemId:it.id,age:11});
+}
+// ============ المعلّم: حوار قصير بعد الخطأ، لكل المواد ============
+// جزءٌ يُدرَج داخل الشاشات القائمة لا وضعٌ مستقلّ — فيصلح للإنجليزي والكمّي واللفظي
+// وغيرها بلا أن يعرف كلٌّ منها شيئاً عنه. ما يحتاجه المُستدعي: نصّ السؤال، وجوابها،
+// والصواب. والمفتاح في الخادم، والحكم يبقى لمفتاح السؤال لا للنموذج.
+const TUTOR_FN_URL=SB_URL+"/functions/v1/tutor";
+const TUTOR_MAX_TURNS=5; // حوار يُصحّح فكرة، لا محادثة مفتوحة تُنسي التمرين
+let tuOn=false,tuBusy=false,tuMsgs=[],tuCtx=null,tuFail="",tuInput="",tuDiag=null;
+function tutorAvailable(){return !tuFail||tuFail==="network"}
+function tutorClose(){tuOn=false;tuBusy=false;tuMsgs=[];tuCtx=null;tuInput="";render()}
+async function tutorCall(history){
+  try{
+    const res=await fetchTimeout(TUTOR_FN_URL,{method:"POST",
+      headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},
+      body:JSON.stringify(Object.assign({},tuCtx,{history}))});
+    const d=await res.json();
+    if(!d||d.error)return{fail:(d&&d.error)||"no_response",info:d};
+    if(!d.reply)return{fail:"empty"};
+    return{reply:d.reply,model:d.model};
+  }catch(e){return{fail:"network",detail:String(e&&e.message||e)}}
+}
+async function tutorStart(ctx){
+  tuOn=true;tuBusy=true;tuMsgs=[];tuCtx=ctx;tuFail="";tuInput="";render();
+  const r=await tutorCall([]);
+  tuBusy=false;
+  if(r.fail){tuFail=r.fail;tuOn=false;render();return}
+  tuMsgs.push({role:"model",text:r.reply});
+  logAnswer("tutor","reply",null,String(r.reply).slice(0,600),ctx.itemId||null,null,
+    {lesson:ctx.subject||null,q_text:String(ctx.question||"").slice(0,300)});
+  render();
+}
+async function tutorSend(){
+  if(tuBusy)return;
+  const el=document.getElementById('tuIn'),txt=(el?el.value:"").trim();
+  if(!txt)return;
+  tuMsgs.push({role:"user",text:txt});tuInput="";tuBusy=true;render();
+  logAnswer("tutor","ask",null,txt.slice(0,600),tuCtx&&tuCtx.itemId||null,null,{lesson:tuCtx&&tuCtx.subject||null});
+  // التاريخ يُرسَل كاملاً في كل مرّة: الدالّة بلا ذاكرة، والحالة في مكان واحد هنا
+  const hist=[{role:"user",text:tutorOpening()}].concat(tuMsgs.map(function(m){return{role:m.role,text:m.text}}));
+  const r=await tutorCall(hist);
+  tuBusy=false;
+  if(r.fail){tuFail=r.fail;render();return}
+  tuMsgs.push({role:"model",text:r.reply});
+  logAnswer("tutor","reply",null,String(r.reply).slice(0,600),tuCtx&&tuCtx.itemId||null,null,
+    {lesson:tuCtx&&tuCtx.subject||null});
+  render();
+}
+// نُعيد بناء نصّ الافتتاح كما بنته الدالّة، لأن التاريخ يجب أن يبدأ من حيث بدأ الحوار
+function tutorOpening(){
+  const c=tuCtx||{},L=[];
+  L.push("السؤال: "+(c.question||""));
+  if(c.choices&&c.choices.length)L.push("الخيارات: "+c.choices.join(" · "));
+  L.push("إجابتها: "+(c.studentAnswer||""));
+  L.push("الإجابة الصحيحة: "+(c.correctAnswer||""));
+  if(c.priorErrors)L.push("أخطاؤها السابقة في هذا الموضوع: "+c.priorErrors);
+  L.push("");L.push("ابدئي بسؤالها عن سبب اختيارها — سؤالاً واحداً قصيراً، بلا كشف الصواب.");
+  return L.join("\n");
+}
+const TUTOR_FAIL_AR={
+  not_configured:"المعلّم غير مُفعّل بعد (مفتاح Gemini غير محفوظ).",
+  gemini_auth:"Gemini رفض المفتاح أو المشروع.",
+  gemini_bad_model:"اسم النموذج المحفوظ غير موجود — عدّل السرّ GEMINI_MODEL.",
+  gemini_quota:"انتهت حصّة Gemini لهذه الفترة.",
+  gemini_timeout:"Gemini لم يردّ خلال المهلة.",
+  gemini_unreachable:"تعذّر الوصول إلى Gemini.",
+  gemini_no_text:"Gemini لم يُعِد نصّاً (الأرجح حجب من مرشّحات الأمان).",
+  network:"تعذّر الوصول إلى الدالّة من المتصفّح.",
+};
+function tutorBoxHTML(){
+  if(!tuOn)return "";
+  const bubbles=tuMsgs.map(function(m){
+    const me=m.role==="user";
+    return `<div style="display:flex;justify-content:${me?'flex-start':'flex-end'};margin:6px 0">
+      <div style="max-width:85%;background:${me?'#EEF2FF':'#F0FDF4'};border:1.5px solid ${me?'#C7D2FE':'#A7F3D0'};
+        color:${me?'#312E81':'#065F46'};border-radius:14px;padding:10px 12px;font-size:14px;line-height:1.9">${esc(m.text)}</div>
+    </div>`;
+  }).join("");
+  const done=tuMsgs.filter(function(m){return m.role==="user"}).length>=TUTOR_MAX_TURNS;
+  return `<div style="margin-top:12px;background:#fff;border:1.5px solid #E2E8F0;border-radius:16px;padding:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <div style="font-weight:800;font-size:14px;color:#4338CA">🧑‍🏫 نتناقش فيها</div>
+      <button type="button" onclick="tutorClose()" style="background:none;border:none;color:#94A3B8;font-size:13px;cursor:pointer;font-family:inherit">إغلاق ✕</button>
+    </div>
+    ${bubbles}
+    ${tuBusy?`<div style="font-size:13px;color:#94A3B8;padding:6px">…يفكّر</div>`:""}
+    ${tuFail?`<div style="background:#FEF2F2;border-radius:10px;padding:8px 10px;font-size:12px;color:#991B1B">${TUTOR_FAIL_AR[tuFail]||tuFail}</div>`:""}
+    ${(!done&&!tuFail)?`<div style="display:flex;gap:8px;margin-top:8px">
+      <input id="tuIn" type="text" placeholder="اكتبي ردّك…" ${tuBusy?"disabled":""}
+        style="flex:1;padding:11px 12px;border:1.5px solid #E2E8F0;border-radius:12px;font-size:15px;font-family:inherit"
+        onkeydown="if(event.key==='Enter')tutorSend()">
+      <button class="btn" style="background:#4338CA;margin:0;padding:11px 18px;font-size:14px" onclick="tutorSend()" ${tuBusy?"disabled":""}>أرسلي</button>
+    </div>`:""}
+    ${done?`<div style="font-size:12px;color:#64748B;padding:6px">اكتفينا هنا — واصلي التمرين ✋</div>`:""}
+  </div>`;
+}
+// فحص بضغطة واحدة، كفحص Azure: يُثبت أن الربط يعمل قبل أن نعتمد عليه في جلستها
+async function runTutorDiag(){
+  tuDiag={running:true};render();
+  const save=tuCtx;
+  tuCtx={subject:"لغة إنجليزية",question:"She hasn't called ___.",choices:["just","yet"],
+    studentAnswer:"just",correctAnswer:"yet",itemId:"diag",age:11};
+  const r=await tutorCall([]);
+  tuCtx=save;
+  tuDiag=r.fail?{fail:r.fail,info:r.info||null}:{ok:true,reply:r.reply,model:r.model};
+  render();
+}
+function tutorDiagHTML(){
+  let box="";
+  if(tuDiag&&tuDiag.running)box=`<div style="background:#F1F5F9;border-radius:12px;padding:14px;margin-top:12px;font-size:14px">⏳ نسأل المعلّم…</div>`;
+  else if(tuDiag&&tuDiag.ok)box=`<div style="background:#ECFDF5;border-radius:12px;padding:14px;margin-top:12px;font-size:14px;color:#065F46;line-height:1.9">
+      ✓ <b>المعلّم يعمل.</b> النموذج: <span style="direction:ltr;display:inline-block">${esc(tuDiag.model||"")}</span>
+      <div style="background:#fff;border-radius:10px;padding:10px;margin-top:8px;color:#065F46">${esc(tuDiag.reply||"")}</div></div>`;
+  else if(tuDiag){
+    const i=tuDiag.info||{};
+    box=`<div style="background:#FEF2F2;border-radius:12px;padding:14px;margin-top:12px;font-size:14px;color:#991B1B;line-height:1.9">
+      ✗ <b>${TUTOR_FAIL_AR[tuDiag.fail]||"سبب غير متوقّع"}</b> <span style="font-size:12px">(${esc(tuDiag.fail)})</span>
+      ${i.keyName?`<div style="font-size:12px">المفتاح وُجد باسم: <b style="direction:ltr;display:inline-block">${esc(i.keyName)}</b></div>`:""}
+      ${(i.checked&&!i.keyName)?`<div style="font-size:12px">بُحث عن: <span style="direction:ltr;display:inline-block">${esc(i.checked.join(", "))}</span> — ولم يُوجد أيّها.</div>`:""}
+      ${i.model?`<div style="font-size:12px">النموذج المطلوب: <span style="direction:ltr;display:inline-block">${esc(i.model)}</span></div>`:""}
+      ${i.detail?`<div style="font-size:11px;color:#B91C1C;direction:ltr;text-align:left;margin-top:6px">${esc(String(i.detail).slice(0,200))}</div>`:""}
+      <div style="font-size:12px;margin-top:6px">التمارين لا تتعطّل — تعمل ببطاقاتها كما كانت.</div></div>`;
+  }
+  return `<div style="margin-top:16px;padding-top:14px;border-top:1px dashed #E2E8F0">
+    <div style="font-weight:800;font-size:15px;margin-bottom:6px">🧑‍🏫 فحص المعلّم (Gemini)</div>
+    <div style="font-size:12px;color:#94A3B8;margin-bottom:8px">يُرسل سؤالاً حقيقياً ويعرض ردّه كما هو</div>
+    <button class="btn" style="background:#4338CA" onclick="runTutorDiag()" ${tuDiag&&tuDiag.running?"disabled":""}>🧑‍🏫 افحصي المعلّم الآن</button>
+    ${box}</div>`;
+}
 function renderContrast(){
   const P=cxPair;
   const head=`<button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
@@ -3498,6 +3635,8 @@ function renderEngPlan(){
     ${it.listen?`<button type="button" onclick="speakEnglish(planItems[${planIdx}].listen)" style="background:#ECFEFF;border:1.5px solid #A5F3FC;color:#0891B2;border-radius:10px;padding:7px 16px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:14px;font-family:inherit">🔊 استمعي</button>`:""}
     ${planGateOpen()?`<div class="choices">${choices}</div>`:""}
     ${planLocked?`<div class="explain"><div class="explain-title" style="color:${planPicked===it.a?'#059669':'#B45309'}">${planPicked===it.a?"✓ إجابة صحيحة":"الصحيحة بالأخضر"}</div><div class="explain-body">${it.w||""}</div></div>`:""}
+    ${(planLocked&&planPicked!==it.a&&!tuOn&&tutorAvailable())?`<button type="button" onclick="planAskTutor()" style="background:#EEF2FF;border:1.5px solid #C7D2FE;color:#4338CA;border-radius:12px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer;margin-top:10px;font-family:inherit">🧑‍🏫 ناقشيني فيها</button>`:""}
+    ${tutorBoxHTML()}
   </div>
   ${planLocked?`<button class="btn" style="background:#4338CA" onclick="planNext()">${planIdx+1>=planItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`:""}`;
 }
