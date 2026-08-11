@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260811-0300";
+  var BUILD="build-20260811-0620";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -2427,7 +2427,7 @@ async function runMicDiag(){
 const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEngPlan","startDictation",
   "startPronunciation","startSpeaking","startAudioDiag","runMicDiag","fetchTimeout",
   "pronStart","pronStop","pronReset","speakStart","speakStop","speakReset","speakEnglish",
-  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand"];
+  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","copyAzRaw","esc"];
 function censusMissing(){return CENSUS.filter(function(n){return typeof window[n]!=="function"})}
 function censusHTML(){
   var miss=censusMissing();
@@ -2513,6 +2513,25 @@ async function runAzureDiag(){
   else azDiag={fail:res.fail,detail:res.detail,info:res.info||null,bytes:bl?bl.size:0};
   render();
 }
+// ردّ Azure الخام يُعرض كنصّ لا كترميز: فيه أقواس واقتباسات، ولولا التهريب لكسر الصفحة
+function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
+function copyAzRaw(){
+  const r=azDiag&&azDiag.info&&azDiag.info.raw;if(!r)return;
+  const done=function(){alert("نُسخ الردّ الخام. الصقه لمن يفحص العطل.")};
+  try{
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(r).then(done,function(){azFallbackCopy(r,done)});return}
+  }catch(e){}
+  azFallbackCopy(r,done);
+}
+// سفاري على آيفون يمنع الحافظة خارج إيماءة مباشرة أحياناً — فنُبقي مساراً ثانياً بدل أن يفشل صامتاً
+function azFallbackCopy(txt,done){
+  try{
+    const ta=document.createElement("textarea");ta.value=txt;ta.setAttribute("readonly","");
+    ta.style.position="fixed";ta.style.top="-1000px";document.body.appendChild(ta);
+    ta.select();ta.setSelectionRange(0,txt.length);document.execCommand("copy");
+    document.body.removeChild(ta);done();
+  }catch(e){alert("تعذّر النسخ تلقائياً — حدّد النصّ بإصبعك وانسخه.")}
+}
 function azDiagHTML(){
   let box="";
   if(azDiag&&azDiag.running){
@@ -2542,6 +2561,12 @@ function azDiagHTML(){
         <b>⚠️ المفتاح المحفوظ فيه ${toAr(azDiag.info.keyBad.length)} محرف غير مرئي</b> (${azDiag.info.keyBad.join("، ")})
         <br>طوله ${toAr(azDiag.info.keyRawLength||0)} وبعد التنظيف ${toAr(azDiag.info.keyCleanLength||0)}.
         <br>احذف السرّ وأعِد لصقه من Azure مباشرةً لا من محادثة أو صفحة عربية.
+      </div>`:""}
+      ${(azDiag.fail==="azure_no_assessment"&&azDiag.info&&azDiag.info.raw)?`<div style="background:#fff;border:1px solid #FCA5A5;border-radius:8px;padding:8px 10px;margin-top:8px;font-size:12px;color:#7F1D1D;line-height:1.8">
+        <b>ردّ Azure الخام</b> — هذا ما أعاده حرفاً بحرف. أرسله لمن يفحص العطل.
+        <div style="font-size:12px;margin-top:4px">مصفوفة الكلمات: ${azDiag.info.hasWords?`<b>موجودة (${toAr(azDiag.info.hasWords)} كلمة) بلا درجات</b>`:"<b>غائبة</b>"} · مفاتيح NBest: <span style="direction:ltr;display:inline-block">${(azDiag.info.nbestKeys||[]).join(", ")}</span></div>
+        <div style="direction:ltr;text-align:left;background:#F8FAFC;border-radius:6px;padding:8px;margin-top:6px;max-height:180px;overflow:auto;font-family:monospace;font-size:11px;white-space:pre-wrap;word-break:break-all">${esc(azDiag.info.raw)}</div>
+        <button class="btn" style="background:#991B1B;margin-top:8px;padding:8px 14px;font-size:13px" onclick="copyAzRaw()">📋 انسخ الردّ الخام</button>
       </div>`:""}
       <div style="font-size:12px;color:#7F1D1D;margin-top:6px">التمرين نفسه لا يتعطّل — يرجع تلقائياً إلى المحرّك الاحتياطي.</div></div>`;
   }

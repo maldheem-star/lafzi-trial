@@ -143,7 +143,28 @@ the app silently falls back to Whisper. Live log, 2026-08-09 → 2026-08-10:
    native modules, no Speech SDK binary)? Is there a plain-HTTP API that returns
    phoneme scores?
 
-## 8. Constraints on any proposed fix
+## 8. Second opinion received (2026-08-11) — and what still needs checking
+
+A reviewer reported that this is a known service-side defect: the same symptom
+(HTTP 200, `RecognitionStatus: Success`, correct transcript, `PronunciationAssessment`
+absent) was described on Microsoft Q&A in May 2026 for `southeastasia` on **S0**, and
+also reproduced in `centralindia`; and that the region does officially list
+Pronunciation Assessment as supported. If that holds, then **neither region nor the F0
+tier is the cause**, and no configuration change on our side will fix it.
+
+We have not independently verified that thread. Two things follow regardless:
+
+* The remaining open item in §6 (pricing tier) stops being decisive — worth reading off
+  the Overview blade, but it no longer changes the plan.
+* Escalating to Microsoft requires a support plan that covers technical cases;
+  pay-as-you-go/free subscriptions cannot open one without buying support. So
+  "open a ticket" may not be an available path here.
+
+The app now captures the full raw Azure JSON on `noAssessment` and shows it in the
+in-app diagnostic with a copy button, so §4's inference can be replaced with the
+actual response body.
+
+## 9. Constraints on any proposed fix
 
 * Server side is **Deno on Supabase Edge Functions** — fetch only, no Node-native
   addons. A solution requiring the Microsoft Speech SDK's native bits will not run.

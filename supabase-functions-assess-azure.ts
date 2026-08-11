@@ -192,6 +192,9 @@ Deno.serve(async (req) => {
         lexical: String(best.Lexical || ""),
         // مفاتيح الردّ الخام: تكشف ما أعادته Azure فعلاً بلا تخمين
         nbestKeys: Object.keys(best), hasWords: wordsRaw.length,
+        // الردّ الخام كاملاً. استنتجنا سابقاً من الدرجات أن Words تعود بلا تقييم؛ الاستنتاج
+        // ليس رصداً، وهذا يجعله رصداً. لا يحمل مفتاحاً ولا صوتاً — نصّ ما نطقته فقط.
+        raw: JSON.stringify(j).slice(0, 2000),
         region: REGION });
     }
     const words: WordOut[] = (best.Words || []).map((w: Record<string, unknown>) => {
