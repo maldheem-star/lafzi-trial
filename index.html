@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260811-1540";
+  var BUILD="build-20260811-1615";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -2427,7 +2427,7 @@ async function runMicDiag(){
 const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEngPlan","startDictation",
   "startPronunciation","startSpeaking","startAudioDiag","runMicDiag","fetchTimeout",
   "pronStart","pronStop","pronReset","speakStart","speakStop","speakReset","speakEnglish",
-  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","copyAzRaw","esc","weakPhonemeStr","num0","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary"];
+  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","copyAzRaw","esc","weakPhonemeStr","num0","cxShuffleOrder","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary"];
 function censusMissing(){return CENSUS.filter(function(n){return typeof window[n]!=="function"})}
 function censusHTML(){
   var miss=censusMissing();
@@ -3186,7 +3186,12 @@ function cxInterleave(list){
   return out.concat(other);
 }
 let cxOn=false,cxPair=null,cxStep=0,cxDrills=[],cxPicked=null,cxLocked=false,cxOk=false,
-    cxWrongCount=0,cxWhyOn=false,cxWhyPicked=null,cxNoticePicked=null,cxDoneThisPlan=false;
+    cxWrongCount=0,cxWhyOn=false,cxWhyPicked=null,cxNoticePicked=null,cxDoneThisPlan=false,
+    cxNoticeOrder=[],cxWhyOrder=[];
+// أزرار التدريب كانت تُخلَط وخيارا «لماذا» والملاحظة لا. وهيا اختارت الخيار الثاني في
+// أربع من ستّ مرّات، فلا أستطيع أن أقول إنها ميّزت السبب أم أنها ضغطت الموضع نفسه.
+// الخلط يجعل الرقم صالحاً للقياس؛ وتسجيل الموضع يكشف الانحياز إن بقي.
+function cxShuffleOrder(n){return shuffle(Array.from({length:n},function(_,i){return i}))}
 function cxSideOf(pair,k){return pair.sides.filter(function(s){return s.k===k})[0]||pair.sides[0]}
 function cxLabelsFor(pair,d){
   // الخياران هما العضوان دائماً — تمييزٌ لا إنتاج. وبعض الأزواج تحتاج صيغاً خاصة بكل جملة
@@ -3203,11 +3208,14 @@ function cxArm(step){
     d._opts=shuffle(L.slice());d._ai=d._opts.indexOf(right);
   }
   cxPicked=null;cxLocked=false;cxWhyOn=false;cxWhyPicked=null;
+  // ترتيب جديد لكل تدريب: ثابتٌ داخل السؤال الواحد فلا يقفز تحت إصبعها، ومختلفٌ بينها
+  if(cxPair)cxWhyOrder=cxShuffleOrder(cxPair.sides.length);
 }
 function cxStart(pair){
   cxOn=true;cxPair=pair;cxStep=0;cxPicked=null;cxLocked=false;cxWrongCount=0;
   cxWhyOn=false;cxWhyPicked=null;cxNoticePicked=null;
   cxDrills=cxInterleave(pair.drills).slice(0,CX_DRILLS);
+  cxNoticeOrder=cxShuffleOrder(pair.notice.opts.length);cxWhyOrder=cxShuffleOrder(pair.sides.length);
   logAnswer("eng_plan","cx_open",null,null,pair.id,null,{lesson:pair.dom});
   render();
 }
@@ -3219,9 +3227,9 @@ function cxNeededFor(it){
 // الملاحظة قبل الشرح: تُسأل عن الفرق ولا تُحتسب عليها. الغرض أن تنظر لا أن تُختبر
 function cxNoticePick(i){
   if(cxNoticePicked!=null)return;
-  cxNoticePicked=i;
-  const o=cxPair.notice.opts[i];
-  logAnswer("eng_plan","cx_notice",!!(o&&o.ok),o?o.t:null,cxPair.id,null,{lesson:cxPair.dom});
+  cxNoticePicked=cxNoticeOrder[i];
+  const o=cxPair.notice.opts[cxNoticePicked];
+  logAnswer("eng_plan","cx_notice",!!(o&&o.ok),(o?o.t:"")+" · موضع "+toAr(i+1),cxPair.id,null,{lesson:cxPair.dom});
   render();
 }
 function cxRuleDone(){cxStep=1;cxArm(1);render()}
@@ -3237,9 +3245,9 @@ function cxChoose(i){
 // التفسير الذاتي: تختار السبب بنفسها. الخياران هما سببا الطرفين — لا سبب عامّ مبهم
 function cxWhyPick(i){
   if(cxWhyPicked!=null)return;
-  cxWhyPicked=i;
-  const d=cxDrills[cxStep-1],right=cxSideOf(cxPair,d.side).why;
-  logAnswer("eng_plan","cx_why",cxPair.sides[i].why===right,cxPair.sides[i].why,cxPair.id,null,{lesson:cxPair.dom});
+  cxWhyPicked=cxWhyOrder[i];
+  const d=cxDrills[cxStep-1],right=cxSideOf(cxPair,d.side).why,got=cxPair.sides[cxWhyPicked].why;
+  logAnswer("eng_plan","cx_why",got===right,got+" · موضع "+toAr(i+1),cxPair.id,null,{lesson:cxPair.dom});
   render();
 }
 function cxNext(){
@@ -3687,7 +3695,7 @@ function renderContrast(){
         ${[P.notice.a,P.notice.b].map(function(s){return `<div style="direction:ltr;text-align:left;background:#F8FAFC;border:1.5px solid #E2E8F0;border-radius:12px;padding:14px;font-family:Georgia,serif;font-size:18px;color:#0F172A">${s}</div>`}).join("")}
       </div>
       <div style="font-size:15px;font-weight:800;color:#1E293B;margin-bottom:10px">${P.notice.ask}</div>
-      <div class="choices">${P.notice.opts.map(function(o,i){return `<button class="choice" onclick="cxNoticePick(${i})">${o.t}</button>`}).join("")}</div>
+      <div class="choices">${cxNoticeOrder.map(function(oi,i){return `<button class="choice" onclick="cxNoticePick(${i})">${P.notice.opts[oi].t}</button>`}).join("")}</div>
       <div style="font-size:12px;color:#94A3B8;margin-top:10px">لا صح ولا خطأ هنا — نريدك أن تنظري إلى الفرق أولاً.</div>
     </div>`;
     return;
@@ -3731,7 +3739,7 @@ function renderContrast(){
   }).join("");
   const why=(cxWhyOn&&cxWhyPicked==null)?`<div class="explain" style="margin-top:10px"><div class="explain-title" style="color:#4338CA">لماذا؟</div>
       <div class="explain-body"><div style="margin-bottom:8px;font-size:14px">الصحيح <b style="direction:ltr;display:inline-block">${d._opts[d._ai]}</b> — أي السببين هو؟</div>
-      <div class="choices">${P.sides.map(function(s,i){return `<button class="choice" style="font-size:14px" onclick="cxWhyPick(${i})">${s.why}</button>`}).join("")}</div></div></div>`
+      <div class="choices">${cxWhyOrder.map(function(si,i){return `<button class="choice" style="font-size:14px" onclick="cxWhyPick(${i})">${P.sides[si].why}</button>`}).join("")}</div></div></div>`
     :(cxWhyPicked!=null?(function(){
         const right=cxSideOf(P,d.side).why,ok=P.sides[cxWhyPicked].why===right;
         return `<div class="explain" style="margin-top:10px"><div class="explain-title" style="color:${ok?'#059669':'#B45309'}">${ok?"✓ هذا هو السبب":"السبب هو:"}</div>
