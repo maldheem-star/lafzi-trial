@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260811-1320";
+  var BUILD="build-20260811-1355";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -2427,7 +2427,7 @@ async function runMicDiag(){
 const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEngPlan","startDictation",
   "startPronunciation","startSpeaking","startAudioDiag","runMicDiag","fetchTimeout",
   "pronStart","pronStop","pronReset","speakStart","speakStop","speakReset","speakEnglish",
-  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","copyAzRaw","esc","weakPhonemeStr","num0","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard"];
+  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","copyAzRaw","esc","weakPhonemeStr","num0","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor"];
 function censusMissing(){return CENSUS.filter(function(n){return typeof window[n]!=="function"})}
 function censusHTML(){
   var miss=censusMissing();
@@ -3469,7 +3469,7 @@ function tutorDiagHTML(){
       <div style="font-size:12px;margin-top:6px">التمارين لا تتعطّل — تعمل ببطاقاتها كما كانت.</div></div>`;
   }
   return `<div style="margin-top:16px;padding-top:14px;border-top:1px dashed #E2E8F0">
-    <div style="font-weight:800;font-size:15px;margin-bottom:6px">🧑‍🏫 فحص المعلّم (Gemini)</div>
+    <div style="font-weight:800;font-size:15px;margin-bottom:6px">🧑‍🏫 فحص المعلّم</div>
     <div style="font-size:12px;color:#94A3B8;margin-bottom:8px">يُرسل سؤالاً حقيقياً ويعرض ردّه كما هو</div>
     <button class="btn" style="background:#4338CA" onclick="runTutorDiag()" ${tuDiag&&tuDiag.running?"disabled":""}>🧑‍🏫 افحصي المعلّم الآن</button>
     ${box}</div>`;
@@ -4881,6 +4881,15 @@ function renderLoading(){
   </div>`;
 }
 
+// الاختبار الشامل: أربع مهارات تمرّ من هنا، فخُطّاف واحد يكفيها جميعاً.
+// اسم المادة يُقرأ من مجال السؤال نفسه — المحرّك لا يعرف مهارة من أخرى.
+const QUIZ_SUBJECT_AR={quant:"رياضيات",verbal:"لغة عربية — لفظي",science:"علوم",flex:"تفكير ومرونة ذهنية"};
+function quizAskTutor(){
+  const q=filtered[idx];if(!q||!locked||picked===q.a)return;
+  tutorStart({subject:QUIZ_SUBJECT_AR[q.d]||"قدرات",question:String(q.q||""),
+    choices:q.c||null,studentAnswer:q.c?q.c[picked]:"",correctAnswer:q.c?q.c[q.a]:"",
+    priorErrors:"",itemId:q.id||String(q.qtype||q.d||""),age:11});
+}
 function renderQuiz(){
   const q=filtered[idx];if(!q){home();return}
   const d=DOMAINS[q.d];
@@ -4920,6 +4929,8 @@ function renderQuiz(){
     ${gateBox}
     ${gateOpen()?`<div class="choices">${choices}</div>`:""}
     ${explain}
+    ${(locked&&picked!==q.a&&!tuOn&&tutorAvailable())?`<button type="button" onclick="quizAskTutor()" style="background:#EEF2FF;border:1.5px solid #C7D2FE;color:#4338CA;border-radius:12px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer;margin-top:10px;font-family:inherit">🧑‍🏫 ناقشيني فيها</button>`:""}
+    ${tutorBoxHTML()}
     ${banner}
   </div>
   ${btn}`;
