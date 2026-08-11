@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260811-2010";
+  var BUILD="build-20260811-2115";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -2456,7 +2456,7 @@ async function runMicDiag(){
 const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEngPlan","startDictation",
   "startPronunciation","startSpeaking","startAudioDiag","runMicDiag","fetchTimeout",
   "pronStart","pronStop","pronReset","speakStart","speakStop","speakReset","speakEnglish",
-  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","copyAzRaw","esc","weakPhonemeStr","num0","profileBarHTML","renderHomeCoachOnly","learnerInfo","toMasc","genderizeText","genderizeNode","genderizeInit","lsGet","lsSet","lsDel","pkey","cxShuffleOrder","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary"];
+  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","copyAzRaw","esc","weakPhonemeStr","num0","profileBarHTML","renderHomeCoachOnly","learnerInfo","toMasc","genderizeText","genderizeNode","genderizeInit","lsGet","lsSet","lsDel","pkey","cxShuffleOrder","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary","coachTopicGo","coachTopicBack","coachTopicClean","coachFreeScene"];
 function censusMissing(){return CENSUS.filter(function(n){return typeof window[n]!=="function"})}
 function censusHTML(){
   var miss=censusMissing();
@@ -3549,22 +3549,71 @@ const COACH_SCENES=[
   {id:"pet",ar:"عن الحيوانات الأليفة 🐈",en:"You are a friend who loves animals, talking with the student about pets.",
    focus:"Model GIVING OPINIONS AND REASONS. 'I think...', 'because...', 'My favourite is... because...'. Always ask her why.",
    opener:"I have a cat named Luna and she sleeps all day. Tell me about animals you like."},
+  // الموقف السابع: الموضوع من عنده. الستّة قبله لكلٍّ أسلوبه المقصود، وهذا أسلوبه
+  // إدارة الحديث نفسه — سؤالٌ ورأيٌ بسبب — لأنّ الموضوع لا يُعرف قبل أن يُكتب.
+  {id:"free",ar:"موضوع من عندك ✍️",free:true,en:"",focus:"",opener:""},
 ];
+// افتتاح احتياطي: لا يذكر الموضوع لأنّه قد يكون مكتوباً بالعربية، والشريك إنجليزيّ
+const COACH_FREE_OPENER="Great choice! Tell me — what do you like most about it?";
+const COACH_TOPIC_MAX=60;
+let coachTopicAsk=false,coachTopic="",coachTopicErr="";
+function coachFreeScene(topic){
+  return {id:"free",ar:"موضوع من عندك ✍️",free:true,topic:topic,
+    en:`You and the student are chatting about a topic the student chose: "${topic}". `+
+       `Talk about it like two friends. If the topic is not suitable for an 11-year-old, `+
+       `gently move to a safe, related topic instead.`,
+    focus:"Model KEEPING A CONVERSATION GOING. Give your own short opinion with a reason, "+
+       "then ask about the student's: 'What do you like about it?', 'Why?', 'Tell me more about...'.",
+    opener:COACH_FREE_OPENER};
+}
 const COACH_MAX_TURNS=8; // جلسة قصيرة تنتهي بخلاصة، لا محادثة بلا نهاية
 const COACH_TIP_EVERY=3; // نصيحة أسلوب كل ثالثة جملة
 let coachScene=null,coachMsgs=[],coachBusy=false,coachListening=false,coachElapsed=0,
     coachRec=null,coachStream=null,coachChunks=[],coachTimer=null,coachFail="",coachDone=false,coachUnsupported=false;
 function startCoach(){
   mode="coach";coachScene=null;coachMsgs=[];coachBusy=false;coachListening=false;
-  coachFail="";coachDone=false;coachUnsupported=!micSupported();
+  coachFail="";coachDone=false;coachTopicAsk=false;coachTopic="";coachTopicErr="";
+  coachUnsupported=!micSupported();
   window.scrollTo(0,0);render();
 }
 function coachPick(i){
-  coachScene=COACH_SCENES[i];
+  const s=COACH_SCENES[i];
+  if(s&&s.free){coachTopicAsk=true;coachTopic="";coachTopicErr="";render();
+    setTimeout(function(){const el=document.getElementById("coachTopicIn");if(el)el.focus()},80);return}
+  coachScene=s;
   coachMsgs=[{role:"model",text:coachScene.opener}];
   logAnswer("coach","open",null,coachScene.id,coachScene.id,null,{lesson:coachScene.id});
   render();setTimeout(()=>speakEnglish(coachScene.opener),400);
 }
+// الموضوع الحرّ: يُقصّ ويُنظّف قبل أن يُرسَل — سطرٌ واحد بحدّ معلوم، لا نصّ مفتوح
+function coachTopicClean(v){return String(v||"").replace(/[\r\n\t]+/g," ").replace(/\s+/g," ").trim().slice(0,COACH_TOPIC_MAX)}
+async function coachTopicGo(){
+  if(coachBusy)return;
+  const el=document.getElementById("coachTopicIn");
+  const topic=coachTopicClean(el?el.value:coachTopic);
+  if(topic.length<2){coachTopicErr="اكتب موضوعاً أولاً — كلمة أو جملة قصيرة.";render();
+    setTimeout(function(){const x=document.getElementById("coachTopicIn");if(x){x.value=topic;x.focus()}},60);return}
+  coachTopic=topic;coachTopicErr="";coachTopicAsk=false;
+  coachScene=coachFreeScene(topic);
+  coachBusy=true;coachMsgs=[];render();
+  // الافتتاح من النموذج نفسه: موضوعٌ لا نعرفه لا يصلح له افتتاحٌ مكتوب سلفاً
+  let open="";
+  try{
+    const res=await fetchTimeout(TUTOR_FN_URL,{method:"POST",
+      headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},
+      body:JSON.stringify({mode:"chat",learner:learnerInfo(),scene:coachScene.en,level:"A2",
+        focus:coachScene.focus,styleTip:false,question:coachScene.en,
+        studentAnswer:`Let's talk about ${topic}.`,history:[]})});
+    const d=await res.json();
+    if(d&&d.reply)open=String(d.reply).split(/\n\s*TIP\s*:\s*/i)[0].trim();
+  }catch(e){}
+  if(!open)open=COACH_FREE_OPENER;  // تعذّر الاتصال لا يمنع البدء
+  coachBusy=false;
+  coachMsgs=[{role:"model",text:open}];
+  logAnswer("coach","open",null,topic,"free",null,{lesson:"free"});
+  render();setTimeout(function(){speakEnglish(open)},400);
+}
+function coachTopicBack(){coachTopicAsk=false;coachTopicErr="";render()}
 function coachSay(t){speakEnglish(t)}
 function coachReset(){coachBusy=false;coachListening=false;
   if(coachTimer){clearInterval(coachTimer);coachTimer=null}
@@ -3699,6 +3748,8 @@ const MASC_W={
   // المضارع للمخاطبة
   "تحتاجين":"تحتاج","تستطيعين":"تستطيع","تقولين":"تقول","تقولينها":"تقولها","تسمعينها":"تسمعها",
   "تكتبينها":"تكتبها","تصلين":"تصل","تعرفين":"تعرف","ترين":"ترى","تشاهدين":"تشاهد",
+  "تحبّين":"تحبّ","تريدين":"تريد","تفضّلين":"تفضّل","تشعرين":"تشعر","تسمعين":"تسمع",
+  "تقرئين":"تقرأ","تكتبين":"تكتب","تعملين":"تعمل","تستمعين":"تستمع","تجدين":"تجد",
   // أوصاف ونداءات
   // ولا يُدرَج هنا مثل «ممتازة» و«جاهزة»: هما في نصّها صفتان لمؤنّث لا خطابٌ لها
   // («طلاقة ممتازة»، «جمل جاهزة»)، وتذكيرهما يُفسد الجملة.
@@ -3773,6 +3824,26 @@ function renderCoach(){
       <div style="font-size:14px;color:#475569;line-height:1.9">متصفّحك لا يدعم التسجيل. جرّبي Safari على الآيفون أو Chrome على أندرويد.</div></div>`;
     return;
   }
+  if(coachTopicAsk){
+    app.innerHTML=`${head}
+    <div class="card">
+      <span class="tag" style="background:#DBEAFE;color:#1D4ED8">✍️ موضوع من عندك</span>
+      <div class="q" style="font-size:19px">عن أي شيء تحبّين أن تتكلّمي؟</div>
+      <div style="font-size:13px;color:#64748B;line-height:1.9;margin-bottom:12px">
+        اكتبي الموضوع بالعربية أو بالإنجليزية — كرة القدم، الفضاء، لعبتك المفضّلة، أي شيء.
+        والشريك سيتكلّم معك عنه بالإنجليزية.
+      </div>
+      <input id="coachTopicIn" maxlength="${COACH_TOPIC_MAX}" value="${esc(coachTopic)}"
+        placeholder="مثال: الفضاء والكواكب"
+        style="width:100%;box-sizing:border-box;padding:13px 14px;border:1.5px solid #C7D2FE;border-radius:14px;
+        font-size:16px;font-family:inherit;margin-bottom:10px"
+        onkeydown="if(event.key==='Enter'){event.preventDefault();coachTopicGo()}">
+      ${coachTopicErr?`<div style="font-size:13px;color:#DC2626;margin-bottom:10px">${esc(coachTopicErr)}</div>`:""}
+      <button class="btn" style="margin:0" onclick="coachTopicGo()">ابدئي الحديث</button>
+      <button class="link-btn" onclick="coachTopicBack()">→ رجوع للمواقف</button>
+    </div>`;
+    return;
+  }
   if(!coachScene){
     app.innerHTML=`${head}
     <div class="card">
@@ -3819,8 +3890,10 @@ function renderCoach(){
     : coachBusy ? `<button class="btn" style="background:#94A3B8" disabled>⏳ لحظة…</button>`
     : `<button class="btn" style="background:#059669" onclick="coachStart()">🎤 تكلّمي</button>`;
   app.innerHTML=`${head}
-  <div class="meta"><span>${coachScene.ar}</span><span>${toAr(coachMsgs.filter(function(m){return m.role==="user"}).length)} من ${toAr(COACH_MAX_TURNS)}</span></div>
+  <div class="meta"><span>${coachScene.free?esc("✍️ "+(coachScene.topic||"")):coachScene.ar}</span><span>${toAr(coachMsgs.filter(function(m){return m.role==="user"}).length)} من ${toAr(COACH_MAX_TURNS)}</span></div>
   <div class="card">${bubbles}
+    ${(coachBusy&&!coachMsgs.length)?`<div style="text-align:center;padding:18px 0"><div class="spin"></div>
+      <div style="font-size:14px;color:#64748B;margin-top:12px">نُحضّر بداية الحديث عن موضوعك…</div></div>`:""}
     ${coachFail?`<div style="background:#FEF2F2;border-radius:10px;padding:9px 11px;font-size:13px;color:#991B1B;margin-top:8px">${COACH_FAIL_AR[coachFail]||coachFail}</div>`:""}
   </div>
   ${btn}
