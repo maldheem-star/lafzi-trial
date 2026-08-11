@@ -25,15 +25,32 @@ const CORS = {
 const jsonOut = (o: unknown, status = 200) =>
   new Response(JSON.stringify(o), { status, headers: { ...CORS, "Content-Type": "application/json" } });
 
-// مزوّدان: Groq أولاً لأن طبقته المجانية بلا رصيد وبلا محاسبة على الاستهلاك — حدود
-// طلبات فقط، وهي أضعاف حاجتنا. وGemini يبقى مساراً بديلاً إن وُجد مفتاحه ورصيده.
-// السلوك التربوي في تعليمات النظام لا في أوزان النموذج، فينتقل بين المزوّدين كما هو.
-const GROQ_KEYS = ["GROQ_API_KEY", "GROQ_KEY"];
+// المزوّدون بيانات لا شيفرة. أكثر خدمات النماذج متوافقة مع صيغة OpenAI، فيكفي
+// عنوانٌ ومفتاحٌ واسم نموذج. إضافة مزوّد = سطر هنا، وتبديله = تغيير سرّ بلا نشر.
+// وGemini وحده صيغته مختلفة، فله فرعه.
+//
+// كلها طبقات مجانية دائمة بلا بطاقة (بحدود طلبات لا رصيد)، وحاجتنا عشرات الطلبات
+// يومياً — أي جزء من واحد بالمئة من أصغرها.
+const OAI = {
+  groq:       { url: "https://api.groq.com/openai/v1/chat/completions",
+                keys: ["GROQ_API_KEY", "GROQ_KEY"], model: "llama-3.3-70b-versatile" },
+  cerebras:   { url: "https://api.cerebras.ai/v1/chat/completions",
+                keys: ["CEREBRAS_API_KEY"], model: "llama-3.3-70b" },
+  openrouter: { url: "https://openrouter.ai/api/v1/chat/completions",
+                keys: ["OPENROUTER_API_KEY"], model: "meta-llama/llama-3.3-70b-instruct:free" },
+  mistral:    { url: "https://api.mistral.ai/v1/chat/completions",
+                keys: ["MISTRAL_API_KEY"], model: "mistral-large-latest" },
+  github:     { url: "https://models.inference.ai.azure.com/chat/completions",
+                keys: ["GITHUB_MODELS_TOKEN", "GITHUB_TOKEN"], model: "gpt-4o-mini" },
+  // مزوّد لم نُسمّه بعد: يُضبط عنوانه ومفتاحه ونموذجه بأسرار، فلا ننتظر نشراً
+  custom:     { url: "", keys: ["TUTOR_API_KEY"], model: "" },
+} as Record<string, { url: string; keys: string[]; model: string }>;
+// ترتيب التفضيل حين لا يُفرض مزوّد: أوّل من يوجد مفتاحه
+const OAI_ORDER = ["groq", "cerebras", "openrouter", "mistral", "github", "custom"];
 const GEMINI_KEYS = ["GEMINI_API_KEY", "GOOGLE_API_KEY", "GOOGLE_GENAI_API_KEY",
   "GOOGLE_GEMINI_API_KEY", "GEMINI_KEY", "GOOGLE_AI_API_KEY"];
-const KEY_NAMES = GROQ_KEYS.concat(GEMINI_KEYS);
-const DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile";
 const DEFAULT_GEMINI_MODEL = "gemini-flash-latest";
+const KEY_NAMES = OAI_ORDER.reduce((a: string[], k) => a.concat(OAI[k].keys), []).concat(GEMINI_KEYS);
 // اسم المفتاح لا قيمته — تشخيصٌ بلا كشف للسرّ
 function findKey(names: string[]) {
   for (const n of names) {
@@ -85,14 +102,23 @@ Deno.serve(async (req) => {
   try {
     const b = await req.json().catch(() => ({})) as Record<string, unknown>;
 
-    // نُفضّل Groq ما دام مفتاحه موجوداً، ويُمكن فرض المزوّد بسرّ TUTOR_PROVIDER
+    // يُفرض المزوّد بسرّ TUTOR_PROVIDER، وإلا فأوّل من يوجد مفتاحه، وGemini آخراً
     const forced = (Deno.env.get("TUTOR_PROVIDER") || "").trim().toLowerCase();
-    const gq = findKey(GROQ_KEYS), gm = findKey(GEMINI_KEYS);
-    let provider = forced === "gemini" ? "gemini" : forced === "groq" ? "groq"
-      : (gq.raw ? "groq" : "gemini");
-    let found = provider === "groq" ? gq : gm;
-    // المفروض غير الموجود: نرجع إلى الآخر بدل أن نفشل بلا داعٍ
-    if (!found.raw) { provider = provider === "groq" ? "gemini" : "groq"; found = provider === "groq" ? gq : gm; }
+    const customUrl = (Deno.env.get("TUTOR_BASE_URL") || "").trim();
+    if (customUrl) OAI.custom.url = customUrl;
+    let provider = "", found = { name: "", raw: "" };
+    const pick = (p: string) => {
+      if (p === "gemini") { const f = findKey(GEMINI_KEYS); if (f.raw) { provider = "gemini"; found = f; return true } return false }
+      const spec = OAI[p];
+      if (!spec || (p === "custom" && !spec.url)) return false;
+      const f = findKey(spec.keys);
+      if (f.raw) { provider = p; found = f; return true }
+      return false;
+    };
+    if (!forced || !pick(forced)) {
+      for (const p of OAI_ORDER) if (pick(p)) break;
+      if (!provider) pick("gemini");
+    }
     const keyName = found.name;
     // نفس درس Azure: محرف غير مرئي واحد ملتصق بالمفتاح يجعل الطلب يفشل فشلاً غامضاً
     const KEY = found.raw.replace(/[^\x21-\x7E]/g, "");
@@ -102,7 +128,8 @@ Deno.serve(async (req) => {
       return jsonOut({ error: "not_configured",
         detail: found.raw.length ? `${keyName} present but contains no usable characters`
                                  : "no tutor key found under any known name",
-        keyRawLength: found.raw.length, keyBad, keyName, provider, checked: KEY_NAMES });
+        keyRawLength: found.raw.length, keyBad, keyName, provider,
+        providers: OAI_ORDER.concat(["gemini"]), checked: KEY_NAMES });
     }
 
     const question = clip(b.question);
@@ -111,9 +138,16 @@ Deno.serve(async (req) => {
 
     const subject = clip(b.subject, 60) || "لغة إنجليزية";
     const age = Number(b.age) > 0 ? Number(b.age) : 11;
-    const model = provider === "groq"
-      ? (Deno.env.get("GROQ_MODEL") || DEFAULT_GROQ_MODEL).trim()
-      : (Deno.env.get("GEMINI_MODEL") || DEFAULT_GEMINI_MODEL).trim();
+    // النموذج: سرّ عامّ TUTOR_MODEL، أو سرّ خاصّ بالمزوّد، أو الافتراضي
+    const model = (Deno.env.get("TUTOR_MODEL") || "").trim()
+      || (Deno.env.get(provider.toUpperCase() + "_MODEL") || "").trim()
+      || (provider === "gemini" ? DEFAULT_GEMINI_MODEL : OAI[provider].model);
+
+    // المزوّد المخصّص بلا اسم نموذج يُنتج طلباً بحقل فارغ وخطأً غامضاً — نقولها صراحةً
+    if (!model) {
+      return jsonOut({ error: "tutor_bad_model", provider, model: "",
+        detail: `اضبط السرّ TUTOR_MODEL أو ${provider.toUpperCase()}_MODEL` });
+    }
 
     // تاريخ الحوار يصل من العميل ويعود إليه: الدالة بلا ذاكرة عمداً، فلا حالة تُدار هنا
     const history = Array.isArray(b.history) ? (b.history as Record<string, unknown>[]).slice(-MAX_TURNS) : [];
@@ -122,17 +156,7 @@ Deno.serve(async (req) => {
     const turns: Record<string, unknown>[] = history.length ? history : [{ role: "user", text: opening }];
 
     let url: string, headers: Record<string, string>, body: unknown;
-    if (provider === "groq") {
-      // Groq متوافق مع صيغة OpenAI: دور system صريح، وأدوار user/assistant
-      url = "https://api.groq.com/openai/v1/chat/completions";
-      headers = { "Authorization": `Bearer ${KEY}`, "Content-Type": "application/json" };
-      body = {
-        model,
-        messages: [{ role: "system", content: systemFor(subject, age) }].concat(
-          turns.map((m) => ({ role: String(m.role) === "model" ? "assistant" : "user", content: clip(m.text) }))),
-        temperature: 0.6, max_tokens: 300, top_p: 0.9,
-      };
-    } else {
+    if (provider === "gemini") {
       url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
       headers = { "x-goog-api-key": KEY, "Content-Type": "application/json" };
       body = {
@@ -144,6 +168,16 @@ Deno.serve(async (req) => {
         safetySettings: ["HARM_CATEGORY_HARASSMENT", "HARM_CATEGORY_HATE_SPEECH",
           "HARM_CATEGORY_SEXUALLY_EXPLICIT", "HARM_CATEGORY_DANGEROUS_CONTENT",
         ].map((category) => ({ category, threshold: "BLOCK_LOW_AND_ABOVE" })),
+      };
+    } else {
+      // صيغة OpenAI: دور system صريح، وأدوار user/assistant
+      url = OAI[provider].url;
+      headers = { "Authorization": `Bearer ${KEY}`, "Content-Type": "application/json" };
+      body = {
+        model,
+        messages: [{ role: "system", content: systemFor(subject, age) }].concat(
+          turns.map((m) => ({ role: String(m.role) === "model" ? "assistant" : "user", content: clip(m.text) }))),
+        temperature: 0.6, max_tokens: 300, top_p: 0.9,
       };
     }
 
@@ -174,16 +208,16 @@ Deno.serve(async (req) => {
 
     const j = await res.json();
     let text = "", why = "";
-    if (provider === "groq") {
-      const ch = (j.choices && j.choices[0]) || {};
-      text = String((ch.message && ch.message.content) || "").trim();
-      why = String(ch.finish_reason || "");
-    } else {
+    if (provider === "gemini") {
       const cand = (j.candidates && j.candidates[0]) || {};
       text = ((cand.content && cand.content.parts) || [])
         .map((p: Record<string, unknown>) => String(p.text || "")).join("").trim();
       why = String(cand.finishReason || "") ||
         String((j.promptFeedback && j.promptFeedback.blockReason) || "");
+    } else {
+      const ch = (j.choices && j.choices[0]) || {};
+      text = String((ch.message && ch.message.content) || "").trim();
+      why = String(ch.finish_reason || "");
     }
     if (!text) {
       // حُجب أو عاد فارغاً: نُصرّح بالسبب بدل أن نُمرّر فراغاً يبدو ردّاً
