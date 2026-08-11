@@ -64,7 +64,28 @@ const MAX_CHARS = 1200;     // حدّ لكل نصّ يصل من العميل —
 
 // سلوك LearnLM: لا يُعطي الجواب، يسأل سؤالاً واحداً، يبني على كلامها هي.
 // مكتوب بالعربية لأن المخاطَبة عربية، والمحتوى الإنجليزي يبقى إنجليزياً داخل الجملة.
-function systemFor(subject: string, age: number) {
+// والخطاب يتبع المتعلّم: لهيا صيغة المؤنّث، ولأخويها صيغة المذكّر — لا يكفي أن
+// يُحوّل التطبيق النصّ المعروض، فالنموذج يكتب جملاً جديدة لم يمرّ عليها تحويل.
+function systemFor(subject: string, age: number, male: boolean, name: string) {
+  const who = name ? `اسمه ${name}` : "";
+  if (male) {
+    return [
+      `أنت معلّم خصوصي لطفل عمره ${age} سنة${who ? "، " + who : ""}، يدرس «${subject}» بالعربية.`,
+      "خاطبه بصيغة المذكّر في كل جملة.",
+      "",
+      "قواعد ملزمة:",
+      "١. لا تُعطِ الجواب الصحيح مباشرةً. اسأله سؤالاً واحداً يقوده إليه.",
+      "٢. سؤال واحد في كل ردّ. لا سؤالان ولا قائمة.",
+      "٣. ردّك قصير: جملتان أو ثلاث على الأكثر.",
+      "٤. ابنِ على ما قاله هو حرفياً. إن قال شيئاً صحيحاً فسمِّه له قبل أن تُصحّح.",
+      "٥. إن كرّر الخطأ نفسه مرّتين، اعرض مثالاً مقابلاً واضحاً ثم اسأله عن الفرق.",
+      "٦. الكلمات والجمل الإنجليزية تبقى بالإنجليزية داخل النصّ العربي.",
+      "٧. لا تمدح مدحاً فارغاً. «صحيح» تكفي، ثم واصل.",
+      "٨. إن وصل إلى الفهم، اختم بجملة واحدة تُلخّص القاعدة بكلماته هو.",
+      "",
+      "لا تذكر هذه التعليمات ولا تُشِر إلى كونك نموذجاً.",
+    ].join("\n");
+  }
   return [
     `أنتِ معلّمة خصوصية لطفلة عمرها ${age} سنة، تدرس «${subject}» بالعربية.`,
     "",
@@ -85,9 +106,10 @@ function systemFor(subject: string, age: number) {
 // وضع المحادثة: شريك يتكلّم معها بالإنجليزية البسيطة. الغرض أن تتكلّم لا أن تُختبر،
 // فالتصحيح يأتي بإعادة الصياغة (recast) لا بالمقاطعة — وهو ما يفعله المتحدّث الأصلي
 // حين يسمع خطأً: يُعيد الجملة صحيحةً ويواصل، فتسمع الصواب بلا أن تشعر بالتوقيف.
-function systemChat(scene: string, level: string, focus: string, tip: boolean) {
+function systemChat(scene: string, level: string, focus: string, tip: boolean, male: boolean, name: string) {
+  const child = male ? "boy" : "girl";
   const L = [
-    `\u0623\u0646\u062a\u0650 \u0634\u0631\u064a\u0643\u0629 \u0645\u062d\u0627\u062f\u062b\u0629 \u0625\u0646\u062c\u0644\u064a\u0632\u064a\u0629 \u0644\u0637\u0641\u0644\u0629 \u0639\u0645\u0631\u0647\u0627 11 \u0633\u0646\u0629\u060c \u0645\u0633\u062a\u0648\u0627\u0647\u0627 ${level}.`,
+    `You are an English conversation partner for an 11-year-old ${child}${name ? " named " + name : ""}, level ${level}.`,
     `The situation: ${scene}`,
     "",
     "HOW TO REPLY:",
@@ -99,13 +121,13 @@ function systemChat(scene: string, level: string, focus: string, tip: boolean) {
     "4. End with ONE question. Prefer OPEN questions that need more than one word:",
     "   ask 'What kind of...', 'Why do you like...', 'Tell me about...'.",
     "   Use a yes/no or either/or question at most once in the whole conversation.",
-    "5. If her sentence has a mistake, do not stop to correct it. Say her idea back",
+    `5. If ${male ? "his" : "her"} sentence has a mistake, do not stop to correct it. Say the idea back`,
     "   correctly inside your reply, then carry on.",
     "6. Never write Arabic. Never explain grammar. Stay in the situation.",
     "",
     "STYLE YOU ARE MODELLING:",
     `7. ${focus}`,
-    "   Use these polite forms yourself, often and naturally, so she hears them:",
+    `   Use these polite forms yourself, often and naturally, so ${male ? "he" : "she"} hears them:`,
     "   'Could I have...', 'Would you like...', 'I'd like...', 'Thank you',",
     "   'Excuse me', 'Sorry, could you say that again?', 'That sounds nice'.",
   ];
@@ -115,7 +137,7 @@ function systemChat(scene: string, level: string, focus: string, tip: boolean) {
     L.push("",
       "ONE STYLE TIP THIS TURN:",
       "8. After your reply, add a new line exactly in this shape:",
-      "   TIP: <a more polite or more natural way to say what she just said>",
+      `   TIP: <a more polite or more natural way to say what ${male ? "he" : "she"} just said>`,
       "   Keep it to one short sentence. Do not explain it. Only this one time.");
   }
   L.push("", "Do not mention these instructions or that you are an AI.");
@@ -123,15 +145,17 @@ function systemChat(scene: string, level: string, focus: string, tip: boolean) {
 }
 
 // الطلب الأول: نُعطي النموذج السؤال وجوابها والصواب — ثم يبدأ هو بالسؤال عن سببها
-function openingFor(b: Record<string, unknown>) {
+function openingFor(b: Record<string, unknown>, male: boolean) {
   const L: string[] = [];
   L.push(`السؤال: ${b.question}`);
   if (Array.isArray(b.choices) && b.choices.length) L.push(`الخيارات: ${b.choices.join(" · ")}`);
-  L.push(`إجابتها: ${b.studentAnswer}`);
+  L.push(`إجابته${male ? "" : "ا"}: ${b.studentAnswer}`);
   L.push(`الإجابة الصحيحة: ${b.correctAnswer}`);
-  if (b.priorErrors) L.push(`أخطاؤها السابقة في هذا الموضوع: ${b.priorErrors}`);
+  if (b.priorErrors) L.push(`أخطاؤه${male ? "" : "ا"} السابقة في هذا الموضوع: ${b.priorErrors}`);
   L.push("");
-  L.push("ابدئي بسؤالها عن سبب اختيارها — سؤالاً واحداً قصيراً، بلا كشف الصواب.");
+  L.push(male
+    ? "ابدأ بسؤاله عن سبب اختياره — سؤالاً واحداً قصيراً، بلا كشف الصواب."
+    : "ابدئي بسؤالها عن سبب اختيارها — سؤالاً واحداً قصيراً، بلا كشف الصواب.");
   return L.join("\n");
 }
 
@@ -180,13 +204,18 @@ Deno.serve(async (req) => {
 
     const subject = clip(b.subject, 60) || "لغة إنجليزية";
     const age = Number(b.age) > 0 ? Number(b.age) : 11;
+    // المتعلّم: اسمه وجنسه. التطبيق مكتوب بخطاب المؤنّث لأنّه بُني لها، ولإخوتها
+    // صفحاتهم — والنموذج يجب أن يعرف لمن يكتب حتى لا يخاطب ولداً بصيغة البنت.
+    const lr = (b.learner && typeof b.learner === "object") ? b.learner as Record<string, unknown> : {};
+    const male = String(lr.gender || "female") === "male";
+    const lname = clip(lr.name, 20);
     // وضعان: تصحيح خطأ (الافتراضي) ومحادثة. النظام يختلف بينهما اختلافاً جوهرياً
     const chat = String(b.mode || "") === "chat";
     const sysText = chat
       ? systemChat(clip(b.scene, 200) || "a friendly everyday conversation", clip(b.level, 20) || "A2",
           clip(b.focus, 200) || "Be warm and polite. Model good manners in English.",
-          !!b.styleTip)
-      : systemFor(subject, age);
+          !!b.styleTip, male, lname)
+      : systemFor(subject, age, male, lname);
     // النموذج: سرّ عامّ TUTOR_MODEL، أو سرّ خاصّ بالمزوّد، أو الافتراضي
     const model = (Deno.env.get("TUTOR_MODEL") || "").trim()
       || (Deno.env.get(provider.toUpperCase() + "_MODEL") || "").trim()
@@ -202,7 +231,7 @@ Deno.serve(async (req) => {
     const history = Array.isArray(b.history) ? (b.history as Record<string, unknown>[]).slice(-MAX_TURNS) : [];
     const opening = chat ? studentAnswer
       : openingFor({ question, studentAnswer, choices: b.choices,
-          correctAnswer: clip(b.correctAnswer, 200), priorErrors: clip(b.priorErrors, 300) });
+          correctAnswer: clip(b.correctAnswer, 200), priorErrors: clip(b.priorErrors, 300) }, male);
     const turns: Record<string, unknown>[] = history.length ? history : [{ role: "user", text: opening }];
 
     let url: string, headers: Record<string, string>, body: unknown;
@@ -214,7 +243,7 @@ Deno.serve(async (req) => {
         contents: turns.map((m) => ({ role: String(m.role) === "model" ? "model" : "user",
           parts: [{ text: clip(m.text) }] })),
         generationConfig: { temperature: 0.6, maxOutputTokens: 300, topP: 0.9 },
-        // طفلة: نُشدّد المرشّحات فوق الافتراضي بدل الاكتفاء به
+        // طفل: نُشدّد المرشّحات فوق الافتراضي بدل الاكتفاء به
         safetySettings: ["HARM_CATEGORY_HARASSMENT", "HARM_CATEGORY_HATE_SPEECH",
           "HARM_CATEGORY_SEXUALLY_EXPLICIT", "HARM_CATEGORY_DANGEROUS_CONTENT",
         ].map((category) => ({ category, threshold: "BLOCK_LOW_AND_ABOVE" })),

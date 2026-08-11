@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260811-1730";
+  var BUILD="build-20260811-1815";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -132,24 +132,25 @@
 // والإتقان). وهيا تبقى بلا بادئة عمداً — فبياناتها كلها محفوظة تحت المفاتيح القديمة،
 // وتغييرها كان سيُضيّع شهر عمل.
 const PROFILES=[
-  {id:"haya",name:"هيا",alias:"بنتي",emoji:"🌸",color:"#DB2777"},
-  {id:"mohammed",name:"محمد",alias:"محمد",emoji:"⚽",color:"#0E7490"},
-  {id:"elias",name:"إلياس",alias:"إلياس",emoji:"🚀",color:"#7C3AED"},
+  {id:"haya",name:"هيا",alias:"بنتي",emoji:"🌸",color:"#DB2777",g:"f"},
+  {id:"mohammed",name:"محمد",alias:"محمد",emoji:"⚽",color:"#0E7490",g:"m"},
+  {id:"elias",name:"إلياس",alias:"إلياس",emoji:"🚀",color:"#7C3AED",g:"m"},
 ];
-const PROFILE_KEY="app_profile_v1";
-function profileId(){try{return localStorage.getItem(PROFILE_KEY)||"haya"}catch(e){return "haya"}}
+// الهويّة من الرابط وحده، ولا تُحفَظ. لكلٍّ صفحته: mohammed.html و elias.html،
+// وهيا في الرئيسية. ولو حُفظت الهويّة لكان آخر من فتح الجهاز يُدخِل الآخرين في صفحته.
+function profileId(){
+  try{
+    const m=/[?&]p=([A-Za-z]+)/.exec(location.search||"");
+    const id=m?m[1].toLowerCase():"";
+    return PROFILES.some(function(p){return p.id===id})?id:"haya";
+  }catch(e){return "haya"}
+}
 function profileOf(){const id=profileId();return PROFILES.filter(function(p){return p.id===id})[0]||PROFILES[0]}
 // هيا بلا بادئة: مفاتيحها القديمة هي مفاتيحها الحالية، فلا تفقد شيئاً
 function pkey(k){const id=profileId();return id==="haya"?k:id+"::"+k}
 function lsGet(k){try{return localStorage.getItem(pkey(k))}catch(e){return null}}
 function lsSet(k,v){try{localStorage.setItem(pkey(k),v)}catch(e){}}
 function lsDel(k){try{localStorage.removeItem(pkey(k))}catch(e){}}
-function profileSet(id){
-  if(!PROFILES.some(function(p){return p.id===id}))return;
-  try{localStorage.setItem(PROFILE_KEY,id)}catch(e){}
-  // إعادة تحميل نظيفة: الحالة في الذاكرة (التباعد، الجلسة، العدّادات) تخصّ الملفّ السابق
-  location.replace(location.pathname+"?p="+id);
-}
 
 // ===== إظهار الأخطاء بدل ابتلاعها =====
 // خطأ واحد في المستوى الأعلى كان كفيلاً بإيقاف تعريف بقية الملف، فتموت كل الأزرار في كل
@@ -2455,7 +2456,7 @@ async function runMicDiag(){
 const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEngPlan","startDictation",
   "startPronunciation","startSpeaking","startAudioDiag","runMicDiag","fetchTimeout",
   "pronStart","pronStop","pronReset","speakStart","speakStop","speakReset","speakEnglish",
-  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","copyAzRaw","esc","weakPhonemeStr","num0","profileBarHTML","profileSet","lsGet","lsSet","lsDel","pkey","cxShuffleOrder","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary"];
+  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","copyAzRaw","esc","weakPhonemeStr","num0","profileBarHTML","learnerInfo","toMasc","genderizeText","genderizeNode","genderizeInit","lsGet","lsSet","lsDel","pkey","cxShuffleOrder","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary"];
 function censusMissing(){return CENSUS.filter(function(n){return typeof window[n]!=="function"})}
 function censusHTML(){
   var miss=censusMissing();
@@ -3385,6 +3386,7 @@ function planAskTutor(){
 // وغيرها بلا أن يعرف كلٌّ منها شيئاً عنه. ما يحتاجه المُستدعي: نصّ السؤال، وجوابها،
 // والصواب. والمفتاح في الخادم، والحكم يبقى لمفتاح السؤال لا للنموذج.
 const TUTOR_FN_URL=SB_URL+"/functions/v1/tutor";
+function learnerInfo(){const p=profileOf();return{name:p.name,gender:p.g==="m"?"male":"female"}}
 const TUTOR_MAX_TURNS=5; // حوار يُصحّح فكرة، لا محادثة مفتوحة تُنسي التمرين
 let tuOn=false,tuBusy=false,tuMsgs=[],tuCtx=null,tuFail="",tuInput="",tuDiag=null;
 function tutorAvailable(){return !tuFail||tuFail==="network"}
@@ -3393,7 +3395,8 @@ async function tutorCall(history){
   try{
     const res=await fetchTimeout(TUTOR_FN_URL,{method:"POST",
       headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},
-      body:JSON.stringify(Object.assign({},tuCtx,{history}))});
+      // جنس المتعلّم يُرسَل للنموذج: يكتب العربية بخطابه هو، فلا نعتمد على التحويل وحده
+      body:JSON.stringify(Object.assign({},tuCtx,{history,learner:learnerInfo()}))});
     const d=await res.json();
     if(!d||d.error)return{fail:(d&&d.error)||"no_response",info:d};
     if(!d.reply)return{fail:"empty"};
@@ -3630,7 +3633,7 @@ async function coachFinish(){
       headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},
       // نصيحة الأسلوب بطلب من التطبيق لا بمزاج النموذج: كل ثالثة جملة لا أكثر،
       // فالتصحيح في كل دور يقطع الحديث ويُشعرها أنها تُمتحَن لا تتحدّث
-      body:JSON.stringify({mode:"chat",scene:coachScene.en,level:"A2",
+      body:JSON.stringify({mode:"chat",learner:learnerInfo(),scene:coachScene.en,level:"A2",
         focus:coachScene.focus||"",styleTip:(said%COACH_TIP_EVERY===0),
         question:coachScene.en,studentAnswer:heard,history:hist})});
     const d=await res.json();
@@ -3666,18 +3669,102 @@ const COACH_FAIL_AR={mic:"لم نصل إلى الميكروفون — اسمحي
   stt:"تعذّر تفريغ الصوت. حاولي مرة أخرى.",
   reply:"تعذّر الوصول إلى شريك الحديث. حاولي مرة أخرى.",
   nokey:"المحادثة غير مُفعّلة بعد."};
-// شريط الملفّات: صفحة لكل واحد منهم. التبديل يُعيد التحميل عمداً — الحالة في الذاكرة
-// (التباعد، الجلسة الجارية، العدّادات) تخصّ الملفّ السابق، وحملها معه يخلط ما فصلناه.
+// ===== تذكير الخطاب في صفحات الأولاد =====
+// التطبيق كلّه مكتوب بخطاب المؤنّث لأنّه بُني لها. ونسخُه بخطاب المذكّر يعني ملفّاً ثانياً
+// يتباعد عن الأوّل مع كل تعديل. فالتحويل يجري على النصّ المعروض وحده، وبقائمة كلمات
+// مُحصورة لا بقاعدة عامّة: «اختاري» فعلٌ يُحوَّل، و«متوازي» و«الذي» و«تمرين» أسماء تُترَك.
+// وصفحة هيا لا يُنصَّب فيها المراقب أصلاً، فلا يمسّها من هذا شيء.
+const MASC_W={
+  // أفعال الأمر
+  "اختاري":"اختر","أعيدي":"أعِد","اضغطي":"اضغط","اجمعي":"اجمع","اقرئي":"اقرأ","ابدئي":"ابدأ",
+  "لاحظي":"لاحظ","جرّبي":"جرّب","اضربي":"اضرب","عُدّي":"عُدّ","عدّي":"عدّ","تحقّقي":"تحقّق",
+  "واصلي":"واصل","استمعي":"استمع","شاهدي":"شاهد","جاوبي":"جاوب","تكلّمي":"تكلّم","طبّقي":"طبّق",
+  "حرّكي":"حرّك","راجعي":"راجع","اكتشفي":"اكتشف","خذي":"خذ","قدّري":"قدّر","أكملي":"أكمل",
+  "افحصي":"افحص","أرسلي":"أرسل","تدرّبي":"تدرّب","اكتبي":"اكتب","اكتبيها":"اكتبها","انسخي":"انسخ",
+  "تأكدي":"تأكد","تأكّدي":"تأكّد","أوجدي":"أوجد","احسبي":"احسب","احذفي":"احذف","استعملي":"استعمل",
+  "افتحي":"افتح","انقلي":"انقل","اصعدي":"اصعد","انتبهي":"انتبه","رتّبي":"رتّب","اربطي":"اربط",
+  "ابحثي":"ابحث","كوّني":"كوّن","تذكّري":"تذكّر","أخبريني":"أخبرني","قولي":"قل","قوليها":"قلها",
+  "حاولي":"حاول","أوقفي":"أوقف","اقتربي":"اقترب","كرّري":"كرّر","ضعي":"ضع","اجعلي":"اجعل",
+  "تابعي":"تابع","ارجعي":"ارجع","اسألي":"اسأل","قارني":"قارن","ركّزي":"ركّز","سجّلي":"سجّل",
+  "الصقي":"الصق","انسخيه":"انسخه","حلّي":"حُلّ","سمّي":"سمِّ","تأمّلي":"تأمّل","افهمي":"افهم",
+  "اعتمدي":"اعتمد","خمّني":"خمّن","تخافي":"تخف","تقفي":"تقف","تتركي":"تترك","تنسي":"تنسَ",
+  "تعتمدي":"تعتمد","تضربي":"تضرب","تطرحي":"تطرح","تستعجلي":"تستعجل","تخمّني":"تخمّن",
+  "انطقي":"انطق","انطقيها":"انطقها","اقرئيها":"اقرأها","أعيديها":"أعِدها","اضربيها":"اضربها",
+  "اضربيه":"اضربه","تضربيها":"تضربها","احسبيه":"احسبه","افتحيه":"افتحه","أغلقيه":"أغلقه",
+  "تعيديه":"تعيده","تختاري":"تختار","ناقشيني":"ناقشني","احملي":"احمل","اسمحي":"اسمح",
+  "انسي":"انسَ","توقّفي":"توقّف","انظري":"انظر","تنظري":"تنظر","احفظي":"احفظ","تبدئي":"تبدأ",
+  "أضيفي":"أضِف","تجمعي":"تجمع","تعدّي":"تعدّ","تُطوّلي":"تُطوّل","استخدمي":"استخدم",
+  "استنتجي":"استنتج","اعملي":"اعمل","أنهي":"أنهِ","تتكلّمين":"تتكلّم","تتكلّمي":"تتكلّم",
+  "عدّلي":"عدّل","اسحبي":"اسحب","ارسمي":"ارسم","أكّدي":"أكّد","توقّعي":"توقّع","صحّحي":"صحّح",
+  // المضارع للمخاطبة
+  "تحتاجين":"تحتاج","تستطيعين":"تستطيع","تقولين":"تقول","تقولينها":"تقولها","تسمعينها":"تسمعها",
+  "تكتبينها":"تكتبها","تصلين":"تصل","تعرفين":"تعرف","ترين":"ترى","تشاهدين":"تشاهد",
+  // أوصاف ونداءات
+  // ولا يُدرَج هنا مثل «ممتازة» و«جاهزة»: هما في نصّها صفتان لمؤنّث لا خطابٌ لها
+  // («طلاقة ممتازة»، «جمل جاهزة»)، وتذكيرهما يُفسد الجملة.
+  "المتدرّبة":"المتدرّب","متدرّبة":"متدرّب","لكِ":"لك","عليكِ":"عليك"
+};
+const AR_TOK=/[ء-يً-ْٰـ]+/g;
+function toMasc(w){
+  if(MASC_W[w])return MASC_W[w];
+  // بادئة الواو أو الفاء: «وقولي» ⇒ «وقل»
+  const c=w.charAt(0);
+  if((c==="و"||c==="ف")&&MASC_W[w.slice(1)])return c+MASC_W[w.slice(1)];
+  // الماضي للمخاطبة: «أتقنتِ» ⇒ «أتقنتَ» — والكسرة آخرَ الكلمة لا تأتي إلا للمؤنّث هنا
+  if(w.length>3&&w.slice(-2)==="تِ")return w.slice(0,-1)+"َ";
+  if(w.length>2&&w.slice(-2)==="كِ")return w.slice(0,-1);
+  return w;
+}
+function genderizeText(t){
+  if(!t||!/[ء-ي]/.test(t))return t;
+  return t.replace(AR_TOK,toMasc);
+}
+function genderizeNode(root){
+  if(!root)return 0;
+  let n,ch=0;
+  // نصّ البرنامج نفسه داخل <script> في الجسم: تجاوُزه واجب — فيه عربيّةٌ كثيرة،
+  // والمرور عليه في كل تغيير يعني مسحاً لمئات الكيلوبايتات عند كل ضغطة زرّ.
+  const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode:function(x){
+    const t=x.parentNode&&x.parentNode.nodeName;
+    return (t==="SCRIPT"||t==="STYLE"||t==="NOSCRIPT")?NodeFilter.FILTER_REJECT:NodeFilter.FILTER_ACCEPT;
+  }});
+  while((n=w.nextNode())){
+    const v=n.nodeValue;if(!v)continue;
+    const g=genderizeText(v);
+    if(g!==v){n.nodeValue=g;ch++}
+  }
+  const ph=root.querySelectorAll?root.querySelectorAll("[placeholder]"):[];
+  for(let i=0;i<ph.length;i++){
+    const v=ph[i].getAttribute("placeholder")||"",g=genderizeText(v);
+    if(g!==v)ph[i].setAttribute("placeholder",g);
+  }
+  return ch;
+}
+let gzOn=false,gzBusy=false;
+function genderizeInit(){
+  if(gzOn||profileOf().g!=="m")return;
+  gzOn=true;
+  try{genderizeNode(document.body)}catch(e){appError("genderize",e)}
+  // الشاشات تُعاد بناءً كثيراً، وبعض التحديثات جزئيّة لا تمرّ بـ render، فالمراقب أضمن
+  try{
+    new MutationObserver(function(){
+      if(gzBusy)return;gzBusy=true;
+      try{genderizeNode(document.body)}catch(e){}
+      gzBusy=false;
+    }).observe(document.body,{childList:true,subtree:true,characterData:true});
+  }catch(e){appError("genderizeObserve",e)}
+}
+
+// لا مبدِّل في الصفحة: لكلٍّ رابطه. هذا مجرّد عنوانٍ يُطمئن مَن فتح الصفحة أنّه في صفحته
+// هو. وصفحة هيا هي الرئيسية، فلا تحتاج عنواناً — لا شيء تغيّر عندها.
 function profileBarHTML(){
-  const cur=profileOf();
-  return `<div style="background:#fff;border:1.5px solid #E2E8F0;border-radius:16px;padding:10px 12px;margin-bottom:14px">
-    <div style="font-size:12px;color:#94A3B8;margin-bottom:8px">صفحة من؟ لكلٍّ تقدّمه وأخطاؤه وأصواته وحده</div>
-    <div style="display:flex;gap:8px">${PROFILES.map(function(p){
-      const on=p.id===cur.id;
-      return `<button type="button" onclick="profileSet('${p.id}')" style="flex:1;background:${on?p.color:'#F8FAFC'};
-        color:${on?'#fff':'#475569'};border:1.5px solid ${on?p.color:'#E2E8F0'};border-radius:12px;padding:10px 4px;
-        font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">${p.emoji} ${p.name}</button>`;
-    }).join("")}</div></div>`;
+  const p=profileOf();
+  if(p.id==="haya")return "";
+  return `<div style="background:${p.color};color:#fff;border-radius:16px;padding:12px 14px;margin-bottom:14px;
+    display:flex;align-items:center;gap:10px">
+    <div style="font-size:22px">${p.emoji}</div>
+    <div><div style="font-size:16px;font-weight:800">صفحة ${p.name}</div>
+    <div style="font-size:12px;opacity:.85">تقدّمك وأخطاؤك وأصواتك هنا وحدك</div></div></div>`;
 }
 function renderCoach(){
   const head=`<button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>`;
@@ -5118,6 +5205,7 @@ function render(){if(mode==="home")return renderHome();if(mode==="engplan")retur
 
 function renderHome(){
   app.innerHTML=`
+  ${profileBarHTML()}
   <div class="hero">
     <h1>برنامج موهبة المكثّف</h1>
     <p>تدريب ذكي على مقياس القدرات العقلية المتعددة — المستوى الثاني. أسئلة تتجدّد كل مرة، والاستدلال اللغوي والعلمي يولّدها الذكاء الاصطناعي.</p>
@@ -5137,7 +5225,6 @@ function renderHome(){
     <button class="mode full" style="background:#0F766E;border-color:#0F766E" onclick="startFactPlan()"><span class="m-name">🧮 طلاقة الحقائق · ١٠ دقائق</span><div class="m-sub">استرجاع فوري للجمع والطرح والضرب بلا عدّ أو أصابع، بتباعد ذكي</div></button>
     <button class="mode full" style="background:#4338CA;border-color:#4338CA" onclick="startEngPlan()"><span class="m-name">⭐ خطة الإنجليزية اليومية · ٤٠ دقيقة</span><div class="m-sub">شرح ثم تدريب، بتباعد ذكي — لا يتكرّر أي عنصر إلا في يوم استحقاقه (منهج الصف السادس)</div></button>
     <button class="mode full" style="background:#0E7490;border-color:#0E7490" onclick="startDictation()"><span class="m-name">✍️ إملاء بالإنجليزية</span><div class="m-sub">استمعي للكلمة، ثم اكتبيها — مستوى A1</div></button>
-    ${profileBarHTML()}
     <button class="mode full" style="background:#7C3AED;border-color:#7C3AED" onclick="startPronunciation()"><span class="m-name">🎤 تمرين النطق</span><div class="m-sub">تحقّق أساسي هل نطقتِ الكلمة صح (يحتاج ميكروفون) — وليس تصحيح لهجة دقيق</div></button>
     <button class="mode full" style="background:#0E7490;border-color:#0E7490" onclick="startCoach()"><span class="m-name">🗣️ تكلّمي بالإنجليزية</span><div class="m-sub">محادثة حرّة مع شريك يردّ عليكِ بالإنجليزية — ونقيس وضوح أصواتك في كل جملة</div></button>
     <button class="mode full" style="background:#DB2777;border-color:#DB2777" onclick="startSpeaking()"><span class="m-name">🗣️ التحدّث · جمل من كتابك</span><div class="m-sub">جمل قصيرة جاهزة من وحدة Welcome: تسمعينها ثم تقولينها كاملة — تبدأ بالنص أمامك وتنتهي بالسمع فقط</div></button>
@@ -5256,6 +5343,7 @@ function renderProgress(){
   <div class="card"><div style="font-weight:800;margin-bottom:6px">آخر المحاولات</div>${rows}</div>`;
 }
 
+genderizeInit();
 render();
 
 </script>
