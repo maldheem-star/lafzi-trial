@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260809-2245";
+  var BUILD="build-20260811-0300";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -2051,7 +2051,7 @@ function basicsNew(){
   basicsShownAt=Date.now();
   const gen=basicsSub==="multdiv"?basicsMakeFamily:basicsSub==="addcarry"?basicsMakeAddCarry:basicsSub==="subborrow"?basicsMakeSubBorrow:basicsSub==="pimul"?basicsMakePiMul:basicsSub==="pimul3"?basicsMakePiMul3:basicsMakePercent;
   basicsCur={fam:gen()};basicsLocked=false;basicsPicked=-1;basicsTyped="";
-  divRemedyAt=0;pctWarn="";pctWarned=false;
+  divRemedyAt=0;pctWarn="";pctWarned=false;pctOverride=false;
   if(basicsSub==="multdiv"&&basicsStage===1)divArmArray(basicsCur.fam.c,basicsCur.fam.b);
   basicsPrep();
   if(basicsSub==="percent")pctArm();
@@ -2086,7 +2086,9 @@ function basicsDivLogRemedy(){
 // ===== النسبة: مقارنة الجواب بالنطاق الذي اختارته هي =====
 // ٧٠٪ من ٦٠٠: اختارت «بين ٣٠٠ و٦٠٠» ثم كتبت ٦٠ — حدّدت المنطقة الصحيحة وكتبت خارجها،
 // ولم يوقفها شيء. البوّابة جعلتها تُقدّر، ولم تجعلها تُقابل جوابها بتقديرها.
-let pctWarn="",pctWarned=false;
+// كان التحذير يظهر ولا يُسجَّل، فلم أستطع أن أعرف: هل ظهر وتجاوزته، أم لم يظهر أصلاً؟
+// سؤالان من أربعة أخطأت فيهما كانت إجابتهما خارج نطاقها، ولم يكن عندي ما يفصل الاحتمالين.
+let pctWarn="",pctWarned=false,pctOverride=false;
 function pctBandRange(a,i){return [[0,a/4],[a/4,a/2],[a/2,a],[a,Infinity]][i]}
 function pctOutsideOwnBand(v){
   if(!pctGateOn()||pctBandPick<0||!Number.isFinite(v))return false;
@@ -2130,6 +2132,8 @@ function basicsSubmit(){
     pctWarn=`اخترتِ أن الجواب ${pctBands(basicsCur.fam.a)[pctBandPick]}، وكتبتِ ${toAr(v)} — وهو خارج ما قدّرتِه بنفسك. راجعي حسابك، أو اضغطي «تحقّقي» مرة أخرى إن كنتِ متأكّدة.`;
     pctWarned=true;render();return;
   }
+  // أصرّت على رقم خارج نطاقها بعد التحذير — هذا ما نحتاج رؤيته في السجلّ
+  if(pctWarned&&pctOutsideOwnBand(v))pctOverride=true;
   pctWarn="";basicsTyped=raw;basicsLocked=true;
   basicsRecord(Number.isFinite(v)&&Math.abs(v-basicsCur.ansVal)<1e-6,raw);
 }
@@ -2148,7 +2152,9 @@ function basicsRecord(ok,resp){
   const elapsed=basicsShownAt?Date.now()-basicsShownAt:null;
   // الرقم الذي أنتجته فعلاً: بدونه أعرف أنها أخطأت ولا أعرف نوع الخطأ (نسيت الحمل؟ أخطأت موضع الفاصلة؟)
   // محاولات النطاق تُقاس: إن بقيت أكثر من واحدة فالخلل في حسّ الحجم لا في الحساب
-  const respOut=pctGateOn()&&resp!=null?String(resp)+" · نطاق×"+toAr(pctBandTries):resp;
+  const respOut=pctGateOn()&&resp!=null
+    ?String(resp)+" · نطاق×"+toAr(pctBandTries)+(pctWarned?(pctOverride?" · تجاوزت التحذير":" · حُذّرت فصحّحت"):"")
+    :resp;
   logAnswer("basics_"+basicsSub,"stage"+basicsStage,ok,respOut,null,elapsed,{q_text:basicsCur.qText||null});
   if(elapsed!=null){
     recentAnswerTimes.push(elapsed);if(recentAnswerTimes.length>RAPID_STREAK)recentAnswerTimes.shift();
@@ -3018,6 +3024,26 @@ function fixNext(){
   fixOn=false;fixItem=null;fixPicked=null;fixLocked=false;render();
 }
 function fixNeeded(it){return !!(it&&it.t==="grammar"&&itemStuck(it.id))}
+// بوّابة القراءة كانت في الاختبار الشامل وحده — ورفعت الفهم المقروء هناك من ١/٣ إلى ٣/٣.
+// وفي خطة الإنجليزي بقي بلا بوّابة وبقي ١/٣. نفس خطأ «الدواء غير موصول بمكان السقوط».
+// السرعة أبطأ من العربية عمداً: النصّ إنجليزي A1 وهي تقرؤه بلغة ثانية.
+const ENG_READ_WPM=70, ENG_READ_MIN_S=15, ENG_READ_MAX_S=30;
+let planGateSecs=0,planGateLeft=0,planGateTimer=null,planShownAt=0;
+function planGateSecondsFor(it){
+  if(!it||it.t!=="reading")return 0;
+  const text=String(it.passage||"")+" "+String(it.q||"");
+  const w=text.trim().split(/\s+/).filter(Boolean).length;
+  const byLen=w?Math.round(w/ENG_READ_WPM*60):0;
+  return Math.min(ENG_READ_MAX_S,Math.max(ENG_READ_MIN_S,byLen));
+}
+function planGateStop(){if(planGateTimer){clearInterval(planGateTimer);planGateTimer=null}}
+function planGateStart(it){
+  planGateStop();
+  planGateSecs=planGateSecondsFor(it);planGateLeft=planGateSecs;
+  if(!planGateSecs)return;
+  planGateTimer=setInterval(function(){planGateLeft--;if(planGateLeft<=0){planGateLeft=0;planGateStop()}render()},1000);
+}
+function planGateOpen(){return planGateSecs===0||planGateLeft<=0}
 let planItems=[],planIdx=0,planPicked=null,planLocked=false,planScore=0,planTotal=0,planDone=false,planInput="",planMeta=null;
 function startEngPlan(){
   const p=buildDailyPlan();
@@ -3026,18 +3052,20 @@ function startEngPlan(){
   fixOn=false;fixItem=null;fixStep=0;
   mode="engplan";window.scrollTo(0,0);
   const f=planItems[0];
+  planShownAt=Date.now();planGateStart(f);
   if(fixNeeded(f)){fixStart(f);return}
   render();
   if(f&&f.t==="dict")setTimeout(()=>speakEnglish(f.w),400);
 }
 function planCur(){return planItems[planIdx]}
 function planChoose(i){
-  if(planLocked||fixOn)return;planPicked=i;planLocked=true;
+  if(planLocked||fixOn||!planGateOpen())return;planPicked=i;planLocked=true;planGateStop();
   const it=planCur(),ok=i===it.a;
   if(ok)planScore++;
   srsUpdate(it.id,ok);lessonRecord(it.lesson,ok);
   itemErrRecord(it.id,ok,it.c?it.c[i]:null);
-  logAnswer("eng_plan",it.t,ok,it.c?it.c[i]:null,it.id,null,{is_new:!!it._isNew,srs_box:it._box,lesson:it.lesson||null});
+  logAnswer("eng_plan",it.t,ok,it.c?it.c[i]:null,it.id,planShownAt?Date.now()-planShownAt:null,
+    {is_new:!!it._isNew,srs_box:it._box,lesson:it.lesson||null,q_text:String(it.q||"").slice(0,600)});
   render();
 }
 function planCheckDict(){
@@ -3048,7 +3076,8 @@ function planCheckDict(){
   const it=planCur(),ok=val===it.w.toLowerCase();
   if(ok)planScore++;
   srsUpdate(it.id,ok);
-  logAnswer("eng_plan","dict",ok,val,it.id,null,{is_new:!!it._isNew,srs_box:it._box});
+  logAnswer("eng_plan","dict",ok,val,it.id,planShownAt?Date.now()-planShownAt:null,
+    {is_new:!!it._isNew,srs_box:it._box,q_text:String(it.w||"")});
   render();
 }
 function planLessonDone(){const it=planCur();lessonMark(it.id);lessonResetWindow(it.id);planNext()}
@@ -3056,6 +3085,7 @@ function planNext(){
   if(planIdx+1>=planItems.length){planDone=true;window.scrollTo(0,0);render();return}
   planIdx++;planPicked=null;planLocked=false;planInput="";
   const it=planCur();
+  planShownAt=Date.now();planGateStart(it);
   // السؤال العالق لا تُعرض خياراته حتى تمرّ ببطاقة التصحيح وتمرينيها
   if(fixNeeded(it)){fixStart(it);return}
   render();
@@ -3142,13 +3172,23 @@ function renderEngPlan(){
     if(planLocked){if(i===it.a){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(i===planPicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}
     return `<button class="choice" style="background:${bg};border-color:${bd};color:${col}" onclick="planChoose(${i})" ${planLocked?"disabled":""}><span class="letter">${L[i]}</span>${c}</button>`}).join("");
   const tag=it.t==="reading"?"📖 فهم مقروء":it.t==="grammar"?"🔧 قواعد":"🔤 مفردات";
+  const pGate=(!planLocked&&planGateSecs&&!planGateOpen())
+    ? `<div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:12px;padding:16px;margin:14px 0;text-align:center">
+         <div style="font-size:30px;font-weight:800;color:#1D4ED8;line-height:1.2">${toAr(planGateLeft)}</div>
+         <div style="font-size:14px;color:#1E40AF;font-weight:700;margin-top:6px">اقرئي النصّ الإنجليزي كاملاً أولاً</div>
+         <div style="font-size:12px;color:#3B82F6;margin-top:6px;line-height:1.7">الخيارات ستظهر بعد ${arSecs(planGateLeft)}. النصّ فيه الجواب — والقراءة بلغة ثانية تحتاج وقتاً أطول، وهذا طبيعي.</div>
+       </div>`
+    : (!planLocked&&planGateSecs&&planGateOpen())
+    ? `<div style="font-size:12px;color:#059669;font-weight:700;margin:10px 0">✓ خذي وقتك — راجعي النصّ قبل أن تختاري</div>`
+    : "";
   app.innerHTML=`${head}
   <div class="card">
     <span class="tag" style="background:#E0E7FF;color:#4338CA">${tag}</span>
     ${it.passage?`<div style="background:#F0FDFA;border:1px solid #99F6E4;border-radius:12px;padding:14px;margin:12px 0;font-size:16px;line-height:1.8;direction:ltr;text-align:left;color:#0F766E;font-family:Georgia,serif">${it.passage}</div>`:""}
     <div class="q">${it.q}</div>
+    ${pGate}
     ${it.listen?`<button type="button" onclick="speakEnglish(planItems[${planIdx}].listen)" style="background:#ECFEFF;border:1.5px solid #A5F3FC;color:#0891B2;border-radius:10px;padding:7px 16px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:14px;font-family:inherit">🔊 استمعي</button>`:""}
-    <div class="choices">${choices}</div>
+    ${planGateOpen()?`<div class="choices">${choices}</div>`:""}
     ${planLocked?`<div class="explain"><div class="explain-title" style="color:${planPicked===it.a?'#059669':'#B45309'}">${planPicked===it.a?"✓ إجابة صحيحة":"الصحيحة بالأخضر"}</div><div class="explain-body">${it.w||""}</div></div>`:""}
   </div>
   ${planLocked?`<button class="btn" style="background:#4338CA" onclick="planNext()">${planIdx+1>=planItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`:""}`;
