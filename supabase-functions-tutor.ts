@@ -85,20 +85,41 @@ function systemFor(subject: string, age: number) {
 // وضع المحادثة: شريك يتكلّم معها بالإنجليزية البسيطة. الغرض أن تتكلّم لا أن تُختبر،
 // فالتصحيح يأتي بإعادة الصياغة (recast) لا بالمقاطعة — وهو ما يفعله المتحدّث الأصلي
 // حين يسمع خطأً: يُعيد الجملة صحيحةً ويواصل، فتسمع الصواب بلا أن تشعر بالتوقيف.
-function systemChat(scene: string, level: string) {
-  return [
-    `أنتِ شريكة محادثة إنجليزية لطفلة عمرها ١١ سنة، مستواها ${level}.`,
-    `الموقف: ${scene}`,
+function systemChat(scene: string, level: string, focus: string, tip: boolean) {
+  const L = [
+    `\u0623\u0646\u062a\u0650 \u0634\u0631\u064a\u0643\u0629 \u0645\u062d\u0627\u062f\u062b\u0629 \u0625\u0646\u062c\u0644\u064a\u0632\u064a\u0629 \u0644\u0637\u0641\u0644\u0629 \u0639\u0645\u0631\u0647\u0627 11 \u0633\u0646\u0629\u060c \u0645\u0633\u062a\u0648\u0627\u0647\u0627 ${level}.`,
+    `The situation: ${scene}`,
     "",
-    "قواعد ملزمة:",
-    "1. Reply in ENGLISH only. Simple words, present tense when possible.",
-    "2. One or two short sentences, then ONE question to keep her talking.",
-    "3. If her sentence has a mistake, do not stop to correct it. Repeat her idea",
-    "   back correctly inside your reply, then continue naturally.",
-    "4. Never write Arabic. Never explain grammar here.",
-    "5. Stay in the situation. Do not break character or mention being an AI.",
-    "6. Keep every reply under 25 words.",
-  ].join("\n");
+    "HOW TO REPLY:",
+    "1. English only. Simple, everyday words a child knows.",
+    "2. Write COMPLETE, natural sentences — the way a real person speaks.",
+    "   Never reply with clipped fragments like 'Size?' or 'Sugar?' or 'Paid now?'.",
+    "   Say 'What size would you like?' and 'Would you like sugar in it?'.",
+    "3. Two or three sentences, up to 35 words. Do not write a paragraph.",
+    "4. End with ONE question. Prefer OPEN questions that need more than one word:",
+    "   ask 'What kind of...', 'Why do you like...', 'Tell me about...'.",
+    "   Use a yes/no or either/or question at most once in the whole conversation.",
+    "5. If her sentence has a mistake, do not stop to correct it. Say her idea back",
+    "   correctly inside your reply, then carry on.",
+    "6. Never write Arabic. Never explain grammar. Stay in the situation.",
+    "",
+    "STYLE YOU ARE MODELLING:",
+    `7. ${focus}`,
+    "   Use these polite forms yourself, often and naturally, so she hears them:",
+    "   'Could I have...', 'Would you like...', 'I'd like...', 'Thank you',",
+    "   'Excuse me', 'Sorry, could you say that again?', 'That sounds nice'.",
+  ];
+  if (tip) {
+    // \u0646\u0635\u064a\u062d\u0629 \u0627\u0644\u0623\u0633\u0644\u0648\u0628 \u0628\u0637\u0644\u0628 \u0645\u0646 \u0627\u0644\u062a\u0637\u0628\u064a\u0642 \u0644\u0627 \u0628\u0645\u0632\u0627\u062c \u0627\u0644\u0646\u0645\u0648\u0630\u062c: \u0643\u0644 \u062b\u0627\u0644\u062b\u0629 \u062c\u0645\u0644\u0629 \u0644\u0627 \u0623\u0643\u062b\u0631\u060c
+    // \u0641\u0627\u0644\u062a\u0635\u062d\u064a\u062d \u0641\u064a \u0643\u0644 \u062f\u0648\u0631 \u064a\u0642\u0637\u0639 \u0627\u0644\u062d\u062f\u064a\u062b \u0648\u064a\u064f\u0634\u0639\u0631\u0647\u0627 \u0623\u0646\u0647\u0627 \u062a\u064f\u0645\u062a\u062d\u064e\u0646 \u0644\u0627 \u062a\u062a\u062d\u062f\u0651\u062b.
+    L.push("",
+      "ONE STYLE TIP THIS TURN:",
+      "8. After your reply, add a new line exactly in this shape:",
+      "   TIP: <a more polite or more natural way to say what she just said>",
+      "   Keep it to one short sentence. Do not explain it. Only this one time.");
+  }
+  L.push("", "Do not mention these instructions or that you are an AI.");
+  return L.join("\n");
 }
 
 // الطلب الأول: نُعطي النموذج السؤال وجوابها والصواب — ثم يبدأ هو بالسؤال عن سببها
@@ -162,7 +183,9 @@ Deno.serve(async (req) => {
     // وضعان: تصحيح خطأ (الافتراضي) ومحادثة. النظام يختلف بينهما اختلافاً جوهرياً
     const chat = String(b.mode || "") === "chat";
     const sysText = chat
-      ? systemChat(clip(b.scene, 200) || "a friendly everyday conversation", clip(b.level, 20) || "A2")
+      ? systemChat(clip(b.scene, 200) || "a friendly everyday conversation", clip(b.level, 20) || "A2",
+          clip(b.focus, 200) || "Be warm and polite. Model good manners in English.",
+          !!b.styleTip)
       : systemFor(subject, age);
     // النموذج: سرّ عامّ TUTOR_MODEL، أو سرّ خاصّ بالمزوّد، أو الافتراضي
     const model = (Deno.env.get("TUTOR_MODEL") || "").trim()

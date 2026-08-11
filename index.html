@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260811-1615";
+  var BUILD="build-20260811-1730";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -123,6 +123,34 @@
 <div class="wrap" id="app"></div>
 
 <script>
+// ===== ملفّات الإخوة =====
+// جلسة أخيها سُجّلت باسم «بنتي» لأن الاسم كان واحداً ثابتاً — فاختلط صوته بسجلّها،
+// وأي تقرير عن «أصوات هيا» بعدها يقرأ صوتين ويحسبهما واحداً. والقياس هو الأصل الذي
+// بُني عليه كل تحسين هنا، فخلطه ليس تفصيلاً.
+//
+// الفصل في موضعين: اسم السجلّ على الخادم، ومفاتيح التخزين المحلّي (التباعد والأخطاء
+// والإتقان). وهيا تبقى بلا بادئة عمداً — فبياناتها كلها محفوظة تحت المفاتيح القديمة،
+// وتغييرها كان سيُضيّع شهر عمل.
+const PROFILES=[
+  {id:"haya",name:"هيا",alias:"بنتي",emoji:"🌸",color:"#DB2777"},
+  {id:"mohammed",name:"محمد",alias:"محمد",emoji:"⚽",color:"#0E7490"},
+  {id:"elias",name:"إلياس",alias:"إلياس",emoji:"🚀",color:"#7C3AED"},
+];
+const PROFILE_KEY="app_profile_v1";
+function profileId(){try{return localStorage.getItem(PROFILE_KEY)||"haya"}catch(e){return "haya"}}
+function profileOf(){const id=profileId();return PROFILES.filter(function(p){return p.id===id})[0]||PROFILES[0]}
+// هيا بلا بادئة: مفاتيحها القديمة هي مفاتيحها الحالية، فلا تفقد شيئاً
+function pkey(k){const id=profileId();return id==="haya"?k:id+"::"+k}
+function lsGet(k){try{return localStorage.getItem(pkey(k))}catch(e){return null}}
+function lsSet(k,v){try{localStorage.setItem(pkey(k),v)}catch(e){}}
+function lsDel(k){try{localStorage.removeItem(pkey(k))}catch(e){}}
+function profileSet(id){
+  if(!PROFILES.some(function(p){return p.id===id}))return;
+  try{localStorage.setItem(PROFILE_KEY,id)}catch(e){}
+  // إعادة تحميل نظيفة: الحالة في الذاكرة (التباعد، الجلسة، العدّادات) تخصّ الملفّ السابق
+  location.replace(location.pathname+"?p="+id);
+}
+
 // ===== إظهار الأخطاء بدل ابتلاعها =====
 // خطأ واحد في المستوى الأعلى كان كفيلاً بإيقاف تعريف بقية الملف، فتموت كل الأزرار في كل
 // الأقسام بلا أي أثر مرئي. الآن يُعرض الخطأ باسمه وموضعه على الشاشة، فيُرى بدل أن يُخمَّن.
@@ -707,10 +735,10 @@ const SCIENCE=[
 
 // ===== محرّك الذكاء الاصطناعي (Gemini) + التحكّم بالتكلفة =====
 function todayKey(){return new Date().toISOString().slice(0,10)}
-function geminiUsage(){try{const u=JSON.parse(localStorage.getItem("gemini_day")||"{}");if(u.date!==todayKey())return{date:todayKey(),count:0};return u}catch(e){return{date:todayKey(),count:0}}}
-function bumpUsage(n){const u=geminiUsage();u.count+=n;localStorage.setItem("gemini_day",JSON.stringify(u))}
-function cacheGet(type){try{const c=JSON.parse(localStorage.getItem("gemini_cache")||"{}");return c[type]||[]}catch(e){return[]}}
-function cachePut(type,arr){try{const c=JSON.parse(localStorage.getItem("gemini_cache")||"{}");c[type]=((c[type]||[]).concat(arr)).slice(-40);localStorage.setItem("gemini_cache",JSON.stringify(c))}catch(e){}}
+function geminiUsage(){try{const u=JSON.parse(lsGet("gemini_day")||"{}");if(u.date!==todayKey())return{date:todayKey(),count:0};return u}catch(e){return{date:todayKey(),count:0}}}
+function bumpUsage(n){const u=geminiUsage();u.count+=n;lsSet("gemini_day",JSON.stringify(u))}
+function cacheGet(type){try{const c=JSON.parse(lsGet("gemini_cache")||"{}");return c[type]||[]}catch(e){return[]}}
+function cachePut(type,arr){try{const c=JSON.parse(lsGet("gemini_cache")||"{}");c[type]=((c[type]||[]).concat(arr)).slice(-40);lsSet("gemini_cache",JSON.stringify(c))}catch(e){}}
 
 // يجلب أسئلة من المحرّك، مع تخزين الفائض وإعادة الاستخدام، واحترام الحد اليومي
 async function fetchGemini(type,need){
@@ -729,7 +757,7 @@ async function fetchGemini(type,need){
   }catch(e){}
   return out.map(tagAI(type));
 }
-function cachePutReplace(type,arr){try{const c=JSON.parse(localStorage.getItem("gemini_cache")||"{}");c[type]=arr;localStorage.setItem("gemini_cache",JSON.stringify(c))}catch(e){}}
+function cachePutReplace(type,arr){try{const c=JSON.parse(lsGet("gemini_cache")||"{}");c[type]=arr;lsSet("gemini_cache",JSON.stringify(c))}catch(e){}}
 function normAI(type){return q=>({d:aiDomain(type),q:q.q,c:q.choices,a:q.answer,w:q.why||"",qtype:type})}
 function tagAI(type){return q=>q}
 function aiDomain(type){return (type==="science")?"science":"verbal"}
@@ -1509,8 +1537,8 @@ function fadeAdvance(){
 // سلّم المراجعة بالأيام: أول إتقان ← بعد ٧ أيام، ثم ١٤، ثم ٣٠ (كل مراجعة ناجحة تباعد الموعد أكثر).
 const FADE_MASTERY_KEY="mawhiba_fade_mastery";
 const FADE_REVIEW_DAYS=[7,14,30];
-function fadeMasteryLoad(){try{return JSON.parse(localStorage.getItem(FADE_MASTERY_KEY)||"{}")}catch(e){return{}}}
-function fadeMasterySave(o){try{localStorage.setItem(FADE_MASTERY_KEY,JSON.stringify(o))}catch(e){}}
+function fadeMasteryLoad(){try{return JSON.parse(lsGet(FADE_MASTERY_KEY)||"{}")}catch(e){return{}}}
+function fadeMasterySave(o){try{lsSet(FADE_MASTERY_KEY,JSON.stringify(o))}catch(e){}}
 function fadeMarkMastered(topic){
   const st=fadeMasteryLoad(),r=st[topic]||{level:0};
   r.level=Math.min((r.level||0)+1,FADE_REVIEW_DAYS.length);
@@ -1530,15 +1558,15 @@ const FADE_AUDIT_KEY="mawhiba_fade_audit_v1";
 const FADE_AUDIT2_KEY="mawhiba_fade_audit_v2_logic";
 function fadeAuditOnce(){
   try{
-    if(!localStorage.getItem(FADE_AUDIT_KEY)){
+    if(!lsGet(FADE_AUDIT_KEY)){
       const st=fadeMasteryLoad();
       if(st.mirror&&st.mirror.q===undefined){delete st.mirror;fadeMasterySave(st)}
-      localStorage.setItem(FADE_AUDIT_KEY,"1");
+      lsSet(FADE_AUDIT_KEY,"1");
     }
-    if(!localStorage.getItem(FADE_AUDIT2_KEY)){
+    if(!lsGet(FADE_AUDIT2_KEY)){
       const st=fadeMasteryLoad();
       if(st.logic){delete st.logic;fadeMasterySave(st)}
-      localStorage.setItem(FADE_AUDIT2_KEY,"1");
+      lsSet(FADE_AUDIT2_KEY,"1");
     }
   }catch(e){}
 }
@@ -2427,7 +2455,7 @@ async function runMicDiag(){
 const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEngPlan","startDictation",
   "startPronunciation","startSpeaking","startAudioDiag","runMicDiag","fetchTimeout",
   "pronStart","pronStop","pronReset","speakStart","speakStop","speakReset","speakEnglish",
-  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","copyAzRaw","esc","weakPhonemeStr","num0","cxShuffleOrder","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary"];
+  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","copyAzRaw","esc","weakPhonemeStr","num0","profileBarHTML","profileSet","lsGet","lsSet","lsDel","pkey","cxShuffleOrder","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary"];
 function censusMissing(){return CENSUS.filter(function(n){return typeof window[n]!=="function"})}
 function censusHTML(){
   var miss=censusMissing();
@@ -2848,8 +2876,8 @@ const SRS_INTERVALS=[1,2,4,8,16,32]; // أيام
 const ENG_SECS={lesson:90,vocab:25,grammar:35,reading:110,dict:35};
 const PLAN_SECS=34*60;  // ٣٤ دقيقة تدريب مُصحَّح + ٦ دقائق نطق = ٤٠ دقيقة
 const NEW_CAP=25;       // حد العناصر الجديدة يومياً (قريب من المعتمد في أنظمة التباعد) لكبح الحمل المعرفي
-function srsLoad(){try{return JSON.parse(localStorage.getItem(SRS_KEY)||"{}")}catch(e){return{}}}
-function srsSave(o){try{localStorage.setItem(SRS_KEY,JSON.stringify(o))}catch(e){}}
+function srsLoad(){try{return JSON.parse(lsGet(SRS_KEY)||"{}")}catch(e){return{}}}
+function srsSave(o){try{lsSet(SRS_KEY,JSON.stringify(o))}catch(e){}}
 function srsToday(){return Math.floor(Date.now()/86400000)}
 function srsUpdate(id,ok){
   const st=srsLoad(),r=st[id]||{box:0,seen:0};
@@ -2857,8 +2885,8 @@ function srsUpdate(id,ok){
   r.due=srsToday()+SRS_INTERVALS[r.box];r.seen=(r.seen||0)+1;
   st[id]=r;srsSave(st);
 }
-function lessonSeen(id){try{return (JSON.parse(localStorage.getItem("mawhiba_eng_lessons")||"[]")).includes(id)}catch(e){return false}}
-function lessonMark(id){try{const a=JSON.parse(localStorage.getItem("mawhiba_eng_lessons")||"[]");if(!a.includes(id)){a.push(id);localStorage.setItem("mawhiba_eng_lessons",JSON.stringify(a))}}catch(e){}}
+function lessonSeen(id){try{return (JSON.parse(lsGet("mawhiba_eng_lessons")||"[]")).includes(id)}catch(e){return false}}
+function lessonMark(id){try{const a=JSON.parse(lsGet("mawhiba_eng_lessons")||"[]");if(!a.includes(id)){a.push(id);lsSet("mawhiba_eng_lessons",JSON.stringify(a))}}catch(e){}}
 // ===== إعادة تدريس القاعدة عند تكرار الفشل فيها =====
 // كان الشرح يُعرض مرة واحدة في العمر، ثم يُوسم "شوهد" إلى الأبد ويكتفي النظام بإعادة الاختبار
 // عبر التباعد. لكن التباعد أداة استرجاع لما تعلّمته لا أداة تعليم: فأخذت ٢/١٤ في القواعد،
@@ -2866,8 +2894,8 @@ function lessonMark(id){try{const a=JSON.parse(localStorage.getItem("mawhiba_eng
 // الآن نتابع دقة كل قاعدة، فإن هبطت أُلغي وسم "شوهد" وعاد الشرح قبل أسئلتها.
 const LESSON_PERF_KEY="mawhiba_eng_lesson_perf";
 const LESSON_WINDOW=6, LESSON_MIN=3, LESSON_WEAK_PCT=40, RETEACH_CAP=4, RETEACH_ITEMS=3;
-function lessonPerfLoad(){try{return JSON.parse(localStorage.getItem(LESSON_PERF_KEY)||"{}")}catch(e){return{}}}
-function lessonPerfSave(o){try{localStorage.setItem(LESSON_PERF_KEY,JSON.stringify(o))}catch(e){}}
+function lessonPerfLoad(){try{return JSON.parse(lsGet(LESSON_PERF_KEY)||"{}")}catch(e){return{}}}
+function lessonPerfSave(o){try{lsSet(LESSON_PERF_KEY,JSON.stringify(o))}catch(e){}}
 function lessonRecord(lessonId,ok){
   if(!lessonId)return;
   const p=lessonPerfLoad(),r=p[lessonId]||{recent:[]};
@@ -2894,10 +2922,11 @@ const LESSON_SEED_KEY="mawhiba_eng_lesson_seed_v1";
 const LESSON_SEED={l_cond:[0,0],l_few:[0,0],l_rel:[0,0],l_pastprog:[0,0],l_pp_q:[1,0,0],l_pp_vs:[0],l_passive:[0]};
 function lessonSeedOnce(){
   try{
-    if(localStorage.getItem(LESSON_SEED_KEY))return;
+    if(profileId()!=="haya")return; // البذرة من سجلّ هيا وحدها
+    if(lsGet(LESSON_SEED_KEY))return;
     const p=lessonPerfLoad();
     Object.keys(LESSON_SEED).forEach(k=>{if(!p[k])p[k]={recent:LESSON_SEED[k].slice(),forceWeak:true}});
-    lessonPerfSave(p);localStorage.setItem(LESSON_SEED_KEY,"1");
+    lessonPerfSave(p);lsSet(LESSON_SEED_KEY,"1");
   }catch(e){}
 }
 try{lessonSeedOnce()}catch(e){appError('lessonSeedOnce',e)}
@@ -2965,8 +2994,8 @@ function buildDailyPlan(){
 // في كل محاولة — "write" ثلاث مرات. فسطر الشرح بعد الإجابة لا يُغيّر شيئاً، ثبت ذلك عملياً.
 const ITEM_ERR_KEY="mawhiba_eng_item_err_v1";
 const ITEM_STUCK_AT=2;   // خطآن على السؤال نفسه ⇒ لم يعد خطأً عارضاً
-function itemErrLoad(){try{return JSON.parse(localStorage.getItem(ITEM_ERR_KEY)||"{}")}catch(e){return{}}}
-function itemErrSave(o){try{localStorage.setItem(ITEM_ERR_KEY,JSON.stringify(o))}catch(e){}}
+function itemErrLoad(){try{return JSON.parse(lsGet(ITEM_ERR_KEY)||"{}")}catch(e){return{}}}
+function itemErrSave(o){try{lsSet(ITEM_ERR_KEY,JSON.stringify(o))}catch(e){}}
 function itemErrRecord(id,ok,answer){
   if(!id)return;
   const m=itemErrLoad(),r=m[id]||{wrong:0,last:null,same:0};
@@ -2990,12 +3019,13 @@ const ITEM_SEED={u1_g1:["eat",3],u1_g2:["write",3],u2_g2:["gave",2],u2_g3:["any"
   u5_g1:["quicklier",2],u5_g2:["more good",2],u6_g1:["opened",2],u6_g2:["take",2]};
 function itemSeedOnce(){
   try{
-    if(localStorage.getItem(ITEM_SEED_KEY))return;
+    if(profileId()!=="haya")return; // البذرة من سجلّ هيا وحدها
+    if(lsGet(ITEM_SEED_KEY))return;
     const m=itemErrLoad();
     Object.keys(ITEM_SEED).forEach(function(k){
       if(!m[k])m[k]={wrong:ITEM_SEED[k][1],last:ITEM_SEED[k][0],same:ITEM_SEED[k][1]-1};
     });
-    itemErrSave(m);localStorage.setItem(ITEM_SEED_KEY,"1");
+    itemErrSave(m);lsSet(ITEM_SEED_KEY,"1");
   }catch(e){}
 }
 try{itemSeedOnce()}catch(e){}
@@ -3129,8 +3159,8 @@ const CX_KEY="mawhiba_contrast_v1";
 const CX_MASTER_RUNS=2;       // جولتان ناجحتان لا واحدة: إصابة طرف قد تقع بالقاعدة الخطأ
 const CX_COOLDOWN_H=20;       // متباعدتان: التكرار الفوري يُنتج إتقاناً ظاهرياً لا باقياً
 const CX_DRILLS=6;            // من ثمانية في البنك — تنويع بين الجولات
-function cxLoad(){try{return JSON.parse(localStorage.getItem(CX_KEY)||"{}")}catch(e){return{}}}
-function cxSave(o){try{localStorage.setItem(CX_KEY,JSON.stringify(o))}catch(e){}}
+function cxLoad(){try{return JSON.parse(lsGet(CX_KEY)||"{}")}catch(e){return{}}}
+function cxSave(o){try{lsSet(CX_KEY,JSON.stringify(o))}catch(e){}}
 function cxStateOf(id){return cxLoad()[id]||{runs:0,lastAt:0,mastered:false}}
 function cxRecord(id,allOk){
   const m=cxLoad(),s=m[id]||{runs:0,lastAt:0,mastered:false};
@@ -3499,19 +3529,26 @@ function tutorDiagHTML(){
 // وهذا مقصود: الكلمات يُصلحها الشريك بإعادة الصياغة، والأصوات لا يُصلحها إلا القياس.
 const COACH_SCENES=[
   {id:"cafe",ar:"في المقهى ☕",en:"You are a friendly barista in a small café. The student is a customer ordering a drink.",
-   opener:"Hi! Welcome to Sunny Café. What would you like to drink today?"},
+   focus:"Model POLITE REQUESTS. A customer says 'Could I have a coffee, please?' — not 'I want coffee'. Show her how a polite order sounds.",
+   opener:"Hi there! Welcome to Sunny Café. What would you like to drink today?"},
   {id:"school",ar:"صديقة جديدة في المدرسة 🎒",en:"You are a new classmate at school meeting the student for the first time.",
-   opener:"Hi! I'm new here. What's your name?"},
+   focus:"Model FRIENDLY INTRODUCTIONS. 'Nice to meet you', 'What do you like doing?', showing interest in her answer before adding your own.",
+   opener:"Hi! I'm new here at school. What's your name?"},
   {id:"shop",ar:"في المتجر 🛍️",en:"You are a shop assistant. The student is looking for something to buy.",
-   opener:"Good morning! Can I help you find something?"},
+   focus:"Model ASKING FOR HELP POLITELY. 'Excuse me, do you have...?', 'Could you show me...?', and thanking the person afterwards.",
+   opener:"Good morning! How can I help you today?"},
   {id:"doctor",ar:"عند الطبيبة 🩺",en:"You are a kind doctor. The student is a patient who does not feel well.",
-   opener:"Hello! Please sit down. How are you feeling today?"},
+   focus:"Model DESCRIBING HOW YOU FEEL. 'I have a headache', 'It started two days ago', 'It hurts when I...'. Ask her to say more about it.",
+   opener:"Hello! Please have a seat. How are you feeling today?"},
   {id:"trip",ar:"نتكلّم عن رحلة ✈️",en:"You are a friend asking the student about a trip she took.",
-   opener:"You went on a trip last week! Where did you go?"},
+   focus:"Model TELLING A STORY. Past tense, and words that join a story: 'first', 'then', 'after that', 'the best part was...'.",
+   opener:"I heard you went on a trip last week! Tell me — where did you go?"},
   {id:"pet",ar:"عن الحيوانات الأليفة 🐈",en:"You are a friend who loves animals, talking with the student about pets.",
-   opener:"I have a cat named Luna. Do you have a pet at home?"},
+   focus:"Model GIVING OPINIONS AND REASONS. 'I think...', 'because...', 'My favourite is... because...'. Always ask her why.",
+   opener:"I have a cat named Luna and she sleeps all day. Tell me about animals you like."},
 ];
 const COACH_MAX_TURNS=8; // جلسة قصيرة تنتهي بخلاصة، لا محادثة بلا نهاية
+const COACH_TIP_EVERY=3; // نصيحة أسلوب كل ثالثة جملة
 let coachScene=null,coachMsgs=[],coachBusy=false,coachListening=false,coachElapsed=0,
     coachRec=null,coachStream=null,coachChunks=[],coachTimer=null,coachFail="",coachDone=false,coachUnsupported=false;
 function startCoach(){
@@ -3582,6 +3619,7 @@ async function coachFinish(){
     if(az.data){const sc=azureToScore(heard,az.data);pct=sc.pct;weak=sc.weak||[]}
   }catch(e){}
   coachMsgs.push({role:"user",text:heard,pct:pct,weak:weak});
+  const said=coachMsgs.filter(function(m){return m.role==="user"}).length;
   logAnswer("coach","say",null,heard.slice(0,600),coachScene?coachScene.id:null,ms,
     {lesson:coachScene?coachScene.id:null,score_pct:num0(pct),weak_phonemes:weakPhonemeStr(weak)});
   render();
@@ -3590,15 +3628,21 @@ async function coachFinish(){
     const hist=coachMsgs.map(function(m){return{role:m.role,text:m.text}});
     const res=await fetchTimeout(TUTOR_FN_URL,{method:"POST",
       headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},
+      // نصيحة الأسلوب بطلب من التطبيق لا بمزاج النموذج: كل ثالثة جملة لا أكثر،
+      // فالتصحيح في كل دور يقطع الحديث ويُشعرها أنها تُمتحَن لا تتحدّث
       body:JSON.stringify({mode:"chat",scene:coachScene.en,level:"A2",
+        focus:coachScene.focus||"",styleTip:(said%COACH_TIP_EVERY===0),
         question:coachScene.en,studentAnswer:heard,history:hist})});
     const d=await res.json();
     if(d&&d.reply){
-      coachMsgs.push({role:"model",text:d.reply});
+      // النصيحة تُعرض مستقلّة ولا تُنطق مع الردّ: صوتها يكسر الموقف
+      const parts=String(d.reply).split(/\n\s*TIP\s*:\s*/i);
+      const say=parts[0].trim(),tip=(parts[1]||"").trim();
+      coachMsgs.push({role:"model",text:say,tip:tip||null});
       logAnswer("coach","reply",null,String(d.reply).slice(0,600),coachScene.id,null,{lesson:coachScene.id});
       coachBusy=false;
       if(coachMsgs.filter(function(m){return m.role==="user"}).length>=COACH_MAX_TURNS)coachDone=true;
-      render();setTimeout(function(){speakEnglish(d.reply)},300);
+      render();setTimeout(function(){speakEnglish(say)},300);
       return;
     }
     coachFail=(d&&d.error)==="not_configured"?"nokey":"reply";
@@ -3622,6 +3666,19 @@ const COACH_FAIL_AR={mic:"لم نصل إلى الميكروفون — اسمحي
   stt:"تعذّر تفريغ الصوت. حاولي مرة أخرى.",
   reply:"تعذّر الوصول إلى شريك الحديث. حاولي مرة أخرى.",
   nokey:"المحادثة غير مُفعّلة بعد."};
+// شريط الملفّات: صفحة لكل واحد منهم. التبديل يُعيد التحميل عمداً — الحالة في الذاكرة
+// (التباعد، الجلسة الجارية، العدّادات) تخصّ الملفّ السابق، وحملها معه يخلط ما فصلناه.
+function profileBarHTML(){
+  const cur=profileOf();
+  return `<div style="background:#fff;border:1.5px solid #E2E8F0;border-radius:16px;padding:10px 12px;margin-bottom:14px">
+    <div style="font-size:12px;color:#94A3B8;margin-bottom:8px">صفحة من؟ لكلٍّ تقدّمه وأخطاؤه وأصواته وحده</div>
+    <div style="display:flex;gap:8px">${PROFILES.map(function(p){
+      const on=p.id===cur.id;
+      return `<button type="button" onclick="profileSet('${p.id}')" style="flex:1;background:${on?p.color:'#F8FAFC'};
+        color:${on?'#fff':'#475569'};border:1.5px solid ${on?p.color:'#E2E8F0'};border-radius:12px;padding:10px 4px;
+        font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">${p.emoji} ${p.name}</button>`;
+    }).join("")}</div></div>`;
+}
 function renderCoach(){
   const head=`<button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>`;
   if(coachUnsupported){
@@ -3650,6 +3707,7 @@ function renderCoach(){
       <div style="max-width:88%;background:${me?'#EEF2FF':'#F0FDF4'};border:1.5px solid ${me?'#C7D2FE':'#A7F3D0'};
         border-radius:16px;padding:11px 13px">
         <div style="direction:ltr;text-align:left;font-family:Georgia,serif;font-size:16px;line-height:1.7;color:${me?'#312E81':'#065F46'}">${esc(m.text)}</div>
+        ${(!me&&m.tip)?`<div style="margin-top:8px;background:#FEF9C3;border-radius:10px;padding:8px 10px;font-size:13px;color:#854D0E;line-height:1.7;direction:ltr;text-align:left">💡 ${esc(m.tip)}</div>`:""}
         ${!me?`<button type="button" onclick="coachSay(${JSON.stringify(m.text).replace(/"/g,'&quot;')})" style="background:none;border:none;color:#0891B2;font-size:12px;cursor:pointer;padding:4px 0 0;font-family:inherit">🔊 أعيدي</button>`:""}
         ${chip}
       </div></div>`;
@@ -3912,8 +3970,8 @@ const DICT_STAGES=[
   {label:"مرحلة ٣: عدد الحروف فقط",tag:"عدد الحروف"},
   {label:"مرحلة ٤: بلا مساعدة (مستقل)",tag:"مستقل"},
 ];
-function dictStageGet(){try{const v=parseInt(localStorage.getItem("mawhiba_dict_stage")||"1");return(v>=1&&v<=4)?v:1}catch(e){return 1}}
-function dictStageSet(v){try{localStorage.setItem("mawhiba_dict_stage",String(v))}catch(e){}}
+function dictStageGet(){try{const v=parseInt(lsGet("mawhiba_dict_stage")||"1");return(v>=1&&v<=4)?v:1}catch(e){return 1}}
+function dictStageSet(v){try{lsSet("mawhiba_dict_stage",String(v))}catch(e){}}
 // تلميح المرحلة: الكلمة كاملة ← أول حرف + شرطات ← شرطات فقط ← لا شيء
 function dictHint(word,stage){
   if(stage>=4)return"";
@@ -4472,16 +4530,16 @@ const SPEAK_STAGES=[
   {label:"مرحلة ٢: اقرئيها بصوتك (بلا نموذج مسبق)",tag:"اقرئي"},
   {label:"مرحلة ٣: بالسمع فقط (النص مخفي)",tag:"مستقل"},
 ];
-function speakSrsLoad(){try{return JSON.parse(localStorage.getItem(SPEAK_SRS_KEY)||"{}")}catch(e){return{}}}
-function speakSrsSave(o){try{localStorage.setItem(SPEAK_SRS_KEY,JSON.stringify(o))}catch(e){}}
+function speakSrsLoad(){try{return JSON.parse(lsGet(SPEAK_SRS_KEY)||"{}")}catch(e){return{}}}
+function speakSrsSave(o){try{lsSet(SPEAK_SRS_KEY,JSON.stringify(o))}catch(e){}}
 function speakSrsUpdate(id,ok){
   const st=speakSrsLoad(),r=st[id]||{box:0,seen:0};
   r.box=ok?Math.min(r.box+1,SRS_INTERVALS.length-1):0;
   r.due=srsToday()+SRS_INTERVALS[r.box];r.seen=(r.seen||0)+1;
   st[id]=r;speakSrsSave(st);
 }
-function speakStageGet(){try{const v=parseInt(localStorage.getItem(SPEAK_STAGE_KEY)||"1");return(v>=1&&v<=3)?v:1}catch(e){return 1}}
-function speakStageSet(v){try{localStorage.setItem(SPEAK_STAGE_KEY,String(v))}catch(e){}}
+function speakStageGet(){try{const v=parseInt(lsGet(SPEAK_STAGE_KEY)||"1");return(v>=1&&v<=3)?v:1}catch(e){return 1}}
+function speakStageSet(v){try{lsSet(SPEAK_STAGE_KEY,String(v))}catch(e){}}
 // المستحقّ أولاً ثم الجديد (الأقصر أولاً) — نفس منطق الخطة اليومية
 function buildSpeakSession(){
   const st=speakSrsLoad(),today=srsToday();
@@ -4656,8 +4714,8 @@ function renderSpeakResult(){
 }
 
 // ===== الحالة والتدفّق =====
-function alias(){return (localStorage.getItem("mawhiba_alias")||"بنتي").trim()||"بنتي"}
-function saveAlias(v){localStorage.setItem("mawhiba_alias",v)}
+function alias(){return (lsGet("mawhiba_alias")||profileOf().alias).trim()||profileOf().alias}
+function saveAlias(v){lsSet("mawhiba_alias",v)}
 let mode="home",currentMode="full",filtered=[],idx=0,picked=null,locked=false,score=0,done=false,answered=[],attempts=[],loading=false;
 const app=document.getElementById("app");
 
@@ -4811,8 +4869,8 @@ const FACT_SECS=12;          // تقدير واقعي لثانية الاستر�
 const FACT_PLAN_SECS=10*60;  // ١٠ دقائق يومياً: جلسات قصيرة متكررة أفعل من جلسة طويلة متباعدة لبناء الطلاقة
 const FACT_NEW_CAP=10;
 const FACT_NEW_DIV_CAP=3;   // سقف الحقائق الجديدة في القسمة وحدها لكل جلسة
-function factSrsLoad(){try{return JSON.parse(localStorage.getItem(FACT_SRS_KEY)||"{}")}catch(e){return{}}}
-function factSrsSave(o){try{localStorage.setItem(FACT_SRS_KEY,JSON.stringify(o))}catch(e){}}
+function factSrsLoad(){try{return JSON.parse(lsGet(FACT_SRS_KEY)||"{}")}catch(e){return{}}}
+function factSrsSave(o){try{lsSet(FACT_SRS_KEY,JSON.stringify(o))}catch(e){}}
 function factSrsUpdate(id,ok){
   const st=factSrsLoad(),r=st[id]||{box:0,seen:0};
   r.box=ok?Math.min(r.box+1,SRS_INTERVALS.length-1):0;
@@ -5050,10 +5108,10 @@ function renderFactPlanResult(){
 
 // ===== طبقة التشجيع (مبنية على إظهار النمو والكفاءة) =====
 function todayStr(){return new Date().toISOString().slice(0,10)}
-function getStreak(){try{return JSON.parse(localStorage.getItem("mawhiba_streak")||'{"days":0,"last":""}')}catch(e){return{days:0,last:""}}}
-function bumpStreak(){const st=getStreak();const t=todayStr();if(st.last===t)return st;const y=new Date(Date.now()-86400000).toISOString().slice(0,10);st.days=(st.last===y)?st.days+1:1;st.last=t;localStorage.setItem("mawhiba_streak",JSON.stringify(st));return st}
+function getStreak(){try{return JSON.parse(lsGet("mawhiba_streak")||'{"days":0,"last":""}')}catch(e){return{days:0,last:""}}}
+function bumpStreak(){const st=getStreak();const t=todayStr();if(st.last===t)return st;const y=new Date(Date.now()-86400000).toISOString().slice(0,10);st.days=(st.last===y)?st.days+1:1;st.last=t;lsSet("mawhiba_streak",JSON.stringify(st));return st}
 // رسالة نمو: تقارن بأفضل نتيجة سابقة لنفس الوضع
-function growthMsg(modeKey,pct){try{const key="mawhiba_best_"+modeKey;const prev=parseInt(localStorage.getItem(key)||"-1");let msg="";if(prev<0){msg="أول محاولة في هذا القسم — انطلاقة موفّقة! 🌱"}else if(pct>prev){msg=`تحسّنتِ عن أفضل نتيجة سابقة (${toAr(prev)}%)! تقدّم رائع 📈`}else if(pct===prev){msg="ثبات على أفضل مستوى سابق 💪"}else{msg="واصلي، كل محاولة تبني مهارتك 🌟"}if(pct>prev)localStorage.setItem(key,String(pct));return msg}catch(e){return""}}
+function growthMsg(modeKey,pct){try{const key="mawhiba_best_"+modeKey;const prev=parseInt(lsGet(key)||"-1");let msg="";if(prev<0){msg="أول محاولة في هذا القسم — انطلاقة موفّقة! 🌱"}else if(pct>prev){msg=`تحسّنتِ عن أفضل نتيجة سابقة (${toAr(prev)}%)! تقدّم رائع 📈`}else if(pct===prev){msg="ثبات على أفضل مستوى سابق 💪"}else{msg="واصلي، كل محاولة تبني مهارتك 🌟"}if(pct>prev)lsSet(key,String(pct));return msg}catch(e){return""}}
 
 // ===== العرض =====
 function render(){if(mode==="home")return renderHome();if(mode==="engplan")return renderEngPlan();if(mode==="factplan")return renderFactPlan();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="speak")return renderSpeak();if(mode==="coach")return renderCoach();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
@@ -5079,6 +5137,7 @@ function renderHome(){
     <button class="mode full" style="background:#0F766E;border-color:#0F766E" onclick="startFactPlan()"><span class="m-name">🧮 طلاقة الحقائق · ١٠ دقائق</span><div class="m-sub">استرجاع فوري للجمع والطرح والضرب بلا عدّ أو أصابع، بتباعد ذكي</div></button>
     <button class="mode full" style="background:#4338CA;border-color:#4338CA" onclick="startEngPlan()"><span class="m-name">⭐ خطة الإنجليزية اليومية · ٤٠ دقيقة</span><div class="m-sub">شرح ثم تدريب، بتباعد ذكي — لا يتكرّر أي عنصر إلا في يوم استحقاقه (منهج الصف السادس)</div></button>
     <button class="mode full" style="background:#0E7490;border-color:#0E7490" onclick="startDictation()"><span class="m-name">✍️ إملاء بالإنجليزية</span><div class="m-sub">استمعي للكلمة، ثم اكتبيها — مستوى A1</div></button>
+    ${profileBarHTML()}
     <button class="mode full" style="background:#7C3AED;border-color:#7C3AED" onclick="startPronunciation()"><span class="m-name">🎤 تمرين النطق</span><div class="m-sub">تحقّق أساسي هل نطقتِ الكلمة صح (يحتاج ميكروفون) — وليس تصحيح لهجة دقيق</div></button>
     <button class="mode full" style="background:#0E7490;border-color:#0E7490" onclick="startCoach()"><span class="m-name">🗣️ تكلّمي بالإنجليزية</span><div class="m-sub">محادثة حرّة مع شريك يردّ عليكِ بالإنجليزية — ونقيس وضوح أصواتك في كل جملة</div></button>
     <button class="mode full" style="background:#DB2777;border-color:#DB2777" onclick="startSpeaking()"><span class="m-name">🗣️ التحدّث · جمل من كتابك</span><div class="m-sub">جمل قصيرة جاهزة من وحدة Welcome: تسمعينها ثم تقولينها كاملة — تبدأ بالنص أمامك وتنتهي بالسمع فقط</div></button>
