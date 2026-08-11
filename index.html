@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260811-1210";
+  var BUILD="build-20260811-1235";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -2427,7 +2427,7 @@ async function runMicDiag(){
 const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEngPlan","startDictation",
   "startPronunciation","startSpeaking","startAudioDiag","runMicDiag","fetchTimeout",
   "pronStart","pronStop","pronReset","speakStart","speakStop","speakReset","speakEnglish",
-  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","copyAzRaw","esc","weakPhonemeStr","num0","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable"];
+  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","copyAzRaw","esc","weakPhonemeStr","num0","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard"];
 function censusMissing(){return CENSUS.filter(function(n){return typeof window[n]!=="function"})}
 function censusHTML(){
   var miss=censusMissing();
@@ -3431,6 +3431,17 @@ function tutorBoxHTML(){
   </div>`;
 }
 // فحص بضغطة واحدة، كفحص Azure: يُثبت أن الربط يعمل قبل أن نعتمد عليه في جلستها
+// نسخ نصّ الخطأ كما هو: فيه رقم المشروع الذي تشكو منه Google، وهو ما يفصل بين
+// «الرصيد في مشروع آخر» و«الرصيد نفد فعلاً» — ولا يُنسخ بالعين من شاشة هاتف
+function copyTuErr(){
+  const d=tuDiag&&tuDiag.info&&tuDiag.info.detail;if(!d)return;
+  azFallbackCopyOrClipboard(String(d));
+}
+function azFallbackCopyOrClipboard(txt){
+  const done=function(){alert("نُسخ نصّ الخطأ.")};
+  try{if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(done,function(){azFallbackCopy(txt,done)});return}}catch(e){}
+  azFallbackCopy(txt,done);
+}
 async function runTutorDiag(){
   tuDiag={running:true};render();
   const save=tuCtx;
@@ -3454,7 +3465,7 @@ function tutorDiagHTML(){
       ${i.keyName?`<div style="font-size:12px">المفتاح وُجد باسم: <b style="direction:ltr;display:inline-block">${esc(i.keyName)}</b></div>`:""}
       ${(i.checked&&!i.keyName)?`<div style="font-size:12px">بُحث عن: <span style="direction:ltr;display:inline-block">${esc(i.checked.join(", "))}</span> — ولم يُوجد أيّها.</div>`:""}
       ${i.model?`<div style="font-size:12px">النموذج المطلوب: <span style="direction:ltr;display:inline-block">${esc(i.model)}</span></div>`:""}
-      ${i.detail?`<div style="font-size:11px;color:#B91C1C;direction:ltr;text-align:left;margin-top:6px">${esc(String(i.detail).slice(0,200))}</div>`:""}
+      ${i.detail?`<div style="font-size:11px;color:#B91C1C;direction:ltr;text-align:left;margin-top:6px;max-height:160px;overflow:auto;background:#fff;border-radius:8px;padding:8px;white-space:pre-wrap;word-break:break-all">${esc(i.detail)}</div><button class="btn" style="background:#991B1B;margin-top:8px;padding:8px 14px;font-size:13px" onclick="copyTuErr()">📋 انسخ نصّ الخطأ</button>`:""}
       <div style="font-size:12px;margin-top:6px">التمارين لا تتعطّل — تعمل ببطاقاتها كما كانت.</div></div>`;
   }
   return `<div style="margin-top:16px;padding-top:14px;border-top:1px dashed #E2E8F0">

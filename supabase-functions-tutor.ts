@@ -135,7 +135,9 @@ Deno.serve(async (req) => {
     clearTimeout(t);
 
     if (!res.ok) {
-      const detail = (await res.text()).slice(0, 300);
+      // Google تُرفق رقم المشروع وسبب الحصّة داخل الردّ، وقصّه عند ٣٠٠ حرف كان يبتره
+      // قبل موضع الفائدة. هذا نصّ خطأ لا يحمل مفتاحاً، فتوسيعه آمن ومفيد.
+      const detail = (await res.text()).slice(0, 1200);
       // نفصل الأسباب لأن علاجها مختلف: المفتاح، والحصّة، واسم النموذج
       const kind = res.status === 400 || res.status === 403 ? "gemini_auth"
         : res.status === 404 ? "gemini_bad_model"
