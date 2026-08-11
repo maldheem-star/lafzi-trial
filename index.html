@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260811-0905";
+  var BUILD="build-20260811-1030";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -2427,7 +2427,7 @@ async function runMicDiag(){
 const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEngPlan","startDictation",
   "startPronunciation","startSpeaking","startAudioDiag","runMicDiag","fetchTimeout",
   "pronStart","pronStop","pronReset","speakStart","speakStop","speakReset","speakEnglish",
-  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","copyAzRaw","esc","weakPhonemeStr","num0"];
+  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","copyAzRaw","esc","weakPhonemeStr","num0","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish"];
 function censusMissing(){return CENSUS.filter(function(n){return typeof window[n]!=="function"})}
 function censusHTML(){
   var miss=censusMissing();
@@ -3055,6 +3055,200 @@ function fixNext(){
   fixOn=false;fixItem=null;fixPicked=null;fixLocked=false;render();
 }
 function fixNeeded(it){return !!(it&&it.t==="grammar"&&itemStuck(it.id))}
+
+// ============ محرّك التقابل ============
+// التشخيص الذي بناه: أخطاؤها في القواعد ليست ثغرات بل التباسات ثنائية. في few/little
+// وjust/yet وضعت كل عضو مكان الآخر بالضبط — أي أنها تعرف القاعدتين وتعجز عن تمييز
+// أيّهما هنا. وبوّابة التصحيح أعلاه مبنيّة على العنصر الواحد فلا تضع العضوين وجهاً لوجه أبداً.
+//
+// البناء يتبع أربعة خطوط بحثية، كل خطوة مردودة إلى أصلها:
+//   • التقابل قبل الشرح (Schwartz & Bransford 1998): تنظر إلى الجملتين وتُسأل عن الفرق
+//     قبل أن تُخبَر بالقاعدة. من قُدّم لهم الشرح أولاً لم يستفيدوا منه بالقدر نفسه.
+//   • المقارنة تكشف البنية (Gentner et al. 2003): عرض الحالتين جنباً إلى جنب يُبرز
+//     البُعد الفارق؛ دراستهما متتاليتين تُخفيه.
+//   • التشبيك لا التكتيل (Rohrer & Taylor): تناوب العضوين بلا نمط يُجبرها على اختيار
+//     أي قاعدة تنطبق — وهو عين ما تفشل فيه. المكتَّل يُشعر بالإتقان ويُنتج تمييزاً أضعف.
+//   • التفسير الذاتي (Chi et al.): بعد الخطأ تختار السبب بنفسها بدل أن يُقال لها.
+//
+// البيانات لا الشيفرة: إضافة زوج = إدخالة في CONTRAST_PAIRS. والمحرّك لا يعرف نحواً من
+// صوتيات — الحقل dom وصفٌ للعرض فقط. لذلك يصلح كما هو لأزواج الأصوات (g/k، z/s) حين
+// تتجمّع بيانات فونيمات كافية، بلا إعادة بناء.
+const CONTRAST_PAIRS=[
+  {id:"few_little",dom:"grammar",title:"a few / a little",members:["u2_g3","u2_g4"],
+   sides:[{k:"a",label:"a few",why:"لأن الفراولة تُعدّ حبّةً حبّة"},
+          {k:"b",label:"a little",why:"لأن الملح يُقاس ولا يُعدّ"}],
+   notice:{a:"Add <b>a few</b> strawberries.",b:"Add <b>a little</b> salt.",
+     ask:"الجملتان صحيحتان. ما الذي يقرّر أيّهما نستعمل؟",
+     opts:[{t:"هل الاسم يُعدّ حبّةً حبّة أم يُقاس",ok:true},{t:"طول الكلمة",ok:false},{t:"موقعها في الجملة",ok:false}]},
+   rule:"<b>a few</b> لما يُعدّ (strawberries, books, minutes) — تستطيعين قول واحدة، اثنتان، ثلاث.<br><b>a little</b> لما يُقاس ولا يُعدّ (salt, water, time) — لا تقولين «ملحان».",
+   drills:[{q:"Add ___ sugar.",side:"b"},{q:"I have ___ questions.",side:"a"},
+     {q:"She needs ___ help.",side:"b"},{q:"We saw ___ birds.",side:"a"},
+     {q:"Put ___ pepper on it.",side:"b"},{q:"Wait ___ minutes.",side:"a"},
+     {q:"There's ___ milk left.",side:"b"},{q:"I read ___ pages.",side:"a"}]},
+
+  {id:"just_yet",dom:"grammar",title:"just / yet",members:["u8_g1","u8_g2"],
+   sides:[{k:"a",label:"just",why:"لأن الفعل حدث قبل قليل، والجملة مثبتة"},
+          {k:"b",label:"yet",why:"لأن الفعل لم يحدث بعد، والجملة منفية أو سؤال"}],
+   notice:{a:"I've <b>just</b> signed up.",b:"I haven't decided <b>yet</b>.",
+     ask:"الجملتان صحيحتان. ما الفرق بينهما؟",
+     opts:[{t:"الأولى مثبتة وحدثت للتوّ، والثانية منفية ولم تحدث بعد",ok:true},
+       {t:"الأولى ماضٍ والثانية مستقبل",ok:false},{t:"الأولى أطول من الثانية",ok:false}]},
+   rule:"<b>just</b> = حدث قبل قليل، ومكانه بعد have/has في جملة مثبتة.<br><b>yet</b> = لم يحدث حتى الآن، ومكانه آخر الجملة في نفي أو سؤال.",
+   drills:[{q:"I've ___ finished my homework.",side:"a"},{q:"She hasn't called ___.",side:"b"},
+     {q:"Have you eaten ___?",side:"b"},{q:"They've ___ arrived.",side:"a"},
+     {q:"We haven't seen the film ___.",side:"b"},{q:"He's ___ woken up.",side:"a"},
+     {q:"I've ___ read that book.",side:"a"},{q:"Has the bus come ___?",side:"b"}]},
+
+  {id:"comp_super",dom:"grammar",title:"المقارنة / التفضيل",members:["u5_g1","u5_g2"],
+   sides:[{k:"a",label:"أفضلُ من (comparative)",why:"لأننا نقارن اثنين: هو وأخوه"},
+          {k:"b",label:"الأفضل (superlative)",why:"لأننا نختار واحداً من مجموعة كلّها"}],
+   notice:{a:"He speaks <b>more quickly</b> than his brother.",b:"She plays <b>best</b> of all the team.",
+     ask:"الجملتان صحيحتان. ما الذي يقرّر الشكل؟",
+     opts:[{t:"اثنان نقارن بينهما، أم واحد من مجموعة",ok:true},
+       {t:"هل الفعل ماضٍ أم حاضر",ok:false},{t:"هل الكلمة طويلة أم قصيرة",ok:false}]},
+   rule:"مقارنة اثنين ⇒ <b>-er</b> أو <b>more</b> ومعها <b>than</b>: faster than · more quickly than.<br>واحد من مجموعة ⇒ <b>the -est</b> أو <b>the most</b> ومعها <b>of/in</b>: the fastest of all.<br>وشاذّ يُحفظ: good → <b>better</b> → <b>the best</b> (لا more good).",
+   drills:[{q:"He runs ___ than me.  (fast)",side:"a",opts:["faster","the fastest"]},
+     {q:"She is ___ player in the team.  (good)",side:"b",opts:["the best","better"]},
+     {q:"This book is ___ than that one.  (interesting)",side:"a",opts:["more interesting","the most interesting"]},
+     {q:"That was ___ day of my life.  (happy)",side:"b",opts:["the happiest","happier"]},
+     {q:"My bag is ___ than yours.  (heavy)",side:"a",opts:["heavier","the heaviest"]},
+     {q:"He is ___ boy in the class.  (tall)",side:"b",opts:["the tallest","taller"]},
+     {q:"She sings ___ than her sister.  (well)",side:"a",opts:["better","the best"]},
+     {q:"It's ___ film I've seen.  (bad)",side:"b",opts:["the worst","worse"]}]},
+];
+const CX_KEY="mawhiba_contrast_v1";
+const CX_MASTER_RUNS=2;       // جولتان ناجحتان لا واحدة: إصابة طرف قد تقع بالقاعدة الخطأ
+const CX_COOLDOWN_H=20;       // متباعدتان: التكرار الفوري يُنتج إتقاناً ظاهرياً لا باقياً
+const CX_DRILLS=6;            // من ثمانية في البنك — تنويع بين الجولات
+function cxLoad(){try{return JSON.parse(localStorage.getItem(CX_KEY)||"{}")}catch(e){return{}}}
+function cxSave(o){try{localStorage.setItem(CX_KEY,JSON.stringify(o))}catch(e){}}
+function cxStateOf(id){return cxLoad()[id]||{runs:0,lastAt:0,mastered:false}}
+function cxRecord(id,allOk){
+  const m=cxLoad(),s=m[id]||{runs:0,lastAt:0,mastered:false};
+  s.lastAt=Date.now();
+  if(allOk){s.runs=(s.runs||0)+1;if(s.runs>=CX_MASTER_RUNS)s.mastered=true}
+  else{s.runs=0} // خطأ في الجولة يُعيد العدّ: الإتقان أن يستقيم الطرفان معاً
+  m[id]=s;cxSave(m);
+}
+function cxPairOf(itemId){
+  if(!itemId)return null;
+  for(let i=0;i<CONTRAST_PAIRS.length;i++){
+    if(CONTRAST_PAIRS[i].members.indexOf(itemId)>=0)return CONTRAST_PAIRS[i];
+  }
+  return null;
+}
+// الزوج يستحقّ التقابل حين يظهر الالتباس فعلاً: خطأ في الطرفين، أو خطآن في طرف واحد
+function cxConfused(pair){
+  if(!pair)return false;
+  const m=itemErrLoad();
+  let sides=0,worst=0;
+  pair.members.forEach(function(id){
+    const r=m[id];
+    if(r&&r.wrong>0){sides++;worst=Math.max(worst,r.wrong)}
+  });
+  return sides>=2||worst>=ITEM_STUCK_AT;
+}
+function cxDue(pair){
+  if(!pair)return false;
+  const s=cxStateOf(pair.id);
+  if(s.mastered)return false;
+  if(s.lastAt&&Date.now()-s.lastAt<CX_COOLDOWN_H*3600*1000)return false;
+  return cxConfused(pair);
+}
+// تشبيك حقيقي: الخلط العشوائي وحده لا يكفي — قد يُنتج كتلةً من طرف واحد مصادفةً،
+// والكتلة هي بالضبط ما نتجنّبه. فنبني الترتيب بالتوزيع لا بالخلط ثم الترقيع:
+// نخلط كل طرف على حدة، ثم نأخذ من الأكثر عدداً حصّةً محسوبة على عدد الفجوات المتبقية،
+// بحدّ أقصى اثنان متتاليان. هذا يضمن ألا يتجاور ثلاثة، لا أن يقلّ احتمالهم.
+function cxInterleave(list){
+  const A=shuffle(list.filter(function(x){return x.side==="a"}));
+  const B=shuffle(list.filter(function(x){return x.side==="b"}));
+  const other=list.filter(function(x){return x.side!=="a"&&x.side!=="b"});
+  let big=A.length>=B.length?A:B, small=A.length>=B.length?B:A;
+  const out=[];
+  while(big.length||small.length){
+    if(big.length){
+      const gaps=small.length+1;
+      const take=Math.min(big.length,Math.max(1,Math.min(2,Math.ceil(big.length/gaps))));
+      for(let i=0;i<take;i++)out.push(big.shift());
+    }
+    if(small.length)out.push(small.shift());
+    if(big.length<small.length){const t=big;big=small;small=t}
+  }
+  return out.concat(other);
+}
+let cxOn=false,cxPair=null,cxStep=0,cxDrills=[],cxPicked=null,cxLocked=false,cxOk=false,
+    cxWrongCount=0,cxWhyOn=false,cxWhyPicked=null,cxNoticePicked=null,cxDoneThisPlan=false;
+function cxSideOf(pair,k){return pair.sides.filter(function(s){return s.k===k})[0]||pair.sides[0]}
+function cxLabelsFor(pair,d){
+  // الخياران هما العضوان دائماً — تمييزٌ لا إنتاج. وبعض الأزواج تحتاج صيغاً خاصة بكل جملة
+  return d.opts?d.opts.slice():[cxSideOf(pair,"a").label,cxSideOf(pair,"b").label];
+}
+function cxRightLabel(pair,d){
+  const L=cxLabelsFor(pair,d);
+  return d.opts?(d.side==="a"?L[0]:L[1]):cxSideOf(pair,d.side).label;
+}
+function cxArm(step){
+  const d=cxDrills[step-1];
+  if(d&&!d._opts){
+    const L=cxLabelsFor(cxPair,d),right=cxRightLabel(cxPair,d);
+    d._opts=shuffle(L.slice());d._ai=d._opts.indexOf(right);
+  }
+  cxPicked=null;cxLocked=false;cxWhyOn=false;cxWhyPicked=null;
+}
+function cxStart(pair){
+  cxOn=true;cxPair=pair;cxStep=0;cxPicked=null;cxLocked=false;cxWrongCount=0;
+  cxWhyOn=false;cxWhyPicked=null;cxNoticePicked=null;
+  cxDrills=cxInterleave(pair.drills).slice(0,CX_DRILLS);
+  logAnswer("eng_plan","cx_open",null,null,pair.id,null,{lesson:pair.dom});
+  render();
+}
+function cxNeededFor(it){
+  if(cxDoneThisPlan||!it||it.t!=="grammar")return null;
+  const p=cxPairOf(it.id);
+  return cxDue(p)?p:null;
+}
+// الملاحظة قبل الشرح: تُسأل عن الفرق ولا تُحتسب عليها. الغرض أن تنظر لا أن تُختبر
+function cxNoticePick(i){
+  if(cxNoticePicked!=null)return;
+  cxNoticePicked=i;
+  const o=cxPair.notice.opts[i];
+  logAnswer("eng_plan","cx_notice",!!(o&&o.ok),o?o.t:null,cxPair.id,null,{lesson:cxPair.dom});
+  render();
+}
+function cxRuleDone(){cxStep=1;cxArm(1);render()}
+function cxChoose(i){
+  if(cxLocked)return;
+  const d=cxDrills[cxStep-1];
+  cxPicked=i;cxLocked=true;cxOk=(i===d._ai);
+  if(!cxOk){cxWrongCount++;cxWhyOn=true}
+  logAnswer("eng_plan","cx_drill",cxOk,d._opts[i],cxPair.id,null,
+    {lesson:cxPair.dom,q_text:String(d.q||"").slice(0,300)});
+  render();
+}
+// التفسير الذاتي: تختار السبب بنفسها. الخياران هما سببا الطرفين — لا سبب عامّ مبهم
+function cxWhyPick(i){
+  if(cxWhyPicked!=null)return;
+  cxWhyPicked=i;
+  const d=cxDrills[cxStep-1],right=cxSideOf(cxPair,d.side).why;
+  logAnswer("eng_plan","cx_why",cxPair.sides[i].why===right,cxPair.sides[i].why,cxPair.id,null,{lesson:cxPair.dom});
+  render();
+}
+function cxNext(){
+  if(cxStep<cxDrills.length){cxStep++;cxArm(cxStep);render();return}
+  const allOk=cxWrongCount===0;
+  cxRecord(cxPair.id,allOk);
+  const st=cxStateOf(cxPair.id);
+  logAnswer("eng_plan","cx_done",allOk,String(cxDrills.length-cxWrongCount)+"/"+cxDrills.length,
+    cxPair.id,null,{lesson:cxPair.dom,srs_box:st.runs});
+  cxStep=-1;render(); // شاشة الختام: تقول لها أين صارت من الإتقان
+}
+function cxFinish(){
+  cxOn=false;cxPair=null;cxStep=0;cxDrills=[];cxPicked=null;cxLocked=false;
+  cxWhyOn=false;cxWhyPicked=null;cxDoneThisPlan=true;
+  const it=planCur();
+  if(fixNeeded(it)){fixStart(it);return}
+  render();
+}
 // بوّابة القراءة كانت في الاختبار الشامل وحده — ورفعت الفهم المقروء هناك من ١/٣ إلى ٣/٣.
 // وفي خطة الإنجليزي بقي بلا بوّابة وبقي ١/٣. نفس خطأ «الدواء غير موصول بمكان السقوط».
 // السرعة أبطأ من العربية عمداً: النصّ إنجليزي A1 وهي تقرؤه بلغة ثانية.
@@ -3081,9 +3275,12 @@ function startEngPlan(){
   planItems=p.items;planMeta=p;planIdx=0;planPicked=null;planLocked=false;planScore=0;planDone=false;planInput="";
   planTotal=planItems.filter(i=>i.t!=="lesson").length;
   fixOn=false;fixItem=null;fixStep=0;
+  cxOn=false;cxPair=null;cxStep=0;cxDoneThisPlan=false;
   mode="engplan";window.scrollTo(0,0);
   const f=planItems[0];
   planShownAt=Date.now();planGateStart(f);
+  const p0=cxNeededFor(f);
+  if(p0){cxStart(p0);return}
   if(fixNeeded(f)){fixStart(f);return}
   render();
   if(f&&f.t==="dict")setTimeout(()=>speakEnglish(f.w),400);
@@ -3117,12 +3314,91 @@ function planNext(){
   planIdx++;planPicked=null;planLocked=false;planInput="";
   const it=planCur();
   planShownAt=Date.now();planGateStart(it);
+  // التقابل قبل التصحيح الفردي: الالتباس بين العضوين هو السبب، وخطأ العنصر عَرَض له.
+  // ومرّة واحدة في الجلسة — ثلاث بطاقات تقابل متتالية تُرهق ولا تُعلّم.
+  const p=cxNeededFor(it);
+  if(p){cxStart(p);return}
   // السؤال العالق لا تُعرض خياراته حتى تمرّ ببطاقة التصحيح وتمرينيها
   if(fixNeeded(it)){fixStart(it);return}
   render();
   if(it&&it.t==="dict")setTimeout(()=>speakEnglish(it.w),300);
 }
 function planRepeat(){const it=planCur();if(it&&it.t==="dict")speakEnglish(it.w)}
+function renderContrast(){
+  const P=cxPair;
+  const head=`<button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
+  <div class="meta"><span>تقابل: ${P.title}</span><span>${cxStep>0?toAr(cxStep)+" من "+toAr(cxDrills.length):""}</span></div>`;
+
+  // ٠) الملاحظة — الجملتان جنباً إلى جنب قبل أي شرح
+  if(cxStep===0&&cxNoticePicked==null){
+    app.innerHTML=`${head}
+    <div class="card">
+      <span class="tag" style="background:#DBEAFE;color:#1D4ED8">👀 انظري قبل أن نشرح</span>
+      <div style="display:grid;gap:10px;margin:14px 0">
+        ${[P.notice.a,P.notice.b].map(function(s){return `<div style="direction:ltr;text-align:left;background:#F8FAFC;border:1.5px solid #E2E8F0;border-radius:12px;padding:14px;font-family:Georgia,serif;font-size:18px;color:#0F172A">${s}</div>`}).join("")}
+      </div>
+      <div style="font-size:15px;font-weight:800;color:#1E293B;margin-bottom:10px">${P.notice.ask}</div>
+      <div class="choices">${P.notice.opts.map(function(o,i){return `<button class="choice" onclick="cxNoticePick(${i})">${o.t}</button>`}).join("")}</div>
+      <div style="font-size:12px;color:#94A3B8;margin-top:10px">لا صح ولا خطأ هنا — نريدك أن تنظري إلى الفرق أولاً.</div>
+    </div>`;
+    return;
+  }
+  // ١) القاعدة — بعد أن نظرت، لا قبل
+  if(cxStep===0){
+    const o=P.notice.opts[cxNoticePicked];
+    app.innerHTML=`${head}
+    <div class="card">
+      <span class="tag" style="background:#E0E7FF;color:#4338CA">📘 الآن القاعدة</span>
+      <div style="background:${o&&o.ok?'#ECFDF5':'#FEF9C3'};border-radius:12px;padding:12px;margin:12px 0;font-size:14px;line-height:1.8;color:${o&&o.ok?'#065F46':'#854D0E'}">
+        ${o&&o.ok?"لاحظتِ الفرق الصحيح ✓":"الفرق الحقيقي غير الذي اخترتِه — وهذا طبيعي، لهذا نحن هنا."}
+      </div>
+      <div style="background:#EEF2FF;border-radius:12px;padding:14px;font-size:15px;line-height:2;color:#312E81">${P.rule}</div>
+    </div>
+    <button class="btn" style="background:#4338CA" onclick="cxRuleDone()">فهمت — نتدرّب ←</button>`;
+    return;
+  }
+  // ٣) الختام
+  if(cxStep===-1){
+    const st=cxStateOf(P.id),got=cxDrills.length-cxWrongCount;
+    app.innerHTML=`${head}
+    <div class="card" style="text-align:center">
+      <div style="font-size:44px">${cxWrongCount===0?"🌟":"💪"}</div>
+      <div style="font-size:19px;font-weight:800;color:#312E81;margin:8px 0">${toAr(got)} من ${toAr(cxDrills.length)}</div>
+      <div style="font-size:14px;color:#475569;line-height:1.9">
+        ${st.mastered?"أتقنتِ هذا التقابل — لن يعود إلا للمراجعة."
+          :cxWrongCount===0?`جولة كاملة بلا خطأ. تحتاجين جولة أخرى بعد يوم ليُحتسب إتقاناً (${toAr(st.runs)} من ${toAr(CX_MASTER_RUNS)}).`
+          :"الطرفان لم يستقيما معاً بعد — سنعيد التقابل في جلسة قادمة، لا الآن."}
+      </div>
+    </div>
+    <button class="btn" style="background:#4338CA" onclick="cxFinish()">عودة للسؤال ←</button>`;
+    return;
+  }
+  // ٢) التدريب المشبَّك
+  const d=cxDrills[cxStep-1];
+  const btns=d._opts.map(function(o,i){
+    let bg="#fff",bd="#E2E8F0",col="#334155";
+    if(cxLocked){if(i===d._ai){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(i===cxPicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}
+    return `<button class="choice" style="background:${bg};border-color:${bd};color:${col};direction:ltr;font-family:Georgia,serif;font-size:17px" onclick="cxChoose(${i})" ${cxLocked?"disabled":""}>${o}</button>`;
+  }).join("");
+  const why=(cxWhyOn&&cxWhyPicked==null)?`<div class="explain" style="margin-top:10px"><div class="explain-title" style="color:#4338CA">لماذا؟</div>
+      <div class="explain-body"><div style="margin-bottom:8px;font-size:14px">الصحيح <b style="direction:ltr;display:inline-block">${d._opts[d._ai]}</b> — أي السببين هو؟</div>
+      <div class="choices">${P.sides.map(function(s,i){return `<button class="choice" style="font-size:14px" onclick="cxWhyPick(${i})">${s.why}</button>`}).join("")}</div></div></div>`
+    :(cxWhyPicked!=null?(function(){
+        const right=cxSideOf(P,d.side).why,ok=P.sides[cxWhyPicked].why===right;
+        return `<div class="explain" style="margin-top:10px"><div class="explain-title" style="color:${ok?'#059669':'#B45309'}">${ok?"✓ هذا هو السبب":"السبب هو:"}</div>
+        <div class="explain-body">${right}</div></div>`;
+      })():"");
+  const canGo=cxLocked&&(!cxWhyOn||cxWhyPicked!=null);
+  app.innerHTML=`${head}
+  <div class="card">
+    <span class="tag" style="background:#F3E8FF;color:#7C3AED">🔀 أيّهما هنا؟</span>
+    <div class="q" style="direction:ltr;text-align:left;font-family:Georgia,serif">${d.q}</div>
+    <div class="choices">${btns}</div>
+    ${cxLocked&&!cxWhyOn?`<div class="explain"><div class="explain-title" style="color:#059669">✓ صحيح</div><div class="explain-body">${cxSideOf(P,d.side).why}</div></div>`:""}
+    ${why}
+  </div>
+  ${canGo?`<button class="btn" style="background:${cxOk?'#059669':'#B45309'}" onclick="cxNext()">${cxStep<cxDrills.length?"التالي ←":"انتهى التقابل ←"}</button>`:""}`;
+}
 function renderFix(){
   const it=fixItem,L=ENG_LESSONS[it.lesson],err=itemErrOf(it.id),bad=err&&err.last?err.last:null;
   const head=`<button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
@@ -3165,6 +3441,7 @@ function renderFix(){
 }
 function renderEngPlan(){
   if(planDone)return renderEngPlanResult();
+  if(cxOn&&cxPair)return renderContrast();
   if(fixOn&&fixItem)return renderFix();
   const it=planCur();
   const answered=planItems.slice(0,planIdx).filter(x=>x.t!=="lesson").length;
