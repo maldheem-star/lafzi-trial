@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260811-0810";
+  var BUILD="build-20260811-0905";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -2427,7 +2427,7 @@ async function runMicDiag(){
 const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEngPlan","startDictation",
   "startPronunciation","startSpeaking","startAudioDiag","runMicDiag","fetchTimeout",
   "pronStart","pronStop","pronReset","speakStart","speakStop","speakReset","speakEnglish",
-  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","copyAzRaw","esc"];
+  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","copyAzRaw","esc","weakPhonemeStr","num0"];
 function censusMissing(){return CENSUS.filter(function(n){return typeof window[n]!=="function"})}
 function censusHTML(){
   var miss=censusMissing();
@@ -3562,17 +3562,40 @@ const PHONEME_AR={th:"th (لسانك بين أسنانك)",dh:"th المجهور
   uw:"oo (food)",uh:"u (book)",ow:"oh (go)",ey:"ay (say)",ay:"ai (my)",aw:"ow (now)",oy:"oy (boy)",er:"er (her)"};
 function phonemeLabel(p){const k=String(p||"").toLowerCase().replace(/[0-9]/g,"");return PHONEME_AR[k]||k}
 // نُحوّل ردّ Azure إلى شكل النتيجة نفسه الذي تعرفه الواجهة، فلا تتفرّع الواجهة على المحرّك
+// تمرين الكلمة المفردة: الدرجة المركّبة (PronScore) تجمع الدقّة والطلاقة والاكتمال.
+// والطلاقة والاكتمال بلا معنى لكلمة واحدة، بل يُعاقبان على التكرار: قالت «Space space.»
+// فحُسبت الثانية زيادةً (Insertion) وهبطت الدرجة إلى ٥٩٪ ورُصدت خطأً — ونطقها سليم.
+// والتكرار من طفلة تتأكّد من نفسها سلوك حسن لا خطأ، فلا يُعاقَب عليه.
+// فللمرجع القصير نعتمد دقّة الأصوات وحدها، وللجملة تبقى الدرجة المركّبة على حالها.
+const PRON_SHORT_REF=2;
 function azureToScore(target,data){
   const t=pronWords(target);
-  const aw=(data.words||[]).filter(function(x){return String(x.err||"")!=="Insertion"});
+  const all=data.words||[];
+  const aw=all.filter(function(x){return String(x.err||"")!=="Insertion"});
+  const repeats=Math.max(0,all.length-aw.length);
+  const aligned=aw.length===t.length;
   // المحاذاة مشروطة بتساوي العدد: لو اختلف، سقطت الدرجة على الكلمة الخطأ فنعود للمقارنة النصية
-  const hit=aw.length===t.length?aw.map(function(x){return x.score>=60&&x.err!=="Omission"}):pronAlign(t,pronWords(data.lexical||data.heard||""));
+  const hit=aligned?aw.map(function(x){return x.score>=60&&x.err!=="Omission"}):pronAlign(t,pronWords(data.lexical||data.heard||""));
   const w=t.map(function(x){return pronWeight(x,t.length)}),wTot=w.reduce(function(a,b){return a+b},0);
   const wGot=hit.reduce(function(a,h,i){return a+(h?w[i]:0)},0);
-  // درجة Azure الصوتية هي المعتمدة حين تحاذت الكلمات؛ وإلا فنسبة الكلمات كما في مسار Groq
-  const pct=aw.length===t.length&&typeof data.pron==="number"&&data.pron>0?data.pron:Math.round(100*wGot/wTot);
+  const accOk=aligned&&aw.every(function(x){return typeof x.score==="number"&&x.score>0});
+  let pct;
+  if(aligned&&t.length<=PRON_SHORT_REF&&accOk){
+    pct=Math.round(aw.reduce(function(a,x,i){return a+x.score*w[i]},0)/wTot);
+  }else if(aligned&&typeof data.pron==="number"&&data.pron>0){
+    pct=data.pron; // جملة: الطلاقة والاكتمال جزء من الحكم فعلاً
+  }else{
+    pct=Math.round(100*wGot/wTot); // كما في مسار Groq
+  }
   return{pct,hit,words:t,got:hit.filter(Boolean).length,total:t.length,weights:w,ok:pct>=PRON_PASS,by:"azure",
-    accuracy:data.accuracy,fluency:data.fluency,completeness:data.completeness,weak:data.weak||[]};
+    repeats:repeats,accuracy:data.accuracy,fluency:data.fluency,completeness:data.completeness,weak:data.weak||[]};
+}
+// الأصوات الضعيفة في سطر واحد للسجلّ: «t:45,s:52» — يجعل سؤال «أي صوت تُخطئ فيه دائماً؟»
+// قابلاً للإجابة عبر الجلسات، وهو ما لم يكن ممكناً قبل اليوم
+// العمود smallint: قيمة غير رقمية تُسقط السطر كلّه في PostgREST، فنُمرّر null لا undefined
+function num0(v){return typeof v==="number"&&isFinite(v)?Math.round(v):null}
+function weakPhonemeStr(weak){
+  return (weak||[]).slice(0,4).map(function(x){return String(x.p||"")+":"+Math.round(x.score||0)}).join(",")||null;
 }
 // ===== التسجيل: تبدأ وتتوقف بيدها بدل نافذة ثابتة كانت تقطع الكلام =====
 const PRON_MAX_MS=15000; // حدّ أمان فقط، لا نافذة إجبارية
@@ -3645,8 +3668,12 @@ async function pronFinish(){
     const sc=azureToScore(target,az.data);
     pronResult={heard:az.data.heard||az.data.lexical||"",ok:sc.ok,sc,note:"",engine:"azure"};
     if(sc.ok)pronScore++;
+    // نحفظ ما يُقاس لا ما يُعرض فقط: الدقّة وحدها تُميّز «نطقٌ سليم مع تكرار» عن «نطقٌ ضعيف»،
+    // وأضعف الأصوات هي الجسر إلى أخطاء إملائها (gate←kate، prize←price) — كلّها فرق جهر
     logAnswer("pronunciation_a1","word",sc.ok,az.data.heard||"",target,Math.round(pronElapsed*1000),
-      {score_pct:sc.pct,engine:"azure"});
+      {score_pct:sc.pct,engine:"azure",
+       accuracy_pct:num0(sc.accuracy),fluency_pct:num0(sc.fluency),completeness_pct:num0(sc.completeness),
+       weak_phonemes:weakPhonemeStr(sc.weak),repeats:sc.repeats||0});
     pronBusy=false;render();return;
   }
   azureLastFail=az.fail||"";
@@ -3713,6 +3740,7 @@ function renderPron(){
         // Azure وحده يُعطي درجة لكل صوت — وهذا هو الفرق الذي يستحقّ العرض
         const azBox=(sc&&sc.by==="azure")?`<div style="margin-top:10px;background:#F5F3FF;border-radius:10px;padding:10px 12px">
             <div style="font-size:12px;color:#4C1D95;font-weight:700">الدقة ${toAr(sc.accuracy||0)} · الطلاقة ${toAr(sc.fluency||0)} · الاكتمال ${toAr(sc.completeness||0)}</div>
+            ${sc.repeats?`<div style="margin-top:6px;font-size:12px;color:#0F766E">قلتِها ${toAr(sc.repeats+1)} مرات — مرّة واحدة تكفي، ولم نخصم عليكِ شيئاً.</div>`:""}
             ${(sc.weak&&sc.weak.length)?`<div style="margin-top:8px;font-size:13px;color:#5B21B6;line-height:1.9">الأصوات التي تحتاج تدريباً:${sc.weak.map(x=>`<div>• <b style="direction:ltr;display:inline-block">${phonemeLabel(x.p)}</b> في <b style="direction:ltr;display:inline-block">${x.w}</b> — ${toAr(x.score)}/١٠٠</div>`).join("")}</div>`:`<div style="margin-top:6px;font-size:12px;color:#059669">كل الأصوات خرجت واضحة ✓</div>`}
           </div>`:"";
         return `<div class="explain"><div class="explain-title" style="color:${col}">${title} · ${toAr(pct)}%</div><div class="explain-body">${wordsHtml}${pronResult.heard?`<div style="margin-top:8px;font-size:13px">سمعنا: <b style="direction:ltr;display:inline-block">"${pronResult.heard}"</b></div>`:""}<div style="margin-top:6px;font-size:13px">المطلوب: <b style="direction:ltr;display:inline-block">${item.w}</b> (${item.m}).</div>${azBox}</div></div>`;
