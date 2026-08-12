@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260812-0730";
+  var BUILD="build-20260812-1120";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -802,6 +802,53 @@ function fillAvoidingBatchDupes(existing,pool,need){
 function tmplKey(it){
   return String((it&&it.q)||"").replace(/[0-9٠-٩٫.,]+/g,"#").replace(/\s+/g," ").trim().slice(0,80);
 }
+// ===== ذاكرة أخطاء بنك موهبة =====
+// خطة الإنجليزية تحفظ كل خطأ وتُعيد العنصر وتفتح بوّابة تصحيح. والبنك لا يحفظ شيئاً:
+// «دفع سالم ٥٠٪ من راتبه…» عُرض ثلاث مرّات في أسبوع، وصفر صواب في الثلاث. والسؤال
+// نفسه يعود أسبوعاً بعد أسبوع بلا علاج. الذاكرة على القالب (بنزع الأرقام) لا على نصّ
+// السؤال، فمسألة الراتب بأرقام جديدة هي هي.
+const QZ_ERR_KEY="mawhiba_quiz_err_v1";
+const QZ_DUE_WRONG=2;    // قالبان خطأ ⇒ يستحقّ الإعادة والتنبيه
+const QZ_DUE_MAX=2;      // لا نُثقل الاختبار: قالبان مستحقّان في الجولة الواحدة
+const QZ_CARD_MAX=2;     // وبطاقتا تنبيه على الأكثر — التنبيه الدائم يصير خلفية
+function qzErrLoad(){try{return JSON.parse(lsGet(QZ_ERR_KEY)||"{}")}catch(e){return{}}}
+function qzErrSave(o){try{lsSet(QZ_ERR_KEY,JSON.stringify(o))}catch(e){}}
+function qzErrOf(k){return qzErrLoad()[k]||null}
+function qzErrRecord(it,ok,ansTxt){
+  const k=tmplKey(it);if(!k)return;
+  const m=qzErrLoad(),e=m[k]||{wrong:0,seen:0,last:"",same:0,at:0};
+  e.seen=(e.seen||0)+1;e.at=Date.now();
+  if(ok){e.wrong=Math.max(0,(e.wrong||0)-1);e.same=0}
+  else{
+    e.same=(ansTxt&&e.last===ansTxt)?(e.same||0)+1:0;
+    e.wrong=(e.wrong||0)+1;e.last=ansTxt||e.last;
+  }
+  m[k]=e;qzErrSave(m);
+}
+function qzDueKeys(){
+  const m=qzErrLoad();
+  return Object.keys(m).filter(function(k){return (m[k].wrong||0)>=QZ_DUE_WRONG})
+    .sort(function(a,b){return (m[b].wrong||0)-(m[a].wrong||0)}).slice(0,QZ_DUE_MAX);
+}
+// المستحقّ يُقحَم في الجولة: يُولَّد من مولّداته إن أمكن، أو يُلتقط من البنك الثابت
+function qzInjectDue(list,gens,pool){
+  const due=qzDueKeys();if(!due.length||!list.length)return list;
+  const out=list.slice();
+  due.forEach(function(k){
+    if(out.some(function(x){return tmplKey(x)===k}))return;
+    let found=null;
+    // المحاولات كثيرة عمداً: القوالب النادرة في البنك لا تُصادَف في ثلاثين سحبة،
+    // فتضيع الإعادة نصف الجولات — وهي أهمّ من السرعة هنا (سحبٌ محلّي بلا شبكة).
+    if(gens){for(let t=0;t<160&&!found;t++){const c=uniqueFromGens(gens);if(c&&tmplKey(c)===k)found=c}}
+    if(!found&&pool){const c=pool.filter(function(x){return tmplKey(x)===k});if(c.length)found=pick(c)}
+    if(!found)return;
+    // نستبدل عنصراً غير مستحقّ، ولا نُطيل الاختبار
+    let at=-1;
+    for(let i=out.length-1;i>=0;i--){if(due.indexOf(tmplKey(out[i]))<0){at=i;break}}
+    if(at>=0)out[at]=found;
+  });
+  return spreadTemplates(out);
+}
 function spreadTemplates(list){
   const n=list.length;
   if(n<3)return list.slice();
@@ -836,21 +883,21 @@ function drawSpread(gens,n){
   return spreadTemplates(out);
 }
 async function buildDomain(domKey,n){
-  if(domKey==="quant")return drawSpread(QUANT_GENS,n);
-  if(domKey==="flex")return drawSpread(FLEX_GENS,n);
+  if(domKey==="quant")return qzInjectDue(drawSpread(QUANT_GENS,n),QUANT_GENS,null);
+  if(domKey==="flex")return qzInjectDue(drawSpread(FLEX_GENS,n),FLEX_GENS,null);
   if(domKey==="verbal"){
     const types=shuffle(AI_VERBAL);let qs=[];
     for(const t of types){if(qs.length>=n)break;const got=await fetchGemini(t,Math.ceil(n/2));qs=qs.concat(dedupeList(got))}
     // احتياط من البنك لو نقص، مع تفادي تكرار ما سبق عرضه
     if(qs.length<n){qs=qs.concat(takeUniqueFrom(shuffle(VERBAL),n-qs.length).map(q=>({...q,qtype:"bank"})))}
     if(qs.length<n){qs=qs.concat(fillAvoidingBatchDupes(qs,VERBAL,n-qs.length).map(q=>({...q,qtype:"bank"})))} // البنك نفد تنويعاً؛ حل أخير
-    return shuffle(qs).slice(0,n);
+    return qzInjectDue(shuffle(qs).slice(0,n),null,VERBAL.map(function(q){return Object.assign({},q,{qtype:"bank"})}));
   }
   if(domKey==="science"){
     let qs=dedupeList(await fetchGemini("science",n));
     if(qs.length<n){qs=qs.concat(takeUniqueFrom(shuffle(SCIENCE),n-qs.length))}
     if(qs.length<n){qs=qs.concat(fillAvoidingBatchDupes(qs,SCIENCE,n-qs.length))} // البنك نفد تنويعاً؛ حل أخير
-    return shuffle(qs).slice(0,n);
+    return qzInjectDue(shuffle(qs).slice(0,n),null,SCIENCE);
   }
   return [];
 }
@@ -2593,7 +2640,7 @@ async function runMicDiag(){
 const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEngPlan","startDictation",
   "startPronunciation","startSpeaking","startAudioDiag","runMicDiag","fetchTimeout",
   "pronStart","pronStop","pronReset","speakStart","speakStop","speakReset","speakEnglish",
-  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","piPickBand","piBandBoxHTML","piArm","piOk","piVals","piGateOn","piGated","piSig1","tmplKey","spreadTemplates","drawSpread","fadeQText","fadeAnsText","fadeGateStart","fadeGateStop","fadeGateNeeded","copyAzRaw","esc","weakPhonemeStr","num0","profileBarHTML","renderHomeCoachOnly","learnerInfo","toMasc","genderizeText","genderizeNode","genderizeInit","lsGet","lsSet","lsDel","pkey","cxShuffleOrder","cxPreStart","cxPreChoose","cxPreNext","cxPreQuit","cxPreCur","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary","coachMode","coachAskHelp","coachSaysNow","coachShowSays","coachParse","coachTopicGo","coachTopicBack","coachTopicClean","coachFreeScene"];
+  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","piPickBand","piBandBoxHTML","piArm","piOk","piVals","piGateOn","piGated","piSig1","tmplKey","spreadTemplates","drawSpread","qzErrRecord","qzDueKeys","qzInjectDue","qzErrOf","qzCardDone","fadeQText","fadeAnsText","fadeGateStart","fadeGateStop","fadeGateNeeded","copyAzRaw","esc","weakPhonemeStr","num0","profileBarHTML","renderHomeCoachOnly","learnerInfo","toMasc","genderizeText","genderizeNode","genderizeInit","lsGet","lsSet","lsDel","pkey","cxShuffleOrder","cxPreStart","cxPreChoose","cxPreNext","cxPreQuit","cxPreCur","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary","coachMode","coachAskHelp","coachSaysNow","coachShowSays","coachParse","coachTopicGo","coachTopicBack","coachTopicClean","coachFreeScene"];
 function censusMissing(){return CENSUS.filter(function(n){return typeof window[n]!=="function"})}
 function censusHTML(){
   var miss=censusMissing();
@@ -5207,6 +5254,7 @@ function renderSpeakResult(){
 function alias(){return (lsGet("mawhiba_alias")||profileOf().alias).trim()||profileOf().alias}
 function saveAlias(v){lsSet("mawhiba_alias",v)}
 let mode="home",currentMode="full",filtered=[],idx=0,picked=null,locked=false,score=0,done=false,answered=[],attempts=[],loading=false;
+let qzCard=null,qzCardCount=0;
 const app=document.getElementById("app");
 
 // ===== إدارة الحمل المعرفي: كشف الإجابات السريعة المتتالية واقتراح استراحة (بحسب الجلسة الحالية فقط) =====
@@ -5287,6 +5335,7 @@ const RAPID_MIN_BY_TYPE={reading:6000,logic:4000,analogy:4000};
 async function start(domKey){
   currentMode=domKey;mode="quiz";idx=0;picked=null;locked=false;score=0;done=false;answered=[];
   recentAnswerTimes=[];rapidNudge=false;breakSuggest=false;gateStop();gateSecs=0;gateLeft=0;gateSeen=false;
+  qzCard=null;qzCardCount=0;
   const needsAI=(domKey==="verbal"||domKey==="science"||domKey==="full");
   if(needsAI){loading=true;render();}
   if(domKey==="full"){filtered=await buildFull()}
@@ -5309,8 +5358,17 @@ function choose(i){
   // مراجعة ما أخطأت فيه. نحفظ نصّها وإجابتها المختارة (لا الصحيحة) للتشخيص لاحقاً.
   // كان النصّ يُحفظ لأسئلة الذكاء الاصطناعي وحدها (التي لها qtype)، فبقي الكمّي بلا نصّ —
   // ورأيتُ ١/١٢ ولم أستطع أن أعرف أي أسئلة كانت. النصّ يُحفظ الآن لكل سؤال.
-  logAnswer(q.d,q.qtype||"bank",ok,q.c&&q.c[i]!=null?String(q.c[i]):null,null,elapsed,
+  const ansTxt=q.c&&q.c[i]!=null?String(q.c[i]):null;
+  logAnswer(q.d,q.qtype||"bank",ok,ansTxt,null,elapsed,
     {q_text:String(q.q||"").slice(0,1200)});
+  // الذاكرة قبل البطاقة: البطاقة تُقرَأ من الحالة بعد التسجيل
+  const wasWrong=(qzErrOf(tmplKey(q))||{}).wrong||0;
+  qzErrRecord(q,ok,ansTxt&&ansTxt.slice(0,60));
+  // خطأ ثانٍ على القالب نفسه يُسمّى باسمه: «هذا النوع أخطأتِه من قبل، وهذا ما قلتِه»
+  if(!ok&&wasWrong>=1&&qzCardCount<QZ_CARD_MAX){
+    qzCard={k:tmplKey(q),prev:(qzErrOf(tmplKey(q))||{}).last||"",wrong:wasWrong+1,q:q};
+    qzCardCount++;
+  }
   recentAnswerTimes.push(elapsed);
   if(recentAnswerTimes.length>RAPID_STREAK)recentAnswerTimes.shift();
   sessionAnswered++;
@@ -5321,6 +5379,7 @@ function choose(i){
   if(breakSuggest)breakShownFor.push(sessionAnswered);
   render();
 }
+function qzCardDone(){qzCard=null;render()}
 function next(){if(idx+1>=filtered.length){done=true;gateStop();window.scrollTo(0,0);saveAttempt()}else{idx++;picked=null;locked=false;rapidNudge=false;breakSuggest=false;questionShownAt=Date.now();gateStart(filtered[idx])}render()}
 function domainStats(){const acc={};Object.keys(DOMAINS).forEach(k=>acc[k]={r:0,t:0});filtered.forEach((q,i)=>{if(acc[q.d]){acc[q.d].t++;if(answered[i])acc[q.d].r++}});return acc}
 function weakestOf(acc){let key=null,pct=101;Object.keys(DOMAINS).forEach(k=>{if(acc[k].t){const p=acc[k].r/acc[k].t*100;if(p<pct){pct=p;key=k}}});return{key,pct}}
@@ -5702,12 +5761,22 @@ function renderQuiz(){
     let bg="#fff",bd="#E2E8F0",col="#334155";
     if(locked){if(i===q.a){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(i===picked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}
     return `<button class="choice" style="background:${bg};border-color:${bd};color:${col}" onclick="choose(${i})" ${locked?"disabled":""}><span class="letter">${L[i]}</span>${c}</button>`}).join("");
+  // بطاقة التكرار: تُعرض مكان زرّ الانتقال، فلا تُتجاوز بالضغط المتتابع
+  const repeatCard=(qzCard&&locked)?`<div style="background:#FEF2F2;border:1.5px solid #FECACA;border-radius:14px;padding:16px;margin-top:14px">
+    <div style="font-weight:800;color:#991B1B;font-size:15px;margin-bottom:8px">🔁 هذا النوع من الأسئلة أخطأتِه من قبل</div>
+    <div style="font-size:14px;color:#7F1D1D;line-height:1.9">
+      أخطأتِ فيه ${toAr(qzCard.wrong)} مرات${qzCard.prev?` — وفي المرة الماضية اخترتِ <b>${esc(qzCard.prev)}</b>`:""}.
+      اقرئي التفسير أعلاه قبل الانتقال، فهذا النوع سيعود.
+    </div>
+    <button class="btn" style="background:#B91C1C;margin:12px 0 0" onclick="qzCardDone()">قرأتُ التفسير ←</button>
+  </div>`:"";
   const explain=locked?`<div class="explain"><div class="explain-title" style="color:${picked===q.a?'#059669':'#B45309'}">${picked===q.a?"✓ إجابة صحيحة":"الصحيحة بالأخضر"}</div><div class="explain-body">${q.w||""}</div></div>`:"";
   const svg=q.svg?`<div class="svgbox" style="background:#F8FAFC;border-radius:14px;padding:16px;display:flex;justify-content:center;margin-bottom:16px">${q.svg}</div>`:"";
   const banner=locked&&rapidNudge?`<div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:12px;padding:12px 14px;margin-top:10px;font-size:13px;color:#92400E;line-height:1.7">⏱️ هذا السؤال يحتاج وقتاً للقراءة والتفكير — خذي وقتك ولا تستعجلي بالإجابة.</div>`
     :locked&&breakSuggest?`<div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:12px;padding:12px 14px;margin-top:10px;font-size:13px;color:#1D4ED8;line-height:1.7">🌿 جاوبتِ على ${toAr(sessionAnswered)} سؤالاً في هذه الجلسة. استراحة قصيرة (٥ دقائق) تساعدك على التركيز أكثر — لا داعي للاستعجال.</div>`
     :"";
-  const btn=locked?`<button class="btn" style="background:${d.color}" onclick="next()">${idx+1>=filtered.length?"إنهاء ومشاهدة النتيجة":"السؤال التالي ←"}</button>`:"";
+  // زرّ الانتقال يختفي ما دامت البطاقة قائمة: القراءة شرطٌ لا اقتراح
+  const btn=(locked&&!qzCard)?`<button class="btn" style="background:${d.color}" onclick="next()">${idx+1>=filtered.length?"إنهاء ومشاهدة النتيجة":"السؤال التالي ←"}</button>`:"";
   // بوّابة القراءة: تُخفي الخيارات حتى يمرّ زمن قراءة النص. الهدف منع استراتيجية «اقرئي الخيارات
   // وخمّني» — وهي ما كانت تفعله فعلاً: ١٫٧ ثانية للسؤال ودرجة عند مستوى التخمين تماماً.
   const gateBox=(!locked&&gateSecs&&!gateOpen())
@@ -5733,6 +5802,7 @@ function renderQuiz(){
     ${gateBox}
     ${gateOpen()?`<div class="choices">${choices}</div>`:""}
     ${explain}
+    ${repeatCard}
     ${(locked&&picked!==q.a&&!tuOn&&tutorAvailable())?`<button type="button" onclick="quizAskTutor()" style="background:#EEF2FF;border:1.5px solid #C7D2FE;color:#4338CA;border-radius:12px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer;margin-top:10px;font-family:inherit">🧑‍🏫 ناقشيني فيها</button>`:""}
     ${tutorBoxHTML()}
     ${banner}
