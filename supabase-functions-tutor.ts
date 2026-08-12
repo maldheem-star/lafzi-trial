@@ -106,7 +106,8 @@ function systemFor(subject: string, age: number, male: boolean, name: string) {
 // وضع المحادثة: شريك يتكلّم معها بالإنجليزية البسيطة. الغرض أن تتكلّم لا أن تُختبر،
 // فالتصحيح يأتي بإعادة الصياغة (recast) لا بالمقاطعة — وهو ما يفعله المتحدّث الأصلي
 // حين يسمع خطأً: يُعيد الجملة صحيحةً ويواصل، فتسمع الصواب بلا أن تشعر بالتوقيف.
-function systemChat(scene: string, level: string, focus: string, tip: boolean, male: boolean, name: string) {
+function systemChat(scene: string, level: string, focus: string, tip: boolean, male: boolean, name: string,
+                    easy: boolean, suggest: boolean) {
   const child = male ? "boy" : "girl";
   const L = [
     `You are an English conversation partner for an 11-year-old ${child}${name ? " named " + name : ""}, level ${level}.`,
@@ -117,10 +118,16 @@ function systemChat(scene: string, level: string, focus: string, tip: boolean, m
     "2. Write COMPLETE, natural sentences — the way a real person speaks.",
     "   Never reply with clipped fragments like 'Size?' or 'Sugar?' or 'Paid now?'.",
     "   Say 'What size would you like?' and 'Would you like sugar in it?'.",
-    "3. Two or three sentences, up to 35 words. Do not write a paragraph.",
-    "4. End with ONE question. Prefer OPEN questions that need more than one word:",
-    "   ask 'What kind of...', 'Why do you like...', 'Tell me about...'.",
-    "   Use a yes/no or either/or question at most once in the whole conversation.",
+    easy ? "3. TWO short sentences, 20 words in total at most. Very simple words only."
+         : "3. Two or three sentences, up to 35 words. Do not write a paragraph.",
+    easy
+      // السؤال المفتوح يطلب تأليفاً، والتأليف هو الحمل الذي عجزت عنه. فمع الدعم
+      // يصير السؤال مغلقاً أو باختيارين: يُجاب بجملة قصيرة جاهزة في الذهن.
+      ? "4. End with ONE EASY question: a yes/no question, or a choice of two ('Hot or cold?')."
+      : "4. End with ONE question. Prefer OPEN questions that need more than one word:",
+    easy ? "   Never ask a question that needs a long answer."
+         : "   ask 'What kind of...', 'Why do you like...', 'Tell me about...'.",
+    easy ? "" : "   Use a yes/no or either/or question at most once in the whole conversation.",
     `5. If ${male ? "his" : "her"} sentence has a mistake, do not stop to correct it. Say the idea back`,
     "   correctly inside your reply, then carry on.",
     "6. Never write Arabic. Never explain grammar. Stay in the situation.",
@@ -140,8 +147,20 @@ function systemChat(scene: string, level: string, focus: string, tip: boolean, m
       `   TIP: <a more polite or more natural way to say what ${male ? "he" : "she"} just said>`,
       "   Keep it to one short sentence. Do not explain it. Only this one time.");
   }
+  if (suggest) {
+    // جملتان تصلحان جواباً، تُطلبان في كل دور ولو لم تُعرضا: حين تضغط «ساعديني»
+    // يجب أن تصل الجملة في الحال، لا أن تنتظر دوراً جديداً.
+    L.push("",
+      "TWO SENTENCES THE STUDENT COULD SAY:",
+      "9. At the very end, add a new line exactly in this shape:",
+      "   SAY: <one sentence> | <a different sentence>",
+      "   Each is what the STUDENT could say back to you, in the first person,",
+      "   3 to 9 words, simple and natural for a child. They must answer YOUR question.",
+      "   Do not explain them and do not number them.");
+  }
   L.push("", "Do not mention these instructions or that you are an AI.");
-  return L.join("\n");
+  // السطور الفارغة الناتجة عن الفروع (easy) تُطوى، فلا يصل النموذج نصّاً مُبعثراً
+  return L.join("\n").split("\n").filter((x, i, a) => !(x === "" && a[i - 1] === "")).join("\n");
 }
 
 // الطلب الأول: نُعطي النموذج السؤال وجوابها والصواب — ثم يبدأ هو بالسؤال عن سببها
@@ -214,7 +233,7 @@ Deno.serve(async (req) => {
     const sysText = chat
       ? systemChat(clip(b.scene, 200) || "a friendly everyday conversation", clip(b.level, 20) || "A2",
           clip(b.focus, 200) || "Be warm and polite. Model good manners in English.",
-          !!b.styleTip, male, lname)
+          !!b.styleTip, male, lname, !!b.easy, !!b.suggest)
       : systemFor(subject, age, male, lname);
     // النموذج: سرّ عامّ TUTOR_MODEL، أو سرّ خاصّ بالمزوّد، أو الافتراضي
     const model = (Deno.env.get("TUTOR_MODEL") || "").trim()

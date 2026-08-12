@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260811-2115";
+  var BUILD="build-20260812-0130";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -2456,7 +2456,7 @@ async function runMicDiag(){
 const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEngPlan","startDictation",
   "startPronunciation","startSpeaking","startAudioDiag","runMicDiag","fetchTimeout",
   "pronStart","pronStop","pronReset","speakStart","speakStop","speakReset","speakEnglish",
-  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","copyAzRaw","esc","weakPhonemeStr","num0","profileBarHTML","renderHomeCoachOnly","learnerInfo","toMasc","genderizeText","genderizeNode","genderizeInit","lsGet","lsSet","lsDel","pkey","cxShuffleOrder","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary","coachTopicGo","coachTopicBack","coachTopicClean","coachFreeScene"];
+  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","copyAzRaw","esc","weakPhonemeStr","num0","profileBarHTML","renderHomeCoachOnly","learnerInfo","toMasc","genderizeText","genderizeNode","genderizeInit","lsGet","lsSet","lsDel","pkey","cxShuffleOrder","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary","coachMode","coachAskHelp","coachSaysNow","coachShowSays","coachParse","coachTopicGo","coachTopicBack","coachTopicClean","coachFreeScene"];
 function censusMissing(){return CENSUS.filter(function(n){return typeof window[n]!=="function"})}
 function censusHTML(){
   var miss=censusMissing();
@@ -3533,22 +3533,28 @@ function tutorDiagHTML(){
 const COACH_SCENES=[
   {id:"cafe",ar:"في المقهى ☕",en:"You are a friendly barista in a small café. The student is a customer ordering a drink.",
    focus:"Model POLITE REQUESTS. A customer says 'Could I have a coffee, please?' — not 'I want coffee'. Show her how a polite order sounds.",
-   opener:"Hi there! Welcome to Sunny Café. What would you like to drink today?"},
+   opener:"Hi there! Welcome to Sunny Café. What would you like to drink today?",
+   says:["I would like a hot chocolate, please.","Could I have an orange juice, please?"]},
   {id:"school",ar:"صديقة جديدة في المدرسة 🎒",en:"You are a new classmate at school meeting the student for the first time.",
    focus:"Model FRIENDLY INTRODUCTIONS. 'Nice to meet you', 'What do you like doing?', showing interest in her answer before adding your own.",
-   opener:"Hi! I'm new here at school. What's your name?"},
+   opener:"Hi! I'm new here at school. What's your name?",
+   says:["My name is Haya. Nice to meet you.","I am Haya. What is your name?"]},
   {id:"shop",ar:"في المتجر 🛍️",en:"You are a shop assistant. The student is looking for something to buy.",
    focus:"Model ASKING FOR HELP POLITELY. 'Excuse me, do you have...?', 'Could you show me...?', and thanking the person afterwards.",
-   opener:"Good morning! How can I help you today?"},
+   opener:"Good morning! How can I help you today?",
+   says:["I am looking for a school bag.","Do you have any story books, please?"]},
   {id:"doctor",ar:"عند الطبيبة 🩺",en:"You are a kind doctor. The student is a patient who does not feel well.",
    focus:"Model DESCRIBING HOW YOU FEEL. 'I have a headache', 'It started two days ago', 'It hurts when I...'. Ask her to say more about it.",
-   opener:"Hello! Please have a seat. How are you feeling today?"},
+   opener:"Hello! Please have a seat. How are you feeling today?",
+   says:["I have a headache today.","My throat hurts a little."]},
   {id:"trip",ar:"نتكلّم عن رحلة ✈️",en:"You are a friend asking the student about a trip she took.",
    focus:"Model TELLING A STORY. Past tense, and words that join a story: 'first', 'then', 'after that', 'the best part was...'.",
-   opener:"I heard you went on a trip last week! Tell me — where did you go?"},
+   opener:"I heard you went on a trip last week! Tell me — where did you go?",
+   says:["We went to the beach last week.","I went to my grandmother's house."]},
   {id:"pet",ar:"عن الحيوانات الأليفة 🐈",en:"You are a friend who loves animals, talking with the student about pets.",
    focus:"Model GIVING OPINIONS AND REASONS. 'I think...', 'because...', 'My favourite is... because...'. Always ask her why.",
-   opener:"I have a cat named Luna and she sleeps all day. Tell me about animals you like."},
+   opener:"I have a cat named Luna and she sleeps all day. Tell me about animals you like.",
+   says:["I like cats because they are soft.","My favourite animal is the horse."]},
   // الموقف السابع: الموضوع من عنده. الستّة قبله لكلٍّ أسلوبه المقصود، وهذا أسلوبه
   // إدارة الحديث نفسه — سؤالٌ ورأيٌ بسبب — لأنّ الموضوع لا يُعرف قبل أن يُكتب.
   {id:"free",ar:"موضوع من عندك ✍️",free:true,en:"",focus:"",opener:""},
@@ -3556,7 +3562,40 @@ const COACH_SCENES=[
 // افتتاح احتياطي: لا يذكر الموضوع لأنّه قد يكون مكتوباً بالعربية، والشريك إنجليزيّ
 const COACH_FREE_OPENER="Great choice! Tell me — what do you like most about it?";
 const COACH_TOPIC_MAX=60;
-let coachTopicAsk=false,coachTopic="",coachTopicErr="";
+let coachTopicAsk=false,coachTopic="",coachTopicErr="",coachPending=null;
+// ===== الدعم: القراءة بدل التأليف =====
+// جلستها الأولى قالت ثماني شظايا لا جملاً («I want to I want to»، «uh a lot uh»)، ثم
+// فتحت الموقف الحرّ ثلاث مرّات وكتبت «جمل بسيطه» و«اسألني اسئله بسيطه» ولم تنطق شيئاً.
+// القسم يطلب ثلاثة أحمال معاً: فهمُ سؤال، وتأليفُ جواب، ونطقُه. فنرفع الأوسط: تقرأ
+// جملةً جاهزة بدل أن تبنيها — والتحدّث والنطق والقياس تبقى كما هي.
+//
+// والجملُ تُطلَب من النموذج في كل دور دائماً (سطر SAY) ولو لم تُعرض، حتى تصل فوراً
+// حين تضغط «ساعديني» بلا انتظار دور جديد. والمعروض وحده هو ما يتغيّر.
+let coachModeAsk=false,coachHelp="",coachHelpShown=false;
+function coachSaysNow(){
+  for(let i=coachMsgs.length-1;i>=0;i--){const m=coachMsgs[i];
+    if(m.role==="model")return (m.says&&m.says.length)?m.says:[]}
+  return [];
+}
+function coachShowSays(){return (coachHelp==="suggest"||coachHelpShown)&&coachSaysNow().length>0}
+// الردّ قد يحمل سطرين مُلحقين: نصيحة أسلوب، وجملاً تصلح جواباً. يُفصلان عن الكلام
+// المنطوق: صوت النصيحة يكسر الموقف، والجمل تُعرض أزراراً لا تُقال في الحوار.
+function coachParse(txt){
+  let body=String(txt||""),tip="",says=[];
+  const mS=/\n\s*SAY\s*:\s*([^\n]+)/i.exec(body);
+  if(mS){says=mS[1].split("|").map(function(x){return x.trim()}).filter(Boolean).slice(0,3);
+    body=body.replace(mS[0],"")}
+  const mT=/\n\s*TIP\s*:\s*([^\n]+)/i.exec(body);
+  if(mT){tip=mT[1].trim();body=body.replace(mT[0],"")}
+  return {text:body.trim(),tip:tip,says:says};
+}
+function coachAskHelp(){
+  if(coachHelpShown&&coachHelp==="suggest")return;
+  coachHelpShown=true;coachHelp="suggest";  // وتبقى السهولة إلى آخر الجلسة
+  logAnswer("coach","help",null,"asked",coachScene?coachScene.id:null,null,
+    {lesson:coachScene?coachScene.id:null});
+  render();
+}
 function coachFreeScene(topic){
   return {id:"free",ar:"موضوع من عندك ✍️",free:true,topic:topic,
     en:`You and the student are chatting about a topic the student chose: "${topic}". `+
@@ -3573,16 +3612,24 @@ let coachScene=null,coachMsgs=[],coachBusy=false,coachListening=false,coachElaps
 function startCoach(){
   mode="coach";coachScene=null;coachMsgs=[];coachBusy=false;coachListening=false;
   coachFail="";coachDone=false;coachTopicAsk=false;coachTopic="";coachTopicErr="";
+  coachModeAsk=false;coachHelp="";coachHelpShown=false;coachPending=null;
   coachUnsupported=!micSupported();
   window.scrollTo(0,0);render();
 }
 function coachPick(i){
-  const s=COACH_SCENES[i];
-  if(s&&s.free){coachTopicAsk=true;coachTopic="";coachTopicErr="";render();
+  coachPending=COACH_SCENES[i];
+  coachModeAsk=true;coachHelp="";coachHelpShown=false;render();
+}
+// القرار لها في كل جلسة: تتكلّم وحدها، أو تُعطى جملاً تختار منها
+function coachMode(m){
+  coachHelp=(m==="suggest")?"suggest":"solo";coachModeAsk=false;
+  const s=coachPending;coachPending=null;
+  if(s&&s.free){coachScene=null;coachTopicAsk=true;coachTopic="";coachTopicErr="";render();
     setTimeout(function(){const el=document.getElementById("coachTopicIn");if(el)el.focus()},80);return}
   coachScene=s;
-  coachMsgs=[{role:"model",text:coachScene.opener}];
-  logAnswer("coach","open",null,coachScene.id,coachScene.id,null,{lesson:coachScene.id});
+  coachMsgs=[{role:"model",text:coachScene.opener,says:coachScene.says||[]}];
+  logAnswer("coach","open",null,coachScene.id,coachScene.id,null,
+    {lesson:coachScene.id,q_text:"help:"+coachHelp});
   render();setTimeout(()=>speakEnglish(coachScene.opener),400);
 }
 // الموضوع الحرّ: يُقصّ ويُنظّف قبل أن يُرسَل — سطرٌ واحد بحدّ معلوم، لا نصّ مفتوح
@@ -3597,20 +3644,21 @@ async function coachTopicGo(){
   coachScene=coachFreeScene(topic);
   coachBusy=true;coachMsgs=[];render();
   // الافتتاح من النموذج نفسه: موضوعٌ لا نعرفه لا يصلح له افتتاحٌ مكتوب سلفاً
-  let open="";
+  let open="",openSays=[];
   try{
     const res=await fetchTimeout(TUTOR_FN_URL,{method:"POST",
       headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},
-      body:JSON.stringify({mode:"chat",learner:learnerInfo(),scene:coachScene.en,level:"A2",
+      body:JSON.stringify({mode:"chat",learner:learnerInfo(),scene:coachScene.en,
+        level:coachHelp==="suggest"?"A1":"A2",easy:coachHelp==="suggest",suggest:true,
         focus:coachScene.focus,styleTip:false,question:coachScene.en,
         studentAnswer:`Let's talk about ${topic}.`,history:[]})});
     const d=await res.json();
-    if(d&&d.reply)open=String(d.reply).split(/\n\s*TIP\s*:\s*/i)[0].trim();
+    if(d&&d.reply){const p=coachParse(d.reply);open=p.text;openSays=p.says}
   }catch(e){}
   if(!open)open=COACH_FREE_OPENER;  // تعذّر الاتصال لا يمنع البدء
   coachBusy=false;
-  coachMsgs=[{role:"model",text:open}];
-  logAnswer("coach","open",null,topic,"free",null,{lesson:"free"});
+  coachMsgs=[{role:"model",text:open,says:openSays}];
+  logAnswer("coach","open",null,topic,"free",null,{lesson:"free",q_text:"help:"+coachHelp});
   render();setTimeout(function(){speakEnglish(open)},400);
 }
 function coachTopicBack(){coachTopicAsk=false;coachTopicErr="";render()}
@@ -3682,15 +3730,18 @@ async function coachFinish(){
       headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},
       // نصيحة الأسلوب بطلب من التطبيق لا بمزاج النموذج: كل ثالثة جملة لا أكثر،
       // فالتصحيح في كل دور يقطع الحديث ويُشعرها أنها تُمتحَن لا تتحدّث
-      body:JSON.stringify({mode:"chat",learner:learnerInfo(),scene:coachScene.en,level:"A2",
+      // والمستوى يتبع اختيارها: مع الجمل الجاهزة يهبط إلى A1 بأسئلة مغلقة أو باختيارين،
+      // فالسؤال المفتوح («What kind of…») هو ما أغرقها في جلستها الأولى.
+      body:JSON.stringify({mode:"chat",learner:learnerInfo(),scene:coachScene.en,
+        level:coachHelp==="suggest"?"A1":"A2",easy:coachHelp==="suggest",suggest:true,
         focus:coachScene.focus||"",styleTip:(said%COACH_TIP_EVERY===0),
         question:coachScene.en,studentAnswer:heard,history:hist})});
     const d=await res.json();
     if(d&&d.reply){
       // النصيحة تُعرض مستقلّة ولا تُنطق مع الردّ: صوتها يكسر الموقف
-      const parts=String(d.reply).split(/\n\s*TIP\s*:\s*/i);
-      const say=parts[0].trim(),tip=(parts[1]||"").trim();
-      coachMsgs.push({role:"model",text:say,tip:tip||null});
+      const p=coachParse(d.reply);
+      const say=p.text,tip=p.tip;
+      coachMsgs.push({role:"model",text:say,tip:tip||null,says:p.says});
       logAnswer("coach","reply",null,String(d.reply).slice(0,600),coachScene.id,null,{lesson:coachScene.id});
       coachBusy=false;
       if(coachMsgs.filter(function(m){return m.role==="user"}).length>=COACH_MAX_TURNS)coachDone=true;
@@ -3738,7 +3789,8 @@ const MASC_W={
   "الصقي":"الصق","انسخيه":"انسخه","حلّي":"حُلّ","سمّي":"سمِّ","تأمّلي":"تأمّل","افهمي":"افهم",
   "اعتمدي":"اعتمد","خمّني":"خمّن","تخافي":"تخف","تقفي":"تقف","تتركي":"تترك","تنسي":"تنسَ",
   "تعتمدي":"تعتمد","تضربي":"تضرب","تطرحي":"تطرح","تستعجلي":"تستعجل","تخمّني":"تخمّن",
-  "انطقي":"انطق","انطقيها":"انطقها","اقرئيها":"اقرأها","أعيديها":"أعِدها","اضربيها":"اضربها",
+  "أعطيني":"أعطني","ساعديني":"ساعدني","لتسمعيها":"لتسمعها","تسمعيها":"تسمعها",
+  "ناديني":"نادني","أخبريني":"أخبرني","انطقي":"انطق","انطقيها":"انطقها","اقرئيها":"اقرأها","أعيديها":"أعِدها","اضربيها":"اضربها",
   "اضربيه":"اضربه","تضربيها":"تضربها","احسبيه":"احسبه","افتحيه":"افتحه","أغلقيه":"أغلقه",
   "تعيديه":"تعيده","تختاري":"تختار","ناقشيني":"ناقشني","احملي":"احمل","اسمحي":"اسمح",
   "انسي":"انسَ","توقّفي":"توقّف","انظري":"انظر","تنظري":"تنظر","احفظي":"احفظ","تبدئي":"تبدأ",
@@ -3824,6 +3876,25 @@ function renderCoach(){
       <div style="font-size:14px;color:#475569;line-height:1.9">متصفّحك لا يدعم التسجيل. جرّبي Safari على الآيفون أو Chrome على أندرويد.</div></div>`;
     return;
   }
+  if(coachModeAsk){
+    const sc=coachPending||{ar:""};
+    app.innerHTML=`${head}
+    <div class="card">
+      <span class="tag" style="background:#DBEAFE;color:#1D4ED8">${esc(sc.ar||"")}</span>
+      <div class="q" style="font-size:19px">كيف تحبّين أن تبدئي؟</div>
+      <div style="font-size:13px;color:#64748B;line-height:1.9;margin-bottom:14px">
+        لا فرق في التمرين: في الحالتين تتكلّمين بصوتك، ونقيس وضوح أصواتك.
+      </div>
+      <button class="mode full" style="background:#0E7490;border-color:#0E7490;width:100%;text-align:right"
+        onclick="coachMode('suggest')"><span class="m-name">💬 أعطيني جملاً أختار منها</span>
+        <div class="m-sub">تظهر جملتان تحت كلام الشريك، تسمعينها ثم تقولينها بصوتك — وكلامه يكون أقصر وأسهل</div></button>
+      <button class="mode full" style="background:#4338CA;border-color:#4338CA;width:100%;text-align:right"
+        onclick="coachMode('solo')"><span class="m-name">🗣️ أتكلّم وحدي</span>
+        <div class="m-sub">بلا جمل جاهزة — وإن تعثّرتِ فزرّ «ساعديني» أمامك في أي لحظة</div></button>
+      <button class="link-btn" onclick="startCoach()">→ رجوع للمواقف</button>
+    </div>`;
+    return;
+  }
   if(coachTopicAsk){
     app.innerHTML=`${head}
     <div class="card">
@@ -3889,6 +3960,19 @@ function renderCoach(){
     ? `<button class="btn" style="background:#DC2626" onclick="coachStop()">⏹️ توقّفي (${toAr(Math.floor(coachElapsed))} ث)</button>`
     : coachBusy ? `<button class="btn" style="background:#94A3B8" disabled>⏳ لحظة…</button>`
     : `<button class="btn" style="background:#059669" onclick="coachStart()">🎤 تكلّمي</button>`;
+  // الجمل الجاهزة: تُقرأ لا تُؤلَّف. والضغط يُسمعها أوّلاً — فالنطق يُقلَّد لا يُقرأ من ورق
+  const says=coachSaysNow();
+  const helpBox=(!coachBusy&&!coachListening&&coachShowSays())
+    ? `<div style="background:#ECFEFF;border:1.5px solid #A5F3FC;border-radius:14px;padding:12px;margin-bottom:10px">
+        <div style="font-size:12px;color:#0E7490;margin-bottom:8px">جمل تصلح جواباً — اضغطي لتسمعيها، ثم قوليها بصوتك</div>
+        ${says.map(function(x){return `<button type="button" onclick="coachSay(${JSON.stringify(x).replace(/"/g,'&quot;')})"
+          style="display:block;width:100%;text-align:left;direction:ltr;background:#fff;border:1.5px solid #A5F3FC;
+          border-radius:11px;padding:10px 12px;margin-bottom:7px;font-family:Georgia,serif;font-size:15px;
+          color:#0F172A;cursor:pointer;line-height:1.6">🔊 ${esc(x)}</button>`}).join("")}
+      </div>`
+    : (!coachBusy&&!coachListening&&says.length&&!coachShowSays())
+    ? `<button class="btn" style="background:#0E7490" onclick="coachAskHelp()">💬 ساعديني بجملة</button>`
+    : "";
   app.innerHTML=`${head}
   <div class="meta"><span>${coachScene.free?esc("✍️ "+(coachScene.topic||"")):coachScene.ar}</span><span>${toAr(coachMsgs.filter(function(m){return m.role==="user"}).length)} من ${toAr(COACH_MAX_TURNS)}</span></div>
   <div class="card">${bubbles}
@@ -3896,6 +3980,7 @@ function renderCoach(){
       <div style="font-size:14px;color:#64748B;margin-top:12px">نُحضّر بداية الحديث عن موضوعك…</div></div>`:""}
     ${coachFail?`<div style="background:#FEF2F2;border-radius:10px;padding:9px 11px;font-size:13px;color:#991B1B;margin-top:8px">${COACH_FAIL_AR[coachFail]||coachFail}</div>`:""}
   </div>
+  ${helpBox}
   ${btn}
   <button class="btn" style="background:#64748B" onclick="coachDone=true;render()">إنهاء ومشاهدة الخلاصة</button>`;
 }
