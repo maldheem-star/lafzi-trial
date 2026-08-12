@@ -68,9 +68,10 @@ const MAX_CHARS = 1200;     // حدّ لكل نصّ يصل من العميل —
 // يُحوّل التطبيق النصّ المعروض، فالنموذج يكتب جملاً جديدة لم يمرّ عليها تحويل.
 function systemFor(subject: string, age: number, male: boolean, name: string) {
   const who = name ? `اسمه ${name}` : "";
+  const kid = age <= 13;
   if (male) {
     return [
-      `أنت معلّم خصوصي لطفل عمره ${age} سنة${who ? "، " + who : ""}، يدرس «${subject}» بالعربية.`,
+      `أنت معلّم خصوصي ل${kid ? "طفل" : "شابّ"} عمره ${age} سنة${who ? "، " + who : ""}، يدرس «${subject}» بالعربية.`,
       "خاطبه بصيغة المذكّر في كل جملة.",
       "",
       "قواعد ملزمة:",
@@ -87,7 +88,7 @@ function systemFor(subject: string, age: number, male: boolean, name: string) {
     ].join("\n");
   }
   return [
-    `أنتِ معلّمة خصوصية لطفلة عمرها ${age} سنة، تدرس «${subject}» بالعربية.`,
+    `أنتِ معلّمة خصوصية ل${kid ? "طفلة" : "فتاة"} عمرها ${age} سنة، تدرس «${subject}» بالعربية.`,
     "",
     "قواعد ملزمة:",
     "١. لا تُعطِ الجواب الصحيح مباشرةً. اسألي سؤالاً واحداً يقودها إليه.",
@@ -107,18 +108,25 @@ function systemFor(subject: string, age: number, male: boolean, name: string) {
 // فالتصحيح يأتي بإعادة الصياغة (recast) لا بالمقاطعة — وهو ما يفعله المتحدّث الأصلي
 // حين يسمع خطأً: يُعيد الجملة صحيحةً ويواصل، فتسمع الصواب بلا أن تشعر بالتوقيف.
 function systemChat(scene: string, level: string, focus: string, tip: boolean, male: boolean, name: string,
-                    easy: boolean, suggest: boolean, openTurn: boolean) {
-  const child = male ? "boy" : "girl";
+                    easy: boolean, suggest: boolean, openTurn: boolean, age: number) {
+  // العمر يأتي من ملفّ المتعلّم لا مكتوباً في الشيفرة: «طفل عمره ١١» كان يُقال لمحمد
+  // وهو في التاسعة عشرة يتحدّث عن الجامعة، فتصله جمل بمستوى «أريد حذاءً جديداً».
+  const child = age <= 13 ? (male ? "boy" : "girl") : (male ? "young man" : "young woman");
+  const grown = age >= 16;
   const L = [
-    `You are an English conversation partner for an 11-year-old ${child}${name ? " named " + name : ""}, level ${level}.`,
+    `You are an English conversation partner for a ${age}-year-old ${child}${name ? " named " + name : ""}, level ${level}.`,
+    grown ? "Speak to an adult, not to a child: no baby talk, no exaggerated praise."
+          : "Speak to a child: warm, simple, encouraging.",
     `The situation: ${scene}`,
     "",
     "HOW TO REPLY:",
-    "1. English only. Simple, everyday words a child knows.",
+    grown ? "1. English only. Everyday words, natural adult conversation."
+          : "1. English only. Simple, everyday words a child knows.",
     "2. Write COMPLETE, natural sentences — the way a real person speaks.",
     "   Never reply with clipped fragments like 'Size?' or 'Sugar?' or 'Paid now?'.",
     "   Say 'What size would you like?' and 'Would you like sugar in it?'.",
     easy ? "3. TWO short sentences, 20 words in total at most. Very simple words only."
+         : grown ? "3. Two or three sentences, up to 45 words. Do not write a paragraph."
          : "3. Two or three sentences, up to 35 words. Do not write a paragraph.",
     // السؤال المفتوح يطلب تأليفاً، والتأليف هو الحمل الذي عجزت عنه. فمع الدعم يصير
     // السؤال مغلقاً — لكن لا في كل دور: ثماني جمل كلها «هذا أم ذاك» أنتجت ثماني
@@ -158,7 +166,8 @@ function systemChat(scene: string, level: string, focus: string, tip: boolean, m
       "9. At the very end, add a new line exactly in this shape:",
       "   SAY: <one sentence> | <a different sentence>",
       "   Each is what the STUDENT could say back to you, in the first person,",
-      "   4 to 9 words, simple and natural for a child. They must answer YOUR question.",
+      grown ? "   6 to 14 words, natural for an adult speaker. They must answer YOUR question."
+            : "   4 to 9 words, simple and natural for a child. They must answer YOUR question.",
       // الجملة المقترحة تُقال بصوتها كما هي، فركاكتها تنتقل إليها: اقتُرح عليها
       // 'I went beach' فقالت 'I want beach'. الدعم الذي يُعلّم خطأً أسوأ من غيابه.
       "   EVERY suggestion must be a COMPLETE, fully grammatical English sentence:",
@@ -235,6 +244,7 @@ Deno.serve(async (req) => {
     // المتعلّم: اسمه وجنسه. التطبيق مكتوب بخطاب المؤنّث لأنّه بُني لها، ولإخوتها
     // صفحاتهم — والنموذج يجب أن يعرف لمن يكتب حتى لا يخاطب ولداً بصيغة البنت.
     const lr = (b.learner && typeof b.learner === "object") ? b.learner as Record<string, unknown> : {};
+    const lrAge = Number(lr.age) > 0 ? Number(lr.age) : age;
     const male = String(lr.gender || "female") === "male";
     const lname = clip(lr.name, 20);
     // وضعان: تصحيح خطأ (الافتراضي) ومحادثة. النظام يختلف بينهما اختلافاً جوهرياً
@@ -242,8 +252,8 @@ Deno.serve(async (req) => {
     const sysText = chat
       ? systemChat(clip(b.scene, 200) || "a friendly everyday conversation", clip(b.level, 20) || "A2",
           clip(b.focus, 200) || "Be warm and polite. Model good manners in English.",
-          !!b.styleTip, male, lname, !!b.easy, !!b.suggest, !!b.openTurn)
-      : systemFor(subject, age, male, lname);
+          !!b.styleTip, male, lname, !!b.easy, !!b.suggest, !!b.openTurn, lrAge)
+      : systemFor(subject, lrAge, male, lname);
     // النموذج: سرّ عامّ TUTOR_MODEL، أو سرّ خاصّ بالمزوّد، أو الافتراضي
     const model = (Deno.env.get("TUTOR_MODEL") || "").trim()
       || (Deno.env.get(provider.toUpperCase() + "_MODEL") || "").trim()
