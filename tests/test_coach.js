@@ -126,7 +126,8 @@ ok(sum[0].p==='ch'&&sum[0].n===2&&sum[0].avg===45,`وأكثرها تكراراً
 ok(t.includes('الأصوات التي تكرّر ضعفها'),'وتُعرض لها');
 // جلسة بلا ضعف
 await page.evaluate(()=>{coachMsgs=[{role:"user",text:"a",pct:95,weak:[]}];coachDone=true;render()});
-ok((await page.textContent('#app')).includes('كل أصواتك خرجت واضحة'),'وبلا ضعف تُطمأن');
+// النصّ تغيّر مع تنظيف القياس: لا يُقال «كل أصواتك واضحة» بل «لا صوت تكرّر ضعفه»
+ok((await page.textContent('#app')).includes('لا صوت تكرّر ضعفه'),'وبلا ضعف متكرّر تُطمأن');
 
 console.log('\n٩) الحوار ينتهي عند الحدّ');
 page=await mk();

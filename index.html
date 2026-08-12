@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260812-1500";
+  var BUILD="build-20260812-1700";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -136,7 +136,7 @@
 const PROFILES=[
   {id:"haya",name:"هيا",alias:"بنتي",emoji:"🌸",color:"#DB2777",g:"f",age:11,level:"A2"},
   {id:"mohammed",name:"محمد",alias:"محمد",emoji:"⚽",color:"#0E7490",g:"m",only:"coach",age:19,level:"B1"},
-  {id:"elias",name:"إلياس",alias:"إلياس",emoji:"🚀",color:"#7C3AED",g:"m",only:"coach",age:11,level:"A2"},
+  {id:"elias",name:"إلياس",alias:"إلياس",emoji:"🚀",color:"#7C3AED",g:"m",only:"coach",age:18,level:"A2"},
 ];
 // الهويّة من الرابط وحده، ولا تُحفَظ. لكلٍّ صفحته: mohammed.html و elias.html،
 // وهيا في الرئيسية. ولو حُفظت الهويّة لكان آخر من فتح الجهاز يُدخِل الآخرين في صفحته.
@@ -2642,7 +2642,7 @@ async function runMicDiag(){
 const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEngPlan","startDictation",
   "startPronunciation","startSpeaking","startAudioDiag","runMicDiag","fetchTimeout",
   "pronStart","pronStop","pronReset","speakStart","speakStop","speakReset","speakEnglish",
-  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","piPickBand","piBandBoxHTML","piArm","piOk","piVals","piGateOn","piGated","piSig1","tmplKey","spreadTemplates","drawSpread","qzErrRecord","qzDueKeys","qzInjectDue","qzErrOf","qzCardDone","fadeQText","fadeAnsText","fadeGateStart","fadeGateStop","fadeGateNeeded","copyAzRaw","esc","weakPhonemeStr","num0","profileBarHTML","renderHomeCoachOnly","learnerInfo","coachLevel","toMasc","genderizeText","genderizeNode","genderizeInit","lsGet","lsSet","lsDel","pkey","cxShuffleOrder","cxPreStart","cxPreChoose","cxPreNext","cxPreQuit","cxPreCur","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary","coachMode","coachAskHelp","coachSaysNow","coachShowSays","coachParse","coachTopicGo","coachTopicBack","coachTopicClean","coachFreeScene"];
+  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","piPickBand","piBandBoxHTML","piArm","piOk","piVals","piGateOn","piGated","piSig1","tmplKey","spreadTemplates","drawSpread","qzErrRecord","qzDueKeys","qzInjectDue","qzErrOf","qzCardDone","fadeQText","fadeAnsText","fadeGateStart","fadeGateStop","fadeGateNeeded","copyAzRaw","esc","weakPhonemeStr","num0","profileBarHTML","renderHomeCoachOnly","learnerInfo","coachLevel","toMasc","genderizeText","genderizeNode","genderizeInit","lsGet","lsSet","lsDel","pkey","cxShuffleOrder","cxPreStart","cxPreChoose","cxPreNext","cxPreQuit","cxPreCur","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary","coachMode","coachAskHelp","coachEnd","coachReview","coachFixParse","weakClean","coachSaysNow","coachShowSays","coachParse","coachTopicGo","coachTopicBack","coachTopicClean","coachFreeScene"];
 function censusMissing(){return CENSUS.filter(function(n){return typeof window[n]!=="function"})}
 function censusHTML(){
   var miss=censusMissing();
@@ -3869,6 +3869,7 @@ function startCoach(){
   mode="coach";coachScene=null;coachMsgs=[];coachBusy=false;coachListening=false;
   coachFail="";coachDone=false;coachTopicAsk=false;coachTopic="";coachTopicErr="";
   coachModeAsk=false;coachHelp="";coachHelpShown=false;coachPending=null;
+  coachFix=[];coachFixBusy=false;coachFixFail="";
   coachUnsupported=!micSupported();
   window.scrollTo(0,0);render();
 }
@@ -4003,7 +4004,7 @@ async function coachFinish(){
       coachMsgs.push({role:"model",text:say,tip:tip||null,says:p.says});
       logAnswer("coach","reply",null,String(d.reply).slice(0,600),coachScene.id,null,{lesson:coachScene.id});
       coachBusy=false;
-      if(coachMsgs.filter(function(m){return m.role==="user"}).length>=COACH_MAX_TURNS)coachDone=true;
+      if(coachMsgs.filter(function(m){return m.role==="user"}).length>=COACH_MAX_TURNS){coachDone=true;setTimeout(coachReview,50)}
       render();setTimeout(function(){speakEnglish(say)},300);
       return;
     }
@@ -4012,16 +4013,75 @@ async function coachFinish(){
   coachBusy=false;render();
 }
 // خلاصة الجلسة: أكثر الأصوات تكراراً في قائمة الضعف — وهو السؤال الذي لم يكن له جواب قبل اليوم
+// ===== تنظيف قياس النطق قبل عرضه =====
+// جملة محمد سجّلت ١٠٠٪ ومعها أصوات بدرجة صفر في السطر نفسه. السبب: حين يُخطئ Whisper
+// التفريغ يقيس Azure النطق على نصّ لم يُقَل، فتخرج أصفارٌ لأصوات سليمة. والبناء على
+// هذا يعني أن نقول لمحمد «صوت الـt عندك ضعيف» وهو لم ينطقها — ومصحّحٌ يُخطئ أسوأ من
+// غيابه. فالتصفية على العرض لا على التسجيل: الخام يبقى في قاعدة البيانات كما هو.
+const WEAK_CONTRA_PCT=90;   // درجة عالية مع صوتٍ بصفر = تناقض، لا ضعف
+const WEAK_MIN_WORDS=2;     // لا يُسمّى صوتٌ ضعيفاً حتى يضعف في كلمتين مختلفتين
+function weakClean(list,pct){
+  return (list||[]).filter(function(x){
+    if(!x||!x.p)return false;
+    const sc=Number(x.score||0);
+    if(pct!=null&&pct>=WEAK_CONTRA_PCT&&sc<=0)return false; // متناقض: يُهمَل
+    return true;
+  });
+}
 function coachWeakSummary(){
   const tally={};
-  coachMsgs.forEach(function(m){(m.weak||[]).forEach(function(x){
-    const k=String(x.p||"");if(!k)return;
-    if(!tally[k])tally[k]={n:0,sum:0};
-    tally[k].n++;tally[k].sum+=Number(x.score||0);
-  })});
-  return Object.keys(tally).map(function(k){return{p:k,n:tally[k].n,avg:Math.round(tally[k].sum/tally[k].n)}})
+  coachMsgs.forEach(function(m){
+    weakClean(m.weak,m.pct).forEach(function(x){
+      const k=String(x.p||"");if(!k)return;
+      if(!tally[k])tally[k]={n:0,sum:0,words:{}};
+      tally[k].n++;tally[k].sum+=Number(x.score||0);
+      if(x.w)tally[k].words[String(x.w).toLowerCase()]=1;
+    });
+  });
+  return Object.keys(tally)
+    .map(function(k){const t=tally[k];const ws=Object.keys(t.words);
+      return{p:k,n:t.n,avg:Math.round(t.sum/t.n),words:ws}})
+    // شرط الكلمتين: صوتٌ ضعف في كلمة واحدة قد يكون الكلمة لا الصوت
+    .filter(function(x){return x.words.length>=WEAK_MIN_WORDS||x.n>=WEAK_MIN_WORDS+1})
     .sort(function(a,b){return b.n-a.n||a.avg-b.avg}).slice(0,3);
 }
+// ===== صفحة التصحيح: بعد الجلسة لا في أثنائها =====
+// المقاطعة تقتل الكلام — جرّبناه. لكن الجلسة كانت تنتهي بلا شيء بيده: محمد قال
+// «I have a work that I haven't worked to do» ولم يُصحَّح له شيء. فالتصحيح يُجمَع
+// ويُعرض مرّة واحدة في الخلاصة، بطلب واحد من النموذج.
+let coachFix=[],coachFixBusy=false,coachFixFail="";
+function coachFixParse(txt){
+  const out=[];
+  String(txt||"").split(/\n+/).forEach(function(ln){
+    const m=/^\s*FIX\s*:\s*(.+)$/i.exec(ln);if(!m)return;
+    const p=m[1].split("|").map(function(x){return x.trim()});
+    if(p.length>=2&&p[0]&&p[1])out.push({said:p[0],fix:p[1],why:p[2]||""});
+  });
+  return out.slice(0,4);
+}
+async function coachReview(){
+  const said=coachMsgs.filter(function(m){return m.role==="user"&&m.text});
+  coachFix=[];coachFixFail="";
+  if(!said.length)return;
+  coachFixBusy=true;render();
+  try{
+    const lines=said.map(function(m,i){return (i+1)+". "+m.text}).join("\n");
+    const res=await fetchTimeout(TUTOR_FN_URL,{method:"POST",
+      headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},
+      body:JSON.stringify({mode:"review",learner:learnerInfo(),level:coachLevel(),
+        scene:coachScene?coachScene.en:"",question:"review",studentAnswer:lines})});
+    const d=await res.json();
+    if(d&&d.reply)coachFix=coachFixParse(d.reply);
+    else coachFixFail=(d&&d.error)||"reply";
+  }catch(e){coachFixFail="network"}
+  coachFixBusy=false;
+  coachFix.forEach(function(f){
+    logAnswer("coach","fix",null,(f.said+" ⇐ "+f.fix).slice(0,300),coachScene?coachScene.id:null,null,
+      {lesson:coachScene?coachScene.id:null,q_text:String(f.why||"").slice(0,200)});
+  });
+  render();
+}
+function coachEnd(){coachDone=true;render();coachReview()}
 const COACH_FAIL_AR={mic:"لم نصل إلى الميكروفون — اسمحي للمتصفّح باستعماله.",
   short:"التسجيل قصير جداً — اضغطي، تكلّمي، ثم أوقفي.",
   unclear:"لم نسمع كلاماً واضحاً — اقتربي من الميكروفون وأعيدي.",
@@ -4049,6 +4109,7 @@ const MASC_W={
   "اعتمدي":"اعتمد","خمّني":"خمّن","تخافي":"تخف","تقفي":"تقف","تتركي":"تترك","تنسي":"تنسَ",
   "تعتمدي":"تعتمد","تضربي":"تضرب","تطرحي":"تطرح","تستعجلي":"تستعجل","تخمّني":"تخمّن",
   "أعطيني":"أعطني","ساعديني":"ساعدني","لتسمعيها":"لتسمعها","تسمعيها":"تسمعها",
+  "اسمعي":"اسمع","اسمعيها":"اسمعها","كرّريها":"كرّرها","راجعي":"راجع","عدّليها":"عدّلها",
   "ناديني":"نادني","أخبريني":"أخبرني","انطقي":"انطق","انطقيها":"انطقها","اقرئيها":"اقرأها","أعيديها":"أعِدها","اضربيها":"اضربها",
   "اضربيه":"اضربه","تضربيها":"تضربها","احسبيه":"احسبه","افتحيه":"افتحه","أغلقيه":"أغلقه",
   "تعيديه":"تعيده","تختاري":"تختار","ناقشيني":"ناقشني","احملي":"احمل","اسمحي":"اسمح",
@@ -4189,8 +4250,9 @@ function renderCoach(){
   }
   const bubbles=coachMsgs.map(function(m){
     const me=m.role==="user";
+    const wk=me?weakClean(m.weak,m.pct):[];
     const chip=(me&&m.pct!=null)?`<div style="font-size:11px;margin-top:6px;color:${m.pct>=80?'#059669':m.pct>=60?'#B45309':'#DC2626'}">
-        وضوح الأصوات ${toAr(m.pct)}٪${(m.weak&&m.weak.length)?` · أضعفها <b style="direction:ltr;display:inline-block">${esc(phonemeLabel(m.weak[0].p))}</b>`:""}</div>`:"";
+        وضوح الأصوات ${toAr(m.pct)}٪${wk.length?` · أضعفها <b style="direction:ltr;display:inline-block">${esc(phonemeLabel(wk[0].p))}</b>`:""}</div>`:"";
     return `<div style="display:flex;justify-content:${me?'flex-start':'flex-end'};margin:8px 0">
       <div style="max-width:88%;background:${me?'#EEF2FF':'#F0FDF4'};border:1.5px solid ${me?'#C7D2FE':'#A7F3D0'};
         border-radius:16px;padding:11px 13px">
@@ -4209,9 +4271,26 @@ function renderCoach(){
       <div style="font-size:19px;font-weight:800;color:#312E81;margin:8px 0">تكلّمتِ ${toAr(said.length)} مرات بالإنجليزية</div>
       ${avg.length?`<div style="font-size:15px;color:#334155">وضوح أصواتك: <b>${toAr(Math.round(avg.reduce(function(a,m){return a+m.pct},0)/avg.length))}٪</b></div>`:""}
       ${w.length?`<div style="background:#F5F3FF;border-radius:12px;padding:12px;margin-top:12px;text-align:right;font-size:14px;color:#4C1D95;line-height:1.9">
-        الأصوات التي تكرّر ضعفها:${w.map(function(x){return `<div>• <b style="direction:ltr;display:inline-block">${esc(phonemeLabel(x.p))}</b> — ${toAr(x.n)} مرات، بمعدّل ${toAr(x.avg)}/١٠٠</div>`}).join("")}</div>`
-        :`<div style="font-size:14px;color:#059669;margin-top:10px">كل أصواتك خرجت واضحة ✓</div>`}
+        الأصوات التي تكرّر ضعفها:${w.map(function(x){return `<div>• <b style="direction:ltr;display:inline-block">${esc(phonemeLabel(x.p))}</b> — بمعدّل ${toAr(x.avg)}/١٠٠${x.words.length?` في: <b style="direction:ltr;display:inline-block">${x.words.slice(0,3).map(esc).join(" · ")}</b>`:""}</div>`}).join("")}
+        <div style="font-size:12px;color:#7C3AED;margin-top:8px">اسمعي الكلمة ثم كرّريها ثلاثاً — الصوت يُقلَّد لا يُشرَح.</div></div>`
+        :`<div style="font-size:14px;color:#059669;margin-top:10px">لا صوت تكرّر ضعفه في أكثر من كلمة ✓</div>`}
     </div>
+    ${coachFixBusy?`<div class="card" style="text-align:center"><div class="spin"></div>
+      <div style="font-size:14px;color:#64748B;margin-top:12px">نراجع جملك…</div></div>`:""}
+    ${(!coachFixBusy&&coachFix.length)?`<div class="card">
+      <span class="tag" style="background:#FEF3C7;color:#92400E">✍️ جملك بعد التعديل</span>
+      <div style="font-size:12px;color:#94A3B8;margin:8px 0 12px">لم نقاطعك في أثناء الحديث — وهذا موضع التصحيح.</div>
+      ${coachFix.map(function(f){return `<div style="border-inline-start:3px solid #FCD34D;padding-inline-start:10px;margin-bottom:14px">
+        <div style="direction:ltr;text-align:left;font-family:Georgia,serif;font-size:15px;color:#B45309;text-decoration:line-through">${esc(f.said)}</div>
+        <div style="direction:ltr;text-align:left;font-family:Georgia,serif;font-size:16px;color:#065F46;font-weight:700;margin-top:4px">${esc(f.fix)}</div>
+        ${f.why?`<div style="font-size:13px;color:#475569;line-height:1.8;margin-top:4px">${esc(f.why)}</div>`:""}
+        <button type="button" onclick="coachSay(${JSON.stringify(f.fix).replace(/"/g,'&quot;')})"
+          style="background:none;border:none;color:#0891B2;font-size:13px;cursor:pointer;padding:6px 0 0;font-family:inherit">🔊 اسمعي الصحيحة</button>
+      </div>`}).join("")}
+    </div>`:""}
+    ${(!coachFixBusy&&!coachFix.length&&!coachFixFail&&coachMsgs.some(function(m){return m.role==="user"}))?
+      `<div class="card" style="text-align:center;font-size:14px;color:#059669">لا جملة تحتاج تعديلاً في هذه الجلسة ✓</div>`:""}
+    ${coachFixFail?`<div class="card" style="font-size:13px;color:#991B1B">تعذّرت مراجعة الجمل — والدرجات أعلاه سليمة.</div>`:""}
     <button class="btn" style="background:#4338CA" onclick="startCoach()">موقف آخر ←</button>`;
     return;
   }
@@ -4241,7 +4320,7 @@ function renderCoach(){
   </div>
   ${helpBox}
   ${btn}
-  <button class="btn" style="background:#64748B" onclick="coachDone=true;render()">إنهاء ومشاهدة الخلاصة</button>`;
+  <button class="btn" style="background:#64748B" onclick="coachEnd()">إنهاء ومشاهدة الخلاصة</button>`;
 }
 function renderContrast(){
   const P=cxPair;

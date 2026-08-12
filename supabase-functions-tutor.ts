@@ -182,6 +182,35 @@ function systemChat(scene: string, level: string, focus: string, tip: boolean, m
 }
 
 // الطلب الأول: نُعطي النموذج السؤال وجوابها والصواب — ثم يبدأ هو بالسؤال عن سببها
+// ===== وضع المراجعة: التصحيح بعد الجلسة =====
+// المقاطعة في أثناء الحديث تقتل الكلام (جُرِّب: أنتجت شظايا لا جملاً). لكن الجلسة
+// كانت تنتهي بلا شيء بيده. فتُجمع جمله وتُراجَع مرّة واحدة في الخلاصة.
+function systemReview(male: boolean, name: string, age: number, level: string) {
+  const kid = age <= 13;
+  return [
+    `You are an English teacher reviewing what ${name || "a student"} said in a short conversation.`,
+    `The student is ${age} years old, level ${level}.`,
+    "",
+    "You will receive their sentences, numbered. Return ONLY correction lines, nothing else.",
+    "",
+    "RULES:",
+    "1. Correct at most FOUR sentences — the ones with real mistakes that matter.",
+    "   Ignore tiny slips, filler words ('er', 'um'), and anything that is already correct.",
+    "   If a sentence is only a fragment because the speech was cut off, skip it.",
+    "2. One line per correction, in exactly this shape:",
+    "   FIX: <what they said> | <the corrected sentence> | <سبب قصير بالعربية>",
+    "3. The corrected sentence must be complete, natural and grammatical English,",
+    "   and must keep THEIR meaning — do not invent a new idea.",
+    `4. Keep the correction at their level (${level}): fix the error, do not upgrade the style.`,
+    "5. The reason is ONE short Arabic clause naming the rule — for example:",
+    "   «work لا تُعدّ، فلا يُقال a work» أو «الحدث في الماضي، فالفعل went لا go».",
+    "6. If nothing is worth correcting, return exactly: NONE",
+    "",
+    kid ? "Be gentle: this is a child." : "Be direct and brief: this is an adult learner.",
+    "Do not greet, do not praise, do not explain anything outside the FIX lines.",
+  ].join("\n");
+}
+
 function openingFor(b: Record<string, unknown>, male: boolean) {
   const L: string[] = [];
   L.push(`السؤال: ${b.question}`);
@@ -235,7 +264,8 @@ Deno.serve(async (req) => {
 
     const question = clip(b.question);
     const studentAnswer = clip(b.studentAnswer, 400);
-    if (!studentAnswer || (!question && String(b.mode || "") !== "chat")) {
+    const noQ = String(b.mode || "") === "chat" || String(b.mode || "") === "review";
+    if (!studentAnswer || (!question && !noQ)) {
       return jsonOut({ error: "missing_question_or_answer" }, 400);
     }
 
@@ -249,7 +279,10 @@ Deno.serve(async (req) => {
     const lname = clip(lr.name, 20);
     // وضعان: تصحيح خطأ (الافتراضي) ومحادثة. النظام يختلف بينهما اختلافاً جوهرياً
     const chat = String(b.mode || "") === "chat";
-    const sysText = chat
+    const review = String(b.mode || "") === "review";
+    const sysText = review
+      ? systemReview(male, lname, lrAge, clip(b.level, 20) || "A2")
+      : chat
       ? systemChat(clip(b.scene, 200) || "a friendly everyday conversation", clip(b.level, 20) || "A2",
           clip(b.focus, 200) || "Be warm and polite. Model good manners in English.",
           !!b.styleTip, male, lname, !!b.easy, !!b.suggest, !!b.openTurn, lrAge)
@@ -267,7 +300,7 @@ Deno.serve(async (req) => {
 
     // تاريخ الحوار يصل من العميل ويعود إليه: الدالة بلا ذاكرة عمداً، فلا حالة تُدار هنا
     const history = Array.isArray(b.history) ? (b.history as Record<string, unknown>[]).slice(-MAX_TURNS) : [];
-    const opening = chat ? studentAnswer
+    const opening = (chat || review) ? studentAnswer
       : openingFor({ question, studentAnswer, choices: b.choices,
           correctAnswer: clip(b.correctAnswer, 200), priorErrors: clip(b.priorErrors, 300) }, male);
     const turns: Record<string, unknown>[] = history.length ? history : [{ role: "user", text: opening }];
