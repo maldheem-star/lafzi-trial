@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260812-0420";
+  var BUILD="build-20260812-0730";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -795,9 +795,49 @@ function fillAvoidingBatchDupes(existing,pool,need){
 }
 
 // يبني مجموعة أسئلة لمجال، ممزوجة (محرّك + كود) مع احتياط، وبلا تكرار لنص سبق عرضه في هذه الجلسة
+// ===== لا قالبان متطابقان متتاليان =====
+// سؤالان متتاليان بالقالب نفسه («العلوي = حاصل ضرب السفليين»، ٢٠ و٤ ثم ١٢ و٤): أصابت
+// الأول بـ٥ ثم أعادت ٥ في الثاني وصوابه ٣. القالب المتكرّر يدعو إلى إعادة الجواب لا
+// إلى إعادة الحلّ. والقالب يُعرَف بنصّ السؤال بعد نزع أرقامه — بلا وسم يدويّ في البنك.
+function tmplKey(it){
+  return String((it&&it.q)||"").replace(/[0-9٠-٩٫.,]+/g,"#").replace(/\s+/g," ").trim().slice(0,80);
+}
+function spreadTemplates(list){
+  const n=list.length;
+  if(n<3)return list.slice();
+  // الأخذُ من أوّل ما يختلف يُنجح الصدر ويُكتّل العجز: القوالب الكثيرة تتبقّى في الآخر
+  // فتتجاور. فنُرتّب من الأكثر تكراراً، ونوزّع على المواضع الزوجية ثم الفردية — وهو
+  // الترتيب الأمثل: لا يتجاور متطابقان ما لم يتجاوز أكثرُها نصفَ العدد.
+  const groups={};
+  list.forEach(function(x){const k=tmplKey(x);(groups[k]=groups[k]||[]).push(x)});
+  const keys=Object.keys(groups).sort(function(a,b){return groups[b].length-groups[a].length});
+  const flat=[];keys.forEach(function(k){groups[k].forEach(function(x){flat.push(x)})});
+  const out=new Array(n);let i=0;
+  for(let p=0;p<n;p+=2)out[p]=flat[i++];
+  for(let p=1;p<n;p+=2)out[p]=flat[i++];
+  return out.every(Boolean)?out:list.slice();
+}
+// والتوزيع وحده لا يكفي حين يُنتج المولّد سبعة من قالب واحد في اثني عشر سؤالاً: لا
+// ترتيب يُباعد بينها حينئذ. فيُسحب بحصّة — ثلث العدد لكل قالب على الأكثر، وإن نفدت
+// المحاولات قُبل ما جاء (سؤال أقلّ تنويعاً خيرٌ من سؤال ناقص).
+function drawSpread(gens,n){
+  const cap=Math.max(2,Math.ceil(n/3)),count={},out=[];
+  for(let i=0;i<n;i++){
+    let it=null;
+    for(let t=0;t<12;t++){
+      const c=uniqueFromGens(gens);
+      if(!c)break;
+      it=it||c;
+      if((count[tmplKey(c)]||0)<cap){it=c;break}
+    }
+    if(!it)break;
+    const k=tmplKey(it);count[k]=(count[k]||0)+1;out.push(it);
+  }
+  return spreadTemplates(out);
+}
 async function buildDomain(domKey,n){
-  if(domKey==="quant")return Array.from({length:n},()=>uniqueFromGens(QUANT_GENS));
-  if(domKey==="flex")return Array.from({length:n},()=>uniqueFromGens(FLEX_GENS));
+  if(domKey==="quant")return drawSpread(QUANT_GENS,n);
+  if(domKey==="flex")return drawSpread(FLEX_GENS,n);
   if(domKey==="verbal"){
     const types=shuffle(AI_VERBAL);let qs=[];
     for(const t of types){if(qs.length>=n)break;const got=await fetchGemini(t,Math.ceil(n/2));qs=qs.concat(dedupeList(got))}
@@ -818,7 +858,7 @@ async function buildFull(){
   const per=12;
   const [v,q,s,f]=await Promise.all([buildDomain("verbal",per),Promise.resolve(buildDomain("quant",per)),buildDomain("science",per),Promise.resolve(buildDomain("flex",per))]);
   const qq=await Promise.resolve(q),ff=await Promise.resolve(f);
-  return shuffle([...(await v),...qq,...(await s),...ff]);
+  return spreadTemplates(shuffle([...(await v),...qq,...(await s),...ff]));
 }
 
 
@@ -2099,6 +2139,45 @@ function pctBandBoxHTML(){
     <div style="font-size:14px;font-weight:800;color:#1E40AF;text-align:center;margin-bottom:10px">قبل الحساب: أين يقع الجواب تقريباً؟</div>
     <div style="display:flex;flex-wrap:wrap;gap:8px">${btns}</div>${fb}</div>`;
 }
+// ===== بوّابة الرتبة في الضرب في ٣٫١٤ =====
+// كل أخطائها في هذا التدريب كانت موضع الفاصلة وحده: ٣٫١٤×١٦ ⇐ ٥٠٢٫٤، و×٤ ⇐ ١٢٥٫٦،
+// و×٣٤ ⇐ ١٠٦٧٫٦. الأرقام صحيحة (٥٠٢٤، ١٢٥٦، ١٠٦٧٦) والفاصلة وحدها تقع في غير موضعها.
+// فتُلزَم بحجم الجواب قبل رقمه: ٣ × العدد تقدير كافٍ لتحديد الرتبة.
+function piSig1(v){ // إلى رقم معنوي واحد: ٥٠٫٢٤ ⇐ ٥٠، و١٢٥٫٦ ⇐ ١٠٠
+  if(!Number.isFinite(v)||v===0)return 0;
+  const e=Math.floor(Math.log10(Math.abs(v)));
+  return Math.round(v/Math.pow(10,e))*Math.pow(10,e);
+}
+let piOrder=[],piPick=-1,piTries=0;
+function piGateOn(){return basicsSub==="pimul"&&basicsStage>=2&&!!basicsCur&&!!basicsCur.fam&&Number.isFinite(basicsCur.fam.c)}
+function piVals(){const ans=basicsCur.fam.c;return [piSig1(ans/10),piSig1(ans),piSig1(ans*10)]}
+function piArm(){piPick=-1;piTries=0;piOrder=shuffle([0,1,2])}
+function piOk(){return piGateOn()&&piPick===1}
+function piGated(){return piGateOn()&&!basicsLocked&&!piOk()}
+function piPickBand(i){
+  if(!piGateOn()||basicsLocked||piOk())return;
+  piPick=piOrder[i];piTries++;
+  logAnswer("basics_pimul","magnitude",piPick===1,"حوالي "+arDec(piVals()[piPick])+" · موضع "+toAr(i+1),
+    null,null,{lesson:"pimul",q_text:basicsCur.qText||null,srs_box:piTries});
+  render();
+}
+function piBandBoxHTML(){
+  const a=basicsCur.fam.a,V=piVals(),done=piOk();
+  const btns=piOrder.map(function(vi,i){
+    const isPick=piPick===vi,good=done&&vi===1;
+    const bd=good?"#10B981":isPick?"#EF4444":"#CBD5E1",bg=good?"#ECFDF5":isPick?"#FEF2F2":"#fff",col=good?"#065F46":isPick?"#991B1B":"#334155";
+    return `<button class="link-btn" style="margin:0;flex:1 1 30%;padding:12px 8px;border:2px solid ${bd};background:${bg};color:${col};border-radius:12px;font-weight:800;font-size:15px" onclick="piPickBand(${i})" ${done?"disabled":""}>حوالي ${arDec(V[vi])}</button>`;
+  }).join("");
+  const fb=done
+    ? `<div style="text-align:center;margin-top:10px;font-size:13px;font-weight:800;color:#059669">✓ هنا رتبة الجواب — الآن احسبيه بالضبط، والفاصلة في موضعها هذا</div>`
+    : piPick>=0
+    ? `<div style="text-align:center;margin-top:10px;font-size:13px;font-weight:800;color:#DC2626">
+        ٣٫١٤ أكبر قليلاً من ٣، و٣ × ${toAr(a)} = ${toAr(3*a)} — فالجواب قريب من ${arDec(V[1])}.</div>`
+    : `<div style="text-align:center;margin-top:8px;font-size:12px;color:#64748B">احسبي ٣ × ${toAr(a)} في رأسك أولاً</div>`;
+  return `<div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:14px;padding:14px;margin-bottom:14px">
+    <div style="font-size:14px;font-weight:800;color:#1E40AF;text-align:center;margin-bottom:10px">قبل الحساب: ما رتبة الجواب؟</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px">${btns}</div>${fb}</div>`;
+}
 function basicsFamilyQ(f){
   const kind=pick(["mul1","mul2","div1","div2"]);
   if(kind==="mul1")return{text:`${toAr(f.a)} × ${toAr(f.b)} = ؟`,ans:f.c,op:"mul"};
@@ -2141,6 +2220,7 @@ function basicsNew(){
   if(basicsSub==="multdiv"&&basicsStage===1)divArmArray(basicsCur.fam.c,basicsCur.fam.b);
   basicsPrep();
   if(basicsSub==="percent")pctArm();
+  if(basicsSub==="pimul")piArm();
   render();
   if(basicsStage===5)setTimeout(()=>{const el=document.getElementById('basicsIn');if(el)el.focus()},50);
 }
@@ -2203,12 +2283,12 @@ function logAnswer(domain,qtype,isCorrect,response,itemId,elapsedMs,extra){
   }catch(e){}
 }
 function basicsChoose(i){
-  if(basicsLocked||pctGated())return;basicsLocked=true;basicsPicked=i;
+  if(basicsLocked||pctGated()||piGated())return;basicsLocked=true;basicsPicked=i;
   basicsRecord(i===basicsCur.ai,basicsCur.opts?basicsCur.opts[i]:null);
 }
 // الحقل الفارغ لا يُحتسب محاولة: لا نُحرق عليها محاولة إتقان بضغطة غير مقصودة
 function basicsSubmit(){
-  if(basicsLocked||pctGated())return;
+  if(basicsLocked||pctGated()||piGated())return;
   const el=document.getElementById('basicsIn'),raw=(el?el.value:"").trim();
   if(raw==="")return;
   const v=parseArNum(raw);
@@ -2394,8 +2474,8 @@ function renderBasics(){
       :basicsFinalSupport?`<div style="font-size:13px;color:#854D0E;text-align:center;margin-top:10px">🌱 مراجعة: (${toAr(basicsFinalRecoveryStreak)}/${toAr(RECOVERY_REQ)}) لإخفاء التذكير مرة أخرى</div>`
       :`<div style="font-size:13px;color:#64748B;text-align:center;margin-top:10px">🎓 حل مستقل — (${toAr(basicsMasteryStreak)}/${toAr(MASTERY_REQ)}) متتالية لإتقان هذا النوع</div>`;
     // الخيارات/الحقل لا تُرسَم إطلاقاً قبل تحديد النطاق — كبوّابة مصفوفة القسمة تماماً
-    const pctBox=pctGateOn()?pctBandBoxHTML():"";
-    const ansArea=pctGated()?"":(typed?field:`<div class="choices">${ch}</div>`);
+    const pctBox=pctGateOn()?pctBandBoxHTML():(piGateOn()?piBandBoxHTML():"");
+    const ansArea=(pctGated()||piGated())?"":(typed?field:`<div class="choices">${ch}</div>`);
     body=`${hint}${visualBox}<div class="q" style="text-align:center">${basicsCur.qText}</div>${pctBox}${ansArea}${why}${mtr}`;
   }
   const subLabel=BASICS_SUBS[basicsSub].label;
@@ -2513,7 +2593,7 @@ async function runMicDiag(){
 const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEngPlan","startDictation",
   "startPronunciation","startSpeaking","startAudioDiag","runMicDiag","fetchTimeout",
   "pronStart","pronStop","pronReset","speakStart","speakStop","speakReset","speakEnglish",
-  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","fadeQText","fadeAnsText","fadeGateStart","fadeGateStop","fadeGateNeeded","copyAzRaw","esc","weakPhonemeStr","num0","profileBarHTML","renderHomeCoachOnly","learnerInfo","toMasc","genderizeText","genderizeNode","genderizeInit","lsGet","lsSet","lsDel","pkey","cxShuffleOrder","cxPreStart","cxPreChoose","cxPreNext","cxPreQuit","cxPreCur","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary","coachMode","coachAskHelp","coachSaysNow","coachShowSays","coachParse","coachTopicGo","coachTopicBack","coachTopicClean","coachFreeScene"];
+  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","piPickBand","piBandBoxHTML","piArm","piOk","piVals","piGateOn","piGated","piSig1","tmplKey","spreadTemplates","drawSpread","fadeQText","fadeAnsText","fadeGateStart","fadeGateStop","fadeGateNeeded","copyAzRaw","esc","weakPhonemeStr","num0","profileBarHTML","renderHomeCoachOnly","learnerInfo","toMasc","genderizeText","genderizeNode","genderizeInit","lsGet","lsSet","lsDel","pkey","cxShuffleOrder","cxPreStart","cxPreChoose","cxPreNext","cxPreQuit","cxPreCur","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary","coachMode","coachAskHelp","coachSaysNow","coachShowSays","coachParse","coachTopicGo","coachTopicBack","coachTopicClean","coachFreeScene"];
 function censusMissing(){return CENSUS.filter(function(n){return typeof window[n]!=="function"})}
 function censusHTML(){
   var miss=censusMissing();
@@ -3726,6 +3806,7 @@ function coachFreeScene(topic){
 }
 const COACH_MAX_TURNS=8; // جلسة قصيرة تنتهي بخلاصة، لا محادثة بلا نهاية
 const COACH_TIP_EVERY=3; // نصيحة أسلوب كل ثالثة جملة
+const COACH_OPEN_EVERY=3; // وسؤال مفتوح كل ثالث دور، فلا يصير الدعم عكازاً
 let coachScene=null,coachMsgs=[],coachBusy=false,coachListening=false,coachElapsed=0,
     coachRec=null,coachStream=null,coachChunks=[],coachTimer=null,coachFail="",coachDone=false,coachUnsupported=false;
 function startCoach(){
@@ -3853,6 +3934,9 @@ async function coachFinish(){
       // فالسؤال المفتوح («What kind of…») هو ما أغرقها في جلستها الأولى.
       body:JSON.stringify({mode:"chat",learner:learnerInfo(),scene:coachScene.en,
         level:coachHelp==="suggest"?"A1":"A2",easy:coachHelp==="suggest",suggest:true,
+        // سؤال مفتوح كل ثالث دور حتى في الوضع السهل: ثماني جمل كلها «هذا أم ذاك»
+        // تُنتج ثماني إجابات نصفها صدى للسؤال، فلا تؤلّف جملة واحدة في الجلسة
+        openTurn:(said%COACH_OPEN_EVERY===0),
         focus:coachScene.focus||"",styleTip:(said%COACH_TIP_EVERY===0),
         question:coachScene.en,studentAnswer:heard,history:hist})});
     const d=await res.json();
