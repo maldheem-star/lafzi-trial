@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260812-1700";
+  var BUILD="build-20260812-2230";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -2642,7 +2642,7 @@ async function runMicDiag(){
 const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEngPlan","startDictation",
   "startPronunciation","startSpeaking","startAudioDiag","runMicDiag","fetchTimeout",
   "pronStart","pronStop","pronReset","speakStart","speakStop","speakReset","speakEnglish",
-  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","piPickBand","piBandBoxHTML","piArm","piOk","piVals","piGateOn","piGated","piSig1","tmplKey","spreadTemplates","drawSpread","qzErrRecord","qzDueKeys","qzInjectDue","qzErrOf","qzCardDone","fadeQText","fadeAnsText","fadeGateStart","fadeGateStop","fadeGateNeeded","copyAzRaw","esc","weakPhonemeStr","num0","profileBarHTML","renderHomeCoachOnly","learnerInfo","coachLevel","toMasc","genderizeText","genderizeNode","genderizeInit","lsGet","lsSet","lsDel","pkey","cxShuffleOrder","cxPreStart","cxPreChoose","cxPreNext","cxPreQuit","cxPreCur","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary","coachMode","coachAskHelp","coachEnd","coachReview","coachFixParse","weakClean","coachSaysNow","coachShowSays","coachParse","coachTopicGo","coachTopicBack","coachTopicClean","coachFreeScene"];
+  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","piPickBand","piBandBoxHTML","piArm","piOk","piVals","piGateOn","piGated","piSig1","tmplKey","spreadTemplates","drawSpread","qzErrRecord","qzDueKeys","qzInjectDue","qzErrOf","qzCardDone","fadeQText","fadeAnsText","fadeGateStart","fadeGateStop","fadeGateNeeded","copyAzRaw","esc","weakPhonemeStr","num0","profileBarHTML","renderHomeCoachOnly","learnerInfo","coachLevel","toMasc","genderizeText","genderizeNode","genderizeInit","lsGet","lsSet","lsDel","pkey","cxShuffleOrder","cxPreStart","cxPreChoose","cxPreNext","cxPreQuit","cxPreCur","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary","coachMode","coachAskHelp","coachEnd","coachReview","coachFixParse","weakClean","coachSaysNow","snapToSuggestion","editDist","coachShowSays","coachParse","coachTopicGo","coachTopicBack","coachTopicClean","coachFreeScene"];
 function censusMissing(){return CENSUS.filter(function(n){return typeof window[n]!=="function"})}
 function censusHTML(){
   var miss=censusMissing();
@@ -3827,6 +3827,40 @@ let coachTopicAsk=false,coachTopic="",coachTopicErr="",coachPending=null;
 // والجملُ تُطلَب من النموذج في كل دور دائماً (سطر SAY) ولو لم تُعرض، حتى تصل فوراً
 // حين تضغط «ساعديني» بلا انتظار دور جديد. والمعروض وحده هو ما يتغيّر.
 let coachModeAsk=false,coachHelp="",coachHelpShown=false;
+// مسافة تحرير محدودة: نتوقّف عند تجاوز الحدّ فلا نحسب مصفوفة كاملة لجملتين بعيدتين
+function editDist(a,b,cap){
+  a=String(a||"");b=String(b||"");
+  if(Math.abs(a.length-b.length)>cap)return cap+1;
+  let prev=[],cur=[];
+  for(let j=0;j<=b.length;j++)prev[j]=j;
+  for(let i=1;i<=a.length;i++){
+    cur[0]=i;let best=i;
+    for(let j=1;j<=b.length;j++){
+      cur[j]=Math.min(prev[j]+1,cur[j-1]+1,prev[j-1]+(a.charAt(i-1)===b.charAt(j-1)?0:1));
+      if(cur[j]<best)best=cur[j];
+    }
+    if(best>cap)return cap+1;
+    prev=cur.slice();
+  }
+  return prev[b.length];
+}
+const SNAP_NORM=function(t){return String(t||"").toLowerCase().replace(/[^a-z0-9 ]/g," ").replace(/\s+/g," ").trim()};
+const SNAP_MAX=3;        // ثلاثة أحرف: dust ⇐ toast حرفان، وجملتان مختلفتان أبعد بكثير
+const SNAP_MIN_LEN=8;    // الجمل القصيرة جداً تتشابه بلا معنى («Yes.» و«No.»)
+function snapToSuggestion(heard,says){
+  const h=SNAP_NORM(heard);
+  if(h.length<SNAP_MIN_LEN)return null;
+  let best=null,bestD=SNAP_MAX+1;
+  (says||[]).forEach(function(s){
+    const n=SNAP_NORM(s);
+    if(n.length<SNAP_MIN_LEN)return;
+    // النسبة تُقيَّد كذلك: ثلاثة أحرف في جملة من ثمانية ليست خطأ سمع بل جملة أخرى
+    const cap=Math.min(SNAP_MAX,Math.max(1,Math.round(n.length*0.25)));
+    const d=editDist(h,n,cap);
+    if(d<=cap&&d<bestD){bestD=d;best=s}
+  });
+  return (best&&best!==heard)?best:null;  // المطابق حرفياً لا يحتاج تثبيتاً
+}
 function coachSaysNow(){
   for(let i=coachMsgs.length-1;i>=0;i--){const m=coachMsgs[i];
     if(m.role==="model")return (m.says&&m.says.length)?m.says:[]}
@@ -3969,6 +4003,12 @@ async function coachFinish(){
     if(d.lowConfidence||!String(d.heard||"").trim()){coachBusy=false;coachFail="unclear";render();return}
     heard=String(d.heard).trim();
   }catch(e){coachBusy=false;coachFail="stt";render();return}
+  // ٢) هل هي إحدى الجملتين المعروضتين عليها؟ اقتُرح عليها «I had toast.» فقالتها،
+  // فسمعها Whisper «I had dust» فردّ الشريك «I don't think dust is food» — جملتها
+  // صحيحة، والخطأ في السمع، والتصحيح وقع عليها. والجملتان في يدنا، فنُقابل بهما.
+  const snapped=snapToSuggestion(heard,coachSaysNow());
+  const rawHeard=heard;
+  if(snapped){heard=snapped}
   // ٢) كيف كان نطقها؟ مرجع Azure هو نصّها نفسه
   let pct=null,weak=[];
   try{
@@ -3978,7 +4018,9 @@ async function coachFinish(){
   coachMsgs.push({role:"user",text:heard,pct:pct,weak:weak});
   const said=coachMsgs.filter(function(m){return m.role==="user"}).length;
   logAnswer("coach","say",null,heard.slice(0,600),coachScene?coachScene.id:null,ms,
-    {lesson:coachScene?coachScene.id:null,score_pct:num0(pct),weak_phonemes:weakPhonemeStr(weak)});
+    {lesson:coachScene?coachScene.id:null,score_pct:num0(pct),weak_phonemes:weakPhonemeStr(weak),
+     // الخام يبقى في السجلّ حين يختلف: التثبيت على العرض لا على البيانات
+     q_text:snapped?("سُمع: "+rawHeard).slice(0,200):null});
   render();
   // ٣) ماذا يردّ الشريك؟
   try{
@@ -4075,6 +4117,12 @@ async function coachReview(){
     else coachFixFail=(d&&d.error)||"reply";
   }catch(e){coachFixFail="network"}
   coachFixBusy=false;
+  // نتيجة المراجعة تُسجَّل دائماً: بلا هذا لا يُفرَّق «لا خطأ عندها» من «فشل الطلب»،
+  // وقد وقعتُ فيها فعلاً — رأيتُ جلسةً بلا تصحيحات ولم أعرف أيّ الحالتين هي.
+  logAnswer("coach","review",!coachFixFail,
+    coachFixFail?("fail:"+coachFixFail):(coachFix.length?("fixes:"+coachFix.length):"none"),
+    coachScene?coachScene.id:null,null,{lesson:coachScene?coachScene.id:null,
+      srs_box:coachFix.length,q_text:"said:"+said.length});
   coachFix.forEach(function(f){
     logAnswer("coach","fix",null,(f.said+" ⇐ "+f.fix).slice(0,300),coachScene?coachScene.id:null,null,
       {lesson:coachScene?coachScene.id:null,q_text:String(f.why||"").slice(0,200)});
