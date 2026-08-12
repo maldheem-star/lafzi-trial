@@ -1,0 +1,215 @@
+const {chromium}=require('/opt/node22/lib/node_modules/playwright');
+let fails=0;const ok=(c,m)=>{console.log((c?'  ✓ ':'  ✗ FAIL ')+m);if(!c)fails++};
+(async()=>{
+const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium'});
+const logs=[];
+const mk=async()=>{
+  const page=await b.newPage({viewport:{width:420,height:900}});
+  page.on('pageerror',e=>{console.log('  ✗ PAGEERROR '+e.message);fails++});
+  await page.route('**/rest/v1/**',async r=>{
+    let body={};try{body=JSON.parse(r.request().postData()||'{}')}catch(e){}
+    logs.push(body);r.fulfill({status:201,contentType:'application/json',body:'[]'});
+  });
+  await page.addInitScript(()=>{
+    Object.defineProperty(window,'speechSynthesis',{configurable:true,value:{speak(){},cancel(){},resume(){},pause(){},getVoices:()=>[{lang:'en-US',name:'X'}],speaking:false,pending:false}});
+    window.SpeechSynthesisUtterance=function(t){this.text=t};
+  });
+  await page.goto('http://127.0.0.1:8931/index.html');
+  await page.waitForFunction(()=>typeof itemStuck==='function');
+  return page;
+};
+// يضع سؤالاً بعينه أول الخطة
+const put=async(page,id)=>page.evaluate(x=>{
+  const it=engPool().find(i=>i.id===x);
+  planItems=[Object.assign({},it)];planIdx=0;planTotal=1;planScore=0;planDone=false;
+  planPicked=null;planLocked=false;planInput="";mode="engplan";
+  fixOn=false;fixItem=null;fixStep=0;
+  if(fixNeeded(planItems[0]))fixStart(planItems[0]);else render();
+},id);
+
+console.log('\n١) البذرة: أسئلتها الثلاثة عشر معلّمة من أول تحميل');
+let page=await mk();
+const seeded=await page.evaluate(()=>{
+  const m=itemErrLoad(),ids=Object.keys(m);
+  return{n:ids.length,stuck:ids.filter(itemStuck).length,write:m.u1_g2,eat:m.u1_g1};
+});
+ok(seeded.n===13,`ثلاثة عشر سؤالاً مبذوراً (${seeded.n})`);
+ok(seeded.stuck===13,'وكلها تتجاوز عتبة العلوق فوراً — بلا انتظار خطأين جديدين');
+ok(seeded.write&&seeded.write.last==='write'&&seeded.write.wrong===3,'وu1_g2 محفوظ بجوابها «write» ثلاث مرات كما سُجّل');
+ok(seeded.eat&&seeded.eat.last==='eat','وu1_g1 بجوابها «eat»');
+ok(await page.evaluate(()=>itemStuck('u1_g3'))===false,'والأسئلة التي تُصيبها (u1_g3) غير معلّمة');
+
+console.log('\n٢) السؤال العالق: لا خيارات قبل بطاقة التصحيح');
+await put(page,'u1_g2');
+ok(await page.evaluate(()=>fixOn)===true,'البوّابة مفتوحة');
+ok(await page.evaluate(()=>document.querySelectorAll('.choice').length)===0,'ولا خيار واحد في الصفحة');
+let t=await page.textContent('#app');
+ok(t.includes('هذا السؤال بالذات يتكرّر خطؤه'),'والعنوان يُسمّي الحالة');
+ok(t.includes('write'),'وجوابها الخاطئ مذكور حرفياً');
+ok(t.includes('٣ مرات')||t.includes('٣'),'وعدد مرّاته');
+ok(t.includes('is written'),'ومعه الصواب');
+ok(t.includes('المبني للمجهول'),'وشرح القاعدة');
+
+console.log('\n٣) التمارين: ثلاثة خيارات، والصواب يفتح الطريق');
+await page.click('button[onclick="fixCardDone()"]');
+ok(await page.evaluate(()=>fixStep)===1,'التمرين الأول');
+ok(await page.evaluate(()=>document.querySelectorAll('.choice').length)===3,'بثلاثة خيارات لا أربعة ولا اثنين');
+let opts=await page.evaluate(()=>fixDrills[0]._opts);
+ok(opts.includes('is written')&&opts.includes('write'),`فيها الصواب وجوابها الخاطئ (${opts.join(' / ')})`);
+ok(opts.length===3&&new Set(opts).size===3,'ومموّه ثالث مختلف — لا تلقيح ضدّ خطأ واحد');
+let ai=await page.evaluate(()=>fixDrills[0]._ai);
+await page.evaluate(i=>fixChoose(i),ai);
+ok(await page.evaluate(()=>fixOkFlag)===true,'اختارت الصواب');
+await page.click('button[onclick="fixNext()"]');
+ok(await page.evaluate(()=>fixStep)===2,'ينتقل للتمرين الثاني');
+t=await page.textContent('#app');
+ok(!t.includes('This story'),'وجملته مختلفة — لا حفظ لجملة واحدة');
+ok(t.includes('Insects'),'من الدرس نفسه (المبني للمجهول)');
+ai=await page.evaluate(()=>fixDrills[1]._ai);
+await page.evaluate(i=>fixChoose(i),ai);
+await page.click('button[onclick="fixNext()"]');
+ok(await page.evaluate(()=>fixOn)===false,'وبعدهما تُغلق البوّابة');
+ok(await page.evaluate(()=>document.querySelectorAll('.choice').length)===4,'ويعود السؤال بخياراته الأربعة');
+
+console.log('\n٤) الخطأ في التمرين يُعيد الشرح ولا يمرّر');
+await put(page,'u1_g2');
+await page.click('button[onclick="fixCardDone()"]');
+ai=await page.evaluate(()=>fixDrills[0]._ai);
+await page.evaluate(i=>fixChoose(i===0?1:0),ai);
+ok(await page.evaluate(()=>fixOkFlag)===false,'أخطأت في التمرين');
+t=await page.textContent('#app');
+ok(t.includes('سنعيد الشرح مرة أخرى'),'وتُخبَر أن الشرح سيعود');
+await page.click('button[onclick="fixNext()"]');
+ok(await page.evaluate(()=>fixStep)===0,'وتعود إلى البطاقة فعلاً');
+ok(await page.evaluate(()=>fixOn)===true,'والبوّابة ما زالت مقفلة');
+ok(await page.evaluate(()=>document.querySelectorAll('.choice').length)===0,'ولا خيارات');
+// ولا تُفتح بالإلحاح
+for(let k=0;k<3;k++){
+  await page.click('button[onclick="fixCardDone()"]');
+  const a2=await page.evaluate(()=>fixDrills[0]._ai);
+  await page.evaluate(i=>fixChoose(i===0?1:0),a2);
+  await page.click('button[onclick="fixNext()"]');
+}
+ok(await page.evaluate(()=>fixOn)===true,'ثلاث محاولات خاطئة: ما زالت مقفلة');
+ok(await page.evaluate(()=>fixWrong)===4,`والأخطاء محسوبة (${await page.evaluate(()=>fixWrong)})`);
+
+console.log('\n٥) الإجابة الصحيحة تمسح العلامة، والخطأ الجديد يُعيدها');
+page=await mk();
+await page.evaluate(()=>{itemErrSave({});localStorage.removeItem('mawhiba_eng_item_seed_v1')});
+await page.evaluate(()=>{
+  const it=engPool().find(i=>i.id==='u1_g2');
+  itemErrRecord('u1_g2',false,'write');
+});
+ok(await page.evaluate(()=>itemStuck('u1_g2'))===false,'خطأ واحد لا يكفي — قد يكون سهواً');
+await page.evaluate(()=>itemErrRecord('u1_g2',false,'write'));
+ok(await page.evaluate(()=>itemStuck('u1_g2'))===true,'وخطآن يكفيان');
+ok(await page.evaluate(()=>itemErrOf('u1_g2').same)===1,'وتكرار الجواب نفسه مرصود');
+await page.evaluate(()=>itemErrRecord('u1_g2',true,'is written'));
+ok(await page.evaluate(()=>itemStuck('u1_g2'))===false,'والإجابة الصحيحة تمسح العلامة');
+ok(await page.evaluate(()=>itemErrOf('u1_g2'))===null,'ولا يبقى أثر');
+
+console.log('\n٦) التسجيل: بوّابة وتمارين تصل للخادم');
+page=await mk();
+logs.length=0;
+await put(page,'u1_g1');
+await page.click('button[onclick="fixCardDone()"]');
+ai=await page.evaluate(()=>fixDrills[0]._ai);
+await page.evaluate(i=>fixChoose(i),ai);
+await page.waitForTimeout(400);
+ok(logs.some(l=>l.qtype==='fix_open'&&l.item_id==='u1_g1'),'فتح البوّابة مُسجَّل مع معرّف السؤال');
+ok(logs.some(l=>l.qtype==='fix_open'&&l.response==='eat'),'ومعه جوابها الخاطئ السابق');
+const dr=logs.find(l=>l.qtype==='fix_drill');
+ok(!!dr&&dr.is_correct===true&&dr.item_id==='u1_g1','ونتيجة التمرين مُسجَّلة');
+ok(dr&&dr.lesson==='l_passive','ومعها الدرس');
+
+console.log('\n٧) الأسئلة السليمة لا تُعطَّل');
+page=await mk();
+for(const id of ['u1_g3','u1_g4','u6_g3','u5_g4']){
+  await put(page,id);
+  const st=await page.evaluate(()=>({fix:fixOn,ch:document.querySelectorAll('.choice').length}));
+  ok(!st.fix&&st.ch===4,`${id}: يُعرض مباشرةً بأربعة خيارات`);
+}
+// المفردات والإملاء لا تدخل البوّابة أصلاً
+const other=await page.evaluate(()=>{
+  const v=engPool().find(i=>i.t==='vocab'),d=engPool().find(i=>i.t==='dict');
+  const bad=[];
+  [v,d].forEach(function(x){if(!x)return;
+    itemErrRecord(x.id,false,'z');itemErrRecord(x.id,false,'z');
+    if(fixNeeded(x))bad.push(x.t+' دخل بوّابة القواعد');});
+  return bad;
+});
+ok(other.length===0,other.length?other.join(' | '):'والمفردات والإملاء خارج البوّابة — هي للقواعد وحدها');
+
+console.log('\n٨) جلسة كاملة بنقرات حقيقية: البوّابة لا تُوقف الخطة');
+page=await mk();
+await page.evaluate(()=>startEngPlan());
+let guard=0,gates=0,reachedEnd=false;
+while(guard++<300){
+  const st=await page.evaluate(()=>({m:mode,done:planDone,fix:fixOn,step:fixStep,lock:fixLocked,
+    cx:typeof cxOn!=='undefined'&&cxOn,cxs:typeof cxStep!=='undefined'?cxStep:0,
+    cxwhy:typeof cxWhyOn!=='undefined'&&cxWhyOn&&cxWhyPicked==null,
+    cxpre:typeof cxPreOn!=='undefined'&&cxPreOn,
+    cxnp:typeof cxOn!=='undefined'&&cxOn&&!cxPreOn&&cxStep===0&&cxNoticePicked==null,cxlock:typeof cxLocked!=='undefined'&&cxLocked,
+    t:planCur()?planCur().t:null,plock:planLocked,ai:planCur()?planCur().a:null,
+    pg:typeof planGateOpen==='function'&&!planGateOpen()}));
+  if(st.done){reachedEnd=true;break}
+  // بطاقة التقابل أُضيفت بعد كتابة هذا الفحص — نمرّ بها كما تمرّ هي
+  if(st.cx){
+    // التصنيف قبل القاعدة في few_little: نُجيب صواباً حتى تنفتح
+    if(st.cxpre){
+      if(await page.evaluate(()=>cxPreFail)){await page.click('button[onclick="cxPreQuit()"]');continue}
+      await page.evaluate(()=>{const cur=cxPreCur();
+        let i=0;for(let k=0;k<cxPreOrder.length;k++){if(cxPair.sides[cxPreOrder[k]].k===cur.side){i=k;break}}
+        cxPreChoose(i);cxPreNext()});
+      continue;
+    }
+    if(st.cxs===-1){await page.click('button[onclick="cxFinish()"]');continue}
+    if(st.cxnp){await page.click('button[onclick="cxNoticePick(0)"]');continue}
+    if(st.cxs===0){await page.click('button[onclick="cxRuleDone()"]');continue}
+    if(st.cxwhy){await page.click('button[onclick="cxWhyPick(0)"]');continue}
+    if(!st.cxlock){const a=await page.evaluate(()=>cxDrills[cxStep-1]._ai);await page.evaluate(i=>cxChoose(i),a);continue}
+    await page.click('button[onclick="cxNext()"]');continue;
+  }
+  if(st.fix){
+    if(st.step===0){gates++;await page.click('button[onclick="fixCardDone()"]');continue}
+    if(!st.lock){const a=await page.evaluate(()=>fixDrills[fixStep-1]._ai);await page.evaluate(i=>fixChoose(i),a);continue}
+    await page.click('button[onclick="fixNext()"]');continue;
+  }
+  // بوّابة قراءة الإنجليزي أُضيفت بعد كتابة هذا الفحص — نفتحها كما تفعل هي بالانتظار
+  if(st.pg){await page.evaluate(()=>{planGateLeft=0;planGateStop();render()});continue}
+  if(st.t==='lesson'){await page.click('button[onclick="planLessonDone()"]');continue}
+  if(st.plock){await page.click('button[onclick="planNext()"]');continue}
+  if(st.t==='dict'){await page.evaluate(()=>{document.getElementById('planIn').value=planCur().w;planCheckDict()});continue}
+  await page.evaluate(i=>planChoose(i),st.ai);
+}
+ok(reachedEnd,`الخطة تنتهي عند شاشة النتيجة (${guard} خطوة)`);
+ok(gates>0,`والبوّابة اعترضت ${gates} سؤالاً عالقاً داخل جلسة حقيقية`);
+ok((await page.evaluate(()=>window.__ERRS.length))===0,'ولا خطأ في الجلسة كلها');
+
+console.log('\n٩) الإملاء صار يُسجّل الكلمة وما كتبته');
+page=await mk();logs.length=0;
+await page.evaluate(()=>{startDictation();dictSession[0]={w:"winter",m:"شتاء"};render()});
+await page.evaluate(()=>{document.getElementById('dictIn').value="wintr";dictCheck()});
+await page.waitForTimeout(400);
+const dl=logs.find(l=>l.domain==='dictation_a1');
+ok(!!dl,'السطر وصل');
+ok(dl&&dl.response==='wintr',`وفيه ما كتبته حرفياً («${dl&&dl.response}») — كان null قبل اليوم`);
+ok(dl&&dl.item_id==='winter'&&dl.q_text==='winter','ومعه الكلمة المطلوبة');
+ok(dl&&typeof dl.elapsed_ms==='number','والزمن');
+ok(dl&&dl.is_correct===false,'والنتيجة صحيحة الحساب');
+
+console.log('\n١٠) لا انحدار');
+page=await mk();
+for(const [fn,md] of [["startBasics('percent')",'basics'],["startFade('circle')",'fade'],["startFactPlan()",'factplan'],
+  ["startDictation()",'dictation'],["startEngPlan()",'engplan'],["startPronunciation()",'pron'],
+  ["startAudioDiag()",'audiodiag'],["home()",'home']]){
+  const r=await page.evaluate(x=>{try{eval(x);return{m:mode,len:document.getElementById('app').textContent.length}}catch(e){return{err:e.message}}},fn);
+  ok(!r.err&&r.m===md&&r.len>40,`${fn} → ${r.err||r.m}`);
+}
+ok((await page.evaluate(()=>censusMissing())).length===0,'وكل الدوال معرَّفة');
+ok((await page.evaluate(()=>window.__ERRS.length))===0,'ولا خطأ');
+
+await b.close();
+console.log(fails?`\n=== ${fails} فشل ===`:'\n=== كل الاختبارات نجحت ===');
+process.exit(fails?1:0);
+})();
