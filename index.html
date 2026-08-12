@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260812-0230";
+  var BUILD="build-20260812-0420";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -1488,13 +1488,54 @@ function fadePrep(){
   else{d=fadeCur.distractors;} // الوسيط/النسبة المئوية/المكعّب/الهرم: مموّهات محسوبة عند الإنشاء
   const opts=shuffle([fadeCur.ans,...fadeDedupe(fadeCur.ans,d)]);fadeCur.opts=opts;fadeCur.ai=opts.indexOf(fadeCur.ans);
 }
+// ===== بوّابة التسرّع =====
+// عشرة أسئلة في ٢٨ ثانية ليست محاولة. والبوّابة لا تُنصَّب على الجميع: تُسلَّح بعد
+// إجابتين متتاليتين تحت ثانيتين، وتنحلّ حين تُبطئ — فمن يتأنّى لا ينتظر شيئاً أبداً.
+// ولا تُنصَّب في المنطق والفهم المقروء: قراءتها فيهما بطيئة أصلاً، وسرعتها فيهما
+// جاءت مع خمس من خمس.
+const FADE_RUSH_MS=2000, FADE_RUSH_N=2, FADE_GATE_SEC=6, FADE_GATE_SVG_SEC=8;
+let fadeRush=0,fadeGateOn=false,fadeGateLeft=0,fadeGateTimer=null;
+function fadeGateTopics(){return ["reading","logic"].indexOf(fadeTopic)<0}
+function fadeGateNeeded(){return fadeStage===4&&fadeGateTopics()&&fadeRush>=FADE_RUSH_N}
+function fadeGateStop(){if(fadeGateTimer){clearInterval(fadeGateTimer);fadeGateTimer=null}fadeGateOn=false;fadeGateLeft=0}
+function fadeGateStart(){
+  fadeGateStop();
+  if(!fadeGateNeeded())return;
+  fadeGateOn=true;fadeGateLeft=(fadeCur&&fadeCur.svg)?FADE_GATE_SVG_SEC:FADE_GATE_SEC;
+  fadeGateTimer=setInterval(function(){
+    fadeGateLeft--;
+    if(fadeGateLeft<=0){fadeGateStop();fadeShownAt=Date.now()} // الزمن يبدأ مع الخيارات
+    render();
+  },1000);
+}
 function fadeNew(){
   fadeCur=fadeMakeQuestion();fadeLocked=false;fadePicked=-1;fadePrep();fadeShownAt=Date.now();
+  fadeGateStart();
   // المختبر يبدأ من أرقام المسألة التي أمامها، فلا ينفصل التجريب عن السؤال
   if(fadeCur.kind==="circle")labArm("circle",fadeCur.lab||12);
   else if(fadeCur.kind==="triangle"||fadeCur.kind==="parallelogram")labArm(fadeCur.kind,fadeCur.labB||8,fadeCur.labH||6);
   else labKind=null;
   render();
+}
+// ===== ما الذي أجابت عنه، وبماذا =====
+// وضع التقوية سجّل ٢٥٨٥ صفّاً في ثلاثة أسابيع، كلها بلا نصّ السؤال وبلا إجابتها. فكان
+// يقال «سبعة أخطاء من عشرة في النسبة المئوية» ولا يُعرف أي سؤال ولا ماذا اختارت — وهو
+// القسم المبنيّ أصلاً لعلاج ضعفها. الآن يُسجَّل السؤال والاختيار كبقيّة الأقسام.
+function fadeQText(c){
+  if(!c)return null;
+  if(c.kind==="seq"&&Array.isArray(c.seq))return c.seq.join(" , ")+" , ?";
+  const q=String(c.q||c.prompt||"");
+  // النصّ المقروء: السؤال وحده لا يكفي لتمييز الفقرة، فنُلحق بدايتها
+  if(c.passage)return (String(c.passage).slice(0,120)+" ⟵ "+q).slice(0,300);
+  return q.slice(0,300)||null;
+}
+function fadeAnsText(c,i){
+  if(!c||!c.opts)return null;
+  // خيارات مرسومة: نصّها SVG لا يصلح سجلّاً، والموضع هو ما يُحلّل (انحياز الموضع)
+  if(c.choiceKind==="shape")return "موضع "+toAr(i+1)+" · الصواب موضع "+toAr((c.ai|0)+1);
+  const mine=c.opts[i],right=c.opts[c.ai];
+  const f=function(v){return typeof v==="number"?(Number.isInteger(v)?toAr(v):arDec(v)):String(v).slice(0,60)};
+  return f(mine)+" · الصواب "+f(right);
 }
 function fadeChoose(i){
   if(fadeLocked)return;fadeLocked=true;fadePicked=i;
@@ -1509,7 +1550,12 @@ function fadeChoose(i){
     fadeStage4Count++;
   }
   const elapsed=fadeShownAt?Date.now()-fadeShownAt:null;
-  logAnswer("fade_"+fadeTopic,"stage"+fadeStage,ok,null,null,elapsed);
+  logAnswer("fade_"+fadeTopic,"stage"+fadeStage,ok,fadeAnsText(fadeCur,i),null,elapsed,
+    {q_text:fadeQText(fadeCur)});
+  // التسرّع يُقاس من ظهور الخيارات لا من ظهور السؤال، فبوّابةٌ تُبطئها لا تُخفيه
+  if(elapsed!=null&&fadeStage===4){
+    if(elapsed<FADE_RUSH_MS)fadeRush++; else fadeRush=0;
+  }
   // نفس كاشف التسرّع المستعمل في الاختبار — لم يكن يعمل في التقوية لأنها لا تسجّل الزمن
   if(elapsed!=null){
     recentAnswerTimes.push(elapsed);if(recentAnswerTimes.length>RAPID_STREAK)recentAnswerTimes.shift();
@@ -1586,13 +1632,13 @@ function fadeMasteryState(topic){
   return{mastered:true,due:srsToday()>=r.due,level:r.level,daysLeft:Math.max(0,r.due-srsToday())};
 }
 function fadeStage4Next(){
-  if(fadeMasteryStreak>=MASTERY_REQ){fadeNotYet=false;fadeMarkMastered(fadeTopic);mode="fadeDone";window.scrollTo(0,0);render();return}
+  if(fadeMasteryStreak>=MASTERY_REQ){fadeNotYet=false;fadeGateStop();fadeMarkMastered(fadeTopic);mode="fadeDone";window.scrollTo(0,0);render();return}
   // بلغت السقف بلا إتقان: نُنهي بصدق ونعيدها غداً بدل إبقائها تخمّن حتى تصادف خمساً متتالية
-  if(fadeStage4Count>=MASTERY_MAX_Q){fadeNotYet=true;mode="fadeDone";window.scrollTo(0,0);render();return}
+  if(fadeStage4Count>=MASTERY_MAX_Q){fadeNotYet=true;fadeGateStop();mode="fadeDone";window.scrollTo(0,0);render();return}
   fadeNew();
 }
-function startFade(topic){mode="fade";fadeTopic=topic||fadeTopic||"seq";fadeStage=1;fadeStreak=0;fadeWrongStreak=0;fadeDroppedBack=false;fadeMasteryStreak=0;fadeStage4Support=false;fadeRecoveryStreak=0;fadeStage4Count=0;fadeNotYet=false;fadeBestStreak=0;recentAnswerTimes=[];rapidNudge=false;window.scrollTo(0,0);fadeNew()}
-function goFadeMenu(){mode="fadeMenu";window.scrollTo(0,0);render()}
+function startFade(topic){fadeGateStop();fadeRush=0;mode="fade";fadeTopic=topic||fadeTopic||"seq";fadeStage=1;fadeStreak=0;fadeWrongStreak=0;fadeDroppedBack=false;fadeMasteryStreak=0;fadeStage4Support=false;fadeRecoveryStreak=0;fadeStage4Count=0;fadeNotYet=false;fadeBestStreak=0;recentAnswerTimes=[];rapidNudge=false;window.scrollTo(0,0);fadeNew()}
+function goFadeMenu(){fadeGateStop();mode="fadeMenu";window.scrollTo(0,0);render()}
 function renderFadeMenu(){
   // نرتّب: غير المتقن أولاً، ثم المتقن المستحقّ للمراجعة، ثم المتقن الذي لم يحن موعده — فتتوجّه تلقائياً للأضعف
   const rank=t=>{const m=fadeMasteryState(t.key);return !m.mastered?0:(m.due?1:2)};
@@ -1701,6 +1747,17 @@ function renderFade(){
       :fadeStage4Support?`<div style="font-size:13px;color:#854D0E;text-align:center;margin-top:10px">🌱 مراجعة: (${toAr(fadeRecoveryStreak)}/${toAr(RECOVERY_REQ)}) لإخفاء التذكير مرة أخرى</div>`
       :`<div style="font-size:13px;color:#64748B;text-align:center;margin-top:10px">🎓 حل مستقل — (${toAr(fadeMasteryStreak)}/${toAr(MASTERY_REQ)}) متتالية لإتقان هذا النوع<br><span style="font-size:12px;color:#94A3B8">سؤال ${toAr(fadeStage4Count)} من ${toAr(MASTERY_MAX_Q)} كحدّ أقصى لهذه الجلسة</span></div>`;
     body=`${hint}${seqBox}<div class="q">${c.kind==="seq"?"ما العدد الناقص؟":c.prompt}</div><div class="choices">${ch}</div>${rapidBanner}${why}${mtr}`;
+    // البوّابة: السؤال ظاهر والخيارات محجوبة. الغرض أن تنظر في المسألة لا أن تنتظر عقاباً
+    if(fadeGateOn){
+      body=`${hint}${seqBox}<div class="q">${c.kind==="seq"?"ما العدد الناقص؟":c.prompt}</div>
+      <div style="background:#FEF3C7;border:1.5px solid #FDE68A;border-radius:14px;padding:18px;text-align:center">
+        <div style="font-size:32px;font-weight:800;color:#92400E">${toAr(fadeGateLeft)}</div>
+        <div style="font-size:14px;color:#92400E;line-height:1.9;margin-top:6px">
+          إجابتاك الأخيرتان جاءتا في أقل من ثانيتين. تأمّلي المسألة الآن — الخيارات تظهر بعد قليل.
+        </div>
+        <div style="font-size:13px;color:#B45309;margin-top:8px">اسألي نفسك: ما المعطى؟ وما المطلوب؟</div>
+      </div>`;
+    }
   }
   const topicLabel=FADE_TOPICS.find(t=>t.key===fadeTopic).label;
   app.innerHTML=`<button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
@@ -2456,7 +2513,7 @@ async function runMicDiag(){
 const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEngPlan","startDictation",
   "startPronunciation","startSpeaking","startAudioDiag","runMicDiag","fetchTimeout",
   "pronStart","pronStop","pronReset","speakStart","speakStop","speakReset","speakEnglish",
-  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","copyAzRaw","esc","weakPhonemeStr","num0","profileBarHTML","renderHomeCoachOnly","learnerInfo","toMasc","genderizeText","genderizeNode","genderizeInit","lsGet","lsSet","lsDel","pkey","cxShuffleOrder","cxPreStart","cxPreChoose","cxPreNext","cxPreQuit","cxPreCur","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary","coachMode","coachAskHelp","coachSaysNow","coachShowSays","coachParse","coachTopicGo","coachTopicBack","coachTopicClean","coachFreeScene"];
+  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","fadeQText","fadeAnsText","fadeGateStart","fadeGateStop","fadeGateNeeded","copyAzRaw","esc","weakPhonemeStr","num0","profileBarHTML","renderHomeCoachOnly","learnerInfo","toMasc","genderizeText","genderizeNode","genderizeInit","lsGet","lsSet","lsDel","pkey","cxShuffleOrder","cxPreStart","cxPreChoose","cxPreNext","cxPreQuit","cxPreCur","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary","coachMode","coachAskHelp","coachSaysNow","coachShowSays","coachParse","coachTopicGo","coachTopicBack","coachTopicClean","coachFreeScene"];
 function censusMissing(){return CENSUS.filter(function(n){return typeof window[n]!=="function"})}
 function censusHTML(){
   var miss=censusMissing();
@@ -5152,7 +5209,7 @@ async function start(domKey){
   else{filtered=await buildDomain(domKey,PER)}
   loading=false;questionShownAt=Date.now();if(filtered.length)gateStart(filtered[0]);render();
 }
-async function home(){mode="home";gateStop();window.scrollTo(0,0);render();
+async function home(){mode="home";gateStop();fadeGateStop();window.scrollTo(0,0);render();
   // صفحة المحادثة وحدها لا تعرض اقتراح التقوية، فلا داعي لجلب النتائج أصلاً
   if(profileOf().only==="coach")return;
   await loadWeakness();if(mode==="home")render()}
