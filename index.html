@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260812-0130";
+  var BUILD="build-20260812-0230";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -2456,7 +2456,7 @@ async function runMicDiag(){
 const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEngPlan","startDictation",
   "startPronunciation","startSpeaking","startAudioDiag","runMicDiag","fetchTimeout",
   "pronStart","pronStop","pronReset","speakStart","speakStop","speakReset","speakEnglish",
-  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","copyAzRaw","esc","weakPhonemeStr","num0","profileBarHTML","renderHomeCoachOnly","learnerInfo","toMasc","genderizeText","genderizeNode","genderizeInit","lsGet","lsSet","lsDel","pkey","cxShuffleOrder","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary","coachMode","coachAskHelp","coachSaysNow","coachShowSays","coachParse","coachTopicGo","coachTopicBack","coachTopicClean","coachFreeScene"];
+  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","copyAzRaw","esc","weakPhonemeStr","num0","profileBarHTML","renderHomeCoachOnly","learnerInfo","toMasc","genderizeText","genderizeNode","genderizeInit","lsGet","lsSet","lsDel","pkey","cxShuffleOrder","cxPreStart","cxPreChoose","cxPreNext","cxPreQuit","cxPreCur","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary","coachMode","coachAskHelp","coachSaysNow","coachShowSays","coachParse","coachTopicGo","coachTopicBack","coachTopicClean","coachFreeScene"];
 function censusMissing(){return CENSUS.filter(function(n){return typeof window[n]!=="function"})}
 function censusHTML(){
   var miss=censusMissing();
@@ -3114,7 +3114,25 @@ function fixNeeded(it){
 // صوتيات — الحقل dom وصفٌ للعرض فقط. لذلك يصلح كما هو لأزواج الأصوات (g/k، z/s) حين
 // تتجمّع بيانات فونيمات كافية، بلا إعادة بناء.
 const CONTRAST_PAIRS=[
+  // الشرط قبل القاعدة: أخطأت ٤ من ٦ في هذا التقابل وهي تعرف القاعدة (أصابت الملاحظة)،
+  // لأن أخطاءها كانت في الأسماء لا في القاعدة: sugar وmilk ظنّتهما يُعدّان، وminutes
+  // وpages ظنّتهما يُقاسان. فالقاعدة تُطبَّق على تصنيف لا تملكه — والتدريب عليها بلا
+  // التصنيف تدريبٌ على فراغ. فصارت تُصنّف الأسماء وحدها أولاً، بلا few/little إطلاقاً.
   {id:"few_little",dom:"grammar",title:"a few / a little",members:["u2_g3","u2_g4"],
+   pre:{ask:"هذا الاسم: يُعدّ حبّةً حبّة، أم يُقاس ولا يُعدّ؟",
+     tip:{a:"نقول one book, two books, three books — فهو يُعدّ.",
+          b:"لا نقول «two sugars» — نقول some sugar أو a cup of sugar، فهو يُقاس."},
+     words:[
+       {w:"books",ar:"كتب",k:"a"},      {w:"sugar",ar:"سكّر",k:"b"},
+       {w:"birds",ar:"طيور",k:"a"},     {w:"water",ar:"ماء",k:"b"},
+       {w:"minutes",ar:"دقائق",k:"a"},  {w:"salt",ar:"ملح",k:"b"},
+       {w:"pages",ar:"صفحات",k:"a"},    {w:"milk",ar:"حليب",k:"b"},
+       {w:"apples",ar:"تفّاحات",k:"a"}, {w:"time",ar:"وقت",k:"b"},
+       {w:"questions",ar:"أسئلة",k:"a"},{w:"help",ar:"مساعدة",k:"b"},
+       {w:"friends",ar:"أصدقاء",k:"a"}, {w:"money",ar:"مال",k:"b"},
+       {w:"eggs",ar:"بيضات",k:"a"},     {w:"rice",ar:"أرزّ",k:"b"},
+       {w:"cars",ar:"سيّارات",k:"a"},   {w:"bread",ar:"خبز",k:"b"},
+       {w:"strawberries",ar:"فراولة",k:"a"},{w:"homework",ar:"واجب",k:"b"}]},
    sides:[{k:"a",label:"a few",why:"لأن الفراولة تُعدّ حبّةً حبّة"},
           {k:"b",label:"a little",why:"لأن الملح يُقاس ولا يُعدّ"}],
    notice:{a:"Add <b>a few</b> strawberries.",b:"Add <b>a little</b> salt.",
@@ -3248,6 +3266,49 @@ function cxStart(pair){
   cxDrills=cxInterleave(pair.drills).slice(0,CX_DRILLS);
   cxNoticeOrder=cxShuffleOrder(pair.notice.opts.length);cxWhyOrder=cxShuffleOrder(pair.sides.length);
   logAnswer("eng_plan","cx_open",null,null,pair.id,null,{lesson:pair.dom});
+  // الخطوة السابقة تُطلب مرّة واحدة: بعد إتقان التصنيف لا معنى لإعادته في كل جولة
+  if(pair.pre&&!cxStateOf(pair.id).preDone){cxPreStart();return}
+  render();
+}
+// ===== التصنيف قبل القاعدة =====
+// بوّابة لا تمرين: لا تصل إلى التدريبات حتى تُصنّف ستّة أسماء متتالية بلا خطأ. والخطأ
+// يُعيد العدّ ويُعيد الاسم إلى الطابور، فالإتقان أن يستقيم النوعان معاً لا أن يُصادف.
+const CX_PRE_STREAK=6;   // متتالية: نصفها أسماء تُعدّ ونصفها تُقاس بحكم التوزيع
+const CX_PRE_MAX=22;     // سقف الجلسة: بعده نتوقّف بلا عقاب ونُكمل في جلسة أخرى
+let cxPreOn=false,cxPreQ=[],cxPreStreak=0,cxPreCount=0,cxPrePicked=null,cxPreLocked=false,
+    cxPreOk=false,cxPreFail=false,cxPreOrder=[];
+function cxPreStart(){
+  cxPreOn=true;cxPreQ=cxInterleave(cxPair.pre.words.map(function(w){return{side:w.k,w:w.w,ar:w.ar}}));
+  cxPreStreak=0;cxPreCount=0;cxPrePicked=null;cxPreLocked=false;cxPreFail=false;
+  cxPreOrder=cxShuffleOrder(2);
+  render();
+}
+function cxPreCur(){return cxPreQ[0]||null}
+function cxPreChoose(i){
+  if(cxPreLocked||!cxPreCur())return;
+  const cur=cxPreCur(),got=cxPair.sides[cxPreOrder[i]].k;
+  cxPrePicked=i;cxPreLocked=true;cxPreOk=(got===cur.side);cxPreCount++;
+  if(cxPreOk)cxPreStreak++; else cxPreStreak=0;
+  logAnswer("eng_plan","cx_sort",cxPreOk,cur.w+" ⇐ "+cxPair.sides[cxPreOrder[i]].label+" · موضع "+toAr(i+1),
+    cxPair.id,null,{lesson:cxPair.dom,q_text:cur.w,srs_box:cxPreStreak});
+  render();
+}
+function cxPreNext(){
+  const cur=cxPreQ.shift();
+  // الخطأ يعود بعد ثلاثة، لا في آخر الطابور: التصحيح البعيد لا يُمسك
+  if(cur&&!cxPreOk)cxPreQ.splice(Math.min(3,cxPreQ.length),0,cur);
+  else if(cur)cxPreQ.push(cur);
+  cxPrePicked=null;cxPreLocked=false;cxPreOrder=cxShuffleOrder(2);
+  if(cxPreStreak>=CX_PRE_STREAK){
+    const m=cxLoad(),st=m[cxPair.id]||{runs:0,lastAt:0,mastered:false};
+    st.preDone=true;m[cxPair.id]=st;cxSave(m);
+    logAnswer("eng_plan","cx_sort_done",true,toAr(cxPreCount)+" محاولة",cxPair.id,null,{lesson:cxPair.dom});
+    cxPreOn=false;render();return;
+  }
+  if(cxPreCount>=CX_PRE_MAX){ // لا نحبسها: نقف الليلة ونعود إليه في جلسة أخرى
+    logAnswer("eng_plan","cx_sort_done",false,toAr(cxPreCount)+" محاولة بلا اتّصال",cxPair.id,null,{lesson:cxPair.dom});
+    cxPreFail=true;render();return;
+  }
   render();
 }
 function cxNeededFor(it){
@@ -3290,9 +3351,10 @@ function cxNext(){
     cxPair.id,null,{lesson:cxPair.dom,srs_box:st.runs});
   cxStep=-1;render(); // شاشة الختام: تقول لها أين صارت من الإتقان
 }
+function cxPreQuit(){cxPreOn=false;cxPreFail=false;cxFinish()}
 function cxFinish(){
   cxOn=false;cxPair=null;cxStep=0;cxDrills=[];cxPicked=null;cxLocked=false;
-  cxWhyOn=false;cxWhyPicked=null;cxDoneThisPlan=true;
+  cxWhyOn=false;cxWhyPicked=null;cxDoneThisPlan=true;cxPreOn=false;cxPreFail=false;
   const it=planCur();
   if(fixNeeded(it)){fixStart(it);return}
   render();
@@ -3988,6 +4050,48 @@ function renderContrast(){
   const P=cxPair;
   const head=`<button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
   <div class="meta"><span>تقابل: ${P.title}</span><span>${cxStep>0?toAr(cxStep)+" من "+toAr(cxDrills.length):""}</span></div>`;
+
+  // ٠أ) التصنيف: قبل الملاحظة والقاعدة والتدريب
+  if(cxPreOn){
+    if(cxPreFail){
+      app.innerHTML=`${head}
+      <div class="card" style="text-align:center">
+        <div style="font-size:44px">🧺</div>
+        <div style="font-size:18px;font-weight:800;color:#312E81;margin:8px 0">نقف هنا الليلة</div>
+        <div style="font-size:14px;color:#475569;line-height:1.9">
+          تصنيف الأسماء لم يستقم بعد، وبناء القاعدة عليه الآن بناءٌ على رمل.
+          نعود إليه في جلسة قادمة — ونُكمل خطتك الآن.
+        </div>
+      </div>
+      <button class="btn" style="background:#4338CA" onclick="cxPreQuit()">أكمل الخطة ←</button>`;
+      return;
+    }
+    const cur=cxPreCur();
+    app.innerHTML=`${head}
+    <div class="card">
+      <span class="tag" style="background:#FEF3C7;color:#92400E">🧺 قبل القاعدة: صنّفي الاسم</span>
+      <div style="font-size:13px;color:#64748B;line-height:1.9;margin:8px 0 4px">
+        قاعدة a few / a little تعتمد على نوع الاسم، فلنُتقن النوع أوّلاً — بلا few ولا little.
+      </div>
+      <div style="direction:ltr;text-align:center;font-family:Georgia,serif;font-size:34px;
+        color:#0F172A;margin:16px 0 4px">${esc(cur?cur.w:"")}</div>
+      <div style="text-align:center;font-size:14px;color:#64748B;margin-bottom:14px">${esc(cur?cur.ar:"")}</div>
+      <div style="font-size:15px;font-weight:800;color:#1E293B;margin-bottom:10px">${P.pre.ask}</div>
+      <div class="choices">${cxPreOrder.map(function(si,i){
+        const on=cxPrePicked===i,right=cxPreLocked&&P.sides[si].k===(cur?cur.side:"");
+        return `<button class="choice" style="${cxPreLocked?(right?'background:#ECFDF5;border-color:#059669':(on?'background:#FEF2F2;border-color:#DC2626':'')):''}"
+          onclick="cxPreChoose(${i})">${si===0?"يُعدّ حبّةً حبّة (one, two, three)":"يُقاس ولا يُعدّ (some, a cup of)"}</button>`;
+      }).join("")}</div>
+      ${cxPreLocked?`<div style="background:${cxPreOk?'#ECFDF5':'#FEF9C3'};border-radius:12px;padding:12px;margin-top:12px;
+        font-size:14px;line-height:1.9;color:${cxPreOk?'#065F46':'#854D0E'};direction:rtl">
+        ${cxPreOk?"صحيح ✓ ":""}${P.pre.tip[cur?cur.side:"a"]}</div>`:""}
+      <div style="font-size:12px;color:#94A3B8;margin-top:12px">
+        ${toAr(cxPreStreak)} من ${toAr(CX_PRE_STREAK)} متتالية · المحاولة ${toAr(cxPreCount)} من ${toAr(CX_PRE_MAX)}
+      </div>
+    </div>
+    ${cxPreLocked?`<button class="btn" style="background:${cxPreOk?'#059669':'#B45309'}" onclick="cxPreNext()">التالي ←</button>`:""}`;
+    return;
+  }
 
   // ٠) الملاحظة — الجملتان جنباً إلى جنب قبل أي شرح
   if(cxStep===0&&cxNoticePicked==null){
