@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260813-0130";
+  var BUILD="build-20260813-1500";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -2642,7 +2642,7 @@ async function runMicDiag(){
 const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEngPlan","startDictation",
   "startPronunciation","startSpeaking","startAudioDiag","runMicDiag","fetchTimeout",
   "pronStart","pronStop","pronReset","speakStart","speakStop","speakReset","speakEnglish",
-  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","piPickBand","piBandBoxHTML","piArm","piOk","piVals","piGateOn","piGated","piSig1","fsrsUpdate","fsrsIvl","fsrsR","fsrsInitS","fsrsInitD","fsrsNextD","fsrsClampD","fsrsRecallS","fsrsForgetS","tmplKey","spreadTemplates","drawSpread","qzErrRecord","qzDueKeys","qzInjectDue","qzErrOf","qzCardDone","fadeQText","fadeAnsText","fadeGateStart","fadeGateStop","fadeGateNeeded","copyAzRaw","esc","weakPhonemeStr","num0","profileBarHTML","renderHomeCoachOnly","learnerInfo","coachLevel","toMasc","genderizeText","genderizeNode","genderizeInit","lsGet","lsSet","lsDel","pkey","cxShuffleOrder","cxPreStart","cxPreChoose","cxPreNext","cxPreQuit","cxPreCur","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary","coachMode","coachAskHelp","coachEnd","coachReview","coachFixParse","weakClean","coachSaysNow","snapToSuggestion","editDist","coachShowSays","coachParse","coachTopicGo","coachTopicBack","coachTopicClean","coachFreeScene"];
+  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","piPickBand","piBandBoxHTML","piArm","piOk","piVals","piGateOn","piGated","piSig1","fsrsUpdate","fsrsIvl","fsrsR","fsrsInitS","fsrsInitD","fsrsNextD","fsrsClampD","fsrsRecallS","fsrsForgetS","tmplKey","spreadTemplates","drawSpread","qzErrRecord","qzDueKeys","qzInjectDue","qzErrOf","qzCardDone","fadeQText","fadeAnsText","fadeGateStart","fadeGateStop","fadeGateNeeded","copyAzRaw","esc","weakPhonemeStr","num0","profileBarHTML","renderHomeCoachOnly","learnerInfo","coachLevel","toMasc","genderizeText","genderizeNode","genderizeInit","lsGet","lsSet","lsDel","pkey","cxShuffleOrder","cxPreStart","cxPreChoose","cxPreNext","cxPreQuit","cxPreCur","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary","coachMode","coachAskHelp","coachEnd","coachReview","coachFixParse","weakClean","coachSaysNow","snapToSuggestion","editDist","coachShowSays","coachParse","coachTopicGo","coachTopicBack","coachTopicClean","coachFreeScene","wbStart","wbPick","wbUnpick","wbCheck","wbHTML","wbReady","wbSay","wbReset","wbNorm","wbDistract","wbStageGet","wbGrade","engBuildFor","dictErrRecord","dictIsBuild","dictCur","renderDictationBuild","planCheckBuild","echoRecord","echoArmed","coachBankOn","coachBankSync","coachBankCheck","fixCardSave","fixCardGrade","errCollect","errDraw","errCount","errQuizCount","startErrors","errCheck","errChoose","errNext","errReplay","renderErrors"];
 function censusMissing(){return CENSUS.filter(function(n){return typeof window[n]!=="function"})}
 function censusHTML(){
   var miss=censusMissing();
@@ -3060,7 +3060,7 @@ const ENG_ITEMS=[
 const SRS_KEY="mawhiba_eng_srs";
 const SRS_INTERVALS=[1,2,4,8,16,32]; // أيام
 // تقديرات زمنية واقعية لطالبة سادس (قراءة السؤال بالعربي + الخيارات بالإنجليزي)
-const ENG_SECS={lesson:90,vocab:25,grammar:35,reading:110,dict:35};
+const ENG_SECS={lesson:90,vocab:25,grammar:35,reading:110,dict:35,build:45};
 const PLAN_SECS=34*60;  // ٣٤ دقيقة تدريب مُصحَّح + ٦ دقائق نطق = ٤٠ دقيقة
 const NEW_CAP=25;       // حد العناصر الجديدة يومياً (قريب من المعتمد في أنظمة التباعد) لكبح الحمل المعرفي
 function srsLoad(){try{return JSON.parse(lsGet(SRS_KEY)||"{}")}catch(e){return{}}}
@@ -3172,6 +3172,11 @@ let _engPool=null;
 function engPool(){
   if(_engPool)return _engPool;
   _engPool=[...ENG_ITEMS]; // ENG_ITEMS يضمّ عناصر dict الحقيقية أصلاً؛ DICTATION_A1 صار نفس الكلمات بالضبط (مصدر واحد) فلا داعي لدمجها مرتين
+  // جمل البناء تدخل المخزون بمعرّفاتها، فتجدولها FSRS كسائر العناصر: التأليف مهارة
+  // تُنسى كغيرها، وإخراجها من التباعد يعني تدريباً بلا استرجاع
+  engBuildFor(profileOf().level).forEach(function(x){
+    _engPool.push({id:x.id,t:"build",s:x.s,m:x.m,lesson:x.lesson||null});
+  });
   return _engPool;
 }
 // بنك المنهج مكتوب بالإجابة الصحيحة أولاً دائماً؛ بلا خلط ستتعلّم موضع الإجابة لا محتواها
@@ -3627,6 +3632,7 @@ function startEngPlan(){
   const p0=cxNeededFor(f);
   if(p0){cxStart(p0);return}
   if(fixNeeded(f)){fixStart(f);return}
+  if(f&&f.t==="build")wbStart(f.s);else wbReset();
   render();
   if(f&&f.t==="dict")setTimeout(()=>speakEnglish(f.w),400);
 }
@@ -3639,6 +3645,17 @@ function planChoose(i){
   itemErrRecord(it.id,ok,it.c?it.c[i]:null);
   logAnswer("eng_plan",it.t,ok,it.c?it.c[i]:null,it.id,planShownAt?Date.now()-planShownAt:null,
     {is_new:!!it._isNew,srs_box:it._box,lesson:it.lesson||null,q_text:String(it.q||"").slice(0,600)});
+  render();
+}
+function planCheckBuild(){
+  if(planLocked)return;
+  const it=planCur(),ok=wbCheck();
+  planLocked=true;if(ok)planScore++;
+  srsUpdate(it.id,ok);lessonRecord(it.lesson,ok);
+  itemErrRecord(it.id,ok,String(wbTyped||wbBuilt()).slice(0,120));
+  logAnswer("eng_plan","build"+wbStage,ok,String(wbTyped||wbBuilt()).slice(0,300),it.id,
+    planShownAt?Date.now()-planShownAt:null,
+    {is_new:!!it._isNew,srs_box:it._box,lesson:it.lesson||null,q_text:String(it.s||"")});
   render();
 }
 function planCheckDict(){
@@ -3665,6 +3682,7 @@ function planNext(){
   if(p){cxStart(p);return}
   // السؤال العالق لا تُعرض خياراته حتى تمرّ ببطاقة التصحيح وتمرينيها
   if(fixNeeded(it)){fixStart(it);return}
+  if(it&&it.t==="build")wbStart(it.s);else wbReset();
   render();
   if(it&&it.t==="dict")setTimeout(()=>speakEnglish(it.w),300);
 }
@@ -3916,6 +3934,53 @@ function coachSaysNow(){
   return [];
 }
 function coachShowSays(){return (coachHelp==="suggest"||coachHelpShown)&&coachSaysNow().length>0}
+// ===== بوّابة الصدى: تُسلَّح على من ينسخ، وتنحلّ عمّن يؤلّف =====
+// القياس: هيا نسخت الجملة المعروضة حرفياً في ٤ من ١٥ دوراً عُرضت عليها فيه، ومحمد
+// وإلياس صفراً من سبعة لكليهما. فمن يؤلّف يأخذ الجملة جاهزةً كما كان، ومن ينسخ
+// يبنيها من كلماتها أوّلاً. ولا يُعاقَب من لا يحتاجها — وهذا شرط كل بوّابة عندنا.
+const ECHO_KEY="mawhiba_echo_v1";
+const ECHO_WIN=6;    // آخر ستّة أدوارٍ عُرضت فيها جمل
+const ECHO_ARM=2;    // صدىً مرّتين في النافذة ⇒ تُسلَّح
+function echoLoad(){try{return JSON.parse(lsGet(ECHO_KEY)||"{}")}catch(e){return{}}}
+function echoSave(o){try{lsSet(ECHO_KEY,JSON.stringify(o))}catch(e){}}
+function echoRecord(said,says){
+  if(!says||!says.length||!said)return;
+  const e=echoLoad();
+  const hit=says.some(function(s){return wbNorm(s)===wbNorm(said)})?1:0;
+  e.r=((e.r||[]).concat(hit)).slice(-ECHO_WIN);
+  echoSave(e);
+}
+function echoArmed(){
+  const e=echoLoad(),r=e.r||[];
+  // قبل أن تجتمع بيانات جديدة يحكم القياس السابق — والبذرة تُوضع لهيا وحدها
+  if(r.length<2)return !!e.seed;
+  return r.reduce(function(a,b){return a+b},0)>=ECHO_ARM;
+}
+// بذرة من قياسٍ حقيقي لا من ظنّ: ٤ أصداء في ١٥ دوراً في سجلّ هيا. ولا نخترع أيّ
+// الأدوار كانت صدى — نُثبت الخلاصة وحدها، وأوّل دورين جديدين يُسقطانها أو يُثبتانها.
+const ECHO_SEED_KEY="mawhiba_echo_seed_v1";
+function echoSeedOnce(){
+  try{
+    if(profileId()!=="haya")return;
+    if(lsGet(ECHO_SEED_KEY))return;
+    const e=echoLoad();e.seed=true;echoSave(e);lsSet(ECHO_SEED_KEY,"1");
+  }catch(e){}
+}
+try{echoSeedOnce()}catch(e){appError('echoSeedOnce',e)}
+// البنك في المحادثة: مسلَّحٌ بالصدى، ومحلولٌ عند بلوغ الدرجة الأخيرة من خطة التخفيف
+function coachBankOn(){return echoArmed()&&wbStageGet()<WB_STAGES.length&&coachSaysNow().length>0}
+function coachBankSync(){
+  const s=coachSaysNow();
+  if(!coachShowSays()||!coachBankOn()){if(wbOn&&mode==="coach"&&!s.length)wbReset();return}
+  if(!wbOn||wbTarget!==s[0])wbStart(s[0]);
+}
+function coachBankCheck(){
+  if(wbLocked)return;
+  const ok=wbCheck();
+  logAnswer("coach","build"+wbStage,ok,String(wbTyped||wbBuilt()).slice(0,300),
+    coachScene?coachScene.id:null,null,{lesson:coachScene?coachScene.id:null,q_text:String(wbTarget||"")});
+  render();
+}
 // الردّ قد يحمل سطرين مُلحقين: نصيحة أسلوب، وجملاً تصلح جواباً. يُفصلان عن الكلام
 // المنطوق: صوت النصيحة يكسر الموقف، والجمل تُعرض أزراراً لا تُقال في الحوار.
 function coachParse(txt){
@@ -3958,7 +4023,7 @@ function startCoach(){
 }
 function coachPick(i){
   coachPending=COACH_SCENES[i];
-  coachModeAsk=true;coachHelp="";coachHelpShown=false;render();
+  coachModeAsk=true;coachHelp="";coachHelpShown=false;wbReset();render();
 }
 // القرار لها في كل جلسة: تتكلّم وحدها، أو تُعطى جملاً تختار منها
 function coachMode(m){
@@ -4058,6 +4123,8 @@ async function coachFinish(){
   const snapped=snapToSuggestion(heard,coachSaysNow());
   const rawHeard=heard;
   if(snapped){heard=snapped}
+  // الصدى يُقاس على ما عُرض فعلاً: إن لم تُعرض جمل فلا حكم، لا صدى ولا تأليف
+  if(coachShowSays())echoRecord(heard,coachSaysNow());
   // ٢) كيف كان نطقها؟ مرجع Azure هو نصّها نفسه
   let pct=null,weak=[];
   try{
@@ -4174,6 +4241,9 @@ async function coachReview(){
     coachFixFail?("fail:"+coachFixFail):(coachFix.length?("fixes:"+coachFix.length):"none"),
     coachScene?coachScene.id:null,null,{lesson:coachScene?coachScene.id:null,
       srs_box:coachFix.length,q_text:"said:"+said.length+" · lt:"+ltJudged+"/"+ltDropped});
+  // التصحيح يُحفظ بطاقةً مجدولة لا يُعرض ويُنسى: صفحة تُقرأ مرّة لا تُغيّر عادةً نُطقت
+  // ثماني مرّات. وFSRS يُعيدها عند حافة النسيان، ووضع «أخطائي» يُدرّبها بنائياً.
+  coachFix.forEach(function(f){fixCardSave(f)});
   coachFix.forEach(function(f){
     logAnswer("coach","fix",null,(f.said+" ⇐ "+f.fix).slice(0,300),coachScene?coachScene.id:null,null,
       {lesson:coachScene?coachScene.id:null,q_text:String(f.why||"").slice(0,200)});
@@ -4399,13 +4469,27 @@ function renderCoach(){
     : `<button class="btn" style="background:#059669" onclick="coachStart()">🎤 تكلّمي</button>`;
   // الجمل الجاهزة: تُقرأ لا تُؤلَّف. والضغط يُسمعها أوّلاً — فالنطق يُقلَّد لا يُقرأ من ورق
   const says=coachSaysNow();
-  const helpBox=(!coachBusy&&!coachListening&&coachShowSays())
+  coachBankSync();
+  const plainSays=function(){return says.map(function(x){return `<button type="button" onclick="coachSay(${JSON.stringify(x).replace(/"/g,'&quot;')})"
+      style="display:block;width:100%;text-align:left;direction:ltr;background:#fff;border:1.5px solid #A5F3FC;
+      border-radius:11px;padding:10px 12px;margin-bottom:7px;font-family:Georgia,serif;font-size:15px;
+      color:#0F172A;cursor:pointer;line-height:1.6">🔊 ${esc(x)}</button>`}).join("")};
+  // البنك مسلَّح: الجملة لا تُعطى جاهزة حتى تُبنى. ولا يُسدّ الطريق — الخطأ يكشف
+  // الصواب ويُنزل الدرجة، فتمضي في كل الأحوال.
+  const bankBox=(!coachBusy&&!coachListening&&coachShowSays()&&coachBankOn()&&wbOn)
+    ? `<div style="background:#ECFEFF;border:1.5px solid #A5F3FC;border-radius:14px;padding:12px;margin-bottom:10px">
+        <div style="font-size:12px;color:#0E7490;margin-bottom:10px">${wbLocked?"":"ابني الجملة من كلماتها، ثم قوليها بصوتك"}</div>
+        ${wbLocked?"":wbHTML()}
+        ${wbLocked
+          ? `<div style="font-size:13px;font-weight:800;color:${wbOk?'#059669':'#B45309'};margin-bottom:8px">${wbOk?"✓ بنيتِها صحيحة":"الترتيب الصحيح:"}</div>${plainSays()}`
+          : `<button class="btn" style="background:${wbReady()?'#0E7490':'#94A3B8'};margin-top:10px" ${wbReady()?"":"disabled"} onclick="coachBankCheck()">تحقّقي ←</button>`}
+      </div>`
+    : "";
+  const helpBox=bankBox?bankBox
+    : (!coachBusy&&!coachListening&&coachShowSays())
     ? `<div style="background:#ECFEFF;border:1.5px solid #A5F3FC;border-radius:14px;padding:12px;margin-bottom:10px">
         <div style="font-size:12px;color:#0E7490;margin-bottom:8px">جمل تصلح جواباً — اضغطي لتسمعيها، ثم قوليها بصوتك</div>
-        ${says.map(function(x){return `<button type="button" onclick="coachSay(${JSON.stringify(x).replace(/"/g,'&quot;')})"
-          style="display:block;width:100%;text-align:left;direction:ltr;background:#fff;border:1.5px solid #A5F3FC;
-          border-radius:11px;padding:10px 12px;margin-bottom:7px;font-family:Georgia,serif;font-size:15px;
-          color:#0F172A;cursor:pointer;line-height:1.6">🔊 ${esc(x)}</button>`}).join("")}
+        ${plainSays()}
       </div>`
     : (!coachBusy&&!coachListening&&says.length&&!coachShowSays())
     ? `<button class="btn" style="background:#0E7490" onclick="coachAskHelp()">💬 ساعديني بجملة</button>`
@@ -4600,6 +4684,26 @@ function renderEngPlan(){
     <button class="btn" style="background:#4338CA" onclick="planLessonDone()">فهمت، لنتدرّب ←</button>`;
     return;
   }
+  if(it.t==="build"){
+    if(!wbOn||wbTarget!==it.s)wbStart(it.s);
+    const fb=planLocked
+      ?`<div class="explain"><div class="explain-title" style="color:${wbOk?'#059669':'#B45309'}">${wbOk?"✓ صحيح":"الصحيح:"}</div>
+         <div class="explain-body">${wbOk?"":`<div style="direction:ltr;font-family:Georgia,serif;font-size:17px;font-weight:700;margin:6px 0">${esc(it.s)}</div>`}
+         <button type="button" onclick="wbSay()" style="margin-top:8px;background:#0E7490;color:#fff;border:none;border-radius:10px;padding:8px 14px;cursor:pointer">🔊 اسمعيها</button></div></div>`
+      :"";
+    app.innerHTML=`${head}
+    <div class="card">
+      <span class="tag" style="background:#CFFAFE;color:#0E7490">🧩 ابني الجملة · ${(WB_STAGES[wbStage-1]||WB_STAGES[0]).tag}</span>
+      <div class="q" style="margin-top:12px">قولي بالإنجليزية: «${esc(it.m||"")}»</div>
+      ${wbHTML()}
+      ${fb}
+    </div>
+    ${planLocked
+      ?`<button class="btn" style="background:#4338CA" onclick="planNext()">${planIdx+1>=planItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`
+      :`<button class="btn" style="background:${wbReady()?'#0E7490':'#94A3B8'}" ${wbReady()?"":"disabled"} onclick="planCheckBuild()">تحقّقي ←</button>`}`;
+    if(!planLocked&&wbStage>=WB_STAGES.length){const el=document.getElementById('wbIn');if(el)el.focus()}
+    return;
+  }
   if(it.t==="dict"){
     const ok=planLocked&&planInput===it.w.toLowerCase();
     const fb=planLocked?`<div class="explain"><div class="explain-title" style="color:${ok?'#059669':'#B45309'}">${ok?"✓ صحيح":"الصحيح:"}</div><div class="explain-body">${ok?"":`<div style="font-size:22px;font-weight:800;letter-spacing:3px;direction:ltr;font-family:Georgia,serif;margin:6px 0">${dictDiff(planInput,it.w)}</div>`}تعني «${it.m}».</div></div>`:"";
@@ -4671,6 +4775,127 @@ function renderEngPlanResult(){
   </div>`;
 }
 
+// ===== بنك الكلمات: الدرجة المفقودة بين النسخ والتأليف =====
+// القياس الذي أوجب هذا: متوسّط طول جملة هيا في المحادثة أربعة عشر حرفاً، و٢١ من ٢٤
+// جملة أربع كلمات فأقلّ، و٤ من ١٥ دورٍ نسخٌ حرفيّ للجملة المعروضة عليها. وأخواها
+// فوق ذلك (صفر نسخ لكليهما) — فالعلاج لها هي، والبوّابة مشروطة بالعَرَض لا مفروضة.
+//
+// وبين «خذي جملةً كاملة فقوليها» (⇒ صدى) و«ألّفي من الفراغ» (⇒ ثلاث كلمات) لم يكن
+// شيء. فبنك الكلمات: تُعطى كلمات الجملة مبعثرةً فترتّبها — تأليفٌ بلا حِمل الاستحضار.
+//
+// وله خطّة تخفيف، وهو شرطنا لكل دعم منذ درس «الدعم الذي لا يتلاشى يصير عكازاً»:
+// كلماتٌ بالعدد بالضبط ⇐ كلماتٌ زائدة دخيلة ⇐ بلا بنك. والنزول تلقائي عند تكرار
+// الخطأ كما في الإملاء، فلا تعلق على درجة أصعب من قدرتها.
+const WB_KEY="mawhiba_wb_stage";
+const WB_REQ=3;   // ثلاث صحيحات متتالية للصعود — أكثر من الإملاء لأن الترتيب يُصاب بالحظّ
+const WB_BACK=2;  // خطآن متتاليان للنزول
+const WB_STAGES=[
+  {label:"رتّبي الكلمات — العدد بالضبط",tag:"رتّبي",extra:0},
+  {label:"رتّبي واحذري: بعض الكلمات زائدة",tag:"زائدة",extra:3},
+  {label:"بلا بنك — اكتبيها بنفسك",tag:"مستقلّة",extra:-1},
+];
+// الدخيلة كلماتٌ وظيفية شائعة: تُشبه ما في الجملة فتُميَّز بالقاعدة لا بالشكل. ولا
+// تُقال أبداً — تُرفض فحسب — فلا يسري عليها شرط «كل جملة تُعرض لتُقال تكون سليمة».
+const WB_FILLERS=["the","a","an","is","are","was","were","to","in","on","at","of","and","or",
+  "do","does","did","very","my","his","her","it","they","he","she","not","for","with","have","has"];
+function wbStageGet(){try{const v=parseInt(lsGet(WB_KEY)||"1");return(v>=1&&v<=WB_STAGES.length)?v:1}catch(e){return 1}}
+function wbStageSet(v){try{lsSet(WB_KEY,String(v))}catch(e){}}
+function wbSplit(s){return String(s||"").trim().split(/\s+/).filter(Boolean)}
+// المقارنة بلا ترقيم ولا حالة أحرف: الغرض ترتيب الكلمات، والنقطة ليست تأليفاً
+function wbNorm(s){return String(s||"").toLowerCase().replace(/[^a-z0-9' ]/g," ").replace(/\s+/g," ").trim()}
+function wbDistract(tokens,n){
+  if(n<=0)return[];
+  const have={};tokens.forEach(function(t){have[wbNorm(t)]=1});
+  return shuffle(WB_FILLERS.filter(function(w){return !have[w]})).slice(0,n);
+}
+let wbOn=false,wbTarget="",wbTok=[],wbPool=[],wbPicked=[],wbLocked=false,wbOk=false;
+let wbStage=1,wbStreak=0,wbMiss=0,wbTyped="";
+function wbStart(sentence,stage){
+  wbTarget=String(sentence||"");wbTok=wbSplit(wbTarget);
+  wbStage=stage||wbStageGet();
+  const extra=(WB_STAGES[wbStage-1]||WB_STAGES[0]).extra;
+  wbPool=extra<0?[]:shuffle(wbTok.concat(wbDistract(wbTok,extra)));
+  wbPicked=[];wbLocked=false;wbOk=false;wbTyped="";wbOn=true;
+}
+function wbReset(){wbOn=false;wbTarget="";wbTok=[];wbPool=[];wbPicked=[];wbLocked=false;wbOk=false;wbTyped=""}
+function wbPick(i){if(wbLocked||wbPicked.indexOf(i)>=0)return;wbPicked.push(i);render()}
+function wbUnpick(k){if(wbLocked)return;wbPicked.splice(k,1);render()}
+function wbBuilt(){return wbPicked.map(function(i){return wbPool[i]}).join(" ")}
+function wbTypedNow(){const el=document.getElementById('wbIn');return el?el.value:wbTyped}
+function wbReady(){return wbStage>=WB_STAGES.length?!!wbTypedNow().trim():wbPicked.length>0}
+function wbGrade(ok){
+  if(ok){wbMiss=0;wbStreak++;if(wbStreak>=WB_REQ&&wbStage<WB_STAGES.length){wbStage++;wbStreak=0;wbStageSet(wbStage)}}
+  else{wbStreak=0;wbMiss++;if(wbMiss>=WB_BACK&&wbStage>1){wbStage--;wbMiss=0;wbStageSet(wbStage)}}
+}
+// يُرجع نتيجة الفحص ولا يرسم: المُستدعي هو من يعرف ماذا يفعل بها (يُسجّل، يتقدّم…)
+function wbCheck(){
+  if(wbLocked)return wbOk;
+  const got=wbStage>=WB_STAGES.length?wbTypedNow():wbBuilt();
+  wbTyped=got;wbOk=wbNorm(got)===wbNorm(wbTarget);wbLocked=true;wbGrade(wbOk);
+  return wbOk;
+}
+function wbSay(){if(wbTarget)speakEnglish(wbTarget)}
+function wbHTML(){
+  if(!wbOn)return"";
+  const st=WB_STAGES[wbStage-1]||WB_STAGES[0];
+  const bar=WB_STAGES.map(function(_,x){return `<div class="seg" style="flex:1;height:8px;border-radius:99px;background:${x+1<wbStage?'#10B981':x+1===wbStage?'#0E7490':'#E2E8F0'}"></div>`}).join("");
+  if(wbStage>=WB_STAGES.length){
+    return `<div style="display:flex;gap:6px;margin-bottom:8px">${bar}</div>
+    <div style="font-size:12px;font-weight:800;color:#0E7490;margin-bottom:10px">${st.label}</div>
+    <input id="wbIn" ${wbLocked?"disabled":""} value="${esc(wbTyped)}" style="width:100%;padding:14px;border-radius:12px;border:2px solid #E2E8F0;font-size:17px;direction:ltr;font-family:Georgia,serif" placeholder="type the sentence" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">`;
+  }
+  const line=wbPicked.length
+    ? wbPicked.map(function(i,k){return `<button type="button" ${wbLocked?"disabled":""} onclick="wbUnpick(${k})"
+        style="background:#0E7490;color:#fff;border:none;border-radius:10px;padding:8px 12px;margin:0 4px 6px 0;
+        font-family:Georgia,serif;font-size:16px;cursor:${wbLocked?'default':'pointer'}">${esc(wbPool[i])}</button>`}).join("")
+    : `<span style="color:#94A3B8;font-size:14px">اضغطي الكلمات بالترتيب…</span>`;
+  const tiles=wbPool.map(function(w,i){
+    const used=wbPicked.indexOf(i)>=0;
+    return `<button type="button" ${(used||wbLocked)?"disabled":""} onclick="wbPick(${i})"
+      style="background:${used?'#F1F5F9':'#fff'};color:${used?'#CBD5E1':'#0F172A'};border:1.5px solid ${used?'#E2E8F0':'#A5F3FC'};
+      border-radius:10px;padding:8px 12px;margin:0 4px 6px 0;font-family:Georgia,serif;font-size:16px;
+      cursor:${(used||wbLocked)?'default':'pointer'}">${esc(w)}</button>`}).join("");
+  return `<div style="display:flex;gap:6px;margin-bottom:8px">${bar}</div>
+  <div style="font-size:12px;font-weight:800;color:#0E7490;margin-bottom:10px">${st.label}</div>
+  <div style="direction:ltr;text-align:left;min-height:52px;background:#F8FAFC;border:2px dashed #CBD5E1;
+    border-radius:12px;padding:10px;margin-bottom:12px">${line}</div>
+  <div style="direction:ltr;text-align:left">${tiles}</div>`;
+}
+// بنك الجمل: مصدرٌ واحد لثلاثة أبواب — الإملاء (تُسمَع ثم تُبنى)، وخطة الإنجليزية
+// (تُطلب بالعربية ثم تُبنى)، ووضع أخطائي. والقواعد موسومة لتُربط بشرحها القائم.
+const ENG_BUILD=[
+ {id:"b_beach",s:"I went to the beach with my family.",m:"ذهبتُ إلى الشاطئ مع عائلتي.",lv:"A2"},
+ {id:"b_bfast",s:"I ate eggs and bread for breakfast.",m:"أكلتُ بيضاً وخبزاً في الفطور.",lv:"A2"},
+ {id:"b_tea",s:"I would like a cup of tea, please.",m:"أريد كوب شاي من فضلك.",lv:"A2"},
+ {id:"b_again",s:"Could you say that again, please?",m:"هل يمكنك إعادة ذلك من فضلك؟",lv:"A2"},
+ {id:"b_taller",s:"My brother is taller than me.",m:"أخي أطول منّي.",lv:"A2"},
+ {id:"b_bus",s:"We usually go to school by bus.",m:"نذهب إلى المدرسة بالحافلة عادةً.",lv:"A2"},
+ {id:"b_cold",s:"He does not like cold weather.",m:"هو لا يحبّ الطقس البارد.",lv:"A2"},
+ {id:"b_gran",s:"I am going to visit my grandmother tomorrow.",m:"سأزور جدّتي غداً.",lv:"A2"},
+ {id:"b_thanks",s:"Thank you for helping me with my homework.",m:"شكراً لمساعدتي في واجبي.",lv:"A2"},
+ {id:"b_shop",s:"The shop opens at nine in the morning.",m:"يفتح المحلّ في التاسعة صباحاً.",lv:"A2"},
+ {id:"b_lastq",s:"I did not understand the last question.",m:"لم أفهم السؤال الأخير.",lv:"A2"},
+ {id:"b_eat",s:"What did you eat for breakfast today?",m:"ماذا أكلتَ في الفطور اليوم؟",lv:"A2"},
+ // موسومة بقواعدها: الشرح موجود أصلاً، والبناء تدريبٌ عليه لا درسٌ جديد
+ {id:"b_few",s:"There are a few books on the table.",m:"على الطاولة بضعة كتب.",lv:"A2",lesson:"l_few"},
+ {id:"b_little",s:"There is a little water in the bottle.",m:"في الزجاجة قليل من الماء.",lv:"A2",lesson:"l_few"},
+ {id:"b_rel",s:"This is the boy who won the prize.",m:"هذا هو الولد الذي فاز بالجائزة.",lv:"A2",lesson:"l_rel"},
+ {id:"b_pass",s:"The letter was written by my sister.",m:"كُتبت الرسالة بواسطة أختي.",lv:"A2",lesson:"l_passive"},
+ {id:"b_cond",s:"If it rains, we will stay at home.",m:"إذا أمطرت فسنبقى في البيت.",lv:"A2",lesson:"l_cond"},
+ {id:"b_ppq",s:"Have you finished your homework yet?",m:"هل أنهيتَ واجبك بعد؟",lv:"A2",lesson:"l_pp_q"},
+ {id:"b_ppa",s:"I have already eaten my breakfast.",m:"لقد أكلتُ فطوري بالفعل.",lv:"A2",lesson:"l_pp_q"},
+ {id:"b_prog",s:"We were playing football when it started to rain.",m:"كنّا نلعب كرة القدم حين بدأ المطر.",lv:"A2",lesson:"l_pastprog"},
+ {id:"b_since",s:"She has lived here since two thousand nineteen.",m:"سكنت هنا منذ ٢٠١٩.",lv:"B1",lesson:"l_pp_vs"},
+ // درجة أعلى لمحمد (B1): تظهر في وضع أخطائي وفي بنك المحادثة لا في خطة هيا
+ {id:"b_study",s:"I have been studying English for three years.",m:"أدرس الإنجليزية منذ ثلاث سنوات.",lv:"B1"},
+ {id:"b_told",s:"She told me that she was tired.",m:"أخبرتني أنها كانت متعبة.",lv:"B1"},
+ {id:"b_friday",s:"I need to finish this work before Friday.",m:"عليّ إنهاء هذا العمل قبل الجمعة.",lv:"B1"},
+];
+function engBuildFor(level){
+  const L=String(level||"A2");
+  return ENG_BUILD.filter(function(x){return (L==="A1"||L==="A2")?x.lv==="A2":true});
+}
+
 // ===== إملاء إنجليزي: تستمع للكلمة بصوت أمريكي ثم تكتبها (مستوى A1) =====
 // كلمات حقيقية من منهج الصف السادس (نفس مفردات ENG_ITEMS)، لا كلمات عامة عشوائية
 const DICTATION_A1=[
@@ -4707,22 +4932,52 @@ function dictDiff(typed,correct){
   const t=(typed||"").split("");
   return correct.split("").map((ch,i)=>`<span style="color:${t[i]===ch?'#059669':'#DC2626'}">${ch}</span>`).join("");
 }
+// ذاكرة أخطاء الإملاء محلّياً: ما يُسجَّل في الخادم يصلح للتشخيص لا للعلاج الفوري،
+// ووضع «أخطائي» يحتاج أن يعرف الآن أيّ كلمة عثرت فيها. والصواب يمحو الأثر.
+const DICT_ERR_KEY="mawhiba_dict_err_v1";
+function dictErrLoad(){try{return JSON.parse(lsGet(DICT_ERR_KEY)||"{}")}catch(e){return{}}}
+function dictErrSave(o){try{lsSet(DICT_ERR_KEY,JSON.stringify(o))}catch(e){}}
+function dictErrRecord(word,ok,typed){
+  if(!word)return;
+  const m=dictErrLoad(),k=String(word).toLowerCase();
+  if(ok){delete m[k]}
+  else{const r=m[k]||{wrong:0,last:""};r.wrong=(r.wrong||0)+1;r.last=String(typed||"");m[k]=r}
+  dictErrSave(m);
+}
 let dictSession=[],dictIdx=0,dictInput="",dictLocked=false,dictScore=0,dictDone=false;
 let dictStage=1,dictStreak=0,dictMiss=0,dictShownAt=0;
+function dictCur(){return dictSession[dictIdx]||{}}
+function dictIsBuild(){return !!dictCur().build}
+function dictText(){const it=dictCur();return it.build?String(it.s||""):String(it.w||"")}
 function startDictation(){
-  mode="dictation";dictSession=shuffle(DICTATION_A1).slice(0,10);dictIdx=0;dictInput="";dictLocked=false;dictScore=0;dictDone=false;
-  dictStage=dictStageGet();dictStreak=0;dictMiss=0;dictShownAt=Date.now();
+  // ثماني كلمات ثم أربع جمل: الكلمة تربط الصوت بالحروف، والجملة تربط الكلمات بالترتيب.
+  // وهي الاستماع والبناء معاً — أنفع من كلٍّ وحده، وبلا شاشة جديدة.
+  const words=shuffle(DICTATION_A1).slice(0,8);
+  const sents=shuffle(engBuildFor(profileOf().level)).slice(0,4)
+    .map(function(x){return{s:x.s,m:x.m,id:x.id,build:true}});
+  mode="dictation";dictSession=words.concat(sents);dictIdx=0;dictInput="";dictLocked=false;dictScore=0;dictDone=false;
+  dictStage=dictStageGet();dictStreak=0;dictMiss=0;dictShownAt=Date.now();wbReset();
   window.scrollTo(0,0);render();
-  setTimeout(()=>speakEnglish(dictSession[0].w),300);
+  setTimeout(()=>speakEnglish(dictText()),300);
 }
-function dictReplay(){speakEnglish(dictSession[dictIdx].w)}
+function dictReplay(){speakEnglish(dictText())}
 function dictCheck(){
   if(dictLocked)return;
+  // جملة: الحكم من بنك الكلمات، وسلّمه مستقلّ عن سلّم الإملاء — مهارتان مختلفتان
+  if(dictIsBuild()){
+    const it=dictCur(),ok=wbCheck();
+    dictLocked=true;if(ok)dictScore++;
+    logAnswer("dictation_a1","build"+wbStage,ok,String(wbTyped||wbBuilt()).slice(0,300),it.id||null,
+      dictShownAt?Date.now()-dictShownAt:null,{q_text:String(it.s||"")});
+    srsUpdate(it.id,ok);
+    render();return;
+  }
   const el=document.getElementById('dictIn');
   const val=(el?el.value:"").trim().toLowerCase();
   dictInput=val;dictLocked=true;
   const dictOk=val===dictSession[dictIdx].w.toLowerCase();
   if(dictOk)dictScore++;
+  dictErrRecord(dictSession[dictIdx].w,dictOk,val);
   // الكلمة وما كتبته: بدونهما أعرف أنها أخطأت ولا أعرف كيف — حرف ناقص؟ حرف متحرّك خطأ؟
   logAnswer("dictation_a1","stage"+dictStage,dictOk,val,dictSession[dictIdx].w,
     dictShownAt?Date.now()-dictShownAt:null,{q_text:dictSession[dictIdx].w});
@@ -4738,11 +4993,41 @@ function dictCheck(){
 }
 function dictNext(){
   if(dictIdx+1>=dictSession.length){dictDone=true;window.scrollTo(0,0);render();return}
-  dictIdx++;dictInput="";dictLocked=false;dictShownAt=Date.now();render();
-  setTimeout(()=>speakEnglish(dictSession[dictIdx].w),300);
+  dictIdx++;dictInput="";dictLocked=false;dictShownAt=Date.now();
+  if(dictIsBuild())wbStart(dictCur().s);else wbReset();
+  render();
+  setTimeout(()=>speakEnglish(dictText()),300);
+}
+function renderDictationBuild(){
+  const it=dictCur();
+  const prog=dictSession.map((_,i)=>`<div class="seg" style="background:${i<=dictIdx?'#0E7490':'#E2E8F0'};opacity:${i<=dictIdx?1:.5}"></div>`).join("");
+  const feedback=dictLocked
+    ?`<div class="explain"><div class="explain-title" style="color:${wbOk?'#059669':'#B45309'}">${wbOk?"✓ الجملة صحيحة":"الجملة الصحيحة:"}</div>
+       <div class="explain-body">${wbOk?"":`<div style="direction:ltr;font-family:Georgia,serif;font-size:17px;font-weight:700;margin:6px 0">${esc(it.s)}</div>`}
+       <div style="margin-top:4px">${esc(it.m||"")}</div>
+       <button type="button" onclick="wbSay()" style="margin-top:8px;background:#0E7490;color:#fff;border:none;border-radius:10px;padding:8px 14px;cursor:pointer">🔊 اسمعيها</button></div></div>`
+    :"";
+  const btn=dictLocked
+    ?`<button class="btn" style="background:#0E7490" onclick="dictNext()">${dictIdx+1>=dictSession.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`
+    :`<button class="btn" style="background:${wbReady()?'#0E7490':'#94A3B8'}" ${wbReady()?"":"disabled"} onclick="dictCheck()">تحقّقي ←</button>`;
+  app.innerHTML=`
+  <button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
+  <div class="bar">${prog}</div>
+  <div class="meta"><span>${toAr(dictIdx+1)} من ${toAr(dictSession.length)}</span><span>جملة · بنك الكلمات</span></div>
+  <div class="card" style="text-align:center">
+    <span class="tag" style="background:#CFFAFE;color:#0E7490">🧩 جملة · ${(WB_STAGES[wbStage-1]||WB_STAGES[0]).tag}</span>
+    <div style="margin:18px 0"><button type="button" onclick="dictReplay()" style="background:#0E7490;color:#fff;border:none;border-radius:50%;width:64px;height:64px;font-size:26px;cursor:pointer">🔊</button></div>
+    <div style="font-size:13px;color:#64748B;margin-bottom:14px">استمعي للجملة، ثم ابنيها${wbStage>=WB_STAGES.length?" واكتبيها":" بالكلمات"}</div>
+    <div style="background:#FEF3C7;border-radius:10px;padding:9px 11px;font-size:13px;color:#92400E;margin-bottom:14px">${esc(it.m||"")}</div>
+    ${wbHTML()}
+    ${feedback}
+  </div>
+  ${btn}`;
+  if(!dictLocked&&wbStage>=WB_STAGES.length){const el=document.getElementById('wbIn');if(el)el.focus()}
 }
 function renderDictation(){
   if(dictDone)return renderDictationResult();
+  if(dictIsBuild()){if(!wbOn||wbTarget!==dictCur().s)wbStart(dictCur().s);return renderDictationBuild()}
   const item=dictSession[dictIdx];
   const info=DICT_STAGES[dictStage-1];
   const prog=dictSession.map((_,i)=>`<div class="seg" style="background:${i<=dictIdx?'#0E7490':'#E2E8F0'};opacity:${i<=dictIdx?1:.5}"></div>`).join("");
@@ -4783,6 +5068,184 @@ function renderDictationResult(){
     <button class="btn" style="background:#0E7490" onclick="startDictation()">إعادة (كلمات جديدة)</button>
     <button class="link-btn" onclick="home()">→ الرئيسية</button>
   </div>`;
+}
+
+// ===== وضع «أخطائي»: مكانٌ واحد لكل ما عثرتَ فيه =====
+// كان الخطأ يُعاد داخل قسمه وحده: خطأ موهبة يعود في اختبار موهبة، وخطأ الإنجليزية في
+// خطتها، وتصحيح المحادثة يُعرض في الخلاصة ثم يزول. فلا مكان يقول: «هذا ما عثرتَ فيه،
+// وهذا موعده اليوم». وهذا الوضع يجمعها، ويُجدولها بـFSRS، ويُدرّب جمل المحادثة بالبناء
+// لا بالقراءة — فالتصحيح الذي يُقرأ لا يُغيّر عادةً في اللسان.
+//
+// وهو الباب الوحيد الذي ينفع الثلاثة بالقدر نفسه: محمد وإلياس لا يريان إلا المحادثة،
+// وبطاقات تصحيحها مصدرهما.
+const FIXCARD_KEY="mawhiba_coach_fix_v1";
+function fixCardLoad(){try{return JSON.parse(lsGet(FIXCARD_KEY)||"{}")}catch(e){return{}}}
+function fixCardSave1(o){try{lsSet(FIXCARD_KEY,JSON.stringify(o))}catch(e){}}
+function fixCardKey(f){return wbNorm(f&&f.fix||"").slice(0,120)}
+function fixCardSave(f){
+  const k=fixCardKey(f);if(!k||!f.said)return;
+  const m=fixCardLoad(),old=m[k];
+  // البطاقة الجديدة تدخل بدرجة «أخطأتُ»: هي خطأٌ وقع فعلاً، لا عنصرٌ جديد يُختبر
+  const rec=fsrsUpdate(old||null,false,srsToday());
+  m[k]=Object.assign({},old||{},rec,{said:String(f.said).slice(0,200),fix:String(f.fix).slice(0,200),
+    why:String(f.why||"").slice(0,200)});
+  fixCardSave1(m);
+}
+function fixCardGrade(k,ok){
+  const m=fixCardLoad(),r=m[k];if(!r)return;
+  const rec=fsrsUpdate(r,ok,srsToday());
+  // بطاقةٌ أُتقنت ثلاث مرّات متتالية لم تعد خطأً — تُحذف بدل أن تُثقل القائمة أبداً
+  if(ok&&(rec.box||0)>=3){delete m[k]}else{m[k]=Object.assign({},r,rec)}
+  fixCardSave1(m);
+}
+// جمع المستحقّ من كل المصادر. كلٌّ منها ذاكرةٌ قائمة أصلاً — لا جدول جديد ولا تسجيل جديد.
+function errCollect(){
+  const today=srsToday(),out=[];
+  const fc=fixCardLoad();
+  Object.keys(fc).forEach(function(k){
+    const r=fc[k];if((r.due||0)>today)return;
+    out.push({kind:"fix",key:k,target:r.fix,said:r.said,why:r.why||""});
+  });
+  const de=dictErrLoad();
+  Object.keys(de).forEach(function(w){
+    const meta=DICTATION_A1.filter(function(x){return x.w.toLowerCase()===w})[0];
+    out.push({kind:"word",key:w,w:(meta?meta.w:w),m:(meta?meta.m:""),last:de[w].last||""});
+  });
+  const ie=itemErrLoad(),POOL=engPool();
+  Object.keys(ie).forEach(function(id){
+    const it=POOL.filter(function(x){return x.id===id})[0];
+    if(!it||!it.c)return;   // عناصر البناء والإملاء لها بابها، فلا تُكرَّر هنا
+    out.push({kind:"item",key:id,it:engShuffleChoices(it)});
+  });
+  return out;
+}
+const ERR_SESSION_MAX=12;   // جلسة قصيرة: قائمةٌ لا تنتهي تُيئِس بدل أن تُعالج
+function errDraw(){return shuffle(errCollect()).slice(0,ERR_SESSION_MAX)}
+// قوالب موهبة تُذكَر ولا تُدرَّب هنا: إعادتها مبنيّة في الاختبار نفسه (qzInjectDue)،
+// وتكرار الآلة في مكانين يُنتج بابين يتنازعان على العدّاد نفسه.
+function errQuizCount(){try{return qzDueKeys().length}catch(e){return 0}}
+function errCount(){try{return errCollect().length}catch(e){return 0}}
+let errItems=[],errIdx=0,errLocked=false,errOk=false,errPicked=null,errScore=0,errDone=false,errShownAt=0,errTyped="";
+function errCur(){return errItems[errIdx]||null}
+function startErrors(){
+  errItems=errDraw();errIdx=0;errLocked=false;errOk=false;errPicked=null;errScore=0;errDone=false;errTyped="";
+  mode="errors";errShownAt=Date.now();wbReset();
+  const c=errCur();if(c&&c.kind==="fix")wbStart(c.target);
+  window.scrollTo(0,0);render();
+  if(c&&c.kind==="word")setTimeout(function(){speakEnglish(c.w)},400);
+}
+function errReplay(){const c=errCur();if(c&&c.kind==="word")speakEnglish(c.w);else if(c&&c.kind==="fix")speakEnglish(c.target)}
+function errCheck(){
+  if(errLocked)return;
+  const c=errCur();if(!c)return;
+  if(c.kind==="fix"){
+    errOk=wbCheck();fixCardGrade(c.key,errOk);
+    logAnswer("errors","fix",errOk,String(wbTyped||wbBuilt()).slice(0,300),c.key,
+      errShownAt?Date.now()-errShownAt:null,{q_text:("قال: "+c.said+" · الصواب: "+c.target).slice(0,300)});
+  }else if(c.kind==="word"){
+    const el=document.getElementById('errIn');
+    errTyped=(el?el.value:"").trim();
+    errOk=errTyped.toLowerCase()===String(c.w).toLowerCase();
+    dictErrRecord(c.w,errOk,errTyped);
+    logAnswer("errors","word",errOk,errTyped.slice(0,120),c.w,errShownAt?Date.now()-errShownAt:null,{q_text:c.w});
+  }
+  errLocked=true;if(errOk)errScore++;
+  render();
+}
+function errChoose(i){
+  if(errLocked)return;
+  const c=errCur();if(!c||c.kind!=="item")return;
+  errPicked=i;errOk=(i===c.it.a);errLocked=true;if(errOk)errScore++;
+  itemErrRecord(c.key,errOk,c.it.c[i]);srsUpdate(c.key,errOk);lessonRecord(c.it.lesson,errOk);
+  logAnswer("errors","item",errOk,c.it.c[i],c.key,errShownAt?Date.now()-errShownAt:null,
+    {lesson:c.it.lesson||null,q_text:String(c.it.q||"").slice(0,600)});
+  render();
+}
+function errNext(){
+  if(errIdx+1>=errItems.length){errDone=true;window.scrollTo(0,0);render();return}
+  errIdx++;errLocked=false;errOk=false;errPicked=null;errTyped="";errShownAt=Date.now();
+  const c=errCur();
+  if(c&&c.kind==="fix")wbStart(c.target);else wbReset();
+  render();
+  if(c&&c.kind==="word")setTimeout(function(){speakEnglish(c.w)},300);
+}
+function renderErrors(){
+  const male=profileOf().g==="m";
+  if(errDone||!errItems.length){
+    const q=errQuizCount();
+    app.innerHTML=`
+    <div class="card" style="text-align:center">
+      <div style="font-size:44px">${errItems.length?"🎯":"✨"}</div>
+      <div style="font-size:18px;font-weight:800;color:#0F172A;margin:10px 0">
+        ${errItems.length?`${toAr(errScore)} من ${toAr(errItems.length)}`:"لا شيء مستحقّ اليوم"}</div>
+      <div style="color:#64748B;font-size:14px;line-height:1.9;margin-bottom:14px">
+        ${errItems.length
+          ?"البطاقة التي أصبتَها ثلاث مرّات تُحذف، والتي أخطأتَها تعود أقرب."
+          :"كل ما عثرتَ فيه إمّا أُتقن وإمّا لم يحن موعده بعد. والموعد يُحسب عند حافّة النسيان لا قبله."}
+      </div>
+      ${q?`<div style="background:#FEF3C7;border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:#92400E;line-height:1.8">
+        وفي موهبة ${toAr(q)} ${q===1?"قالبٌ مستحقّ":"قوالب مستحقّة"} — تعود تلقائياً في اختبارك القادم.</div>`:""}
+      <button class="link-btn" onclick="home()">→ الرئيسية</button>
+    </div>`;
+    return;
+  }
+  const c=errCur();
+  const prog=`<div class="bar">${errItems.map(function(_,i){return `<div class="seg" style="background:${i<=errIdx?'#DB2777':'#E2E8F0'};opacity:${i<=errIdx?1:.5}"></div>`}).join("")}</div>`;
+  const head=`<button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>${prog}
+  <div class="meta"><span>${toAr(errIdx+1)} من ${toAr(errItems.length)}</span><span>أخطائي · مراجعة</span></div>`;
+  if(c.kind==="fix"){
+    const fb=errLocked
+      ?`<div class="explain"><div class="explain-title" style="color:${errOk?'#059669':'#B45309'}">${errOk?"✓ صحيح":"الصحيح:"}</div>
+        <div class="explain-body">${errOk?"":`<div style="direction:ltr;font-family:Georgia,serif;font-size:17px;font-weight:700;margin:6px 0">${esc(c.target)}</div>`}
+        ${c.why?`<div style="margin-top:4px">${esc(c.why)}</div>`:""}
+        <button type="button" onclick="wbSay()" style="margin-top:8px;background:#0E7490;color:#fff;border:none;border-radius:10px;padding:8px 14px;cursor:pointer">🔊 اسمعها</button></div></div>`
+      :"";
+    app.innerHTML=`${head}
+    <div class="card">
+      <span class="tag" style="background:#FCE7F3;color:#BE185D">🗣️ من محادثتك</span>
+      <div style="background:#FEF2F2;border-radius:10px;padding:10px 12px;margin:12px 0;font-size:14px;color:#991B1B">
+        ${male?"قلتَ":"قلتِ"}: <span style="direction:ltr;display:inline-block;font-family:Georgia,serif">${esc(c.said)}</span></div>
+      <div class="q">${male?"ابنِ":"ابني"} الجملة الصحيحة:</div>
+      ${wbHTML()}
+      ${fb}
+    </div>
+    ${errLocked?`<button class="btn" style="background:#DB2777" onclick="errNext()">${errIdx+1>=errItems.length?"إنهاء":"التالي ←"}</button>`
+      :`<button class="btn" style="background:${wbReady()?'#0E7490':'#94A3B8'}" ${wbReady()?"":"disabled"} onclick="errCheck()">تحقّق ←</button>`}`;
+    if(!errLocked&&wbStage>=WB_STAGES.length){const el=document.getElementById('wbIn');if(el)el.focus()}
+    return;
+  }
+  if(c.kind==="word"){
+    const fb=errLocked
+      ?`<div class="explain"><div class="explain-title" style="color:${errOk?'#059669':'#B45309'}">${errOk?"✓ إملاء صحيح":"الإملاء الصحيح:"}</div>
+        <div class="explain-body">${errOk?"":`<div style="font-size:22px;font-weight:800;letter-spacing:3px;direction:ltr;font-family:Georgia,serif;margin:6px 0">${dictDiff(errTyped.toLowerCase(),c.w)}</div>`}${c.m?"تعني «"+esc(c.m)+"».":""}</div></div>`
+      :"";
+    app.innerHTML=`${head}
+    <div class="card" style="text-align:center">
+      <span class="tag" style="background:#CFFAFE;color:#0E7490">✍️ كلمة عثرتَ فيها</span>
+      <div style="margin:16px 0"><button type="button" onclick="errReplay()" style="background:#0E7490;color:#fff;border:none;border-radius:50%;width:60px;height:60px;font-size:24px;cursor:pointer">🔊</button></div>
+      ${c.last?`<div style="font-size:12px;color:#94A3B8;margin-bottom:10px">آخر مرّة كتبتَ: <span style="direction:ltr;display:inline-block">${esc(c.last)}</span></div>`:""}
+      <input id="errIn" ${errLocked?"disabled":""} style="width:100%;padding:14px;border-radius:12px;border:2px solid #E2E8F0;font-size:20px;text-align:center;direction:ltr;font-family:Georgia,serif" placeholder="type here" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" onkeydown="if(event.key==='Enter')errCheck()">
+      ${fb}
+    </div>
+    ${errLocked?`<button class="btn" style="background:#DB2777" onclick="errNext()">${errIdx+1>=errItems.length?"إنهاء":"التالي ←"}</button>`
+      :`<button class="btn" style="background:#0E7490" onclick="errCheck()">تحقّق ←</button>`}`;
+    if(!errLocked){const el=document.getElementById('errIn');if(el)el.focus()}
+    return;
+  }
+  const it=c.it;
+  const choices=it.c.map(function(ch,i){
+    let bg="#fff",bd="#E2E8F0",col="#334155";
+    if(errLocked){if(i===it.a){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(i===errPicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}
+    return `<button class="choice" style="background:${bg};border-color:${bd};color:${col}" onclick="errChoose(${i})" ${errLocked?"disabled":""}><span class="letter">${L[i]}</span>${ch}</button>`}).join("");
+  app.innerHTML=`${head}
+  <div class="card">
+    <span class="tag" style="background:#E0E7FF;color:#4338CA">🔁 سؤال عالق</span>
+    ${it.passage?`<div style="background:#F0FDFA;border:1px solid #99F6E4;border-radius:12px;padding:14px;margin:12px 0;font-size:16px;line-height:1.8;direction:ltr;text-align:left;color:#0F766E;font-family:Georgia,serif">${it.passage}</div>`:""}
+    <div class="q">${it.q}</div>
+    <div class="choices">${choices}</div>
+    ${errLocked?`<div class="explain"><div class="explain-title" style="color:${errOk?'#059669':'#B45309'}">${errOk?"✓ إجابة صحيحة":"الصحيحة بالأخضر"}</div><div class="explain-body">${it.w||""}</div></div>`:""}
+  </div>
+  ${errLocked?`<button class="btn" style="background:#DB2777" onclick="errNext()">${errIdx+1>=errItems.length?"إنهاء":"التالي ←"}</button>`:""}`;
 }
 
 // ===== النطق: تحقّق أساسي عبر تسجيل الصوت + Groq Whisper (يعمل على كل الأجهزة، بما فيها آيفون؛ تحقّق كلمة لا تقييم دقّة اللهجة) =====
@@ -5853,7 +6316,7 @@ function bumpStreak(){const st=getStreak();const t=todayStr();if(st.last===t)ret
 function growthMsg(modeKey,pct){try{const key="mawhiba_best_"+modeKey;const prev=parseInt(lsGet(key)||"-1");let msg="";if(prev<0){msg="أول محاولة في هذا القسم — انطلاقة موفّقة! 🌱"}else if(pct>prev){msg=`تحسّنتِ عن أفضل نتيجة سابقة (${toAr(prev)}%)! تقدّم رائع 📈`}else if(pct===prev){msg="ثبات على أفضل مستوى سابق 💪"}else{msg="واصلي، كل محاولة تبني مهارتك 🌟"}if(pct>prev)lsSet(key,String(pct));return msg}catch(e){return""}}
 
 // ===== العرض =====
-function render(){if(mode==="home")return renderHome();if(mode==="engplan")return renderEngPlan();if(mode==="factplan")return renderFactPlan();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="speak")return renderSpeak();if(mode==="coach")return renderCoach();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
+function render(){if(mode==="home")return renderHome();if(mode==="errors")return renderErrors();if(mode==="engplan")return renderEngPlan();if(mode==="factplan")return renderFactPlan();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="speak")return renderSpeak();if(mode==="coach")return renderCoach();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
 
 // صفحة الأخوين قسمٌ واحد: المحادثة. بقيّة الأقسام بُنيت على أخطائها هي — بنك
 // أسئلتها، وتباعدها، ومنهج صفّها السادس — فوضعها أمام ولدٍ آخر يُشغله بما ليس له.
@@ -5869,6 +6332,7 @@ function renderHomeCoachOnly(){
   </div>
   <div class="modes">
     <button class="mode full" style="background:${p.color};border-color:${p.color}" onclick="startCoach()"><span class="m-name">🗣️ ابدأ المحادثة</span><div class="m-sub">اختر موقفاً، ثم تكلّم — ثماني جمل في الجلسة</div></button>
+    ${errCount()?`<button class="mode full" style="background:#DB2777;border-color:#DB2777" onclick="startErrors()"><span class="m-name">🎯 أخطائي · ${toAr(errCount())} مستحقّة</span><div class="m-sub">تصحيحات محادثتك السابقة — تُبنى كلمةً كلمة، وتعود عند حافّة النسيان</div></button>`:""}
   </div>
   <button class="link-btn" onclick="startAudioDiag()">🔊 الصوت ما يشتغل؟ اضغط هنا لتشخيص السبب</button>
   <div class="tips">
@@ -5891,6 +6355,7 @@ function renderHome(){
     <div class="alias"><label>اسم المتدرّبة:</label><input id="aliasIn" value="${alias()}" placeholder="بنتي" oninput="saveAlias(this.value)"></div>
   </div>
   ${weakSuggestion?`<div style="background:linear-gradient(135deg,#FEF3C7,#FDE68A);border-radius:18px;padding:18px;margin-bottom:16px;box-shadow:0 6px 20px rgba(217,119,6,.15)"><div style="font-weight:800;font-size:15px;color:#92400E;margin-bottom:6px">🎯 اقتراح لكِ</div><div style="font-size:14px;color:#78350F;line-height:1.7;margin-bottom:12px">مستواكِ في «${DOMAINS[weakSuggestion.domKey].name}» يحتاج تقوية (${toAr(weakSuggestion.pct)}%). جرّبي وضع التقوية — يعلّمكِ خطوة بخطوة، أسهل من الاختبار المباشر.</div><button class="btn" style="background:#D97706;margin:0" onclick="goFadeMenu()">🎓 ابدئي التقوية خطوة بخطوة</button></div>`:""}
+  ${errCount()?`<div style="background:linear-gradient(135deg,#FCE7F3,#FBCFE8);border-radius:18px;padding:18px;margin-bottom:16px;box-shadow:0 6px 20px rgba(219,39,119,.15)"><div style="font-weight:800;font-size:15px;color:#9D174D;margin-bottom:6px">🎯 أخطاؤكِ المستحقّة اليوم</div><div style="font-size:14px;color:#831843;line-height:1.7;margin-bottom:12px">${toAr(errCount())} ${errCount()===1?"بطاقة تنتظركِ":"بطاقات تنتظركِ"} — من محادثتك وإملائك وخطتك معاً. تُراجَع في مكان واحد، وتعود عند حافّة النسيان لا قبله.</div><button class="btn" style="background:#DB2777;margin:0" onclick="startErrors()">ابدئي المراجعة</button></div>`:""}
   <div class="section-title"><span>ابدئي التدريب</span></div>
   <div class="modes">
     <button class="mode" onclick="start('verbal')"><span class="dot" style="background:#2563EB"></span><span class="m-name">الاستدلال اللغوي</span><div class="m-sub">فهم مقروء، تناظر، منطق — بالذكاء الاصطناعي</div></button>

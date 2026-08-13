@@ -143,7 +143,7 @@ await page.close();
 console.log('\n٩) جلسة كاملة بنقرات حقيقية — الضرب والقسمة من ١ إلى الإتقان');
 page=await mk();
 await page.evaluate(()=>startBasics('multdiv'));
-let guard=0,gates=0,end=false;
+let guard=0,gates=0,end=false,divSeen=0;
 while(guard++<200){
   const st=await page.evaluate(()=>({m:mode,stage:basicsStage,lock:basicsLocked,gate:basicsDivGated(),
     typed:basicsTypedStage(),ans:basicsCur?basicsCur.ansVal:null,ai:basicsCur?basicsCur.ai:null}));
@@ -160,14 +160,20 @@ while(guard++<200){
   }
   // نُخطئ عمداً في أول قسمة لنُشغّل البوّابة، ثم نُصيب
   if(st.typed){
-    const wrong=gates===0&&await page.evaluate(()=>basicsCur.op==='div');
+    const isDiv=await page.evaluate(()=>basicsCur.op==='div');
+    if(isDiv)divSeen++;
+    const wrong=gates===0&&isDiv;
     await page.fill('#basicsIn',String(wrong?st.ans+1:st.ans));
     await page.click('button[onclick="basicsSubmit()"]');
     if(await page.evaluate(()=>!basicsLocked))await page.click('button[onclick="basicsSubmit()"]');
   }else await page.evaluate(i=>basicsChoose(i),st.ai);
 }
 ok(end,`الجلسة تنتهي عند شاشة النتيجة (${guard} خطوة)`);
-ok(gates>0,`والبوّابة اعترضت ${gates} مرة بلا طريق مسدود`);
+// الجلسة تُبنى عشوائياً، فقد تنتهي بلا سؤال قسمة مكتوب أصلاً — وهذا لا يُكذّب البوّابة
+// ولا يُصدّقها. فالشرط على ما وقع: كل خطأ قسمة يجب أن يُسلّح البوّابة.
+ok(divSeen===0?true:gates>0,
+  divSeen===0?'لم تظهر قسمة مكتوبة في هذه الجلسة العشوائية — لا حكم عليها هنا'
+            :`والبوّابة اعترضت ${gates} مرة في ${divSeen} قسمة بلا طريق مسدود`);
 ok((await page.evaluate(()=>window.__ERRS.length))===0,'ولا خطأ');
 await page.close();
 

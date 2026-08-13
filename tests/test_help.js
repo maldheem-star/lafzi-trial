@@ -49,25 +49,67 @@ ok(t.includes('أعطيني جملاً')&&t.includes('أتكلّم وحدي'),'�
 ok(await page.evaluate(()=>coachScene)===null,'ولا موقف بدأ بعد');
 ok(t.includes('في المقهى'),'واسم الموقف المختار ظاهر');
 
-console.log('\n٢) وضع الجمل: جملتان تحت الافتتاح، تُسمَعان ولا تُقالان عنها');
+console.log('\n٢) هيا مسلَّحة ببوّابة الصدى: الجملة تُبنى قبل أن تُعطى');
 logs.length=0;
 await page.click("button[onclick=\"coachMode('suggest')\"]");
 await page.waitForTimeout(500);
 t=await page.textContent('#app');
 ok(t.includes('Sunny Café'),'الافتتاح بدأ');
-ok(t.includes('جمل تصلح جواباً'),'والجمل معروضة');
-ok(t.includes('I would like a hot chocolate, please.'),'وأولاها');
-ok(await page.evaluate(()=>document.querySelectorAll('#app button[onclick^="coachSay"]').length)>=2,'زرّان على الأقل');
+ok(await page.evaluate(()=>echoArmed()),'والبوّابة مسلَّحة — قياسها ٤ أصداء من ١٥');
+ok(t.includes('ابني الجملة من كلماتها'),'فالجملة لا تُعطى جاهزة');
+ok(!t.includes('جمل تصلح جواباً'),'ولا تُعرض الجمل بعد');
+ok(await page.evaluate(()=>document.querySelectorAll('#app button[onclick^="wbPick"]').length)>0,'وبنك الكلمات معروض');
 await page.waitForTimeout(400);
 // تُستثنى نغمة التهيئة (" ") التي يُرسلها التطبيق أول لمسة لفكّ صوت الآيفون
 let sp=await page.evaluate(()=>window.__SPOKE.filter(x=>x&&x.trim()));
-ok(sp.length===1&&sp[0].includes('Sunny'),`ولا يُنطق إلا الافتتاح — الجمل تُنطق بالضغط (${JSON.stringify(sp)})`);
-await page.click('button:has-text("I would like a hot chocolate")');
+ok(sp.length===1&&sp[0].includes('Sunny'),`ولا يُنطق إلا الافتتاح (${JSON.stringify(sp)})`);
+// تبنيها بالضغط الحقيقي على الكلمات، فتظهر الجمل جاهزةً بعدها
+await page.evaluate(()=>{
+  for(const tk of wbTok){const i=wbPool.findIndex((w,k)=>w===tk&&wbPicked.indexOf(k)<0);
+    const btn=document.querySelector(`button[onclick="wbPick(${i})"]`);if(btn)btn.click()}
+});
+await page.click('button[onclick="coachBankCheck()"]');
+await page.waitForTimeout(300);
+t=await page.textContent('#app');
+ok(await page.evaluate(()=>wbOk),'الترتيب الصحيح يُقبل');
+ok(await page.evaluate(()=>document.querySelectorAll('#app button[onclick^="coachSay"]').length)>=2,'وبعده تظهر الجملتان');
+const first=await page.evaluate(()=>coachSaysNow()[0]);
+// أزرار coachSay في الفقاعات كذلك (إعادة سماع كلام الشريك) — فنقصد زرّ الجملة بنصّها
+await page.click(`button:has-text(${JSON.stringify(first)})`);
 await page.waitForTimeout(250);
 sp=await page.evaluate(()=>window.__SPOKE.filter(x=>x&&x.trim()));
-ok(sp.some(x=>x.includes('hot chocolate, please')),'والضغط يُسمعها');
+ok(sp.some(x=>x.indexOf(first)>=0||first.indexOf(x)>=0),`والضغط يُسمعها («${first}» · ${JSON.stringify(sp)})`);
+ok(logs.some(l=>String(l.qtype||'').indexOf('build')===0),'وبناؤها مُسجَّل — لتُقاس فائدة البنك');
 const op=logs.filter(l=>l.qtype==='open')[0];
 ok(op&&op.q_text==='help:suggest',`والاختيار مُسجَّل (${op&&op.q_text})`);
+
+console.log('\n٢ب) ومن لا يَنسخ تُعطى له الجملة جاهزة كما كانت');
+{
+  // سياق مستقلّ: التخزين المحلّي مشترك بين صفحات السياق الواحد، وإطفاء البوّابة هنا
+  // كان يُطفئها على بقيّة الاختبار — وهذا ما كشفه الفشل أوّل مرّة
+  const ctx2=await b.newContext({viewport:{width:420,height:900},permissions:['microphone']});
+  const free=await ctx2.newPage();
+  free.on('pageerror',e=>{console.log('  ✗ PAGEERROR '+e.message);fails++});
+  await free.route('**/rest/v1/**',r=>r.fulfill({status:201,contentType:'application/json',body:'[]'}));
+  await free.route('**/functions/v1/tutor',r=>
+    r.fulfill({status:200,contentType:'application/json',body:JSON.stringify(chat)}));
+  await free.addInitScript(()=>{
+    Object.defineProperty(window,'speechSynthesis',{configurable:true,value:{speak(){},cancel(){},resume(){},pause(){},
+      getVoices:()=>[{lang:'en-US',name:'X'}],speaking:false,pending:false}});
+    window.SpeechSynthesisUtterance=function(t){this.text=t};
+  });
+  await free.goto('http://127.0.0.1:8931/index.html');
+  await free.waitForFunction(()=>typeof coachMode==='function');
+  await free.evaluate(()=>{try{localStorage.setItem('mawhiba_echo_v1',JSON.stringify({r:[0,0,0,0]}))}catch(e){}});
+  await free.evaluate(()=>{startCoach();coachPick(0)});
+  await free.waitForTimeout(150);
+  await free.click("button[onclick=\"coachMode('suggest')\"]");
+  await free.waitForTimeout(600);
+  const ft=await free.textContent('#app');
+  ok(await free.evaluate(()=>echoArmed())===false,'بوّابته منحلّة');
+  ok(ft.includes('جمل تصلح جواباً')&&!ft.includes('ابني الجملة من كلماتها'),'فالجمل جاهزة بلا بناء');
+  await ctx2.close();
+}
 
 console.log('\n٣) المستوى يهبط مع الدعم: A1 وأسئلة سهلة');
 calls.length=0;
@@ -80,7 +122,8 @@ t=await page.textContent('#app');
 ok(t.includes('small or a big one'),'وردّ الشريك معروض');
 ok(!t.includes('SAY:'),'ولا يظهر وسم SAY في كلامه');
 ok(await page.evaluate(()=>coachMsgs.slice(-1)[0].text.indexOf('SAY')<0),'ولا يبقى في النصّ');
-ok(t.includes('I would like a big one, please.'),'والجمل الجديدة معروضة');
+ok(await page.evaluate(()=>coachSaysNow()[0])==='I would like a big one, please.','والجمل الجديدة وصلت');
+ok(await page.evaluate(()=>wbTarget)==='I would like a big one, please.','والبنك تحوّل إليها — لا يبقى على جملة الدور الماضي');
 ok(!(await page.evaluate(()=>window.__SPOKE)).some(x=>x&&x.includes('big one, please')),'ولا تُنطق مع الردّ');
 
 console.log('\n٤) وضع «وحدي»: بلا جمل، وزرّ ساعديني حاضر');
@@ -103,8 +146,9 @@ logs.length=0;
 await page.click('button[onclick="coachAskHelp()"]');
 await page.waitForTimeout(250);
 t=await page.textContent('#app');
-ok(t.includes('جمل تصلح جواباً'),'ظهرت بلا انتظار دور جديد');
-ok(t.includes('I would like a big one, please.'),'وهي جمل الدور الحالي');
+// هيا مسلَّحة، فالمساعدة تصل بنكاً لا جملةً جاهزة — والجملة هي جملة الدور الحالي
+ok(t.includes('ابني الجملة من كلماتها'),'وصلت بلا انتظار دور جديد');
+ok(await page.evaluate(()=>wbTarget)==='I would like a big one, please.','وهي جملة الدور الحالي');
 ok(logs.some(l=>l.qtype==='help'),'والطلب مُسجَّل — لتُعرف الجلسات التي احتاجت دعماً');
 calls.length=0;
 await turn(page);await page.waitForTimeout(500);
@@ -122,8 +166,13 @@ ok(p2.text==='Just a reply.'&&p2.tip===''&&p2.says.length===0,'وردٌّ بلا
 const p3=await page.evaluate(()=>coachParse("Hi.\nSAY: A. | B. | C. | D."));
 ok(p3.says.length===3,'وأكثر من ثلاث جمل تُقصّ إلى ثلاث');
 
+console.log('\n٦ب) الدورَان السابقان كانا تأليفاً لا صدى — فانحلّت البوّابة من نفسها');
+ok(await page.evaluate(()=>echoArmed())===false,'جوابان من عندها ⇒ لا بنك بعدها');
+
 console.log('\n٧) الموقف الحرّ يسأل عن الطريقة قبل الموضوع');
 page=await mk('index.html');
+// نُسلّح البوّابة صراحةً: الغرض إثبات أنها تتبع المتعلّم لا الموقف
+await page.evaluate(()=>{try{localStorage.setItem('mawhiba_echo_v1',JSON.stringify({r:[1,1]}))}catch(e){}});
 await page.evaluate(()=>{startCoach();coachPick(6)});
 await page.waitForTimeout(150);
 ok((await page.textContent('#app')).includes('كيف تحبّين'),'الطريقة أولاً');
@@ -135,7 +184,7 @@ await page.fill('#coachTopicIn','الفضاء');
 await page.click('button[onclick="coachTopicGo()"]');
 await page.waitForTimeout(700);
 ok((calls[0]||{}).level==='A1','والافتتاح نفسه يُطلب سهلاً');
-ok((await page.textContent('#app')).includes('جمل تصلح جواباً'),'ومعه جمله');
+ok((await page.textContent('#app')).includes('ابني الجملة من كلماتها'),'ومعه بنكه — البوّابة تتبع المتعلّم لا الموقف');
 
 console.log('\n٨) جلسة جديدة تبدأ من الصفر');
 await page.evaluate(()=>startCoach());
