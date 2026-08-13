@@ -83,7 +83,8 @@ ok(gapLog&&gapLog.q_text==='21 - 12',`ومعه الطرح نفسه (${gapLog&&ga
 
 console.log('\n٥) بوّابة «أنقصي العشرة» لعائلة +١٠');
 page=await mk();
-await page.evaluate(()=>{try{localStorage.setItem('mawhiba_basics_shape_v1',JSON.stringify({borrow:1}))}catch(e){}});
+// المفاتيح صارت أسماء الفهرس المنشور لا أسماءً من عندي
+await page.evaluate(()=>{try{localStorage.setItem('mawhiba_basics_shape_v1',JSON.stringify({borrow_no_decrement:1}))}catch(e){}});
 await putSub(page,81,73,2);
 await pickVal(page,18);
 ok(await page.evaluate(()=>basicsBtGated())===true,'الخطأ الثاني من نوعه يُسلّحها');

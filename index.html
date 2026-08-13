@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260814-0200";
+  var BUILD="build-20260814-0900";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -1866,7 +1866,18 @@ const BASICS_REQ=2;
 // فجلست خمس عشرة مرّة على الدرجة نفسها بلا مثالٍ محلول ولا هبوط. والإملاء عنده هذا
 // النزول منذ شهر (DICT_BACK) والأساسيات لا — والسلّم الذي يصعد ولا يهبط ليس سلّماً.
 const BASICS_BACK=2;   // خطآن متتاليان ⇒ درجة إلى الوراء (والمرحلة ٢ تعود للمثال المحلول)
+// ===== التشابك (interleaving) =====
+// تدريبنا كان مكتّلاً: جلسةُ طرحٍ كاملة ثم جلسةُ جمعٍ كاملة. والمكتّل يُتقن **التنفيذ**
+// ولا يُعلّم **اختيار الطريقة** — تخرج تعرف كيف تطرح ولا تعرف متى تطرح. والمتشابك
+// (Rohrer وزملاؤه، ومكرَّرٌ كثيراً) يتفوّق عليه في الاختبار المؤجَّل تفوّقاً كبيراً،
+// ويبدو **أسوأ** في أثناء التدريب نفسه — وهذا متوقَّع فلا يُفزِع: الصعوبة هنا مطلوبة.
+//
+// والتنفيذ بلا وضعٍ جديد: basicsSub نفسه يُبدَّل قبل كل سؤال، فكل ما بُني عليه
+// (القاعدة، والرسم، والمثال المحلول، والمموّهات، وبوّابات الشكل) يعمل كما هو.
+const BASICS_MIX=["multdiv","addcarry","subborrow"];
+let basicsMix=false;
 const BASICS_SUBS={
+  mixed:{label:"متشابك: الأربع عمليات معاً",short:"المتشابك"},
   multdiv:{label:"عائلات الضرب والقسمة",short:"عائلات الضرب والقسمة"},
   addcarry:{label:"الجمع (عشرات/مئات)",short:"الجمع"},
   subborrow:{label:"الطرح (عشرات/مئات)",short:"الطرح"},
@@ -2270,6 +2281,12 @@ function basicsPrep(){
 }
 function basicsNew(){
   basicsShownAt=Date.now();
+  // المتشابك: العملية تُسحب قبل كل سؤال، ولا تتكرّر مرّتين متتاليتين — فالاختيار
+  // هو المهارة المقصودة، وتكرارُ العملية يُعيدها تكتيلاً صغيراً
+  if(basicsMix){
+    const prev=basicsSub,pool=BASICS_MIX.filter(function(x){return x!==prev});
+    basicsSub=pick(pool.length?pool:BASICS_MIX);
+  }
   const gen=basicsSub==="multdiv"?basicsMakeFamily:basicsSub==="addcarry"?basicsMakeAddCarry:basicsSub==="subborrow"?basicsMakeSubBorrow:basicsSub==="pimul"?basicsMakePiMul:basicsSub==="pimul3"?basicsMakePiMul3:basicsMakePercent;
   basicsCur={fam:gen()};basicsLocked=false;basicsPicked=-1;basicsTyped="";
   divRemedyAt=0;pctWarn="";pctWarned=false;pctOverride=false;
@@ -2305,6 +2322,72 @@ function basicsDivLogRemedy(){
     {q_text:`${divA} ÷ ${divB}`});
   divRemedyAt=0;
 }
+// ===== مكتبة الأخطاء المنهجية: الفهرس المنشور بدل استنباطي في كل جلسة =====
+// ثلاث آليات «اكتشفتُها» في الطرح يوم ١٣ أغسطس موصوفةٌ ومسمّاة منذ Brown & Burton
+// عام ١٩٧٨ (وBUGGY/DEBUGGY وRepair Theory بعدها): فهرسٌ لأكثر من مئة خطأ منهجيّ
+// مستخرَجٍ من آلاف الأطفال، لكلٍّ اسمه. فلا نستنبط من جديد في كل مرّة.
+//
+// والفرق الجوهري عن قياس الفرق وحده: **الخطأ إجراءٌ يُحاكى لا فرقٌ يُطابَق**. فرقُ +١٠
+// في الطرح قد يخرج من إجراءين مختلفين، والمحاكاة تفصل بينهما. ولذلك كل خطأ هنا دالّةٌ
+// تُنفّذ الإجراء المكسور، ونقارن ناتجها بجوابها بالضبط.
+const D=(n,i)=>Math.floor(Math.abs(n)/Math.pow(10,i))%10;      // خانة
+const REV=(n)=>Number(String(Math.abs(n)).split("").reverse().join(""));
+const MATH_BUGS={
+  sub:[
+    // الأشهر في الفهرس: تطرح الأصغر من الأكبر في كل خانة تهرّباً من الاستلاف
+    {id:"smaller_from_larger",ar:"طرحتِ الأصغر من الأكبر في كل خانة",
+     f:(a,b)=>Math.abs(D(a,1)-D(b,1))*10+Math.abs(D(a,0)-D(b,0))},
+    // استلفت في الآحاد ولم تُنقص العشرات — وهي عائلة +١٠ التي رأيناها أربع مرّات
+    {id:"borrow_no_decrement",ar:"استلفتِ العشرة ولم تُنقصيها من خانة العشرات",
+     f:(a,b)=>D(a,0)<D(b,0)?(D(a,1)-D(b,1))*10+(D(a,0)+10-D(b,0)):null},
+    // أنقصت العشرات مرّتين
+    {id:"decrement_twice",ar:"أنقصتِ خانة العشرات مرّتين",
+     f:(a,b)=>D(a,0)<D(b,0)?(D(a,1)-D(b,1)-1)*10+(D(a,0)+10-D(b,0)):null},
+    // عدّت الأعداد لا الفجوات — وهي عائلة +١، سبعٌ من خمس عشرة
+    {id:"count_all_not_gaps",ar:"عددتِ الأعداد لا الفجوات بينها",f:(a,b)=>a-b+1},
+    // قرّبت المطروح منه إلى العشرة ونسيت أن تُعيد الآحاد — عائلة −١، وكلّها ينتهي بـ١
+    {id:"drop_minuend_units",ar:"أسقطتِ آحاد المطروح منه",f:(a,b)=>Math.floor(a/10)*10-b},
+    {id:"units_zero_when_borrow",ar:"وضعتِ صفراً في الآحاد بدل الاستلاف",
+     f:(a,b)=>D(a,0)<D(b,0)?(D(a,1)-D(b,1))*10:null},
+    {id:"reversed",ar:"طرحتِ الأكبر من الأصغر",f:(a,b)=>b-a},
+  ],
+  add:[
+    {id:"carry_dropped",ar:"نسيتِ الحمل إلى خانة العشرات",
+     f:(a,b)=>(D(a,0)+D(b,0)>=10)?(D(a,1)+D(b,1))*10+((D(a,0)+D(b,0))%10):null},
+    {id:"carry_twice",ar:"حملتِ الواحد مرّتين",
+     f:(a,b)=>(D(a,0)+D(b,0)>=10)?(D(a,1)+D(b,1)+2)*10+((D(a,0)+D(b,0))%10):null},
+    // قلبُ رقمَي أحد العددين — فرضيّةٌ من خطأين في ١٣ أغسطس (٥٥+٣٥⇐١٠٨، ٥٧+٧٦⇐١٥١)
+    {id:"digit_reversal_b",ar:"قلبتِ رقمَي العدد الثاني",f:(a,b)=>a+REV(b)},
+    {id:"digit_reversal_a",ar:"قلبتِ رقمَي العدد الأول",f:(a,b)=>REV(a)+b},
+    {id:"subtracted",ar:"طرحتِ بدل أن تجمعي",f:(a,b)=>a-b},
+  ],
+  mul:[
+    {id:"table_row_off",ar:"أخذتِ الصفّ المجاور في جدول الضرب",f:(a,b)=>a*(b+1)},
+    {id:"table_row_off2",ar:"أخذتِ الصفّ المجاور في جدول الضرب",f:(a,b)=>a*(b-1)},
+    {id:"added",ar:"جمعتِ بدل أن تضربي",f:(a,b)=>a+b},
+  ],
+  div:[
+    {id:"quot_off_one",ar:"الخارج أقلّ بواحد — عدٌّ ناقص",f:(a,b)=>Math.floor(a/b)-1},
+    {id:"quot_off_one_up",ar:"الخارج أكثر بواحد — عدٌّ زائد",f:(a,b)=>Math.floor(a/b)+1},
+    {id:"minus_divisor",ar:"أنقصتِ المقسوم عليه من الخارج",f:(a,b)=>Math.floor(a/b)-b},
+    {id:"subtracted",ar:"طرحتِ بدل أن تقسمي",f:(a,b)=>a-b},
+    {id:"halved",ar:"قسمتِ على ٢ لا على المقسوم عليه",f:(a,b)=>a/2},
+  ],
+};
+// يُعيد الخطأ المسمّى إن طابق أحد الإجراءات المكسورة جوابَها بالضبط، وإلا فارغاً.
+// والترتيب مقصود: الأخصّ أوّلاً، فلا يبتلع «قلب الأرقام» ما هو حملٌ منسيّ.
+function bugOf(op,a,b,given){
+  const list=MATH_BUGS[op];
+  if(!list||!Number.isFinite(given)||!Number.isFinite(a)||!Number.isFinite(b))return null;
+  const right=op==="sub"?a-b:op==="add"?a+b:op==="mul"?a*b:(b?a/b:NaN);
+  if(given===right)return null;
+  for(const bug of list){
+    let v=null;try{v=bug.f(a,b)}catch(e){v=null}
+    if(v!=null&&Number.isFinite(v)&&v===given&&v!==right)return bug;
+  }
+  return null;
+}
+
 // ===== شكل الخطأ لا وقوعه =====
 // خمسة عشر خطأً في الطرح يوم ١٣ أغسطس، ولا واحد منها رقمٌ عشوائي: سبعة تساوي الصواب+١
 // بالضبط، وأربعة الصواب+١٠، وأربعة الصواب−١ (وكلّها مطروحٌ منه ينتهي بـ١). والمموّهات
@@ -2404,6 +2487,34 @@ function btBoxHTML(){
       :`<div style="text-align:center"><button type="button" class="link-btn" style="margin:0;padding:9px 16px;border:1.5px solid #FDBA74;border-radius:10px;font-weight:800;color:#C2410C" onclick="btBorrow()">استلفي عشرة ←</button></div>`}
   </div>`;
 }
+// العملية الجارية بلغة الفهرس: mixed يُبدّل basicsSub لكل سؤال، فالقراءة منه صحيحة دائماً
+function basicsOpNow(){
+  if(basicsSub==="addcarry")return "add";
+  if(basicsSub==="subborrow")return "sub";
+  if(basicsSub==="multdiv")return (basicsCur&&basicsCur.op==="div")?"div":"mul";
+  return "";
+}
+// طرفا العملية كما عُرضا. multdiv يُعيد صياغة العائلة إلى سؤال ضربٍ أو قسمة، فيُقرأ منه.
+function basicsOperands(){
+  const f=basicsCur&&basicsCur.fam;if(!f)return null;
+  const op=basicsOpNow();
+  if(op==="mul")return{a:f.a,b:f.b};
+  if(op==="div")return{a:divA||f.c,b:divB||f.b};
+  if(op==="add"||op==="sub")return{a:f.a,b:f.b};
+  return null;
+}
+function basicsBugNow(){
+  const op=basicsOpNow(),o=basicsOperands();
+  if(!op||!o||!basicsLocked||basicsAnsOk())return null;
+  const got=basicsTypedStage()?parseArNum(basicsTyped)
+    :(basicsCur.opts&&basicsPicked>=0?parseArNum(basicsCur.opts[basicsPicked]):NaN);
+  return bugOf(op,o.a,o.b,got);
+}
+// أي خطأٍ مسمّى له بوّابة، وأيّها بلا بوّابة بعد. الجدول هو العقد كلّه.
+const BUG_GATES={
+  count_all_not_gaps:function(a,b){ob1Arm(a,b)},
+  borrow_no_decrement:function(a,b){btArm(a,b)},
+};
 // البوّابتان تُقفلان الانتقال كبوّابة المصفوفة تماماً — والمنع أنفع من التنبيه
 function basicsOb1Gated(){return ob1On&&!ob1Complete()}
 function basicsBtGated(){return btOn&&!btComplete()}
@@ -2489,13 +2600,17 @@ function basicsRecord(ok,resp){
   // (المرحلة ٥ لها سقفها ودعمها، فلا تُنزَّل من هنا.)
   if(ok)basicsMiss=0;else basicsMiss++;
   if(basicsMiss>=BASICS_BACK&&basicsStage>=2&&basicsStage<=4){basicsDropPending=true;basicsMiss=0}
-  // شكل الخطأ: يُسجَّل دائماً، والبوّابة تُسلَّح عند تكراره
+  // شكل الخطأ: يُسمّى من الفهرس المنشور لا من الفرق وحده، ويُسجَّل دائماً.
+  // والبوّابة تُعلَّق على اسم الخطأ — فإضافة بوّابة جديدة صارت سطراً في جدول، لا وضعاً يُبنى.
   const dlt=basicsErrDelta();
-  if(basicsSub==="subborrow"&&basicsCur&&basicsCur.fam){
+  const bug=basicsBugNow();
+  if(basicsCur&&basicsCur.fam){
     const A=basicsCur.fam.a,B=basicsCur.fam.b;
-    if(ok){shapeRecord("gaps",false);shapeRecord("borrow",false)}
-    else if(dlt===1){shapeRecord("gaps",true);if(shapeArmed("gaps"))ob1Arm(A,B)}
-    else if(dlt===10){shapeRecord("borrow",true);if(shapeArmed("borrow"))btArm(A,B)}
+    if(ok){Object.keys(BUG_GATES).forEach(function(k){shapeRecord(k,false)})}
+    else if(bug&&BUG_GATES[bug.id]){
+      shapeRecord(bug.id,true);
+      if(shapeArmed(bug.id))BUG_GATES[bug.id](A,B);
+    }
   }
   const elapsed=basicsShownAt?Date.now()-basicsShownAt:null;
   // الرقم الذي أنتجته فعلاً: بدونه أعرف أنها أخطأت ولا أعرف نوع الخطأ (نسيت الحمل؟ أخطأت موضع الفاصلة؟)
@@ -2509,6 +2624,8 @@ function basicsRecord(ok,resp){
   const respShape=(!ok&&dlt!=null&&respOut!=null)
     ?String(respOut)+" · الصواب "+ansLog
       +(Number.isInteger(dlt)?" · فرق "+(dlt>0?"+":"−")+toAr(Math.abs(dlt)):"")
+      // اسم الخطأ من الفهرس: يُقرأ بعد شهر كما يُقرأ اليوم، ويُجمَّع بالاستعلام
+      +(bug?" · "+bug.id:"")
     :respOut;
   logAnswer("basics_"+basicsSub,"stage"+basicsStage,ok,respShape,null,elapsed,{q_text:basicsCur.qText||null});
   if(elapsed!=null){
@@ -2536,7 +2653,8 @@ function basicsFinalNext(){
   if(basicsFinalCount>=MASTERY_MAX_Q){basicsNotYet=true;mode="basicsDone";window.scrollTo(0,0);render();return}
   basicsNew();
 }
-function startBasics(sub){mode="basics";basicsSub=sub;basicsStage=1;basicsStreak=0;basicsMasteryStreak=0;basicsFinalCount=0;basicsBestStreak=0;basicsNotYet=false;recentAnswerTimes=[];rapidNudge=false;basicsMidSupport=false;basicsMidRecoveryStreak=0;basicsFinalSupport=false;basicsFinalRecoveryStreak=0;basicsMiss=0;basicsDropPending=false;basicsDropped=false;ob1Reset();btReset();window.scrollTo(0,0);basicsNew()}
+function startBasics(sub){mode="basics";
+  basicsMix=(sub==="mixed");basicsSub=basicsMix?pick(BASICS_MIX):sub;basicsStage=1;basicsStreak=0;basicsMasteryStreak=0;basicsFinalCount=0;basicsBestStreak=0;basicsNotYet=false;recentAnswerTimes=[];rapidNudge=false;basicsMidSupport=false;basicsMidRecoveryStreak=0;basicsFinalSupport=false;basicsFinalRecoveryStreak=0;basicsMiss=0;basicsDropPending=false;basicsDropped=false;ob1Reset();btReset();window.scrollTo(0,0);basicsNew()}
 function renderBasicsDone(){
   const subLabel=BASICS_SUBS[basicsSub].label;
   if(basicsNotYet){
@@ -2679,8 +2797,10 @@ function renderBasics(){
     const ansArea=(pctGated()||piGated())?"":(typed?field:`<div class="choices">${ch}</div>`);
     body=`${hint}${visualBox}<div class="q" style="text-align:center">${basicsCur.qText}</div>${pctBox}${ansArea}${why}${mtr}`;
   }
-  const subLabel=BASICS_SUBS[basicsSub].label;
-  const switchBtns=Object.keys(BASICS_SUBS).filter(k=>k!==basicsSub).map(k=>`<button class="link-btn" onclick="startBasics('${k}')">🔁 بدّلي إلى ${BASICS_SUBS[k].short}</button>`).join("");
+  const subLabel=(basicsMix?"🔀 متشابك · ":"")+BASICS_SUBS[basicsSub].label;
+  const switchBtns=Object.keys(BASICS_SUBS)
+    .filter(k=>basicsMix?k!=="mixed":k!==basicsSub)
+    .map(k=>`<button class="link-btn" onclick="startBasics('${k}')">🔁 بدّلي إلى ${BASICS_SUBS[k].short}</button>`).join("");
   app.innerHTML=`<button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
   <div style="display:flex;gap:6px;margin-bottom:12px">${bar}</div>
   <div style="font-size:12px;font-weight:800;color:#0D9488;margin-bottom:12px">${info.label}</div>
@@ -2794,7 +2914,7 @@ async function runMicDiag(){
 const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEngPlan","startDictation",
   "startPronunciation","startSpeaking","startAudioDiag","runMicDiag","fetchTimeout",
   "pronStart","pronStop","pronReset","speakStart","speakStop","speakReset","speakEnglish",
-  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","piPickBand","piBandBoxHTML","piArm","piOk","piVals","piGateOn","piGated","piSig1","fsrsUpdate","fsrsIvl","fsrsR","fsrsInitS","fsrsInitD","fsrsNextD","fsrsClampD","fsrsRecallS","fsrsForgetS","tmplKey","spreadTemplates","drawSpread","qzErrRecord","qzDueKeys","qzInjectDue","qzErrOf","qzCardDone","fadeQText","fadeAnsText","fadeGateStart","fadeGateStop","fadeGateNeeded","copyAzRaw","esc","weakPhonemeStr","num0","profileBarHTML","renderHomeCoachOnly","learnerInfo","coachLevel","toMasc","genderizeText","genderizeNode","genderizeInit","lsGet","lsSet","lsDel","pkey","cxShuffleOrder","cxPreStart","cxPreChoose","cxPreNext","cxPreQuit","cxPreCur","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary","coachMode","coachAskHelp","coachEnd","coachReview","coachFixParse","weakClean","coachSaysNow","snapToSuggestion","editDist","coachShowSays","coachParse","coachTopicGo","coachTopicBack","coachTopicClean","coachFreeScene","wbStart","wbPick","wbUnpick","wbCheck","wbHTML","wbReady","wbSay","wbReset","wbNorm","wbDistract","wbStageGet","wbGrade","engBuildFor","dictErrRecord","dictIsBuild","dictCur","renderDictationBuild","planCheckBuild","echoRecord","echoArmed","coachBankOn","coachBankSync","coachBankCheck","fixCardSave","fixCardGrade","coachLeave","coachAutoReview","coachSetFail","coachHintNow","basicsErrDelta","shapeRecord","shapeArmed","ob1Arm","ob1Jump","ob1Back","ob1Complete","ob1BoxHTML","btArm","btBorrow","btComplete","btBoxHTML","basicsOb1Gated","basicsBtGated","basicsShapeLogRemedy","errCollect","errDraw","errCount","errQuizCount","startErrors","errCheck","errChoose","errNext","errReplay","renderErrors"];
+  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","piPickBand","piBandBoxHTML","piArm","piOk","piVals","piGateOn","piGated","piSig1","fsrsUpdate","fsrsIvl","fsrsR","fsrsInitS","fsrsInitD","fsrsNextD","fsrsClampD","fsrsRecallS","fsrsForgetS","tmplKey","spreadTemplates","drawSpread","qzErrRecord","qzDueKeys","qzInjectDue","qzErrOf","qzCardDone","fadeQText","fadeAnsText","fadeGateStart","fadeGateStop","fadeGateNeeded","copyAzRaw","esc","weakPhonemeStr","num0","profileBarHTML","renderHomeCoachOnly","learnerInfo","coachLevel","toMasc","genderizeText","genderizeNode","genderizeInit","lsGet","lsSet","lsDel","pkey","cxShuffleOrder","cxPreStart","cxPreChoose","cxPreNext","cxPreQuit","cxPreCur","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary","coachMode","coachAskHelp","coachEnd","coachReview","coachFixParse","weakClean","coachSaysNow","snapToSuggestion","editDist","coachShowSays","coachParse","coachTopicGo","coachTopicBack","coachTopicClean","coachFreeScene","wbStart","wbPick","wbUnpick","wbCheck","wbHTML","wbReady","wbSay","wbReset","wbNorm","wbDistract","wbStageGet","wbGrade","engBuildFor","dictErrRecord","dictIsBuild","dictCur","renderDictationBuild","planCheckBuild","echoRecord","echoArmed","coachBankOn","coachBankSync","coachBankCheck","fixCardSave","fixCardGrade","bugOf","basicsOpNow","basicsOperands","basicsBugNow","digitsOf","factDcpm","factDcpmBand","coachLeave","coachAutoReview","coachSetFail","coachHintNow","basicsErrDelta","shapeRecord","shapeArmed","ob1Arm","ob1Jump","ob1Back","ob1Complete","ob1BoxHTML","btArm","btBorrow","btComplete","btBoxHTML","basicsOb1Gated","basicsBtGated","basicsShapeLogRemedy","errCollect","errDraw","errCount","errQuizCount","startErrors","errCheck","errChoose","errNext","errReplay","renderErrors"];
 function censusMissing(){return CENSUS.filter(function(n){return typeof window[n]!=="function"})}
 function censusHTML(){
   var miss=censusMissing();
@@ -6440,6 +6560,30 @@ function startFactPlan(){
   setTimeout(()=>{const el=document.getElementById('factIn');if(el)el.focus()},50);
 }
 function factCur(){return factItems[factIdx]}
+// ===== الطلاقة تُقاس بالمعدّل لا بالدقّة =====
+// كنّا نقيس الصواب وحده. والمعيار في المجال: **الأرقام الصحيحة في الدقيقة** (DCPM) —
+// فالطلاقة دقّةٌ **مع** سرعة، وطفلةٌ تُصيب عشراً من عشر في عشر دقائق ليست طليقة.
+// وهذا يحسم سؤالاً لم نملك جواباً له: وسيط ٨٣٢ ملّي ثانية في جلسة و١٧ ألفاً في أخرى —
+// أيّهما المطلوب؟ الرقم يقوله بدل أن نتجادل فيه.
+//
+// «الأرقام» لا الأسئلة: ٧٢ ÷ ٩ = ٨ رقمٌ واحد، و٥٧ + ٧٦ = ١٣٣ ثلاثة. فالسؤال الأطول
+// يُحسب بقدره — وهذا نصّ المقياس المعياري لا اجتهادٌ منّا.
+function digitsOf(n){return String(Math.abs(Math.round(Number(n)||0))).length}
+function factDcpm(){
+  const rows=factLog.filter(function(l){return !l.remedy&&Number.isFinite(l.ms)&&l.ms>0});
+  if(!rows.length)return null;
+  const ms=rows.reduce(function(s,l){return s+l.ms},0);
+  const digits=rows.reduce(function(s,l){return s+(l.ok?(l.digits||1):0)},0);
+  if(ms<1000)return null;
+  return{dcpm:Math.round(digits/(ms/60000)),digits:digits,mins:ms/60000,n:rows.length};
+}
+// نطاقات إرشادية لا أحكام: مبنيّة على أدبيات الطلاقة (Precision Teaching وما تلاها)
+// لصفوف المرحلة الابتدائية العليا. **لم تُعايَر على هيا**، فتُقرأ اتجاهاً لا درجةً.
+function factDcpmBand(v){
+  if(v>=40)return{t:"طلاقة",c:"#059669"};
+  if(v>=20)return{t:"في الطريق",c:"#D97706"};
+  return{t:"ما زال الاسترجاع بطيئاً",c:"#DC2626"};
+}
 function factCheck(){
   if(factLocked)return;
   const el=document.getElementById('factIn');
@@ -6449,9 +6593,12 @@ function factCheck(){
   const it=factCur(),ok=parseInt(val,10)===it.ans;
   if(ok)factScore++;
   if(!ok&&it.op==="div"){divArmArray(it.a,it.b);factRemedyAt=Date.now();factRemedyId=it.id}
-  factLog.push({op:it.op,ok,ms,cue:factCueOn});
+  factLog.push({op:it.op,ok,ms,cue:factCueOn,digits:digitsOf(it.ans)});
   factSrsUpdate(it.id,ok);
-  logAnswer("fact_fluency",it.op,ok,val,it.id,ms,{q_text:`${it.a} ${FACT_OP_SYM[it.op]} ${it.b}`});
+  // اسم الخطأ من الفهرس هنا أيضاً: القسمة أضعف عملياتها، والفهرس يقول لماذا
+  const fbug=ok?null:bugOf(it.op,it.a,it.b,parseInt(val,10));
+  logAnswer("fact_fluency",it.op,ok,val+(fbug?" · "+fbug.id:""),it.id,ms,
+    {q_text:`${it.a} ${FACT_OP_SYM[it.op]} ${it.b}`});
   render();
 }
 // نقيس التفاعل مع المصفوفة بدل أن نستنتجه من فروق الأزمنة: كم ضغطة، وهل أُكملت، وكم مكثت
@@ -6465,7 +6612,14 @@ function factLogRemedy(){
 function factNext(){
   if(factGated())return;   // لا تخطٍّ قبل إكمال المصفوفة
   factLogRemedy();
-  if(factIdx+1>=factItems.length){factDone=true;window.scrollTo(0,0);render();return}
+  if(factIdx+1>=factItems.length){
+    factDone=true;
+    // المعدّل في السجلّ لا في الشاشة وحدها: بلا هذا لا يُقارَن اليومُ بالأمس
+    const dc=factDcpm();
+    if(dc)logAnswer("fact_fluency","dcpm",null,String(dc.dcpm),null,Math.round(dc.mins*60000),
+      {q_text:"digits:"+dc.digits+" · n:"+dc.n+" · correct:"+factScore+"/"+factTotal});
+    window.scrollTo(0,0);render();return;
+  }
   factIdx++;factInput="";factLocked=false;factArm();render();
   setTimeout(()=>{const el=document.getElementById('factIn');if(el)el.focus()},50);
 }
@@ -6525,6 +6679,21 @@ function renderFactPlanResult(){
       <span style="min-width:62px;text-align:end;font-weight:800;color:${col}">${toAr(x.r)}/${toAr(x.t)}</span>
       <span style="min-width:58px;text-align:end;font-size:13px;color:#64748B">${x.med==null?"—":arDec(Math.round(x.med/100)/10)+" ث"}</span>
     </div>`}).join("");
+  const dc=factDcpm();
+  const dcBox=dc?(function(){
+    const band=factDcpmBand(dc.dcpm);
+    return `<div style="background:#F8FAFC;border:1.5px solid #E2E8F0;border-radius:12px;padding:14px;margin-bottom:14px">
+      <div style="font-size:12px;color:#64748B;font-weight:700;margin-bottom:4px">معدّل الطلاقة</div>
+      <div style="display:flex;align-items:baseline;gap:8px;justify-content:center">
+        <span style="font-size:34px;font-weight:800;color:${band.c}">${toAr(dc.dcpm)}</span>
+        <span style="font-size:13px;color:#64748B">رقماً صحيحاً في الدقيقة</span>
+      </div>
+      <div style="text-align:center;font-size:13px;font-weight:800;color:${band.c};margin-top:2px">${band.t}</div>
+      <div style="font-size:12px;color:#94A3B8;line-height:1.8;margin-top:8px">
+        ${toAr(dc.digits)} رقماً صحيحاً في ${arDec(Math.round(dc.mins*10)/10)} دقيقة من زمن الإجابة.
+        الطلاقة دقّةٌ <b>مع</b> سرعة — والدقّة وحدها لا تكفي.
+      </div>
+    </div>`})():"";
   const rem=factLog.filter(l=>l.remedy);
   const remNote=rem.length?`<div style="background:#F0FDFA;border-inline-start:4px solid #0D9488;border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:#0F766E;line-height:1.8">🧩 بنيتِ مصفوفة القسمة <b>${toAr(rem.filter(r=>r.done).length)}</b> من ${toAr(rem.length)} مرة، بمتوسط ${toAr(Math.round(rem.reduce((s,r)=>s+r.taps,0)/rem.length))} ضغطة — كل مرة بنيتِها فيها رأيتِ القسمة بيدك لا بعينك.</div>`:"";
   const guessNote=guessTotal>=3?`<div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:#92400E;line-height:1.8">⏱️ ${toAr(guessTotal)} إجابات خاطئة جاءت في أقل من ٣ ثوانٍ — هذا تخمين لا حساب. حين لا تعرفين الحقيقة، استعملي الطريقة المكتوبة تحت السؤال بدل كتابة أول رقم يخطر لك.</div>`:"";
@@ -6536,7 +6705,7 @@ function renderFactPlanResult(){
     ${opRows?`<div style="text-align:start;margin-bottom:14px">
       <div style="display:flex;gap:10px;font-size:12px;color:#94A3B8;font-weight:700;padding-bottom:4px"><span style="min-width:52px">العملية</span><span style="flex:1"></span><span style="min-width:62px;text-align:end">صحيح</span><span style="min-width:58px;text-align:end">الوسيط</span></div>
       ${opRows}</div>`:""}
-    ${remNote}${guessNote}${worstNote}
+    ${dcBox}${remNote}${guessNote}${worstNote}
     <div style="background:#F0FDFA;border-radius:12px;padding:14px;margin-bottom:14px;font-size:14px;color:#0F766E;line-height:1.9">
       🔁 مستحقّ للمراجعة غداً: <b>${toAr(tomorrow)}</b> حقيقة<br>
       🏆 وصلت لمرحلة الترسيخ (١٦ يوماً فأكثر): <b>${toAr(mastered)}</b> حقيقة<br>
@@ -6604,6 +6773,7 @@ function renderHome(){
     <button class="mode full" onclick="start('full')"><span class="m-name">🎯 محاكاة شاملة (٤٨ سؤالاً)</span><div class="m-sub">من كل المجالات — الأقرب للاختبار الحقيقي</div></button>
     <button class="mode" style="border-color:#FDE68A" onclick="goFadeMenu()"><span class="m-name">🎓 وضع التقوية (تلاشٍ تدريجي)</span><div class="m-sub">اختاري مهارة وتدرّبي عليها خطوة بخطوة — مبني على دراسات التعلّم</div></button>
     <button class="mode prog" onclick="loadProgress()"><span class="m-name">📈 متابعة التقدّم</span><div class="m-sub">نتائجك السابقة وتحليل المستوى لكل مجال</div></button>
+    <button class="mode full" style="background:#0F766E;border-color:#0F766E" onclick="startBasics('mixed')"><span class="m-name">🔀 الأساسيات متشابكة — الأربع معاً</span><div class="m-sub">ضرب وقسمة وجمع وطرح مخلوطة في الجلسة الواحدة: تتدرّبين على <b>اختيار الطريقة</b> لا على تنفيذها وحده. أصعب في أثنائها وأثبت بعدها</div></button>
     <button class="mode full" style="background:#0D9488;border-color:#0D9488" onclick="startBasics('multdiv')"><span class="m-name">🧱 تدريب الأساسيات: عائلات الحقائق</span><div class="m-sub">ضرب/قسمة مرتبطان + جمع وطرح بطرق سهلة بلا حمل ولا استلاف + أساسيات النسبة المئوية</div></button>
     <button class="mode full" style="background:#0F766E;border-color:#0F766E" onclick="startFactPlan()"><span class="m-name">🧮 طلاقة الحقائق · ١٠ دقائق</span><div class="m-sub">استرجاع فوري للجمع والطرح والضرب بلا عدّ أو أصابع، بتباعد ذكي</div></button>
     <button class="mode full" style="background:#4338CA;border-color:#4338CA" onclick="startEngPlan()"><span class="m-name">⭐ خطة الإنجليزية اليومية · ٤٠ دقيقة</span><div class="m-sub">شرح ثم تدريب، بتباعد ذكي — لا يتكرّر أي عنصر إلا في يوم استحقاقه (منهج الصف السادس)</div></button>
