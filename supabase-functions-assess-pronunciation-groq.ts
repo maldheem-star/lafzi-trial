@@ -10,6 +10,13 @@
 //   السبب أنه يحرف النسخ نحو النص المتوقَّع، فينسخ ما كان يُفترض أن تقوله لا ما قالته —
 //   وهذا "نجاح كاذب" يهدم الغرض من التقييم كله.
 //
+// واستثناءٌ واحد مضبوط: حقل hint في **المحادثة وحدها** (حيث لا كلمات هدف ولا درجة على
+//   كلمة بعينها). قال إلياس في موقف المتجر ما سُمع "I need an address for my sister"،
+//   فبنى الشريك أربع دقائق على بطاقات المعايدة — والأرجح أنه قال "a dress". وتصحيح ما
+//   بعد السمع لا يُمسك هذه: address كلمة إنجليزية سليمة فلا تُستبدل بالحدس. فالتحيّز
+//   يكون بمجال الحديث لا بجوابه: كلماتُ الموقف (dress, size, price…) لا جملةٌ متوقَّعة.
+//   ويُرفض الحقل رفضاً قاطعاً متى وُجدت targetWords — فتمرين النطق يبقى على قراره.
+//
 // الحساب النهائي (النسبة المئوية) يبقى في التطبيق لا هنا: النموذج يحكم على كل كلمة
 //   بنعم/لا فقط، والقسمة حسابٌ ثابت. فلا تتأرجح درجتها بين جلسة وأخرى على نفس الأداء.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -152,6 +159,11 @@ Deno.serve(async (req: Request) => {
       : [];
     if (!audioB64 || !referenceText) return jsonOut({ error: "missing_audio_or_reference" }, 400);
 
+    // التحيّز مسموح في المحادثة وحدها: وجود targetWords يعني تمرين نطق يُقاس، فيُسقَط
+    // الحقل كلّه. والطول محدود حتى لا يتحوّل «مجال حديث» إلى نصٍّ يُملى على الأذن.
+    const HINT_MAX = 220;
+    const hint = targetWords.length ? "" : String(body?.hint || "").trim().slice(0, HINT_MAX);
+
     const GROQ = Deno.env.get("GROQ_API_KEY");
     if (!GROQ) return jsonOut({ error: "not_configured", detail: "GROQ_API_KEY missing" }, 200);
 
@@ -164,6 +176,7 @@ Deno.serve(async (req: Request) => {
     form.append("language", "en");
     form.append("temperature", "0");
     form.append("response_format", "verbose_json"); // يعيد no_speech_prob و avg_logprob
+    if (hint) form.append("prompt", hint);
 
     const res = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
       method: "POST", headers: { "Authorization": `Bearer ${GROQ}` }, body: form,
@@ -181,14 +194,14 @@ Deno.serve(async (req: Request) => {
     const lowConfidence = !heard || (segs.length > 0 && (noSpeech > NO_SPEECH_MAX || avgLogprob < AVG_LOGPROB_MIN));
     const conf = { noSpeech, avgLogprob, segments: segs.length };
 
-    if (lowConfidence) return jsonOut({ ok: true, heard, lowConfidence: true, conf });
+    if (lowConfidence) return jsonOut({ ok: true, heard, lowConfidence: true, conf, hinted: !!hint });
 
     // الحَكَم اختياري: إن فشل لأي سبب يرجع التطبيق إلى مقارنته المحلّية بدل أن ينكسر
     let j: any = { err: "judge_skipped_no_target_words" };
     if (targetWords.length) {
       try { j = await judge(GROQ, targetWords, heard); } catch (e) { j = { err: "judge_threw", detail: String(e).slice(0, 200) }; }
     }
-    if (j.err) return jsonOut({ ok: true, heard, conf, judgeError: j.err, judgeDetail: j.detail });
+    if (j.err) return jsonOut({ ok: true, heard, conf, hinted: !!hint, judgeError: j.err, judgeDetail: j.detail });
     return jsonOut({ ok: true, heard, conf, judged: j.judged, garbled: j.garbled, note: j.note, judgeModel: j.model });
   } catch (e) {
     return jsonOut({ error: "server_error", message: String(e).slice(0, 300) }, 500);

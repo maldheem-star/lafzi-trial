@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260813-2130";
+  var BUILD="build-20260814-0200";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -2794,7 +2794,7 @@ async function runMicDiag(){
 const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEngPlan","startDictation",
   "startPronunciation","startSpeaking","startAudioDiag","runMicDiag","fetchTimeout",
   "pronStart","pronStop","pronReset","speakStart","speakStop","speakReset","speakEnglish",
-  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","piPickBand","piBandBoxHTML","piArm","piOk","piVals","piGateOn","piGated","piSig1","fsrsUpdate","fsrsIvl","fsrsR","fsrsInitS","fsrsInitD","fsrsNextD","fsrsClampD","fsrsRecallS","fsrsForgetS","tmplKey","spreadTemplates","drawSpread","qzErrRecord","qzDueKeys","qzInjectDue","qzErrOf","qzCardDone","fadeQText","fadeAnsText","fadeGateStart","fadeGateStop","fadeGateNeeded","copyAzRaw","esc","weakPhonemeStr","num0","profileBarHTML","renderHomeCoachOnly","learnerInfo","coachLevel","toMasc","genderizeText","genderizeNode","genderizeInit","lsGet","lsSet","lsDel","pkey","cxShuffleOrder","cxPreStart","cxPreChoose","cxPreNext","cxPreQuit","cxPreCur","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary","coachMode","coachAskHelp","coachEnd","coachReview","coachFixParse","weakClean","coachSaysNow","snapToSuggestion","editDist","coachShowSays","coachParse","coachTopicGo","coachTopicBack","coachTopicClean","coachFreeScene","wbStart","wbPick","wbUnpick","wbCheck","wbHTML","wbReady","wbSay","wbReset","wbNorm","wbDistract","wbStageGet","wbGrade","engBuildFor","dictErrRecord","dictIsBuild","dictCur","renderDictationBuild","planCheckBuild","echoRecord","echoArmed","coachBankOn","coachBankSync","coachBankCheck","fixCardSave","fixCardGrade","basicsErrDelta","shapeRecord","shapeArmed","ob1Arm","ob1Jump","ob1Back","ob1Complete","ob1BoxHTML","btArm","btBorrow","btComplete","btBoxHTML","basicsOb1Gated","basicsBtGated","basicsShapeLogRemedy","errCollect","errDraw","errCount","errQuizCount","startErrors","errCheck","errChoose","errNext","errReplay","renderErrors"];
+  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","piPickBand","piBandBoxHTML","piArm","piOk","piVals","piGateOn","piGated","piSig1","fsrsUpdate","fsrsIvl","fsrsR","fsrsInitS","fsrsInitD","fsrsNextD","fsrsClampD","fsrsRecallS","fsrsForgetS","tmplKey","spreadTemplates","drawSpread","qzErrRecord","qzDueKeys","qzInjectDue","qzErrOf","qzCardDone","fadeQText","fadeAnsText","fadeGateStart","fadeGateStop","fadeGateNeeded","copyAzRaw","esc","weakPhonemeStr","num0","profileBarHTML","renderHomeCoachOnly","learnerInfo","coachLevel","toMasc","genderizeText","genderizeNode","genderizeInit","lsGet","lsSet","lsDel","pkey","cxShuffleOrder","cxPreStart","cxPreChoose","cxPreNext","cxPreQuit","cxPreCur","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary","coachMode","coachAskHelp","coachEnd","coachReview","coachFixParse","weakClean","coachSaysNow","snapToSuggestion","editDist","coachShowSays","coachParse","coachTopicGo","coachTopicBack","coachTopicClean","coachFreeScene","wbStart","wbPick","wbUnpick","wbCheck","wbHTML","wbReady","wbSay","wbReset","wbNorm","wbDistract","wbStageGet","wbGrade","engBuildFor","dictErrRecord","dictIsBuild","dictCur","renderDictationBuild","planCheckBuild","echoRecord","echoArmed","coachBankOn","coachBankSync","coachBankCheck","fixCardSave","fixCardGrade","coachLeave","coachAutoReview","coachSetFail","coachHintNow","basicsErrDelta","shapeRecord","shapeArmed","ob1Arm","ob1Jump","ob1Back","ob1Complete","ob1BoxHTML","btArm","btBorrow","btComplete","btBoxHTML","basicsOb1Gated","basicsBtGated","basicsShapeLogRemedy","errCollect","errDraw","errCount","errQuizCount","startErrors","errCheck","errChoose","errNext","errReplay","renderErrors"];
 function censusMissing(){return CENSUS.filter(function(n){return typeof window[n]!=="function"})}
 function censusHTML(){
   var miss=censusMissing();
@@ -4008,27 +4008,33 @@ const COACH_SCENES=[
   {id:"cafe",ar:"في المقهى ☕",en:"You are a friendly barista in a small café. The student is a customer ordering a drink.",
    focus:"Model POLITE REQUESTS. A customer says 'Could I have a coffee, please?' — not 'I want coffee'. Show her how a polite order sounds.",
    opener:"Hi there! Welcome to Sunny Café. What would you like to drink today?",
-   says:["I would like a hot chocolate, please.","Could I have an orange juice, please?"]},
+   says:["I would like a hot chocolate, please.","Could I have an orange juice, please?"],
+   words:"coffee, tea, hot chocolate, orange juice, sugar, milk, cup, small, large, cake, please, order"},
   {id:"school",ar:"صديقة جديدة في المدرسة 🎒",en:"You are a new classmate at school meeting the student for the first time.",
    focus:"Model FRIENDLY INTRODUCTIONS. 'Nice to meet you', 'What do you like doing?', showing interest in her answer before adding your own.",
    opener:"Hi! I'm new here at school. What's your name?",
-   says:["My name is Haya. Nice to meet you.","I am Haya. What is your name?"]},
+   says:["My name is Haya. Nice to meet you.","I am Haya. What is your name?"],
+   words:"school, class, teacher, classmate, subject, maths, science, break, friend, homework, name"},
   {id:"shop",ar:"في المتجر 🛍️",en:"You are a shop assistant. The student is looking for something to buy.",
    focus:"Model ASKING FOR HELP POLITELY. 'Excuse me, do you have...?', 'Could you show me...?', and thanking the person afterwards.",
    opener:"Good morning! How can I help you today?",
-   says:["I am looking for a school bag.","Do you have any story books, please?"]},
+   says:["I am looking for a school bag.","Do you have any story books, please?"],
+   words:"dress, shirt, shoes, bag, size, colour, price, money, cash, card, receipt, cheaper, please"},
   {id:"doctor",ar:"عند الطبيبة 🩺",en:"You are a kind doctor. The student is a patient who does not feel well.",
    focus:"Model DESCRIBING HOW YOU FEEL. 'I have a headache', 'It started two days ago', 'It hurts when I...'. Ask her to say more about it.",
    opener:"Hello! Please have a seat. How are you feeling today?",
-   says:["I have a headache today.","My throat hurts a little."]},
+   says:["I have a headache today.","My throat hurts a little."],
+   words:"headache, throat, stomach, fever, cough, medicine, hurts, tired, days, better, temperature"},
   {id:"trip",ar:"نتكلّم عن رحلة ✈️",en:"You are a friend asking the student about a trip she took.",
    focus:"Model TELLING A STORY. Past tense, and words that join a story: 'first', 'then', 'after that', 'the best part was...'.",
    opener:"I heard you went on a trip last week! Tell me — where did you go?",
-   says:["We went to the beach last week.","I went to my grandmother's house."]},
+   says:["We went to the beach last week.","I went to my grandmother's house."],
+   words:"trip, beach, sea, plane, hotel, family, grandmother, week, photos, food, best part"},
   {id:"pet",ar:"عن الحيوانات الأليفة 🐈",en:"You are a friend who loves animals, talking with the student about pets.",
    focus:"Model GIVING OPINIONS AND REASONS. 'I think...', 'because...', 'My favourite is... because...'. Always ask her why.",
    opener:"I have a cat named Luna and she sleeps all day. Tell me about animals you like.",
-   says:["I like cats because they are soft.","My favourite animal is the horse."]},
+   says:["I like cats because they are soft.","My favourite animal is the horse."],
+   words:"cat, dog, horse, bird, fish, rabbit, pet, feed, sleep, play, favourite, because, soft"},
   // الموقف السابع: الموضوع من عنده. الستّة قبله لكلٍّ أسلوبه المقصود، وهذا أسلوبه
   // إدارة الحديث نفسه — سؤالٌ ورأيٌ بسبب — لأنّ الموضوع لا يُعرف قبل أن يُكتب.
   {id:"free",ar:"موضوع من عندك ✍️",free:true,en:"",focus:"",opener:""},
@@ -4170,6 +4176,7 @@ function startCoach(){
   coachFail="";coachDone=false;coachTopicAsk=false;coachTopic="";coachTopicErr="";
   coachModeAsk=false;coachHelp="";coachHelpShown=false;coachPending=null;
   coachFix=[];coachFixBusy=false;coachFixFail="";ltDropped=0;ltJudged=0;
+  coachAutoReviewed=false;wbReset();
   coachUnsupported=!micSupported();
   window.scrollTo(0,0);render();
 }
@@ -4220,6 +4227,28 @@ async function coachTopicGo(){
 }
 function coachTopicBack(){coachTopicAsk=false;coachTopicErr="";render()}
 function coachSay(t){speakEnglish(t)}
+// ===== تحيّز الأذن بكلمات الموقف =====
+// وهذا **غير** ما رفضناه في تمرين النطق: هناك نمرّر الجملة المستهدفة فينسخ Whisper ما
+// كان يُفترض أن تقوله لا ما قالته — «نجاح كاذب» يهدم القياس. وهنا لا جملة مستهدفة ولا
+// درجةَ نجاح على كلمة بعينها؛ الكلمات مجالُ الحديث لا جوابُه. والموقف الحرّ موضوعه
+// كلمته الوحيدة. ويبقى الاحتمال قائماً أن يُحيّز خطأً — ولذلك يُسجَّل ليُقاس.
+// ===== فشل المحادثة يُسجَّل =====
+// جلسة إلياس صباح ١٣ أغسطس: فتح الموقف، ضغط «ساعدني» بعد تسع ثوانٍ، ثم لم ينطق حرفاً.
+// ولم أستطع أن أقول لماذا — أميكروفون أم تفريغ أم تركها؟ لأن حالات الفشل تُعرض على
+// الشاشة ولا تُسجَّل. وما لا يُسجَّل الآن لا يُشخَّص لاحقاً.
+function coachSetFail(kind,detail,ms){
+  coachFail=kind;
+  const d=detail==null?"":String(detail&&detail.message||detail).slice(0,140);
+  logAnswer("coach","fail",false,kind+(d?" · "+d:""),coachScene?coachScene.id:null,ms||null,
+    {lesson:coachScene?coachScene.id:null,
+     q_text:"said:"+coachMsgs.filter(function(m){return m.role==="user"}).length});
+}
+const COACH_HINT_MAX=220;
+function coachHintNow(){
+  if(!coachScene)return "";
+  if(coachScene.free)return String(coachScene.topic||"").slice(0,COACH_HINT_MAX);
+  return String(coachScene.words||"").slice(0,COACH_HINT_MAX);
+}
 function coachReset(){coachBusy=false;coachListening=false;
   if(coachTimer){clearInterval(coachTimer);coachTimer=null}
   if(coachStream){try{coachStream.getTracks().forEach(function(t){t.stop()})}catch(e){}coachStream=null}
@@ -4240,7 +4269,7 @@ async function coachStart(){
     coachTimer=setInterval(function(){coachElapsed+=0.25;
       if(coachElapsed*1000>=COACH_MAX_MS){coachStop();return}render()},250);
     render();
-  }catch(e){coachListening=false;coachFail="mic";render()}
+  }catch(e){coachListening=false;coachSetFail("mic",e);render()}
 }
 const COACH_MAX_MS=20000, COACH_MIN_MS=700;
 function coachStop(){
@@ -4254,7 +4283,7 @@ async function coachFinish(){
   if(coachStream){try{coachStream.getTracks().forEach(function(t){t.stop()})}catch(e){}coachStream=null}
   wavTapStop();
   const ms=Math.round(coachElapsed*1000);
-  if(ms<COACH_MIN_MS){coachBusy=false;coachFail="short";render();return}
+  if(ms<COACH_MIN_MS){coachBusy=false;coachSetFail("short",null,ms);render();return}
   // ١) ماذا قالت؟ نصّ Whisper هو مصدر الحقيقة، ولا مرجع مكتوب في الحديث الحرّ
   let heard="";
   try{
@@ -4262,13 +4291,20 @@ async function coachFinish(){
     const b64=await blobToBase64(blob);
     const res=await fetchTimeout(PRON_GROQ_FN_URL,{method:"POST",
       headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},
-      // الدالّة تشترط مرجعاً غير فارغ ولا تستعمله في التفريغ، فنُمرّر وسماً بلا كلمات هدف
-      body:JSON.stringify({audio:b64,mimeType:blob.type,referenceText:"conversation",targetWords:[]})});
+      // الدالّة تشترط مرجعاً غير فارغ ولا تستعمله في التفريغ، فنُمرّر وسماً بلا كلمات هدف.
+      // ومعه كلماتُ الموقف تحيّزاً للأذن (hint): قال إلياس في المتجر ما سُمع
+      // «I need an address for my sister» فبنى الشريك أربع دقائق على بطاقات المعايدة،
+      // والأرجح أنه قال «a dress». والتصحيح بعد السمع لا يُمسك هذه: address كلمة
+      // إنجليزية سليمة، فلا يجوز أن نستبدلها بالحدس. فالعلاج قبل السمع لا بعده.
+      body:JSON.stringify({audio:b64,mimeType:blob.type,referenceText:"conversation",targetWords:[],
+        hint:coachHintNow()})});
     const d=await res.json();
-    if(!d||d.error){coachBusy=false;coachFail=d&&d.error==="not_configured"?"nokey":"stt";render();return}
-    if(d.lowConfidence||!String(d.heard||"").trim()){coachBusy=false;coachFail="unclear";render();return}
+    if(!d||d.error){coachBusy=false;
+      coachSetFail(d&&d.error==="not_configured"?"nokey":"stt",(d&&d.error)||null,ms);render();return}
+    if(d.lowConfidence||!String(d.heard||"").trim()){coachBusy=false;
+      coachSetFail("unclear",d&&d.conf?("noSpeech:"+d.conf.noSpeech):null,ms);render();return}
     heard=String(d.heard).trim();
-  }catch(e){coachBusy=false;coachFail="stt";render();return}
+  }catch(e){coachBusy=false;coachSetFail("stt",e,ms);render();return}
   // ٢) هل هي إحدى الجملتين المعروضتين عليها؟ اقتُرح عليها «I had toast.» فقالتها،
   // فسمعها Whisper «I had dust» فردّ الشريك «I don't think dust is food» — جملتها
   // صحيحة، والخطأ في السمع، والتصحيح وقع عليها. والجملتان في يدنا، فنُقابل بهما.
@@ -4314,12 +4350,15 @@ async function coachFinish(){
       coachMsgs.push({role:"model",text:say,tip:tip||null,says:p.says});
       logAnswer("coach","reply",null,String(d.reply).slice(0,600),coachScene.id,null,{lesson:coachScene.id});
       coachBusy=false;
-      if(coachMsgs.filter(function(m){return m.role==="user"}).length>=COACH_MAX_TURNS){coachDone=true;setTimeout(coachReview,50)}
+      const nSaid=coachMsgs.filter(function(m){return m.role==="user"}).length;
+      if(nSaid>=COACH_MAX_TURNS){coachDone=true;setTimeout(coachReview,50)}
+      // المراجعة الصامتة عند الرابعة: تُخزَّن البطاقات فلا يضيع ما قيل إن خرج قبل النهاية
+      else if(nSaid>=COACH_REVIEW_AT)setTimeout(coachAutoReview,50);
       render();setTimeout(function(){speakEnglish(say)},300);
       return;
     }
-    coachFail=(d&&d.error)==="not_configured"?"nokey":"reply";
-  }catch(e){coachFail="reply"}
+    coachSetFail((d&&d.error)==="not_configured"?"nokey":"reply",(d&&d.error)||null);
+  }catch(e){coachSetFail("reply",e)}
   coachBusy=false;render();
 }
 // خلاصة الجلسة: أكثر الأصوات تكراراً في قائمة الضعف — وهو السؤال الذي لم يكن له جواب قبل اليوم
@@ -4403,6 +4442,43 @@ async function coachReview(){
   render();
 }
 function coachEnd(){coachDone=true;render();coachReview()}
+// ===== التصحيح لا ينتظر النهاية =====
+// إلياس ثلاث جلسات ولم يرَ صفحة التصحيح ولا مرّة: المراجعة تعمل عند «إنهاء» أو بعد
+// ثماني جمل، وهو لم يفعل أيّهما — يخرج من الجلسة كما هي. فبطاقات «أخطائي» فارغة عنده،
+// والشيء الذي بُني له لم يصله. فترياقان:
+//   أ) بعد أربع جمل تجري المراجعة صامتةً وتُحفَظ بطاقاتها — فلا يضيع ما قيل بالخروج.
+//   ب) والرجوع للرئيسية من جلسةٍ فيها كلامٌ يمرّ على الخلاصة أوّلاً لا على الباب.
+const COACH_REVIEW_AT=4;
+let coachAutoReviewed=false;
+// المراجعة الصامتة: تُخزّن البطاقات ولا تُغيّر شاشةً ولا تُظهر شيئاً في أثناء الحديث
+async function coachAutoReview(){
+  if(coachAutoReviewed)return;
+  coachAutoReviewed=true;
+  const said=coachMsgs.filter(function(m){return m.role==="user"&&m.text});
+  if(said.length<COACH_REVIEW_AT)return;
+  try{
+    const lines=said.map(function(m,i){return (i+1)+". "+m.text}).join("\n");
+    const res=await fetchTimeout(TUTOR_FN_URL,{method:"POST",
+      headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},
+      body:JSON.stringify({mode:"review",learner:learnerInfo(),level:coachLevel(),
+        scene:coachScene?coachScene.en:"",question:"review",studentAnswer:lines})});
+    const d=await res.json();
+    const fx=(d&&d.reply)?coachFixParse(d.reply):[];
+    fx.forEach(function(f){fixCardSave(f)});
+    logAnswer("coach","autoreview",!!(d&&d.reply),fx.length?("fixes:"+fx.length):((d&&d.error)||"none"),
+      coachScene?coachScene.id:null,null,{lesson:coachScene?coachScene.id:null,srs_box:fx.length,
+        q_text:"said:"+said.length+" · lt:"+((d&&d.ltJudged)|0)+"/"+((d&&d.ltDropped)|0)});
+  }catch(e){
+    logAnswer("coach","autoreview",false,"network",coachScene?coachScene.id:null,null,
+      {lesson:coachScene?coachScene.id:null});
+  }
+}
+// الخروج من المحادثة: من تكلّم يرى خلاصته قبل أن يخرج. ومن لم يتكلّم يخرج بلا اعتراض.
+function coachLeave(){
+  const said=coachMsgs.filter(function(m){return m.role==="user"&&m.text}).length;
+  if(mode==="coach"&&!coachDone&&said>0){coachStop();coachEnd();return}
+  home();
+}
 const COACH_FAIL_AR={mic:"لم نصل إلى الميكروفون — اسمحي للمتصفّح باستعماله.",
   short:"التسجيل قصير جداً — اضغطي، تكلّمي، ثم أوقفي.",
   unclear:"لم نسمع كلاماً واضحاً — اقتربي من الميكروفون وأعيدي.",
@@ -4511,7 +4587,7 @@ function profileBarHTML(){
     <div style="font-size:12px;opacity:.85">تقدّمك وأخطاؤك وأصواتك هنا وحدك</div></div></div>`;
 }
 function renderCoach(){
-  const head=`<button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>`;
+  const head=`<button class="link-btn" onclick="coachLeave()">→ رجوع للرئيسية</button>`;
   if(coachUnsupported){
     app.innerHTML=`${head}<div class="card"><div class="q">المحادثة تحتاج ميكروفوناً</div>
       <div style="font-size:14px;color:#475569;line-height:1.9">متصفّحك لا يدعم التسجيل. جرّبي Safari على الآيفون أو Chrome على أندرويد.</div></div>`;
