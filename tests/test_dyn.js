@@ -128,7 +128,10 @@ txt=await page.textContent('#app');
 ok(txt.includes('الصحيح: ٩٤٫٢'),'ويظهر الصحيح بالفاصلة العربية');
 ok(await page.evaluate(()=>document.getElementById('basicsIn').value)==='٩٫٤٢','وما كتبته يبقى ظاهراً');
 let lg=(await page.evaluate(()=>window.__LOGS))[0];
-ok(lg.response==='٩٫٤٢','والسجلّ يحفظ ما كتبته حرفياً — فأعرف نوع الخطأ لا وقوعه فقط');
+// ما كتبته يبقى في صدر السطر، ومعه الصواب — وهو عرفنا في التسجيل («٧٠٠٠ · الصواب ٦٠٠٠»)
+ok(String(lg.response).indexOf('٩٫٤٢')===0,`والسجلّ يحفظ ما كتبته حرفياً (${lg.response})`);
+ok(/الصواب ٩٤٫٢/.test(String(lg.response)),'ومعه الصواب — فأعرف نوع الخطأ لا وقوعه فقط');
+ok(!/فرق/.test(String(lg.response)),'وبلا «فرق» في الكسور: ±١ و±١٠ تُسمّي آليةً، والكسر الطويل ضجيج');
 ok(lg.is_correct===false&&lg.qtype==='stage5'&&typeof lg.elapsed_ms==='number','مع المرحلة والزمن');
 await page.evaluate(()=>{basicsFinalNext();basicsCur={fam:{a:30,b:314,c:94.2}};basicsPrep();basicsLocked=false;basicsTyped="";
   piArm();piPick=1;render()});

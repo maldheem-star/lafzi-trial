@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260813-1500";
+  var BUILD="build-20260813-2130";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -1860,6 +1860,12 @@ function renderFade(){
 // ===== تدريب الأساسيات: عائلات الحقائق (ضرب/قسمة) + الجمع بالحمل + الطرح بالاستلاف (عشرات/مئات) =====
 // نهج CRA (محسوس ← مرتبط بالرسم ← مجرّد بقاعدة ← مستقل)، نفس فلسفة وضع التقوية أعلاه
 const BASICS_REQ=2;
+// ===== النزول: ما كان موجوداً أصلاً =====
+// جلسة ١٣ أغسطس: خمس عشرة إجابة في الطرح، صفر صواب، كلّها في المرحلة الثانية — والمرحلة
+// لا تهبط أبداً في هذا الوضع (basicsStage++ وحدها كانت موجودة)، والمرحلتان ٢ و٣ بلا دعم.
+// فجلست خمس عشرة مرّة على الدرجة نفسها بلا مثالٍ محلول ولا هبوط. والإملاء عنده هذا
+// النزول منذ شهر (DICT_BACK) والأساسيات لا — والسلّم الذي يصعد ولا يهبط ليس سلّماً.
+const BASICS_BACK=2;   // خطآن متتاليان ⇒ درجة إلى الوراء (والمرحلة ٢ تعود للمثال المحلول)
 const BASICS_SUBS={
   multdiv:{label:"عائلات الضرب والقسمة",short:"عائلات الضرب والقسمة"},
   addcarry:{label:"الجمع (عشرات/مئات)",short:"الجمع"},
@@ -1886,6 +1892,7 @@ function parseArNum(s){
 }
 let basicsTyped="";
 let basicsSub="multdiv",basicsStage=1,basicsStreak=0,basicsCur=null,basicsLocked=false,basicsPicked=-1,basicsMasteryStreak=0,basicsMidSupport=false,basicsMidRecoveryStreak=0,basicsFinalSupport=false,basicsFinalRecoveryStreak=0,basicsFinalCount=0,basicsBestStreak=0,basicsNotYet=false,basicsShownAt=0;
+let basicsMiss=0,basicsDropPending=false,basicsDropped=false;
 
 // إطار العشرة (Ten-Frame): يرتّب الكمية في صفّين من خمسة بدل نقاط عشوائية تُعدّ واحدة واحدة،
 // حتى يتعرّف الدماغ على الكمية دفعة واحدة (الإدراك البصري الفوري/Subitizing) بدل العدّ اليدوي — نفس مبدأ عدّ الأصابع لكن بلا حاجة للعدّ
@@ -2298,6 +2305,120 @@ function basicsDivLogRemedy(){
     {q_text:`${divA} ÷ ${divB}`});
   divRemedyAt=0;
 }
+// ===== شكل الخطأ لا وقوعه =====
+// خمسة عشر خطأً في الطرح يوم ١٣ أغسطس، ولا واحد منها رقمٌ عشوائي: سبعة تساوي الصواب+١
+// بالضبط، وأربعة الصواب+١٠، وأربعة الصواب−١ (وكلّها مطروحٌ منه ينتهي بـ١). والمموّهات
+// عندنا mcNum(ans,[ans+1,ans-1,ans+10]) — أي أن خطأها المنهجيّ يقع على مموّهٍ معروض في
+// كل مرّة، فتخرج صفراً من خمس عشرة وهي تختار من أربعة. فالفرق بين «أخطأت» و«أخطأت هكذا»
+// هو الفرق بين إعادة السؤال وبين علاجه.
+function basicsErrDelta(){
+  if(!basicsCur||!basicsLocked||basicsAnsOk())return null;
+  const got=basicsTypedStage()?parseArNum(basicsTyped)
+    :(basicsCur.opts&&basicsPicked>=0?parseArNum(basicsCur.opts[basicsPicked]):NaN);
+  if(!Number.isFinite(got)||!Number.isFinite(basicsCur.ansVal))return null;
+  return got-basicsCur.ansVal;
+}
+// ذاكرة شكل الخطأ: تُسلَّح البوّابة بتكراره لا بأول وقوعه، وتنحلّ بالصواب — فلا يُعاقَب
+// من زلّ مرّة، ولا يُترك من يُخطئ الخطأ نفسه خمس عشرة مرّة.
+const SHAPE_KEY="mawhiba_basics_shape_v1";
+const SHAPE_ARM=2;
+function shapeLoad(){try{return JSON.parse(lsGet(SHAPE_KEY)||"{}")}catch(e){return{}}}
+function shapeSave(o){try{lsSet(SHAPE_KEY,JSON.stringify(o))}catch(e){}}
+function shapeRecord(kind,hit){
+  const m=shapeLoad(),n=m[kind]||0;
+  m[kind]=hit?n+1:Math.max(0,n-1);
+  shapeSave(m);
+}
+function shapeArmed(kind){return (shapeLoad()[kind]||0)>=SHAPE_ARM}
+
+// ===== بوّابة «الفرق فجواتٌ لا أعداد» =====
+// من ١٤ إلى ٢٣ عشرةُ أعداد وتسعُ فجوات، فقالت ١٠. سبعٌ من أخطائها هذا بعينه، وكلّها
+// تساوي الصواب+١ تماماً. والقاعدة تُقال لها منذ المرحلة الأولى («عُدّي للأعلى») — لكن
+// القول لا يُصلح مفهوماً مقلوباً، فتبنيه هنا بيدها: قفزتان تُضغطان، والمجموع هو الفرق.
+let ob1On=false,ob1A=0,ob1B=0,ob1Stop=null,ob1Step=0,ob1Taps=0,ob1At=0;
+function ob1Arm(a,b){ob1A=a;ob1B=b;ob1Stop=subAddUpStop(a,b);ob1Step=0;ob1Taps=0;ob1On=true;ob1At=Date.now()}
+function ob1Total(){return ob1Stop===null?1:2}
+function ob1Jump(){if(ob1On&&ob1Step<ob1Total()){ob1Step++;ob1Taps++;render()}}
+function ob1Back(){if(ob1On&&ob1Step>0){ob1Step--;ob1Taps++;render()}}
+function ob1Complete(){return ob1On&&ob1Step>=ob1Total()}
+function ob1Reset(){ob1On=false;ob1Step=0}
+function ob1BoxHTML(){
+  const a=ob1A,b=ob1B,up=ob1Stop,diff=a-b;
+  const seen=ob1Step===0?b:(up===null||ob1Step>=2?a:up);
+  const first=up===null?diff:up-b, second=up===null?0:a-up;
+  const sum=ob1Step===0?0:(ob1Step===1?first:first+second);
+  const nextTo=ob1Step===0?(up===null?a:up):a;
+  return `<div style="background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:14px;padding:14px;margin-bottom:12px">
+    <div style="font-size:14px;color:#1E40AF;font-weight:800;margin-bottom:4px">الفرق فجواتٌ لا أعداد</div>
+    <div style="font-size:13px;color:#1E3A8A;line-height:1.9;margin-bottom:10px">
+      من ${toAr(b)} إلى ${toAr(a)} فيها <b>${toAr(diff+1)}</b> عدداً، لكنّ الفرق <b>${toAr(diff)}</b> —
+      لأنك تعدّين <b>القفزات بين الأعداد</b> لا الأعداد نفسها. اقفزي وانظري.</div>
+    <div style="text-align:center;margin:6px 0">${jumpLineSVG(b,up,ob1Step===0?a:(ob1Step===1&&up!==null?a:a))}</div>
+    <div style="text-align:center;font-size:19px;font-weight:800;color:#1D4ED8;margin:8px 0">
+      ${toAr(b)} ${ob1Step>=1?`<span style="color:#059669">+${toAr(first)}</span> ⟶ ${toAr(up===null?a:up)}`:""}
+      ${ob1Step>=2?` <span style="color:#059669">+${toAr(second)}</span> ⟶ ${toAr(a)}`:""}
+    </div>
+    <div style="text-align:center;font-size:13px;color:#475569;margin-bottom:10px">
+      ${ob1Complete()?`✓ ${toAr(first)}${second?" + "+toAr(second):""} = <b style="color:#059669">${toAr(diff)}</b> — وهذا الفرق`
+        :`المجموع حتى الآن: ${toAr(sum)} · وصلتِ إلى ${toAr(seen)}`}</div>
+    <div style="display:flex;gap:8px;justify-content:center;align-items:center">
+      ${ob1Complete()?"":`<button type="button" class="link-btn" style="margin:0;padding:9px 16px;border:1.5px solid #93C5FD;border-radius:10px;font-weight:800;color:#1D4ED8" onclick="ob1Jump()">اقفزي إلى ${toAr(nextTo)} ←</button>`}
+      ${ob1Step?`<button type="button" class="link-btn" style="margin:0;padding:9px 12px" onclick="ob1Back()">↺</button>`:""}
+    </div>
+  </div>`;
+}
+// ===== بوّابة «أنقصي العشرة» =====
+// ٨١ − ٧٣: استلفت العشرة في الآحاد (١١−٣=٨ ✓) ثم حسبت العشرات ٨−٧ بدل ٧−٧، فخرجت ١٨.
+// أربعةٌ من أخطائها هذا بعينه، وكلّها تساوي الصواب+١٠. فتُنقص الخانة بيدها قبل أن تنتقل.
+let btOn=false,btA=0,btB=0,btBorrowed=false,btTaps=0,btAt=0;
+function btArm(a,b){btA=a;btB=b;btBorrowed=false;btTaps=0;btOn=true;btAt=Date.now()}
+function btBorrow(){if(btOn&&!btBorrowed){btBorrowed=true;btTaps++;render()}}
+function btComplete(){return btOn&&btBorrowed}
+function btReset(){btOn=false;btBorrowed=false}
+function btBoxHTML(){
+  const a=btA,b=btB;
+  const at=Math.floor(a/10),au=a%10, bt2=Math.floor(b/10),bu=b%10;
+  const nt=btBorrowed?at-1:at, nu=btBorrowed?au+10:au;
+  const col=(t,u,tc,uc)=>`<div style="display:flex;gap:10px;justify-content:center">
+      <div style="text-align:center"><div style="font-size:11px;color:#64748B">عشرات</div>
+        <div style="font-size:26px;font-weight:800;color:${tc}">${toAr(t)}</div></div>
+      <div style="text-align:center"><div style="font-size:11px;color:#64748B">آحاد</div>
+        <div style="font-size:26px;font-weight:800;color:${uc}">${toAr(u)}</div></div></div>`;
+  return `<div style="background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:14px;padding:14px;margin-bottom:12px">
+    <div style="font-size:14px;color:#9A3412;font-weight:800;margin-bottom:4px">استلفتِ العشرة ونسيتِ أن تُنقصيها</div>
+    <div style="font-size:13px;color:#7C2D12;line-height:1.9;margin-bottom:10px">
+      الآحاد ${toAr(au)} أصغر من ${toAr(bu)}، فتأخذين عشرةً من خانة العشرات.
+      <b>والعشرة إذا خرجت من مكانها نقصت منه</b> — فتصير ${toAr(at)} عشرات ${toAr(at-1)}.</div>
+    <div style="display:flex;gap:18px;justify-content:center;align-items:flex-end;margin-bottom:10px">
+      <div>${col(nt,nu,btBorrowed?'#DC2626':'#0F172A',btBorrowed?'#059669':'#0F172A')}
+        <div style="text-align:center;font-size:12px;color:#64748B;margin-top:2px">${toAr(a)}</div></div>
+      <div style="font-size:22px;font-weight:800;color:#EA580C;padding-bottom:22px">−</div>
+      <div>${col(bt2,bu,'#0F172A','#0F172A')}
+        <div style="text-align:center;font-size:12px;color:#64748B;margin-top:2px">${toAr(b)}</div></div>
+    </div>
+    ${btBorrowed
+      ?`<div style="text-align:center;font-size:14px;color:#065F46;line-height:2">
+          ✓ الآحاد: ${toAr(nu)} − ${toAr(bu)} = <b>${toAr(nu-bu)}</b><br>
+          ✓ العشرات: ${toAr(nt)} − ${toAr(bt2)} = <b>${toAr(nt-bt2)}</b> <span style="color:#DC2626">(لا ${toAr(at)} − ${toAr(bt2)})</span><br>
+          إذن ${toAr(a)} − ${toAr(b)} = <b style="color:#059669">${toAr(a-b)}</b></div>`
+      :`<div style="text-align:center"><button type="button" class="link-btn" style="margin:0;padding:9px 16px;border:1.5px solid #FDBA74;border-radius:10px;font-weight:800;color:#C2410C" onclick="btBorrow()">استلفي عشرة ←</button></div>`}
+  </div>`;
+}
+// البوّابتان تُقفلان الانتقال كبوّابة المصفوفة تماماً — والمنع أنفع من التنبيه
+function basicsOb1Gated(){return ob1On&&!ob1Complete()}
+function basicsBtGated(){return btOn&&!btComplete()}
+function basicsShapeLogRemedy(){
+  if(ob1On){
+    logAnswer("basics_subborrow","gaps",ob1Complete(),String(ob1Taps),null,
+      ob1At?Date.now()-ob1At:null,{q_text:`${ob1A} - ${ob1B}`});
+    ob1Reset();
+  }
+  if(btOn){
+    logAnswer("basics_subborrow","borrow",btComplete(),String(btTaps),null,
+      btAt?Date.now()-btAt:null,{q_text:`${btA} - ${btB}`});
+    btReset();
+  }
+}
 // ===== النسبة: مقارنة الجواب بالنطاق الذي اختارته هي =====
 // ٧٠٪ من ٦٠٠: اختارت «بين ٣٠٠ و٦٠٠» ثم كتبت ٦٠ — حدّدت المنطقة الصحيحة وكتبت خارجها،
 // ولم يوقفها شيء. البوّابة جعلتها تُقدّر، ولم تجعلها تُقابل جوابها بتقديرها.
@@ -2364,34 +2485,58 @@ function basicsRecord(ok,resp){
     else{basicsMasteryStreak++}
   }
   if(basicsSub==="multdiv"&&basicsCur&&basicsCur.op==="div"&&basicsStage>=4&&!ok&&!divRemedyAt)divRemedyAt=Date.now();
+  // النزول: خطآن متتاليان يُعيدانها درجةً إلى الوراء، والمرحلة ٢ تعود إلى المثال المحلول.
+  // (المرحلة ٥ لها سقفها ودعمها، فلا تُنزَّل من هنا.)
+  if(ok)basicsMiss=0;else basicsMiss++;
+  if(basicsMiss>=BASICS_BACK&&basicsStage>=2&&basicsStage<=4){basicsDropPending=true;basicsMiss=0}
+  // شكل الخطأ: يُسجَّل دائماً، والبوّابة تُسلَّح عند تكراره
+  const dlt=basicsErrDelta();
+  if(basicsSub==="subborrow"&&basicsCur&&basicsCur.fam){
+    const A=basicsCur.fam.a,B=basicsCur.fam.b;
+    if(ok){shapeRecord("gaps",false);shapeRecord("borrow",false)}
+    else if(dlt===1){shapeRecord("gaps",true);if(shapeArmed("gaps"))ob1Arm(A,B)}
+    else if(dlt===10){shapeRecord("borrow",true);if(shapeArmed("borrow"))btArm(A,B)}
+  }
   const elapsed=basicsShownAt?Date.now()-basicsShownAt:null;
   // الرقم الذي أنتجته فعلاً: بدونه أعرف أنها أخطأت ولا أعرف نوع الخطأ (نسيت الحمل؟ أخطأت موضع الفاصلة؟)
   // محاولات النطاق تُقاس: إن بقيت أكثر من واحدة فالخلل في حسّ الحجم لا في الحساب
   const respOut=pctGateOn()&&resp!=null
     ?String(resp)+" · نطاق×"+toAr(pctBandTries)+(pctWarned?(pctOverride?" · تجاوزت التحذير":" · حُذّرت فصحّحت"):"")
     :resp;
-  logAnswer("basics_"+basicsSub,"stage"+basicsStage,ok,respOut,null,elapsed,{q_text:basicsCur.qText||null});
+  // شكل الخطأ في السجلّ لا في رأسي: «٢٥ · الصواب ٢٦ · فرق −١» يُشخَّص بعد شهر كما اليوم.
+  // والفرق يُذكر صحيحاً فقط: ±١ و±١٠ هي التي تُسمّي آلية، وكسرٌ طويل في ٣٫١٤ ضجيج.
+  const ansLog=Number.isInteger(basicsCur.ansVal)?toAr(basicsCur.ansVal):arDec(basicsCur.ansVal);
+  const respShape=(!ok&&dlt!=null&&respOut!=null)
+    ?String(respOut)+" · الصواب "+ansLog
+      +(Number.isInteger(dlt)?" · فرق "+(dlt>0?"+":"−")+toAr(Math.abs(dlt)):"")
+    :respOut;
+  logAnswer("basics_"+basicsSub,"stage"+basicsStage,ok,respShape,null,elapsed,{q_text:basicsCur.qText||null});
   if(elapsed!=null){
     recentAnswerTimes.push(elapsed);if(recentAnswerTimes.length>RAPID_STREAK)recentAnswerTimes.shift();
     rapidNudge=recentAnswerTimes.length===RAPID_STREAK&&recentAnswerTimes.every(t=>t<RAPID_MS);
   }
   render();
 }
-function basicsStage1Next(){basicsStreak++;if(basicsStreak>=BASICS_REQ){basicsStage=2;basicsStreak=0}basicsNew()}
+function basicsStage1Next(){basicsDropped=false;basicsStreak++;if(basicsStreak>=BASICS_REQ){basicsStage=2;basicsStreak=0}basicsNew()}
 function basicsAdvance(){
-  if(basicsDivGated())return;
-  basicsDivLogRemedy();
+  if(basicsDivGated()||basicsOb1Gated()||basicsBtGated())return;
+  basicsDivLogRemedy();basicsShapeLogRemedy();
+  // النزول قبل الصعود: من أخطأ مرّتين متتاليتين لا يُرفع
+  if(basicsDropPending){
+    basicsDropPending=false;basicsStreak=0;basicsDropped=true;
+    basicsStage=Math.max(1,basicsStage-1);basicsNew();return;
+  }
   if(basicsStreak>=BASICS_REQ&&basicsStage<5){basicsStage++;basicsStreak=0}basicsNew();
 }
 function basicsFinalNext(){
-  if(basicsDivGated())return;
-  basicsDivLogRemedy();
+  if(basicsDivGated()||basicsOb1Gated()||basicsBtGated())return;
+  basicsDivLogRemedy();basicsShapeLogRemedy();
   if(basicsMasteryStreak>=MASTERY_REQ){basicsNotYet=false;mode="basicsDone";window.scrollTo(0,0);render();return}
   // نفس سقف التقوية: بلا حدّ كانت المرحلة المستقلة لا تنتهي إلا بخمس متتالية، فتتحوّل إلى ضغط عشوائي
   if(basicsFinalCount>=MASTERY_MAX_Q){basicsNotYet=true;mode="basicsDone";window.scrollTo(0,0);render();return}
   basicsNew();
 }
-function startBasics(sub){mode="basics";basicsSub=sub;basicsStage=1;basicsStreak=0;basicsMasteryStreak=0;basicsFinalCount=0;basicsBestStreak=0;basicsNotYet=false;recentAnswerTimes=[];rapidNudge=false;basicsMidSupport=false;basicsMidRecoveryStreak=0;basicsFinalSupport=false;basicsFinalRecoveryStreak=0;window.scrollTo(0,0);basicsNew()}
+function startBasics(sub){mode="basics";basicsSub=sub;basicsStage=1;basicsStreak=0;basicsMasteryStreak=0;basicsFinalCount=0;basicsBestStreak=0;basicsNotYet=false;recentAnswerTimes=[];rapidNudge=false;basicsMidSupport=false;basicsMidRecoveryStreak=0;basicsFinalSupport=false;basicsFinalRecoveryStreak=0;basicsMiss=0;basicsDropPending=false;basicsDropped=false;ob1Reset();btReset();window.scrollTo(0,0);basicsNew()}
 function renderBasicsDone(){
   const subLabel=BASICS_SUBS[basicsSub].label;
   if(basicsNotYet){
@@ -2471,7 +2616,8 @@ function renderBasics(){
       +percentSteps(f.a,f.b).map((x,i)=>`<div>${toAr(i+1)}) ${x}.</div>`).join("")
       +`<div style="margin-top:8px;font-size:13px;color:#475569">تحقّقي بالحجم: ${toAr(f.b)}٪ ${f.b<50?"أقل من نصف":f.b===50?"نصف":"أكثر من نصف"} ${toAr(f.a)}، و${toAr(f.c)} ${f.b<50?"أصغر":f.b===50?"يساوي":"أكبر"} من ${toAr(f.a/2)} ✓</div>`
       +altBox([`قيمة ١٪ = ${toAr(f.a)} ÷ ١٠٠ = ${toAr(f.onePercent)}`,`${toAr(f.onePercent)} × ${toAr(f.b)} = ${toAr(f.c)}`],"طريقة ١٪ (ضربٌ برقمين)");
-    body=`<div style="background:#EFF6FF;border-radius:14px;padding:16px;font-size:14px;line-height:1.8;color:#1E40AF;margin-bottom:16px">📘 هذا <b>مثال محلول</b>. اقرئي الحل خطوة بخطوة، ثم اضغطي «فهمت».</div>
+    body=`${basicsDropped?`<div style="background:#FEF9C3;border-inline-start:4px solid #EAB308;border-radius:14px;padding:14px;font-size:14px;line-height:1.9;color:#854D0E;margin-bottom:12px">🌱 <b>رجعنا خطوة إلى الوراء.</b> خطآن متتاليان يعنيان أن الطريقة نفسها تحتاج مراجعة، لا أن السؤال صعب. مثالان محلولان ونعود.</div>`:""}
+    <div style="background:#EFF6FF;border-radius:14px;padding:16px;font-size:14px;line-height:1.8;color:#1E40AF;margin-bottom:16px">📘 هذا <b>مثال محلول</b>. اقرئي الحل خطوة بخطوة، ثم اضغطي «فهمت».</div>
     ${visualBox}
     <div style="background:#F0FDF4;border-inline-start:4px solid #10B981;border-radius:12px;padding:16px;margin-bottom:16px;font-size:15px;line-height:2">${explain}</div>
     <button class="btn" style="background:#059669" onclick="basicsStage1Next()">فهمت، مثال آخر ←</button>
@@ -2517,7 +2663,13 @@ function renderBasics(){
       ?`<div style="background:#FEF2F2;border-inline-start:4px solid #EF4444;border-radius:12px;padding:12px 14px;margin-bottom:10px;font-size:14px;line-height:1.8;color:#991B1B">
           <b>لنراها بدل أن نحفظها:</b> كوّني الصفوف حتى تنتهي النقاط — العدد الذي تصلين إليه هو الجواب.
          </div>${divArrayHTML()}<div style="height:12px"></div>`:"";
-    const why=basicsLocked?`${diagBox}${divBox}<div class="why" style="margin-bottom:10px">${okNow?"✓ "+(basicsStage===5?"حللتِها وحدك! 🌟":"أحسنتِ"):(typed?"لا بأس — راجعي الطريقة ثم أعيدي":"الصحيحة بالأخضر")}.</div>${divGate?`<div style="text-align:center;font-size:13px;color:#B45309;font-weight:800;margin-top:8px">أكملي المصفوفة أعلاه للانتقال</div>`:`<button class="btn" style="background:${basicsStage===5?'#059669':'#0D9488'}" onclick="${basicsStage===5?'basicsFinalNext()':'basicsAdvance()'}">${basicsStage===5?'سؤال جديد ←':'التالي ←'}</button>`}`:"";
+    // بوّابتا شكل الخطأ: تُرسَمان مكان زرّ الانتقال، فلا يمرّ الخطأ المنهجيّ بلا علاج
+    const shapeBox=ob1On?ob1BoxHTML():(btOn?btBoxHTML():"");
+    const shapeGate=basicsOb1Gated()||basicsBtGated();
+    const gateNote=divGate?"أكملي المصفوفة أعلاه للانتقال"
+      :basicsOb1Gated()?"اقفزي على خطّ الأعداد أعلاه للانتقال"
+      :basicsBtGated()?"استلفي العشرة أعلاه للانتقال":"";
+    const why=basicsLocked?`${diagBox}${divBox}${shapeBox}<div class="why" style="margin-bottom:10px">${okNow?"✓ "+(basicsStage===5?"حللتِها وحدك! 🌟":"أحسنتِ"):(typed?"لا بأس — راجعي الطريقة ثم أعيدي":"الصحيحة بالأخضر")}.</div>${(divGate||shapeGate)?`<div style="text-align:center;font-size:13px;color:#B45309;font-weight:800;margin-top:8px">${gateNote}</div>`:`<button class="btn" style="background:${basicsStage===5?'#059669':'#0D9488'}" onclick="${basicsStage===5?'basicsFinalNext()':'basicsAdvance()'}">${basicsDropPending?'راجعي المثال ←':(basicsStage===5?'سؤال جديد ←':'التالي ←')}</button>`}`:"";
     const mtr=basicsStage<4?`<div style="font-size:13px;color:#64748B;text-align:center;margin-top:10px">جاوبي صح مرتين متتاليتين للانتقال (${toAr(basicsStreak)}/${toAr(BASICS_REQ)})</div>`
       :basicsStage===4?(basicsMidSupport?`<div style="font-size:13px;color:#854D0E;text-align:center;margin-top:10px">🌱 مراجعة: (${toAr(basicsMidRecoveryStreak)}/${toAr(RECOVERY_REQ)}) لإخفاء التذكير</div>`:`<div style="font-size:13px;color:#64748B;text-align:center;margin-top:10px">تدريب شبه مستقل — جاوبي صح مرتين متتاليتين للوصول للاستقلال الكامل (${toAr(basicsStreak)}/${toAr(BASICS_REQ)})</div>`)
       :basicsFinalSupport?`<div style="font-size:13px;color:#854D0E;text-align:center;margin-top:10px">🌱 مراجعة: (${toAr(basicsFinalRecoveryStreak)}/${toAr(RECOVERY_REQ)}) لإخفاء التذكير مرة أخرى</div>`
@@ -2642,7 +2794,7 @@ async function runMicDiag(){
 const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEngPlan","startDictation",
   "startPronunciation","startSpeaking","startAudioDiag","runMicDiag","fetchTimeout",
   "pronStart","pronStop","pronReset","speakStart","speakStop","speakReset","speakEnglish",
-  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","piPickBand","piBandBoxHTML","piArm","piOk","piVals","piGateOn","piGated","piSig1","fsrsUpdate","fsrsIvl","fsrsR","fsrsInitS","fsrsInitD","fsrsNextD","fsrsClampD","fsrsRecallS","fsrsForgetS","tmplKey","spreadTemplates","drawSpread","qzErrRecord","qzDueKeys","qzInjectDue","qzErrOf","qzCardDone","fadeQText","fadeAnsText","fadeGateStart","fadeGateStop","fadeGateNeeded","copyAzRaw","esc","weakPhonemeStr","num0","profileBarHTML","renderHomeCoachOnly","learnerInfo","coachLevel","toMasc","genderizeText","genderizeNode","genderizeInit","lsGet","lsSet","lsDel","pkey","cxShuffleOrder","cxPreStart","cxPreChoose","cxPreNext","cxPreQuit","cxPreCur","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary","coachMode","coachAskHelp","coachEnd","coachReview","coachFixParse","weakClean","coachSaysNow","snapToSuggestion","editDist","coachShowSays","coachParse","coachTopicGo","coachTopicBack","coachTopicClean","coachFreeScene","wbStart","wbPick","wbUnpick","wbCheck","wbHTML","wbReady","wbSay","wbReset","wbNorm","wbDistract","wbStageGet","wbGrade","engBuildFor","dictErrRecord","dictIsBuild","dictCur","renderDictationBuild","planCheckBuild","echoRecord","echoArmed","coachBankOn","coachBankSync","coachBankCheck","fixCardSave","fixCardGrade","errCollect","errDraw","errCount","errQuizCount","startErrors","errCheck","errChoose","errNext","errReplay","renderErrors"];
+  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","piPickBand","piBandBoxHTML","piArm","piOk","piVals","piGateOn","piGated","piSig1","fsrsUpdate","fsrsIvl","fsrsR","fsrsInitS","fsrsInitD","fsrsNextD","fsrsClampD","fsrsRecallS","fsrsForgetS","tmplKey","spreadTemplates","drawSpread","qzErrRecord","qzDueKeys","qzInjectDue","qzErrOf","qzCardDone","fadeQText","fadeAnsText","fadeGateStart","fadeGateStop","fadeGateNeeded","copyAzRaw","esc","weakPhonemeStr","num0","profileBarHTML","renderHomeCoachOnly","learnerInfo","coachLevel","toMasc","genderizeText","genderizeNode","genderizeInit","lsGet","lsSet","lsDel","pkey","cxShuffleOrder","cxPreStart","cxPreChoose","cxPreNext","cxPreQuit","cxPreCur","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary","coachMode","coachAskHelp","coachEnd","coachReview","coachFixParse","weakClean","coachSaysNow","snapToSuggestion","editDist","coachShowSays","coachParse","coachTopicGo","coachTopicBack","coachTopicClean","coachFreeScene","wbStart","wbPick","wbUnpick","wbCheck","wbHTML","wbReady","wbSay","wbReset","wbNorm","wbDistract","wbStageGet","wbGrade","engBuildFor","dictErrRecord","dictIsBuild","dictCur","renderDictationBuild","planCheckBuild","echoRecord","echoArmed","coachBankOn","coachBankSync","coachBankCheck","fixCardSave","fixCardGrade","basicsErrDelta","shapeRecord","shapeArmed","ob1Arm","ob1Jump","ob1Back","ob1Complete","ob1BoxHTML","btArm","btBorrow","btComplete","btBoxHTML","basicsOb1Gated","basicsBtGated","basicsShapeLogRemedy","errCollect","errDraw","errCount","errQuizCount","startErrors","errCheck","errChoose","errNext","errReplay","renderErrors"];
 function censusMissing(){return CENSUS.filter(function(n){return typeof window[n]!=="function"})}
 function censusHTML(){
   var miss=censusMissing();
@@ -6009,8 +6161,19 @@ function choose(i){
   // كان النصّ يُحفظ لأسئلة الذكاء الاصطناعي وحدها (التي لها qtype)، فبقي الكمّي بلا نصّ —
   // ورأيتُ ١/١٢ ولم أستطع أن أعرف أي أسئلة كانت. النصّ يُحفظ الآن لكل سؤال.
   const ansTxt=q.c&&q.c[i]!=null?String(q.c[i]):null;
+  // الخيارات كلّها مع نصّ السؤال: جلسة ١٣ أغسطس أجابت عن سؤالين منطقيين مختلفين
+  // (أطبّاء/جامعة، وصيّادون/بحر) بالجواب نفسه «يذهبون إلى المستشفيات» — وهو لا معنى له
+  // في سؤال الصيّادين أصلاً. ولم أستطع الحكم: أهو خللٌ في التوليد أم انحيازُ موضع؟
+  // فبلا الخيارات لا يُعرف أكان الجواب معروضاً أصلاً، ولا في أي موضع كان.
+  const chLog=Array.isArray(q.c)
+    ?" · الخيارات: "+q.c.map(function(x,k){
+        const s=String(x==null?"":x);
+        // الخيارات المرسومة تُسجَّل بموضعها لا بشيفرتها — لا يدخل SVG في السجلّ
+        return (k+1)+") "+(/^\s*<svg/i.test(s)?"[رسم]":s.slice(0,60))+(k===q.a?" ✓":"");
+      }).join(" | ")
+    :"";
   logAnswer(q.d,q.qtype||"bank",ok,ansTxt,null,elapsed,
-    {q_text:String(q.q||"").slice(0,1200)});
+    {q_text:(String(q.q||"")+chLog).slice(0,1200)});
   // الذاكرة قبل البطاقة: البطاقة تُقرَأ من الحالة بعد التسجيل
   const wasWrong=(qzErrOf(tmplKey(q))||{}).wrong||0;
   qzErrRecord(q,ok,ansTxt&&ansTxt.slice(0,60));
