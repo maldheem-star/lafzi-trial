@@ -6,7 +6,7 @@ const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium',
 const ctx=await b.newContext({viewport:{width:420,height:900},permissions:['microphone']});
 const logs=[];let calls=[];
 let chat={ok:true,reply:"Nice.\nSAY: I need a card. | I want a card."};
-let review={ok:true,reply:"FIX: I have a work that I haven't worked to do | I have some work to do. | كلمة work لا تُعدّ، فلا يُقال a work\nFIX: studying my new college | I am studying for my new college. | الجملة تحتاج فاعلاً وفعلاً"};
+let review={ok:true,ltJudged:2,ltDropped:0,reply:"FIX: I have a work that I haven't worked to do | I have some work to do. | كلمة work لا تُعدّ، فلا يُقال a work\nFIX: studying my new college | I am studying for my new college. | الجملة تحتاج فاعلاً وفعلاً"};
 let reviewFail=false;
 const mk=async(f)=>{
   const page=await ctx.newPage();
@@ -149,6 +149,18 @@ for(const [f,age] of [['mohammed.html',19],['elias.html',18]]){
   ok(tt.includes('جملك بعد التعديل')&&!/تكلّمتِ|اسمعي/.test(tt),'وبخطاب المذكّر');
   await p.close();
 }
+
+console.log('\n١٠ب) حكم LanguageTool يُسجَّل مع المراجعة');
+review={ok:true,ltJudged:3,ltDropped:1,reply:"FIX: I go | I went. | الماضي"};
+page=await mk('index.html');
+await page.evaluate(()=>{startCoach();coachPick(0);coachMode('solo');
+  coachMsgs=[{role:"user",text:"I go",pct:80,weak:[]}]});
+await page.waitForTimeout(150);logs.length=0;
+await page.click('button[onclick="coachEnd()"]');
+await page.waitForTimeout(700);
+const rvj=logs.filter(l=>l.qtype==='review')[0]||{};
+ok(String(rvj.q_text||'').includes('lt:3/1'),`«${rvj.q_text}» — عُرض عليه ٣ وأسقط ١`);
+ok(await page.evaluate(()=>coachFix.length)===1,'والباقي يُعرض');
 
 console.log('\n١١) لا انحدار');
 for(const [fn,md] of [["startBasics('pimul')",'basics'],["startEngPlan()",'engplan'],["startFade('seq')",'fade'],

@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260812-2230";
+  var BUILD="build-20260813-0130";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -2642,7 +2642,7 @@ async function runMicDiag(){
 const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEngPlan","startDictation",
   "startPronunciation","startSpeaking","startAudioDiag","runMicDiag","fetchTimeout",
   "pronStart","pronStop","pronReset","speakStart","speakStop","speakReset","speakEnglish",
-  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","piPickBand","piBandBoxHTML","piArm","piOk","piVals","piGateOn","piGated","piSig1","tmplKey","spreadTemplates","drawSpread","qzErrRecord","qzDueKeys","qzInjectDue","qzErrOf","qzCardDone","fadeQText","fadeAnsText","fadeGateStart","fadeGateStop","fadeGateNeeded","copyAzRaw","esc","weakPhonemeStr","num0","profileBarHTML","renderHomeCoachOnly","learnerInfo","coachLevel","toMasc","genderizeText","genderizeNode","genderizeInit","lsGet","lsSet","lsDel","pkey","cxShuffleOrder","cxPreStart","cxPreChoose","cxPreNext","cxPreQuit","cxPreCur","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary","coachMode","coachAskHelp","coachEnd","coachReview","coachFixParse","weakClean","coachSaysNow","snapToSuggestion","editDist","coachShowSays","coachParse","coachTopicGo","coachTopicBack","coachTopicClean","coachFreeScene"];
+  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","piPickBand","piBandBoxHTML","piArm","piOk","piVals","piGateOn","piGated","piSig1","fsrsUpdate","fsrsIvl","fsrsR","fsrsInitS","fsrsInitD","fsrsNextD","fsrsClampD","fsrsRecallS","fsrsForgetS","tmplKey","spreadTemplates","drawSpread","qzErrRecord","qzDueKeys","qzInjectDue","qzErrOf","qzCardDone","fadeQText","fadeAnsText","fadeGateStart","fadeGateStop","fadeGateNeeded","copyAzRaw","esc","weakPhonemeStr","num0","profileBarHTML","renderHomeCoachOnly","learnerInfo","coachLevel","toMasc","genderizeText","genderizeNode","genderizeInit","lsGet","lsSet","lsDel","pkey","cxShuffleOrder","cxPreStart","cxPreChoose","cxPreNext","cxPreQuit","cxPreCur","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary","coachMode","coachAskHelp","coachEnd","coachReview","coachFixParse","weakClean","coachSaysNow","snapToSuggestion","editDist","coachShowSays","coachParse","coachTopicGo","coachTopicBack","coachTopicClean","coachFreeScene"];
 function censusMissing(){return CENSUS.filter(function(n){return typeof window[n]!=="function"})}
 function censusHTML(){
   var miss=censusMissing();
@@ -3066,11 +3066,60 @@ const NEW_CAP=25;       // حد العناصر الجديدة يومياً (قر
 function srsLoad(){try{return JSON.parse(lsGet(SRS_KEY)||"{}")}catch(e){return{}}}
 function srsSave(o){try{lsSet(SRS_KEY,JSON.stringify(o))}catch(e){}}
 function srsToday(){return Math.floor(Date.now()/86400000)}
+// ===== FSRS-6: جدولة مبنيّة على نموذج ذاكرة، لا على سلّم ثابت =====
+// السلّم الثابت (١،٢،٤،٨…) يُعامل كل عنصر بالمثل: كلمة سهلة أتقنتها من أول مرّة تعود
+// بعد يوم كالتي تعثّرت فيها ثلاثاً. وFSRS خوارزمية مفتوحة (MIT) مُدرَّبة على مليارات
+// المراجعات الحقيقية: لكل عنصر ثباتٌ (stability) وصعوبةٌ (difficulty)، والموعد يُحسب
+// ليقع عند احتمال تذكّر ٩٠٪. النسخة هنا FSRS-6 بأوزانها المرجعية، وقد قُوبلت مخرجاتها
+// بمخرجات المكتبة الرسمية ts-fsrs في الاختبار (tests/test_fsrs.js).
+const FSRS_W=[0.212,1.2931,2.3065,8.2956,6.4133,0.8334,3.0194,0.001,1.8722,0.1666,
+  0.796,1.4835,0.0614,0.2629,1.6483,0.6014,1.8729,0.5425,0.0912,0.0658,0.1542];
+const FSRS_RETENTION=0.9, FSRS_MAX_IVL=180, FSRS_S_MIN=0.001;
+function fsrsDecay(){return -FSRS_W[20]}
+function fsrsFactor(){return Math.exp(Math.log(0.9)/fsrsDecay())-1}
+function fsrsR(t,s){return Math.pow(1+fsrsFactor()*t/s,fsrsDecay())}
+function fsrsIvl(s){
+  const m=(Math.pow(FSRS_RETENTION,1/fsrsDecay())-1)/fsrsFactor();
+  return Math.min(Math.max(1,Math.round(s*m)),FSRS_MAX_IVL);
+}
+function fsrsInitS(g){return Math.max(FSRS_W[g-1],0.1)}
+// بلا حصر عمداً: المرجع يستعمل القيمة الخام داخل الارتداد إلى المتوسّط (mean reversion)،
+// والحصر يقع على النتيجة النهائية لا على المدخل — وحصرُه هنا كان يُزيح كل الحسابات.
+function fsrsInitD(g){return FSRS_W[4]-Math.exp((g-1)*FSRS_W[5])+1}
+function fsrsClampD(d){return Math.min(Math.max(d,1),10)}
+function fsrsNextD(d,g){
+  const dd=-FSRS_W[6]*(g-3), next=d+dd*(10-d)/9;
+  const rev=FSRS_W[7]*fsrsInitD(4)+(1-FSRS_W[7])*next;
+  return Math.min(Math.max(rev,1),10);
+}
+function fsrsRecallS(d,s,r,g){
+  const hard=(g===2)?FSRS_W[15]:1, easy=(g===4)?FSRS_W[16]:1;
+  const v=s*(1+Math.exp(FSRS_W[8])*(11-d)*Math.pow(s,-FSRS_W[9])*(Math.exp((1-r)*FSRS_W[10])-1)*hard*easy);
+  return Math.min(Math.max(v,FSRS_S_MIN),36500);
+}
+function fsrsForgetS(d,s,r){
+  const v=FSRS_W[11]*Math.pow(d,-FSRS_W[12])*(Math.pow(s+1,FSRS_W[13])-1)*Math.exp((1-r)*FSRS_W[14]);
+  return Math.min(Math.max(v,FSRS_S_MIN),36500);
+}
+// درجة واحدة من اثنتين: أصابت (good=3) أو أخطأت (again=1). لا نسأل «هل كان سهلاً؟»
+// — سؤالٌ لا تُحسن طفلةٌ تقديره، وإجابته تُفسد الجدولة أكثر مما تُصلح.
+function fsrsUpdate(rec,ok,today){
+  const g=ok?3:1;
+  if(!rec||!rec.s){ // أول مرّة
+    const s=fsrsInitS(g),d=fsrsClampD(fsrsInitD(g));
+    return{s:s,d:d,due:today+fsrsIvl(s),last:today,seen:((rec&&rec.seen)||0)+1,box:ok?1:0};
+  }
+  const t=Math.max(0,today-(rec.last||today));
+  const r=fsrsR(t,rec.s);
+  const d=fsrsNextD(rec.d||5,g);
+  const s=ok?fsrsRecallS(d,rec.s,r,g):fsrsForgetS(d,rec.s,r);
+  return{s:s,d:d,due:today+fsrsIvl(s),last:today,seen:(rec.seen||0)+1,
+    box:ok?Math.min((rec.box||0)+1,SRS_INTERVALS.length-1):0}; // box يبقى للعرض والتحليل
+}
 function srsUpdate(id,ok){
   const st=srsLoad(),r=st[id]||{box:0,seen:0};
-  r.box=ok?Math.min(r.box+1,SRS_INTERVALS.length-1):0; // الخطأ يُعيد العنصر لبداية السلّم
-  r.due=srsToday()+SRS_INTERVALS[r.box];r.seen=(r.seen||0)+1;
-  st[id]=r;srsSave(st);
+  st[id]=fsrsUpdate(r,ok,srsToday());
+  srsSave(st);
 }
 function lessonSeen(id){try{return (JSON.parse(lsGet("mawhiba_eng_lessons")||"[]")).includes(id)}catch(e){return false}}
 function lessonMark(id){try{const a=JSON.parse(lsGet("mawhiba_eng_lessons")||"[]");if(!a.includes(id)){a.push(id);lsSet("mawhiba_eng_lessons",JSON.stringify(a))}}catch(e){}}
@@ -3903,7 +3952,7 @@ function startCoach(){
   mode="coach";coachScene=null;coachMsgs=[];coachBusy=false;coachListening=false;
   coachFail="";coachDone=false;coachTopicAsk=false;coachTopic="";coachTopicErr="";
   coachModeAsk=false;coachHelp="";coachHelpShown=false;coachPending=null;
-  coachFix=[];coachFixBusy=false;coachFixFail="";
+  coachFix=[];coachFixBusy=false;coachFixFail="";ltDropped=0;ltJudged=0;
   coachUnsupported=!micSupported();
   window.scrollTo(0,0);render();
 }
@@ -4091,7 +4140,7 @@ function coachWeakSummary(){
 // المقاطعة تقتل الكلام — جرّبناه. لكن الجلسة كانت تنتهي بلا شيء بيده: محمد قال
 // «I have a work that I haven't worked to do» ولم يُصحَّح له شيء. فالتصحيح يُجمَع
 // ويُعرض مرّة واحدة في الخلاصة، بطلب واحد من النموذج.
-let coachFix=[],coachFixBusy=false,coachFixFail="";
+let coachFix=[],coachFixBusy=false,coachFixFail="",ltDropped=0,ltJudged=0;
 function coachFixParse(txt){
   const out=[];
   String(txt||"").split(/\n+/).forEach(function(ln){
@@ -4103,7 +4152,7 @@ function coachFixParse(txt){
 }
 async function coachReview(){
   const said=coachMsgs.filter(function(m){return m.role==="user"&&m.text});
-  coachFix=[];coachFixFail="";
+  coachFix=[];coachFixFail="";ltDropped=0;ltJudged=0;
   if(!said.length)return;
   coachFixBusy=true;render();
   try{
@@ -4113,16 +4162,18 @@ async function coachReview(){
       body:JSON.stringify({mode:"review",learner:learnerInfo(),level:coachLevel(),
         scene:coachScene?coachScene.en:"",question:"review",studentAnswer:lines})});
     const d=await res.json();
-    if(d&&d.reply)coachFix=coachFixParse(d.reply);
+    if(d&&d.reply){coachFix=coachFixParse(d.reply);ltDropped=d.ltDropped|0;ltJudged=d.ltJudged|0}
     else coachFixFail=(d&&d.error)||"reply";
   }catch(e){coachFixFail="network"}
   coachFixBusy=false;
   // نتيجة المراجعة تُسجَّل دائماً: بلا هذا لا يُفرَّق «لا خطأ عندها» من «فشل الطلب»،
   // وقد وقعتُ فيها فعلاً — رأيتُ جلسةً بلا تصحيحات ولم أعرف أيّ الحالتين هي.
+  // ومعها حكم LanguageTool: كم تصحيحاً عُرض عليه وكم أسقط — فيُعرف كم مرّة كان
+  // النموذج سيُصحّح لها بجملة مكسورة لولا الحَكَم
   logAnswer("coach","review",!coachFixFail,
     coachFixFail?("fail:"+coachFixFail):(coachFix.length?("fixes:"+coachFix.length):"none"),
     coachScene?coachScene.id:null,null,{lesson:coachScene?coachScene.id:null,
-      srs_box:coachFix.length,q_text:"said:"+said.length});
+      srs_box:coachFix.length,q_text:"said:"+said.length+" · lt:"+ltJudged+"/"+ltDropped});
   coachFix.forEach(function(f){
     logAnswer("coach","fix",null,(f.said+" ⇐ "+f.fix).slice(0,300),coachScene?coachScene.id:null,null,
       {lesson:coachScene?coachScene.id:null,q_text:String(f.why||"").slice(0,200)});
@@ -5207,8 +5258,8 @@ function speakSrsLoad(){try{return JSON.parse(lsGet(SPEAK_SRS_KEY)||"{}")}catch(
 function speakSrsSave(o){try{lsSet(SPEAK_SRS_KEY,JSON.stringify(o))}catch(e){}}
 function speakSrsUpdate(id,ok){
   const st=speakSrsLoad(),r=st[id]||{box:0,seen:0};
-  r.box=ok?Math.min(r.box+1,SRS_INTERVALS.length-1):0;
-  r.due=srsToday()+SRS_INTERVALS[r.box];r.seen=(r.seen||0)+1;
+  const n=fsrsUpdate(r,ok,srsToday());
+  r.box=n.box;r.due=n.due;r.seen=n.seen;r.s=n.s;r.d=n.d;r.last=n.last;
   st[id]=r;speakSrsSave(st);
 }
 function speakStageGet(){try{const v=parseInt(lsGet(SPEAK_STAGE_KEY)||"1");return(v>=1&&v<=3)?v:1}catch(e){return 1}}
@@ -5561,8 +5612,8 @@ function factSrsLoad(){try{return JSON.parse(lsGet(FACT_SRS_KEY)||"{}")}catch(e)
 function factSrsSave(o){try{lsSet(FACT_SRS_KEY,JSON.stringify(o))}catch(e){}}
 function factSrsUpdate(id,ok){
   const st=factSrsLoad(),r=st[id]||{box:0,seen:0};
-  r.box=ok?Math.min(r.box+1,SRS_INTERVALS.length-1):0;
-  r.due=srsToday()+SRS_INTERVALS[r.box];r.seen=(r.seen||0)+1;
+  const n=fsrsUpdate(r,ok,srsToday());
+  r.box=n.box;r.due=n.due;r.seen=n.seen;r.s=n.s;r.d=n.d;r.last=n.last;
   st[id]=r;factSrsSave(st);
 }
 // بنك الحقائق: جمع/طرح ١-٩ (مجاميع حتى ١٨)، وضرب/قسمة ٢-٩ (جداول الضرب الأساسية)

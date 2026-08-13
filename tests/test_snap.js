@@ -104,7 +104,7 @@ await page.waitForTimeout(700);
 let rv=logs.filter(l=>l.qtype==='review')[0]||{};
 ok(rv.response==='none',`«${rv.response}» — لا خطأ عندها، لا فشلٌ عندنا`);
 ok(rv.is_correct===true,'والمراجعة نجحت');
-ok(rv.q_text==='said:1','ومعها عدد جملها');
+ok(String(rv.q_text||'').indexOf('said:1')===0,`ومعها عدد جملها وحكم LanguageTool («${rv.q_text}»)`);
 
 console.log('\n٦) وfixes حين تُصحَّح');
 review={ok:true,reply:"FIX: I go | I went. | الماضي\nFIX: I like cake | I like cake. | نقطة"};

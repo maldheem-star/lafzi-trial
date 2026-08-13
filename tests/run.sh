@@ -7,6 +7,7 @@
 PW=${PW:-/opt/node22/lib/node_modules/playwright}
 DIR=$(dirname "$0")
 fail=0
+# pron_bench.js يحتاج شبكة ومجموعة بيانات خارجية — يُشغَّل يدوياً لا هنا
 for f in "$DIR"/test_*.js; do
   name=$(basename "$f" .js)
   out=$(node "$f" 2>&1)

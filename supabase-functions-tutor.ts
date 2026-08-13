@@ -150,8 +150,8 @@ function systemChat(scene: string, level: string, focus: string, tip: boolean, m
     "   'Excuse me', 'Sorry, could you say that again?', 'That sounds nice'.",
   ];
   if (tip) {
-    // \u0646\u0635\u064a\u062d\u0629 \u0627\u0644\u0623\u0633\u0644\u0648\u0628 \u0628\u0637\u0644\u0628 \u0645\u0646 \u0627\u0644\u062a\u0637\u0628\u064a\u0642 \u0644\u0627 \u0628\u0645\u0632\u0627\u062c \u0627\u0644\u0646\u0645\u0648\u0630\u062c: \u0643\u0644 \u062b\u0627\u0644\u062b\u0629 \u062c\u0645\u0644\u0629 \u0644\u0627 \u0623\u0643\u062b\u0631\u060c
-    // \u0641\u0627\u0644\u062a\u0635\u062d\u064a\u062d \u0641\u064a \u0643\u0644 \u062f\u0648\u0631 \u064a\u0642\u0637\u0639 \u0627\u0644\u062d\u062f\u064a\u062b \u0648\u064a\u064f\u0634\u0639\u0631\u0647\u0627 \u0623\u0646\u0647\u0627 \u062a\u064f\u0645\u062a\u062d\u064e\u0646 \u0644\u0627 \u062a\u062a\u062d\u062f\u0651\u062b.
+    // نصيحة الأسلوب بطلب من التطبيق لا بمزاج النموذج: كل ثالثة جملة لا أكثر،
+    // فالتصحيح في كل دور يقطع الحديث ويُشعرها أنها تُمتحَن لا تتحدّث.
     L.push("",
       "ONE STYLE TIP THIS TURN:",
       "8. After your reply, add a new line exactly in this shape:",
@@ -226,6 +226,64 @@ function openingFor(b: Record<string, unknown>, male: boolean) {
 }
 
 const clip = (v: unknown, n = MAX_CHARS) => String(v ?? "").slice(0, n);
+
+// ===== حَكَمٌ على تصحيحات النموذج: LanguageTool =====
+// النموذج قد يخترع خطأً أو يُنتج «تصحيحاً» مكسوراً — وقد وقع ذلك مرّتين هذا الأسبوع.
+// وLanguageTool مدقّق قواعد مفتوح قائم على قواعد لا على نموذج: لا يخترع شيئاً. فيُعرض
+// عليه كل جملة «صحيحة» يقترحها النموذج، فإن وجد فيها خطأً نحوياً أُسقطت البطاقة كلّها.
+// وهو حَكَمٌ لا بديل: إن تعذّر الوصول إليه لا يُسقَط شيء — لا نُعطّل التصحيح لعطلٍ فيه.
+const LT_URL = "https://api.languagetool.org/v2/check";
+const LT_TIMEOUT_MS = 6000;
+// أخطاء لا تُسقِط الجملة: الترقيم والأحرف الكبيرة وأسماء الأعلام — لا تخصّ صحّة التركيب
+const LT_IGNORE = /^(TYPOGRAPHY|CASING|PUNCTUATION|WHITESPACE|CONFUSED_WORDS_PUNCT)/i;
+const LT_IGNORE_RULES = /^(UPPERCASE_SENTENCE_START|PUNCTUATION_PARAGRAPH_END|EN_QUOTES|WHITESPACE_RULE|COMMA_PARENTHESIS_WHITESPACE|DOUBLE_PUNCTUATION)$/;
+async function ltErrors(text: string): Promise<number | null> {
+  const t = String(text || "").trim();
+  if (!t) return 0;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), LT_TIMEOUT_MS);
+  try {
+    const res = await fetch(LT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ text: t, language: "en-US", level: "default" }).toString(),
+      signal: ctrl.signal,
+    });
+    clearTimeout(timer);
+    if (!res.ok) return null;              // لا حكم: لا إسقاط
+    const j = await res.json();
+    const matches = Array.isArray(j?.matches) ? j.matches : [];
+    return matches.filter((m: Record<string, unknown>) => {
+      const rule = (m?.rule || {}) as Record<string, unknown>;
+      const cat = ((rule.category || {}) as Record<string, unknown>).id || "";
+      if (LT_IGNORE.test(String(cat))) return false;
+      if (LT_IGNORE_RULES.test(String(rule.id || ""))) return false;
+      return true;
+    }).length;
+  } catch (_e) {
+    clearTimeout(timer);
+    return null;
+  }
+}
+// يمرّ على سطور FIX ويُسقط ما كان «صحيحه» مكسوراً. يعود بالنصّ وبعدّاد ما أُسقط.
+async function ltJudge(reply: string): Promise<{ text: string; dropped: number; judged: number }> {
+  const lines = String(reply || "").split(/\n/);
+  let dropped = 0, judged = 0;
+  const out: string[] = [];
+  for (const ln of lines) {
+    const m = /^\s*FIX\s*:\s*(.+)$/i.exec(ln);
+    if (!m) { out.push(ln); continue; }
+    const parts = m[1].split("|").map((x) => x.trim());
+    const fixed = parts[1] || "";
+    if (!fixed) { out.push(ln); continue; }
+    const n = await ltErrors(fixed);
+    if (n === null) { out.push(ln); continue; }   // تعذّر الحكم ⇒ يُبقى
+    judged++;
+    if (n > 0) { dropped++; continue; }           // «الصحيح» ليس صحيحاً ⇒ يُسقَط
+    out.push(ln);
+  }
+  return { text: out.join("\n"), dropped, judged };
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
@@ -372,6 +430,12 @@ Deno.serve(async (req) => {
     if (!text) {
       // حُجب أو عاد فارغاً: نُصرّح بالسبب بدل أن نُمرّر فراغاً يبدو ردّاً
       return jsonOut({ error: "tutor_no_text", finishReason: why, provider, model });
+    }
+    // المراجعة وحدها تمرّ على الحَكَم: المحادثة كلامٌ حيّ لا يُدقَّق، والشرح بالعربية
+    if (review) {
+      const j2 = await ltJudge(text);
+      return jsonOut({ ok: true, engine: provider, model, keyName, reply: j2.text,
+        ltDropped: j2.dropped, ltJudged: j2.judged, turns: 1 });
     }
     return jsonOut({ ok: true, engine: provider, model, keyName, reply: text,
       turns: history.length ? Math.floor(history.length / 2) + 1 : 1 });
