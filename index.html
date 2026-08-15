@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260815-1400";
+  var BUILD="build-20260815-2015";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -2322,7 +2322,7 @@ function basicsDivLogRemedy(){
   const dwell=Date.now()-divRemedyAt;
   logAnswer("basics_multdiv","array",divComplete(),String(divTaps),null,dwell,
     {q_text:`${divA} ÷ ${divB}`});
-  divRemedyAt=0;
+  divRemedyAt=0;quotReset();
 }
 // ===== مكتبة الأخطاء المنهجية: الفهرس المنشور بدل استنباطي في كل جلسة =====
 // ثلاث آليات «اكتشفتُها» في الطرح يوم ١٣ أغسطس موصوفةٌ ومسمّاة منذ Brown & Burton
@@ -2512,26 +2512,43 @@ function basicsBugNow(){
     :(basicsCur.opts&&basicsPicked>=0?parseArNum(basicsCur.opts[basicsPicked]):NaN);
   return bugOf(op,o.a,o.b,got);
 }
+// ===== بوّابة «القسمة تُبنى لا تُخمَّن» لعائلة quot_off_one/quot_off_one_up =====
+// ١٣ مرّة عبر يومين، في basics_multdiv وfact_fluency معاً — أكثر تكراراً من أيّ خطأ
+// مسمّى آخر. وفي الأساسيات تحديداً ثلاثةٌ من خمسة وقعت في المرحلتين الثانية والثالثة،
+// حيث لا علاج أصلاً (مصفوفة basicsDivGated تعمل من المرحلة الرابعة فقط). فهذه تسدّ
+// تلك الفجوة بالأداة المبنية أصلاً (المصفوفة نفسها، divArmArray/divArrayHTML) — لا
+// شيء جديد سوى متى تُستدعى. وفي fact_fluency القسمة معالجةٌ أصلاً بلا شرط التكرار
+// (كل خطأ قسمة يفتح المصفوفة هناك)، فلا حاجة لهذه البوّابة هناك — البوّابة الجديدة
+// تخصّ الأساسيات وحدها، حيث الثغرة كانت حقيقية.
+let quotOn=false;
+function quotArm(a,b){divArmArray(a,b);quotOn=true;if(!divRemedyAt)divRemedyAt=Date.now()}
+function quotGated(){return quotOn&&!divComplete()}
+function quotReset(){quotOn=false}
 // أي خطأٍ مسمّى له بوّابة، وأيّها بلا بوّابة بعد. الجدول هو العقد كلّه.
 const BUG_GATES={
   count_all_not_gaps:function(a,b){ob1Arm(a,b)},
   borrow_no_decrement:function(a,b){btArm(a,b)},
+  quot_off_one:function(a,b){quotArm(a,b)},
+  quot_off_one_up:function(a,b){quotArm(a,b)},
 };
-// البوّابتان تُقفلان الانتقال كبوّابة المصفوفة تماماً — والمنع أنفع من التنبيه
+// البوّابات تُقفل الانتقال كبوّابة المصفوفة تماماً — والمنع أنفع من التنبيه
 function basicsOb1Gated(){return ob1On&&!ob1Complete()}
 function basicsBtGated(){return btOn&&!btComplete()}
-function basicsShapeLogRemedy(){
+// دالّةٌ عامّة تُسجّل نتيجة بوّابتي الفجوات والاستلاف وتُصفّرهما — بنطاقٍ (domain) يُمرَّر،
+// فتصلح للأساسيات ولطلاقة الحقائق معاً بلا تكرار الشيفرة (`shapeLogRemedy`)
+function shapeLogRemedy(domain){
   if(ob1On){
-    logAnswer("basics_subborrow","gaps",ob1Complete(),String(ob1Taps),null,
+    logAnswer(domain,"gaps",ob1Complete(),String(ob1Taps),null,
       ob1At?Date.now()-ob1At:null,{q_text:`${ob1A} - ${ob1B}`});
     ob1Reset();
   }
   if(btOn){
-    logAnswer("basics_subborrow","borrow",btComplete(),String(btTaps),null,
+    logAnswer(domain,"borrow",btComplete(),String(btTaps),null,
       btAt?Date.now()-btAt:null,{q_text:`${btA} - ${btB}`});
     btReset();
   }
 }
+function basicsShapeLogRemedy(){shapeLogRemedy("basics_subborrow")}
 // ===== النسبة: مقارنة الجواب بالنطاق الذي اختارته هي =====
 // ٧٠٪ من ٦٠٠: اختارت «بين ٣٠٠ و٦٠٠» ثم كتبت ٦٠ — حدّدت المنطقة الصحيحة وكتبت خارجها،
 // ولم يوقفها شيء. البوّابة جعلتها تُقدّر، ولم تجعلها تُقابل جوابها بتقديرها.
@@ -2607,11 +2624,14 @@ function basicsRecord(ok,resp){
   const dlt=basicsErrDelta();
   const bug=basicsBugNow();
   if(basicsCur&&basicsCur.fam){
-    const A=basicsCur.fam.a,B=basicsCur.fam.b;
+    // basicsOperands لا fam.a/fam.b مباشرةً: في القسمة العائلة نفسها (مثلاً ٤×٩=٣٦)
+    // ليست طرفي السؤال المعروض (٣٦÷٤ أو ٣٦÷٩) — واستعمال fam كان يُسلّح البوّابة
+    // بأرقامٍ غير التي أخطأت فيها فعلاً.
+    const o=basicsOperands();
     if(ok){Object.keys(BUG_GATES).forEach(function(k){shapeRecord(k,false)})}
-    else if(bug&&BUG_GATES[bug.id]){
+    else if(bug&&BUG_GATES[bug.id]&&o){
       shapeRecord(bug.id,true);
-      if(shapeArmed(bug.id))BUG_GATES[bug.id](A,B);
+      if(shapeArmed(bug.id))BUG_GATES[bug.id](o.a,o.b);
     }
   }
   const elapsed=basicsShownAt?Date.now()-basicsShownAt:null;
@@ -2638,7 +2658,7 @@ function basicsRecord(ok,resp){
 }
 function basicsStage1Next(){basicsDropped=false;basicsStreak++;if(basicsStreak>=BASICS_REQ){basicsStage=2;basicsStreak=0}basicsNew()}
 function basicsAdvance(){
-  if(basicsDivGated()||basicsOb1Gated()||basicsBtGated())return;
+  if(basicsDivGated()||basicsOb1Gated()||basicsBtGated()||quotGated())return;
   basicsDivLogRemedy();basicsShapeLogRemedy();
   // النزول قبل الصعود: من أخطأ مرّتين متتاليتين لا يُرفع
   if(basicsDropPending){
@@ -2648,7 +2668,7 @@ function basicsAdvance(){
   if(basicsStreak>=BASICS_REQ&&basicsStage<5){basicsStage++;basicsStreak=0}basicsNew();
 }
 function basicsFinalNext(){
-  if(basicsDivGated()||basicsOb1Gated()||basicsBtGated())return;
+  if(basicsDivGated()||basicsOb1Gated()||basicsBtGated()||quotGated())return;
   basicsDivLogRemedy();basicsShapeLogRemedy();
   if(basicsMasteryStreak>=MASTERY_REQ){basicsNotYet=false;mode="basicsDone";window.scrollTo(0,0);render();return}
   // نفس سقف التقوية: بلا حدّ كانت المرحلة المستقلة لا تنتهي إلا بخمس متتالية، فتتحوّل إلى ضغط عشوائي
@@ -2656,7 +2676,7 @@ function basicsFinalNext(){
   basicsNew();
 }
 function startBasics(sub){mode="basics";
-  basicsMix=(sub==="mixed");basicsSub=basicsMix?pick(BASICS_MIX):sub;basicsStage=1;basicsStreak=0;basicsMasteryStreak=0;basicsFinalCount=0;basicsBestStreak=0;basicsNotYet=false;recentAnswerTimes=[];rapidNudge=false;basicsMidSupport=false;basicsMidRecoveryStreak=0;basicsFinalSupport=false;basicsFinalRecoveryStreak=0;basicsMiss=0;basicsDropPending=false;basicsDropped=false;ob1Reset();btReset();window.scrollTo(0,0);basicsNew()}
+  basicsMix=(sub==="mixed");basicsSub=basicsMix?pick(BASICS_MIX):sub;basicsStage=1;basicsStreak=0;basicsMasteryStreak=0;basicsFinalCount=0;basicsBestStreak=0;basicsNotYet=false;recentAnswerTimes=[];rapidNudge=false;basicsMidSupport=false;basicsMidRecoveryStreak=0;basicsFinalSupport=false;basicsFinalRecoveryStreak=0;basicsMiss=0;basicsDropPending=false;basicsDropped=false;ob1Reset();btReset();quotReset();window.scrollTo(0,0);basicsNew()}
 function renderBasicsDone(){
   const subLabel=BASICS_SUBS[basicsSub].label;
   if(basicsNotYet){
@@ -2778,8 +2798,10 @@ function renderBasics(){
     const diag=(!okNow&&basicsLocked&&basicsSub==="percent")
       ?percentDiagnose(f.a,f.b,f.c,typed?basicsTyped:(basicsCur.opts?basicsCur.opts[basicsPicked]:null)):"";
     const diagBox=diag?`<div style="background:#FEF2F2;border-inline-start:4px solid #EF4444;border-radius:12px;padding:12px 14px;margin-bottom:10px;font-size:14px;line-height:1.8;color:#991B1B"><b>أين اختلّت:</b> ${diag}</div>`:"";
-    const divGate=basicsDivGated();
-    const divBox=(basicsSub==="multdiv"&&basicsLocked&&basicsCur.op==="div"&&basicsStage>=4&&!okNow)
+    const divGate=basicsDivGated()||quotGated();
+    // المرحلة ≥٤ تُعرض المصفوفة على كل خطأ قسمة (كما كانت)؛ وquotGated تُضيف المرحلتين
+    // ٢ و٣ حين يتكرّر خطأ quot_off_one — نفس الأداة، تُستدعى في مكانٍ لم تكن تصله.
+    const divBox=(basicsSub==="multdiv"&&basicsLocked&&basicsCur.op==="div"&&!okNow&&(basicsStage>=4||quotGated()))
       ?`<div style="background:#FEF2F2;border-inline-start:4px solid #EF4444;border-radius:12px;padding:12px 14px;margin-bottom:10px;font-size:14px;line-height:1.8;color:#991B1B">
           <b>لنراها بدل أن نحفظها:</b> كوّني الصفوف حتى تنتهي النقاط — العدد الذي تصلين إليه هو الجواب.
          </div>${divArrayHTML()}<div style="height:12px"></div>`:"";
@@ -2822,6 +2844,19 @@ function unlockTTS(){
 }
 document.addEventListener("touchend",unlockTTS,{capture:true,once:true});
 document.addEventListener("click",unlockTTS,{capture:true,once:true});
+// أصوات المتصفح المدمجة تتفاوت: القديمة المحلّية (localService:true) آلية الوقع،
+// والسحابية (localService:false) وما يحمل اسماً كـNatural/Neural/Enhanced/Premium/Online
+// أقرب لصوتٍ بشري — بلا خدمة خارجية ولا اشتراك، الاختيار وحده يتغيّر من نفس القائمة المتاحة.
+function pickEnglishVoice(voices){
+  const en=voices.filter(v=>v.lang&&v.lang.toLowerCase().startsWith('en'));
+  if(!en.length)return null;
+  const us=en.filter(v=>v.lang==='en-US');
+  const pool=us.length?us:en;
+  return pool.slice().sort((a,b)=>{
+    const score=v=>(v.localService===false?2:0)+(/natural|neural|enhanced|premium|online/i.test(v.name)?2:0);
+    return score(b)-score(a);
+  })[0];
+}
 function speakEnglish(text,onDone){
   try{
     if(!text||!('speechSynthesis' in window)){ttsMark(false);if(onDone)onDone({ok:false,reason:'unsupported'});return}
@@ -2832,7 +2867,7 @@ function speakEnglish(text,onDone){
       try{if(synth.speaking||synth.pending)synth.cancel()}catch(e){}
       const u=new SpeechSynthesisUtterance(text);
       const voices=synth.getVoices();
-      const usVoice=voices.find(v=>v.lang==='en-US')||voices.find(v=>v.lang&&v.lang.startsWith('en'));
+      const usVoice=pickEnglishVoice(voices);
       if(!forceNoLang){u.lang='en-US';u.rate=0.85;try{if(usVoice)u.voice=usVoice}catch(e){}}
       else{u.rate=0.85} // لا نفرض لغة/صوتاً غير متوفرين على الجهاز، نترك المتصفح يختار افتراضياً
       u.onstart=()=>{started=true;ttsMark(true);if(onDone)onDone({ok:true,voicesCount:voices.length,hasEnVoice:!!usVoice,voiceName:usVoice&&usVoice.name,fallback:!!forceNoLang})};
@@ -2915,8 +2950,8 @@ async function runMicDiag(){
 // هذا التعداد يكشف الحقيقة في سطر واحد بدل عشر رسائل تخمين.
 const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEngPlan","startDictation",
   "startPronunciation","startSpeaking","startAudioDiag","runMicDiag","fetchTimeout",
-  "pronStart","pronStop","pronReset","speakStart","speakStop","speakReset","speakEnglish",
-  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","piPickBand","piBandBoxHTML","piArm","piOk","piVals","piGateOn","piGated","piSig1","fsrsUpdate","fsrsIvl","fsrsR","fsrsInitS","fsrsInitD","fsrsNextD","fsrsClampD","fsrsRecallS","fsrsForgetS","tmplKey","spreadTemplates","drawSpread","qzErrRecord","qzDueKeys","qzInjectDue","qzErrOf","qzCardDone","fadeQText","fadeAnsText","fadeGateStart","fadeGateStop","fadeGateNeeded","copyAzRaw","esc","weakPhonemeStr","num0","profileBarHTML","renderHomeCoachOnly","learnerInfo","coachLevel","toMasc","genderizeText","genderizeNode","genderizeInit","lsGet","lsSet","lsDel","pkey","cxShuffleOrder","cxPreStart","cxPreChoose","cxPreNext","cxPreQuit","cxPreCur","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary","coachMode","coachAskHelp","coachEnd","coachReview","coachFixParse","weakClean","coachSaysNow","snapToSuggestion","editDist","coachShowSays","coachParse","coachTopicGo","coachTopicBack","coachTopicClean","coachFreeScene","wbStart","wbPick","wbUnpick","wbCheck","wbHTML","wbReady","wbSay","wbReset","wbNorm","wbDistract","wbStageGet","wbGrade","engBuildFor","dictErrRecord","dictIsBuild","dictCur","renderDictationBuild","planCheckBuild","echoRecord","echoArmed","coachBankOn","coachBankSync","coachBankCheck","fixCardSave","fixCardGrade","bugOf","basicsOpNow","basicsOperands","basicsBugNow","digitsOf","factDcpm","factDcpmBand","coachLeave","coachAutoReview","coachSetFail","coachHintNow","basicsErrDelta","shapeRecord","shapeArmed","ob1Arm","ob1Jump","ob1Back","ob1Complete","ob1BoxHTML","btArm","btBorrow","btComplete","btBoxHTML","basicsOb1Gated","basicsBtGated","basicsShapeLogRemedy","listenBankFor","listenSrsUpdate","buildListenPlan","listenPlaysHint","startListen","listenPlay","listenChoose","listenNext","renderListen","errCollect","errDraw","errCount","errQuizCount","startErrors","errCheck","errChoose","errNext","errReplay","renderErrors"];
+  "pronStart","pronStop","pronReset","speakStart","speakStop","speakReset","speakEnglish","pickEnglishVoice",
+  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","piPickBand","piBandBoxHTML","piArm","piOk","piVals","piGateOn","piGated","piSig1","fsrsUpdate","fsrsIvl","fsrsR","fsrsInitS","fsrsInitD","fsrsNextD","fsrsClampD","fsrsRecallS","fsrsForgetS","tmplKey","spreadTemplates","drawSpread","qzErrRecord","qzDueKeys","qzInjectDue","qzErrOf","qzCardDone","fadeQText","fadeAnsText","fadeGateStart","fadeGateStop","fadeGateNeeded","copyAzRaw","esc","weakPhonemeStr","num0","profileBarHTML","renderHomeCoachOnly","learnerInfo","coachLevel","toMasc","genderizeText","genderizeNode","genderizeInit","lsGet","lsSet","lsDel","pkey","cxShuffleOrder","cxPreStart","cxPreChoose","cxPreNext","cxPreQuit","cxPreCur","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary","coachMode","coachAskHelp","coachEnd","coachReview","coachFixParse","weakClean","coachSaysNow","snapToSuggestion","editDist","coachShowSays","coachParse","coachTopicGo","coachTopicBack","coachTopicClean","coachFreeScene","wbStart","wbPick","wbUnpick","wbCheck","wbHTML","wbReady","wbSay","wbReset","wbNorm","wbDistract","wbStageGet","wbGrade","engBuildFor","dictErrRecord","dictIsBuild","dictCur","renderDictationBuild","planCheckBuild","echoRecord","echoArmed","coachBankOn","coachBankSync","coachBankCheck","fixCardSave","fixCardGrade","bugOf","basicsOpNow","basicsOperands","basicsBugNow","digitsOf","factDcpm","factDcpmBand","coachLeave","coachAutoReview","coachSetFail","coachHintNow","basicsErrDelta","shapeRecord","shapeArmed","ob1Arm","ob1Jump","ob1Back","ob1Complete","ob1BoxHTML","btArm","btBorrow","btComplete","btBoxHTML","basicsOb1Gated","basicsBtGated","basicsShapeLogRemedy","shapeLogRemedy","quotArm","quotGated","quotReset","listenBankFor","listenSrsUpdate","buildListenPlan","listenPlaysHint","startListen","listenPlay","listenChoose","listenNext","renderListen","errCollect","errDraw","errCount","errQuizCount","startErrors","errCheck","errChoose","errNext","errReplay","renderErrors"];
 function censusMissing(){return CENSUS.filter(function(n){return typeof window[n]!=="function"})}
 function censusHTML(){
   var miss=censusMissing();
@@ -5667,7 +5702,11 @@ function buildListenPlan(){
   const st=listenSrsLoad(),today=srsToday(),POOL=listenBankFor(profileOf().level);
   const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
   const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
-  return due.concat(fresh).slice(0,LISTEN_N);
+  let out=due.concat(fresh).slice(0,LISTEN_N);
+  // بنكٌ ثابتٌ صغير (١٠/مستوى) يُستنفَد بجلسةٍ أو جلستين فتُقفَل «الاستماع» بلا سبب —
+  // نفس ما تحلّه buildSpeakSession أصلاً: مراجعة حرّة من البنك كلّه بدل شاشة فارغة.
+  if(!out.length)out=shuffle(POOL).slice(0,LISTEN_N);
+  return out;
 }
 // الاستماع مرّتين معياريٌّ للمبتدئ (A1/A2) — يُخفّف الحمل المعرفي؛ ومرّة واحدة لِمن
 // فوقها (B1)، وهو الفارق نفسه بين YLE/KET (مرّتان) وIELTS (مرّة). إرشادٌ لا قفل تقني.
@@ -6672,7 +6711,13 @@ let factShownAt=0,factCueOn=false,factLog=[],factRemedyAt=0,factRemedyId=null;
 // وإكمال المصفوفة ممكن دائماً: الزرّ يتوقّف عند المجموع بالضبط ولا يتجاوزه.
 function factGated(){
   const it=factCur();
-  if(!factLocked||!it||it.op!=="div")return false;
+  if(!factLocked||!it)return false;
+  // بوّابتا الفجوات والاستلاف موصولتان هنا أيضاً — الآلية نفسها المبنية في الأساسيات
+  // (ob1On/btOn عامّتان، لا basics فيهما)، ونجحت هناك (١٤/١٦ بعد أن كانت ٠/١٥).
+  // والخطأ نفسه (count_all_not_gaps) تكرّر هنا ٤ مرّات بلا علاج قبل هذا الوصل.
+  if(ob1On&&!ob1Complete())return true;
+  if(btOn&&!btComplete())return true;
+  if(it.op!=="div")return false;
   if(parseInt(factInput,10)===it.ans)return false;
   return !divComplete();
 }
@@ -6687,6 +6732,7 @@ function startFactPlan(){
   const p=buildFactPlan();
   factItems=p.items;factMeta=p;factIdx=0;factInput="";factLocked=false;factScore=0;factDone=false;
   factTotal=factItems.length;factLog=[];
+  ob1Reset();btReset();
   factArm();
   mode="factplan";window.scrollTo(0,0);render();
   setTimeout(()=>{const el=document.getElementById('factIn');if(el)el.focus()},50);
@@ -6729,17 +6775,28 @@ function factCheck(){
   factSrsUpdate(it.id,ok);
   // اسم الخطأ من الفهرس هنا أيضاً: القسمة أضعف عملياتها، والفهرس يقول لماذا
   const fbug=ok?null:bugOf(it.op,it.a,it.b,parseInt(val,10));
+  // بوّابتا الطرح (ob1/bt) موصولتان هنا: نفس شكل الخطأ الذي عولج في الأساسيات كان
+  // يتكرّر هنا بلا علاج (count_all_not_gaps: ٤ مرّات). القسمة لا تحتاج وصلاً مماثلاً —
+  // لها علاجها العامّ أعلاه أصلاً على كل خطأ، بلا شرط تكرار.
+  if(!ok&&it.op==="sub"&&fbug&&BUG_GATES[fbug.id]){
+    shapeRecord(fbug.id,true);
+    if(shapeArmed(fbug.id))BUG_GATES[fbug.id](it.a,it.b);
+  }else if(ok){
+    shapeRecord("count_all_not_gaps",false);shapeRecord("borrow_no_decrement",false);
+  }
   logAnswer("fact_fluency",it.op,ok,val+(fbug?" · "+fbug.id:""),it.id,ms,
     {q_text:`${it.a} ${FACT_OP_SYM[it.op]} ${it.b}`});
   render();
 }
 // نقيس التفاعل مع المصفوفة بدل أن نستنتجه من فروق الأزمنة: كم ضغطة، وهل أُكملت، وكم مكثت
 function factLogRemedy(){
-  if(!factRemedyAt)return;
-  const dwell=Date.now()-factRemedyAt,done=divComplete();
-  factLog.push({op:"div",remedy:true,taps:divTaps,done,ms:dwell});
-  logAnswer("fact_fluency","array",done,String(divTaps),factRemedyId,dwell,{q_text:`${divA} ÷ ${divB}`});
-  factRemedyAt=0;factRemedyId=null;
+  if(factRemedyAt){
+    const dwell=Date.now()-factRemedyAt,done=divComplete();
+    factLog.push({op:"div",remedy:true,taps:divTaps,done,ms:dwell});
+    logAnswer("fact_fluency","array",done,String(divTaps),factRemedyId,dwell,{q_text:`${divA} ÷ ${divB}`});
+    factRemedyAt=0;factRemedyId=null;
+  }
+  shapeLogRemedy("fact_fluency");
 }
 function factNext(){
   if(factGated())return;   // لا تخطٍّ قبل إكمال المصفوفة
@@ -6767,6 +6824,8 @@ function renderFactPlan(){
   const hint=factLocked&&!ok?`<div class="explain"><div class="explain-title" style="color:#B45309">استراتيجية أسرع من العدّ:</div><div class="explain-body">${factStrategy(it.op,it.a,it.b,it.ans,!!arr)}${arr}</div></div>`:"";
   // التلميح المسبق: طريقة التفكير بلا الجواب — للحقيقة الجديدة أو التي أخطأت فيها آخر مرة فقط
   const cue=(!factLocked&&factCueOn)?`<div style="background:#FFFBEB;border-inline-start:4px solid #F59E0B;border-radius:12px;padding:12px 14px;margin:14px 0 0;font-size:14px;line-height:1.9;color:#92400E;text-align:start">💡 ${factCue(it.op,it.a,it.b)}</div>`:"";
+  // بوّابتا الفجوات والاستلاف — الأداة نفسها الموصولة من الأساسيات، لا رسمٌ ثانٍ
+  const subBox=ob1On?ob1BoxHTML():(btOn?btBoxHTML():"");
   app.innerHTML=`${head}
   <div class="card" style="text-align:center">
     <span class="tag" style="background:#F0FDFA;color:#0D9488">🧮 استرجاع سريع — بلا عدّ ولا أصابع</span>
@@ -6774,11 +6833,11 @@ function renderFactPlan(){
     <div style="font-size:40px;font-weight:800;letter-spacing:4px;margin:24px 0;direction:ltr">${toAr(it.a)} ${FACT_OP_SYM[it.op]} ${toAr(it.b)} = ؟</div>
     <input id="factIn" ${factLocked?`disabled value="${String(factInput).replace(/[^0-9\-]/g,"").slice(0,8)}"`:""} type="tel" inputmode="numeric" style="width:140px;padding:14px;border-radius:12px;border:2px solid ${factLocked?(ok?'#10B981':'#EF4444'):'#E2E8F0'};font-size:26px;text-align:center;font-weight:800" autocomplete="off" onkeydown="if(event.key==='Enter')factCheck()">
     ${factLocked?`<div style="margin-top:10px;font-weight:800;color:${ok?'#059669':'#DC2626'}">${ok?"✓ صحيح":"الصحيح: "+toAr(it.ans)}</div>`:""}
-    ${cue}${hint}
+    ${cue}${hint}${subBox}
   </div>
   ${factLocked
     ?(factGated()
-      ?`<div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:12px;padding:14px;text-align:center;font-size:14px;color:#92400E;line-height:1.8">🔒 أكملي الصفوف أعلاه ليظهر زرّ التالي<br><span style="font-size:12px">اضغطي «+ صفّ» حتى تنتهي النقاط — هذه هي القسمة نفسها</span></div>`
+      ?`<div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:12px;padding:14px;text-align:center;font-size:14px;color:#92400E;line-height:1.8">🔒 ${(ob1On||btOn)?"أكملي الخطوات أعلاه ليظهر زرّ التالي":"أكملي الصفوف أعلاه ليظهر زرّ التالي"}<br><span style="font-size:12px">${(ob1On||btOn)?"هذا الخطأ تكرّر بشكله نفسه — لنبنِه بدل أن نُخمّنه":"اضغطي «+ صفّ» حتى تنتهي النقاط — هذه هي القسمة نفسها"}</span></div>`
       :`<button class="btn" style="background:#0D9488" onclick="factNext()">${factIdx+1>=factItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`)
     :`<button class="btn" style="background:#0D9488" onclick="factCheck()">تحقّقي ←</button>`}`;
 }

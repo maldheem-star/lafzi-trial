@@ -57,9 +57,13 @@ ok(nofalse&&nofalse.id==='carry_dropped','ونسيان الحمل يُسمّى �
 
 console.log('\n٤) البوّابة معلّقة على اسم الخطأ لا على فرقٍ مكتوب في الشيفرة');
 const gates=await page.evaluate(()=>Object.keys(BUG_GATES));
-ok(gates.indexOf('count_all_not_gaps')>=0&&gates.indexOf('borrow_no_decrement')>=0,
+ok(gates.indexOf('count_all_not_gaps')>=0&&gates.indexOf('borrow_no_decrement')>=0
+   &&gates.indexOf('quot_off_one')>=0&&gates.indexOf('quot_off_one_up')>=0,
    `جدول البوّابات: ${gates.join(' · ')}`);
-ok(gates.length===2,'وعائلة −١ بلا بوّابة بعد — تُقرَّر بعد أثر الاثنتين');
+// أضيفت بوّابة القسمة (١٥ أغسطس: ١٣ مرّة عبر يومين، أكثر من أيّ خطأ آخر) بالأداة
+// المبنية أصلاً (المصفوفة) — سطرٌ في الجدول لا بناءٌ جديد. وعائلة −١ في الطرح تبقى
+// بلا بوّابة بعد — تُقرَّر بعد أثر الثلاث.
+ok(gates.length===4,'أربع بوّاباتٍ الآن — لا عائلة −١ بعد');
 // وتُسلَّح فعلاً من الاسم
 const armed=await page.evaluate(()=>{
   try{lsDel('mawhiba_basics_shape_v1')}catch(e){}

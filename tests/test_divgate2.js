@@ -73,9 +73,13 @@ ok(await page.evaluate(()=>basicsDivGated())===false,'وقسمة صحيحة: ب�
 ok((await page.textContent('#app')).includes('حللتِها وحدك'),'وتُهنَّأ');
 await page.close();
 
-console.log('\n٥) المراحل ١-٣ بلا بوّابة (فيها الشرح أصلاً)');
+console.log('\n٥) المراحل ١-٣ بلا بوّابة basicsDivGated العامة (فيها الشرح أصلاً)');
 page=await mk();
 for(const st of [2,3]){
+  // مسح شكل الأخطاء بين التكرارين: نفس السؤال (٢٤÷٦) واختيار الخطأ نفسه قد يُسمّى
+  // بالآلية نفسها مرّتين فتُسلَّح بوّابة quot الجديدة — وهذا مقصودٌ ومُختبَرٌ في
+  // test_gates2.js. هنا نختبر basicsDivGated وحدها، فنعزل الحالتين.
+  await page.evaluate(()=>{try{lsDel('mawhiba_basics_shape_v1')}catch(e){}});
   await putDiv(page,24,6,st);
   await page.evaluate(()=>basicsChoose(basicsCur.ai===0?1:0));
   ok(await page.evaluate(()=>basicsDivGated())===false,`المرحلة ${st}: بلا بوّابة`);
