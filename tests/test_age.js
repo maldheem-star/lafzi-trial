@@ -40,14 +40,16 @@ ok(P.every(p=>p.age>0&&p.level),`لكلٍّ عمره ومستواه: ${P.map(p=>
 ok(P.filter(p=>p.id==='mohammed')[0].age===19,'ومحمد ١٩');
 ok(P.filter(p=>p.id==='haya')[0].age===11,'وهيا ١١');
 
-console.log('\n٢) هيا: A2 وحدها، وA1 مع الدعم');
+console.log('\n٢) هيا: A1 وحدها ومع الدعم — قاع السلّم، لا هبوط تحته');
+// المستوى نزل A2⇐A1 يوم ١٥ أغسطس: إنتاجها المنطوق شظايا ونسخٌ حرفيّ، ودقّة قواعدها
+// على تراكيب فوق الأساسي ٣٥٪. وA1 قاع خريطة coachLevel، فالدعم لا يُنزلها أكثر.
 await page.evaluate(()=>{startCoach();coachPick(0);coachMode('solo')});
-ok(await page.evaluate(()=>coachLevel())==='A2','وحدها A2');
+ok(await page.evaluate(()=>coachLevel())==='A1','وحدها A1');
 await page.evaluate(()=>{startCoach();coachPick(0);coachMode('suggest')});
-ok(await page.evaluate(()=>coachLevel())==='A1','ومع الجمل A1');
+ok(await page.evaluate(()=>coachLevel())==='A1','ومع الجمل تبقى A1 — لا أسفل منها');
 calls.length=0;await turn(page);await page.waitForTimeout(200);
-ok((calls[0]||{}).learner.age===11&&(calls[0]||{}).learner.level==='A2','وعمرها ومستواها الأصلي يصلان مع الطلب');
-ok((calls[0]||{}).level==='A1','ومستوى الحديث المخفَّض معه');
+ok((calls[0]||{}).learner.age===11&&(calls[0]||{}).learner.level==='A1','وعمرها ومستواها الأصلي يصلان مع الطلب');
+ok((calls[0]||{}).level==='A1','ومستوى الحديث عند القاع كذلك');
 
 console.log('\n٣) محمد: B1 وحده، وA2 مع الدعم — لا يهبط إلى مستواها');
 const m=await mk('mohammed.html');

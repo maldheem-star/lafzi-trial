@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260814-0900";
+  var BUILD="build-20260815-1400";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -134,7 +134,9 @@
 // العمر والمستوى في الملفّ لا في الشيفرة: كان النموذج يُخاطب الجميع بعمر إحدى عشرة
 // سنة، فبينما يتحدّث محمد (١٩) عن الجامعة ومصروفها يُعرض عليه «I want new shoes».
 const PROFILES=[
-  {id:"haya",name:"هيا",alias:"بنتي",emoji:"🌸",color:"#DB2777",g:"f",age:11,level:"A2"},
+  // A1 لا A2: قياس ١٥ أغسطس — إنتاجها المنطوق شظايا ونسخٌ حرفيّ («I want beach.»،
+  // «I eat a sandwich.»)، ودقّة قواعدها على تراكيب فوق الأساسي ٦٦/١٨٩ (٣٥٪).
+  {id:"haya",name:"هيا",alias:"بنتي",emoji:"🌸",color:"#DB2777",g:"f",age:11,level:"A1"},
   {id:"mohammed",name:"محمد",alias:"محمد",emoji:"⚽",color:"#0E7490",g:"m",only:"coach",age:19,level:"B1"},
   {id:"elias",name:"إلياس",alias:"إلياس",emoji:"🚀",color:"#7C3AED",g:"m",only:"coach",age:18,level:"A2"},
 ];
@@ -2914,7 +2916,7 @@ async function runMicDiag(){
 const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEngPlan","startDictation",
   "startPronunciation","startSpeaking","startAudioDiag","runMicDiag","fetchTimeout",
   "pronStart","pronStop","pronReset","speakStart","speakStop","speakReset","speakEnglish",
-  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","piPickBand","piBandBoxHTML","piArm","piOk","piVals","piGateOn","piGated","piSig1","fsrsUpdate","fsrsIvl","fsrsR","fsrsInitS","fsrsInitD","fsrsNextD","fsrsClampD","fsrsRecallS","fsrsForgetS","tmplKey","spreadTemplates","drawSpread","qzErrRecord","qzDueKeys","qzInjectDue","qzErrOf","qzCardDone","fadeQText","fadeAnsText","fadeGateStart","fadeGateStop","fadeGateNeeded","copyAzRaw","esc","weakPhonemeStr","num0","profileBarHTML","renderHomeCoachOnly","learnerInfo","coachLevel","toMasc","genderizeText","genderizeNode","genderizeInit","lsGet","lsSet","lsDel","pkey","cxShuffleOrder","cxPreStart","cxPreChoose","cxPreNext","cxPreQuit","cxPreCur","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary","coachMode","coachAskHelp","coachEnd","coachReview","coachFixParse","weakClean","coachSaysNow","snapToSuggestion","editDist","coachShowSays","coachParse","coachTopicGo","coachTopicBack","coachTopicClean","coachFreeScene","wbStart","wbPick","wbUnpick","wbCheck","wbHTML","wbReady","wbSay","wbReset","wbNorm","wbDistract","wbStageGet","wbGrade","engBuildFor","dictErrRecord","dictIsBuild","dictCur","renderDictationBuild","planCheckBuild","echoRecord","echoArmed","coachBankOn","coachBankSync","coachBankCheck","fixCardSave","fixCardGrade","bugOf","basicsOpNow","basicsOperands","basicsBugNow","digitsOf","factDcpm","factDcpmBand","coachLeave","coachAutoReview","coachSetFail","coachHintNow","basicsErrDelta","shapeRecord","shapeArmed","ob1Arm","ob1Jump","ob1Back","ob1Complete","ob1BoxHTML","btArm","btBorrow","btComplete","btBoxHTML","basicsOb1Gated","basicsBtGated","basicsShapeLogRemedy","errCollect","errDraw","errCount","errQuizCount","startErrors","errCheck","errChoose","errNext","errReplay","renderErrors"];
+  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","piPickBand","piBandBoxHTML","piArm","piOk","piVals","piGateOn","piGated","piSig1","fsrsUpdate","fsrsIvl","fsrsR","fsrsInitS","fsrsInitD","fsrsNextD","fsrsClampD","fsrsRecallS","fsrsForgetS","tmplKey","spreadTemplates","drawSpread","qzErrRecord","qzDueKeys","qzInjectDue","qzErrOf","qzCardDone","fadeQText","fadeAnsText","fadeGateStart","fadeGateStop","fadeGateNeeded","copyAzRaw","esc","weakPhonemeStr","num0","profileBarHTML","renderHomeCoachOnly","learnerInfo","coachLevel","toMasc","genderizeText","genderizeNode","genderizeInit","lsGet","lsSet","lsDel","pkey","cxShuffleOrder","cxPreStart","cxPreChoose","cxPreNext","cxPreQuit","cxPreCur","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary","coachMode","coachAskHelp","coachEnd","coachReview","coachFixParse","weakClean","coachSaysNow","snapToSuggestion","editDist","coachShowSays","coachParse","coachTopicGo","coachTopicBack","coachTopicClean","coachFreeScene","wbStart","wbPick","wbUnpick","wbCheck","wbHTML","wbReady","wbSay","wbReset","wbNorm","wbDistract","wbStageGet","wbGrade","engBuildFor","dictErrRecord","dictIsBuild","dictCur","renderDictationBuild","planCheckBuild","echoRecord","echoArmed","coachBankOn","coachBankSync","coachBankCheck","fixCardSave","fixCardGrade","bugOf","basicsOpNow","basicsOperands","basicsBugNow","digitsOf","factDcpm","factDcpmBand","coachLeave","coachAutoReview","coachSetFail","coachHintNow","basicsErrDelta","shapeRecord","shapeArmed","ob1Arm","ob1Jump","ob1Back","ob1Complete","ob1BoxHTML","btArm","btBorrow","btComplete","btBoxHTML","basicsOb1Gated","basicsBtGated","basicsShapeLogRemedy","listenBankFor","listenSrsUpdate","buildListenPlan","listenPlaysHint","startListen","listenPlay","listenChoose","listenNext","renderListen","errCollect","errDraw","errCount","errQuizCount","startErrors","errCheck","errChoose","errNext","errReplay","renderErrors"];
 function censusMissing(){return CENSUS.filter(function(n){return typeof window[n]!=="function"})}
 function censusHTML(){
   var miss=censusMissing();
@@ -5596,6 +5598,136 @@ function renderErrors(){
   ${errLocked?`<button class="btn" style="background:#DB2777" onclick="errNext()">${errIdx+1>=errItems.length?"إنهاء":"التالي ←"}</button>`:""}`;
 }
 
+// ===== الاستماع: فهم مسموع، لا إملاء =====
+// طُلب تصنيف مستوى الثلاثة (١٥ أغسطس)، وكشف أن هيا A1 لا A2 — وبقيت ثغرة: لا قسم
+// يقيس **الفهم** المسموع أصلاً. الإملاء يقيس التفريغ الحرفي (تكتب ما سُمع)، والمحادثة
+// تقيس الإنتاج. وبينهما فجوة: أن تفهم معنى ما يُقال بلا أن تُنتجه أو تكتبه حرفاً حرفاً.
+//
+// والصيغة معياريّة لا مخترعة: نظام Cambridge (YLE/KET/PET) وTOEFL Junior يستعملان
+// جميعاً الصيغة نفسها — مقطعٌ قصير يُسمع، فسؤال اختيار من متعدد عن معناه، والسؤال
+// يُعرض قبل الاستماع ليُصغى بانتقائية (وليس بعده كبوّابة). وIELTS للمستويات الأعلى
+// يكتفي بمرّة واحدة؛ الأدنى (YLE/KET/PET) يسمح بمرّتين — والفرق موثّق: الاستماع
+// المتكرّر يُخفّف الحمل المعرفي عند المبتدئ ولا يلزم عند الأعلى. والزرّ 🔊 لا يُقفَل
+// عدد ضغطاته تقنياً (لا فائدة تشخيصية من منعه) — يُسجَّل عدده فحسب.
+//
+// ووصفُ كل مستوى من CEFR نفسه (لا حدسي): A1 «كلمات وعبارات مألوفة عن نفسها وأسرتها
+// ومحيطها، بكلامٍ بطيء واضح». A2 «العبارات الأكثر شيوعاً في ما يخصّها مباشرة، وتلتقط
+// الفكرة في رسائل قصيرة واضحة». B1 «الفكرة الرئيسية في كلامٍ معياريّ واضح عن أمور
+// مألوفة». والمحتوى نفسه (النصوص) يبقى مؤلَّفاً بالضرورة — لا بنك مسموعات مفتوحة
+// الرخصة يصلح لمتعلّمين عرب بمستوى A1-B1 (فُحص: VOA Learning English عامّ النطاق
+// لموادّه الأصلية وحدها، وBBC Learning English محظور إعادة توزيعه، وTatoeba تراخيصها
+// لكل تسجيلٍ على حدة وغالباً جملة واحدة لا حواراً) — فالتأليف هنا كما يفعله كل مصدرٍ
+// معياريّ بنفسه، لا بناءً من الصفر للآلية أو الصيغة.
+const LISTEN_BANK=[
+  // A1 — عبارة واحدة أو عبارتان قصيرتان، حقيقة واحدة ملموسة (اسم/عمر/لون/عدد/يوم)
+  {id:"ls_a1_1",lv:"A1",audio:"My name is Lina. I am ten years old.",q:"كم عمر لينا؟",c:["٩","١٠","١١"],a:1},
+  {id:"ls_a1_2",lv:"A1",audio:"I have a red bag.",q:"ما لون الحقيبة؟",c:["أحمر","أزرق","أخضر"],a:0},
+  {id:"ls_a1_3",lv:"A1",audio:"This is my brother. His name is Sami.",q:"ما اسم الأخ؟",c:["سعد","سامي","سالم"],a:1},
+  {id:"ls_a1_4",lv:"A1",audio:"I have two cats and one dog.",q:"كم قطة عندها؟",c:["واحدة","اثنتان","ثلاث"],a:1},
+  {id:"ls_a1_5",lv:"A1",audio:"It is Monday today.",q:"أيّ يوم اليوم؟",c:["الأحد","الاثنين","الثلاثاء"],a:1},
+  {id:"ls_a1_6",lv:"A1",audio:"My favourite colour is green.",q:"ما لونها المفضّل؟",c:["أخضر","أصفر","بنفسجي"],a:0},
+  {id:"ls_a1_7",lv:"A1",audio:"I live in a small white house.",q:"ما لون البيت؟",c:["أبيض","أسود","بنّي"],a:0},
+  {id:"ls_a1_8",lv:"A1",audio:"I have three books on the table.",q:"كم كتاباً على الطاولة؟",c:["اثنان","ثلاثة","أربعة"],a:1},
+  {id:"ls_a1_9",lv:"A1",audio:"My mother is a teacher.",q:"ما عمل الأمّ؟",c:["طبيبة","معلّمة","مهندسة"],a:1},
+  {id:"ls_a1_10",lv:"A1",audio:"I go to school by bus.",q:"كيف تذهب إلى المدرسة؟",c:["بالسيّارة","بالحافلة","مشياً"],a:1},
+  // A2 — حوار قصير من دورين، والسؤال عن الفكرة أو تفصيل واحد لا أكثر
+  {id:"ls_a2_1",lv:"A2",audio:"A: Would you like tea or coffee? B: Coffee, please, with a little sugar.",q:"ماذا طلب المتحدّث الثاني؟",c:["شاي بسكّر","قهوة بسكّر قليل","قهوة بلا سكّر"],a:1},
+  {id:"ls_a2_2",lv:"A2",audio:"A: Excuse me, where is the bank? B: It's next to the pharmacy, on the left.",q:"أين البنك؟",c:["بجانب المدرسة","بجانب الصيدلية","أمام المسجد"],a:1},
+  {id:"ls_a2_3",lv:"A2",audio:"A: What time does the shop open? B: It opens at nine in the morning.",q:"متى يفتح المحلّ؟",c:["الثامنة","التاسعة","العاشرة"],a:1},
+  {id:"ls_a2_4",lv:"A2",audio:"A: How much is this shirt? B: It's twenty riyals, but the blue one is fifteen.",q:"كم سعر القميص الأزرق؟",c:["١٥ ريالاً","٢٠ ريالاً","٢٥ ريالاً"],a:0},
+  {id:"ls_a2_5",lv:"A2",audio:"A: Are you free this weekend? B: Yes, but only on Saturday, not Friday.",q:"متى هو متفرّغ؟",c:["الجمعة فقط","السبت فقط","الجمعة والسبت"],a:1},
+  {id:"ls_a2_6",lv:"A2",audio:"I usually wake up at seven, but today I woke up late, at nine.",q:"متى استيقظت اليوم؟",c:["السابعة","الثامنة","التاسعة"],a:2},
+  {id:"ls_a2_7",lv:"A2",audio:"A: Can I have a large pizza, please? B: Sorry, we only have medium and small today.",q:"أيّ حجم غير متوفّر؟",c:["كبير","متوسّط","صغير"],a:0},
+  {id:"ls_a2_8",lv:"A2",audio:"My brother plays football on Tuesdays and swims on Thursdays.",q:"متى يسبح أخوها؟",c:["الثلاثاء","الخميس","السبت"],a:1},
+  {id:"ls_a2_9",lv:"A2",audio:"A: Did you finish your homework? B: Not yet, I need ten more minutes.",q:"هل أنهى الواجب؟",c:["نعم","لا، يحتاج وقتاً أطول","لا يوجد واجب"],a:1},
+  {id:"ls_a2_10",lv:"A2",audio:"The train to Riyadh leaves at six, but it is fifteen minutes late today.",q:"متى سيصل القطار تقريباً اليوم؟",c:["السادسة","السادسة وربع","السابعة"],a:1},
+  // B1 — مقطعٌ من أربع إلى ست جمل يسرد تجربة أو يشرح موقفاً، والسؤال عن الفكرة الرئيسية أو تفصيل يحتاج تتبّعاً
+  {id:"ls_b1_1",lv:"B1",audio:"Last weekend I went to Jeddah with my friends. We stayed at my cousin's house for two nights. On Saturday we went to the beach and had lunch by the sea. It was a great trip, even though the weather was a bit hot.",q:"ما الفكرة الرئيسية؟",c:["رحلة إلى جدّة مع الأصدقاء","يوم عمل في جدّة","زيارة طبيب في جدّة"],a:0},
+  {id:"ls_b1_2",lv:"B1",audio:"I've been trying to learn to cook this year. At first it was difficult, and I burned a few meals. But now I can make simple dishes like rice and grilled chicken. My family says my cooking is improving.",q:"ما الذي تحسّن؟",c:["مهارته في السباحة","مهارته في الطبخ","مهارته في القيادة"],a:1},
+  {id:"ls_b1_3",lv:"B1",audio:"Our college is planning a new library. It will have more computers and a quiet study area on the second floor. Students are excited because the old library was always full and noisy.",q:"لماذا الطلّاب متحمّسون؟",c:["مكتبة جديدة أهدأ وأوسع","إجازة جديدة","مبنى رياضي جديد"],a:0},
+  {id:"ls_b1_4",lv:"B1",audio:"I work part-time at a coffee shop on weekends to help pay for my phone and transportation. It's tiring sometimes, especially in the morning shift, but I like meeting new people every day.",q:"لماذا يعمل جزئياً؟",c:["ليساعد في مصروفه","لأنّ العائلة تطلب منه","لأنه يحبّ القهوة فقط"],a:0},
+  {id:"ls_b1_5",lv:"B1",audio:"The weather this week has been unusual — very hot on Sunday, then suddenly rainy on Wednesday. People are saying it might rain again this weekend, which is rare for this time of year.",q:"ما غير المعتاد؟",c:["الحرّ فقط","المطر في هذا الوقت من السنة","البرد الشديد"],a:1},
+];
+function listenBankFor(level){
+  const L=String(level||"A2");
+  const exact=LISTEN_BANK.filter(function(x){return x.lv===L});
+  return exact.length?exact:LISTEN_BANK.filter(function(x){return x.lv==="A1"});
+}
+const LISTEN_SRS_KEY="mawhiba_listen_srs";
+function listenSrsLoad(){try{return JSON.parse(lsGet(LISTEN_SRS_KEY)||"{}")}catch(e){return{}}}
+function listenSrsSave(o){try{lsSet(LISTEN_SRS_KEY,JSON.stringify(o))}catch(e){}}
+function listenSrsUpdate(id,ok){
+  const st=listenSrsLoad(),r=st[id]||{box:0,seen:0};
+  const n=fsrsUpdate(r,ok,srsToday());
+  r.box=n.box;r.due=n.due;r.seen=n.seen;r.s=n.s;r.d=n.d;r.last=n.last;
+  st[id]=r;listenSrsSave(st);
+}
+const LISTEN_N=8;   // جلسة قصيرة — بنك المستوى الواحد عشرة عناصر، فلا تُستنفَد كل جلسة
+function buildListenPlan(){
+  const st=listenSrsLoad(),today=srsToday(),POOL=listenBankFor(profileOf().level);
+  const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
+  const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
+  return due.concat(fresh).slice(0,LISTEN_N);
+}
+// الاستماع مرّتين معياريٌّ للمبتدئ (A1/A2) — يُخفّف الحمل المعرفي؛ ومرّة واحدة لِمن
+// فوقها (B1)، وهو الفارق نفسه بين YLE/KET (مرّتان) وIELTS (مرّة). إرشادٌ لا قفل تقني.
+function listenPlaysHint(lv){return lv==="B1"?"استمع مرّة واحدة إن استطعت، ثم اختر":"استمعي مرّتين، ثم اختاري"}
+let listenItems=[],listenIdx=0,listenPicked=-1,listenLocked=false,listenScore=0,listenPlays=0,listenShownAt=0,listenDone=false;
+function startListen(){
+  listenItems=buildListenPlan();listenIdx=0;listenPicked=-1;listenLocked=false;listenScore=0;listenPlays=0;listenDone=false;
+  mode="listen";listenShownAt=Date.now();window.scrollTo(0,0);render();
+}
+function listenCur(){return listenItems[listenIdx]}
+function listenPlay(){const it=listenCur();if(!it)return;listenPlays++;speakEnglish(it.audio)}
+function listenChoose(i){
+  if(listenLocked)return;
+  const it=listenCur();listenLocked=true;listenPicked=i;
+  const ok=i===it.a;if(ok)listenScore++;
+  listenSrsUpdate(it.id,ok);
+  logAnswer("listen",it.lv,ok,it.c[i],it.id,listenShownAt?Date.now()-listenShownAt:null,
+    {q_text:(it.q+" · plays:"+listenPlays).slice(0,300)});
+  render();
+}
+function listenNext(){
+  if(listenIdx+1>=listenItems.length){listenDone=true;window.scrollTo(0,0);render();return}
+  listenIdx++;listenPicked=-1;listenLocked=false;listenPlays=0;listenShownAt=Date.now();render();
+  setTimeout(function(){listenPlay()},300);
+}
+function renderListen(){
+  if(!listenItems.length){app.innerHTML=`<div class="card" style="text-align:center">لا شيء مستحقّ اليوم — عودي غداً 🌱</div><button class="link-btn" onclick="home()">→ الرئيسية</button>`;return}
+  if(listenDone)return renderListenResult();
+  const it=listenCur();
+  const prog=`<div class="bar">${listenItems.map(function(_,i){return `<div class="seg" style="background:${i<=listenIdx?'#0284C7':'#E2E8F0'};opacity:${i<=listenIdx?1:.5}"></div>`}).join("")}</div>`;
+  const choices=it.c.map(function(c,i){
+    let bg="#fff",bd="#E2E8F0",col="#334155";
+    if(listenLocked){if(i===it.a){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(i===listenPicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}
+    return `<button class="choice" style="background:${bg};border-color:${bd};color:${col}" onclick="listenChoose(${i})" ${listenLocked?"disabled":""}><span class="letter">${L[i]}</span>${c}</button>`}).join("");
+  app.innerHTML=`
+  <button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
+  ${prog}
+  <div class="meta"><span>${toAr(listenIdx+1)} من ${toAr(listenItems.length)}</span><span>الاستماع · ${it.lv}</span></div>
+  <div class="card" style="text-align:center">
+    <span class="tag" style="background:#E0F2FE;color:#0369A1">🎧 استماع</span>
+    <div class="q" style="margin-top:10px">${it.q}</div>
+    <div style="margin:16px 0"><button type="button" onclick="listenPlay()" style="background:#0284C7;color:#fff;border:none;border-radius:50%;width:64px;height:64px;font-size:26px;cursor:pointer">🔊</button></div>
+    <div style="font-size:12px;color:#64748B;margin-bottom:14px">${listenPlaysHint(it.lv)}${listenPlays?` · استمعتَ ${toAr(listenPlays)} ${listenPlays===1?"مرّة":"مرّات"}`:""}</div>
+    <div class="choices">${choices}</div>
+    ${listenLocked?`<div class="explain"><div class="explain-title" style="color:${listenPicked===it.a?'#059669':'#B45309'}">${listenPicked===it.a?"✓ فهمتَ صحيحاً":"الصحيحة بالأخضر"}</div></div>`:""}
+  </div>
+  ${listenLocked?`<button class="btn" style="background:#0284C7" onclick="listenNext()">${listenIdx+1>=listenItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`:""}`;
+  if(!listenLocked&&listenPlays===0)setTimeout(function(){listenPlay()},300);
+}
+function renderListenResult(){
+  const pct=listenItems.length?Math.round(listenScore/listenItems.length*100):0;
+  app.innerHTML=`
+  <div class="card">
+    <div class="score-row"><span class="score-big" style="color:${pct>=70?'#059669':pct>=50?'#D97706':'#DC2626'}">${toAr(listenScore)}</span><span class="score-total">/ ${toAr(listenItems.length)}</span><span class="score-pct">${toAr(pct)}%</span></div>
+    <div style="color:#64748B;font-size:15px;margin-bottom:14px">${pct>=85?"فهمٌ ممتاز! 🌟":pct>=60?"جيّد جداً، واصل 💪":"لا بأس — هذه المقاطع تعود للمراجعة 🌱"}</div>
+    <button class="btn" style="background:#0284C7" onclick="startListen()">🔁 جلسة أخرى</button>
+    <button class="link-btn" onclick="home()">→ الرئيسية</button>
+  </div>`;
+}
+
 // ===== النطق: تحقّق أساسي عبر تسجيل الصوت + Groq Whisper (يعمل على كل الأجهزة، بما فيها آيفون؛ تحقّق كلمة لا تقييم دقّة اللهجة) =====
 function micSupported(){return !!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia&&window.MediaRecorder)}
 const PRON_GROQ_FN_URL=SB_URL+"/functions/v1/assess-pronunciation-groq";
@@ -6724,7 +6856,7 @@ function bumpStreak(){const st=getStreak();const t=todayStr();if(st.last===t)ret
 function growthMsg(modeKey,pct){try{const key="mawhiba_best_"+modeKey;const prev=parseInt(lsGet(key)||"-1");let msg="";if(prev<0){msg="أول محاولة في هذا القسم — انطلاقة موفّقة! 🌱"}else if(pct>prev){msg=`تحسّنتِ عن أفضل نتيجة سابقة (${toAr(prev)}%)! تقدّم رائع 📈`}else if(pct===prev){msg="ثبات على أفضل مستوى سابق 💪"}else{msg="واصلي، كل محاولة تبني مهارتك 🌟"}if(pct>prev)lsSet(key,String(pct));return msg}catch(e){return""}}
 
 // ===== العرض =====
-function render(){if(mode==="home")return renderHome();if(mode==="errors")return renderErrors();if(mode==="engplan")return renderEngPlan();if(mode==="factplan")return renderFactPlan();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="speak")return renderSpeak();if(mode==="coach")return renderCoach();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
+function render(){if(mode==="home")return renderHome();if(mode==="listen")return renderListen();if(mode==="errors")return renderErrors();if(mode==="engplan")return renderEngPlan();if(mode==="factplan")return renderFactPlan();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="speak")return renderSpeak();if(mode==="coach")return renderCoach();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
 
 // صفحة الأخوين قسمٌ واحد: المحادثة. بقيّة الأقسام بُنيت على أخطائها هي — بنك
 // أسئلتها، وتباعدها، ومنهج صفّها السادس — فوضعها أمام ولدٍ آخر يُشغله بما ليس له.
@@ -6740,6 +6872,7 @@ function renderHomeCoachOnly(){
   </div>
   <div class="modes">
     <button class="mode full" style="background:${p.color};border-color:${p.color}" onclick="startCoach()"><span class="m-name">🗣️ ابدأ المحادثة</span><div class="m-sub">اختر موقفاً، ثم تكلّم — ثماني جمل في الجلسة</div></button>
+    <button class="mode full" style="background:#0284C7;border-color:#0284C7" onclick="startListen()"><span class="m-name">🎧 فهم الاستماع</span><div class="m-sub">استمع لمقطعٍ قصير، وأجب عن معناه — مستوى ${p.level||"A2"}</div></button>
     ${errCount()?`<button class="mode full" style="background:#DB2777;border-color:#DB2777" onclick="startErrors()"><span class="m-name">🎯 أخطائي · ${toAr(errCount())} مستحقّة</span><div class="m-sub">تصحيحات محادثتك السابقة — تُبنى كلمةً كلمة، وتعود عند حافّة النسيان</div></button>`:""}
   </div>
   <button class="link-btn" onclick="startAudioDiag()">🔊 الصوت ما يشتغل؟ اضغط هنا لتشخيص السبب</button>
@@ -6778,6 +6911,7 @@ function renderHome(){
     <button class="mode full" style="background:#0F766E;border-color:#0F766E" onclick="startFactPlan()"><span class="m-name">🧮 طلاقة الحقائق · ١٠ دقائق</span><div class="m-sub">استرجاع فوري للجمع والطرح والضرب بلا عدّ أو أصابع، بتباعد ذكي</div></button>
     <button class="mode full" style="background:#4338CA;border-color:#4338CA" onclick="startEngPlan()"><span class="m-name">⭐ خطة الإنجليزية اليومية · ٤٠ دقيقة</span><div class="m-sub">شرح ثم تدريب، بتباعد ذكي — لا يتكرّر أي عنصر إلا في يوم استحقاقه (منهج الصف السادس)</div></button>
     <button class="mode full" style="background:#0E7490;border-color:#0E7490" onclick="startDictation()"><span class="m-name">✍️ إملاء بالإنجليزية</span><div class="m-sub">استمعي للكلمة، ثم اكتبيها — مستوى A1</div></button>
+    <button class="mode full" style="background:#0284C7;border-color:#0284C7" onclick="startListen()"><span class="m-name">🎧 فهم الاستماع</span><div class="m-sub">استمعي لمقطعٍ قصير، وأجيبي عن معناه — مستوى ${profileOf().level||"A2"}</div></button>
     <button class="mode full" style="background:#7C3AED;border-color:#7C3AED" onclick="startPronunciation()"><span class="m-name">🎤 تمرين النطق</span><div class="m-sub">تحقّق أساسي هل نطقتِ الكلمة صح (يحتاج ميكروفون) — وليس تصحيح لهجة دقيق</div></button>
     <button class="mode full" style="background:#0E7490;border-color:#0E7490" onclick="startCoach()"><span class="m-name">🗣️ تكلّمي بالإنجليزية</span><div class="m-sub">محادثة حرّة مع شريك يردّ عليكِ بالإنجليزية — ونقيس وضوح أصواتك في كل جملة</div></button>
     <button class="mode full" style="background:#DB2777;border-color:#DB2777" onclick="startSpeaking()"><span class="m-name">🗣️ التحدّث · جمل من كتابك</span><div class="m-sub">جمل قصيرة جاهزة من وحدة Welcome: تسمعينها ثم تقولينها كاملة — تبدأ بالنص أمامك وتنتهي بالسمع فقط</div></button>

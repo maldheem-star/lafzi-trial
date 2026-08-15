@@ -22,19 +22,20 @@ const mk=async(f)=>{
   return page;
 };
 
-console.log('\n١) صفحة محمد: المحادثة وحدها');
+console.log('\n١) صفحة محمد: المحادثة والاستماع — ما يعمّم على الثلاثة لا منهج هيا');
 const m=await mk('mohammed.html');
 let t=await m.textContent('#app');
 ok(t.includes('صفحة محمد'),'عنوان صفحته');
 ok(t.includes('تكلّم بالإنجليزية'),'وعنوان القسم');
-ok(t.includes('ابدأ المحادثة'),'وزرّ واحد للبدء');
+ok(t.includes('ابدأ المحادثة'),'وزرّ البدء');
+ok(t.includes('فهم الاستماع'),'وزرّ الاستماع — يعمّم على الثلاثة كالمحادثة و«أخطائي»، لا خاصّاً بمنهج هيا');
 const gone=['الاستدلال اللغوي','الرياضي والمكاني','الاستدلال العلمي','المرونة والأنماط',
   'محاكاة شاملة','وضع التقوية','متابعة التقدّم','عائلات الحقائق','طلاقة الحقائق',
   'خطة الإنجليزية اليومية','إملاء بالإنجليزية','تمرين النطق','جمل من كتابك','استراتيجيات موهبة',
   'برنامج موهبة المكثّف'];
 gone.forEach(g=>ok(!t.includes(g),`«${g}» اختفى`));
-ok(await m.evaluate(()=>document.querySelectorAll('.mode').length)===1,
-  `زرّ أقسام واحد لا أكثر (${await m.evaluate(()=>document.querySelectorAll('.mode').length)})`);
+ok(await m.evaluate(()=>document.querySelectorAll('.mode').length)===2,
+  `زرّان لا أكثر — المحادثة والاستماع (${await m.evaluate(()=>document.querySelectorAll('.mode').length)})`);
 ok(t.includes('الصوت ما يشتغل؟'),'ورابط تشخيص الصوت باقٍ — بلا ميكروفون لا محادثة');
 ok(!/اختاري|ابدئي|تكلّمي|اضغطي/.test(t),'وبلا خطاب مؤنّث');
 
@@ -59,16 +60,17 @@ ok(rest===0,`ولا طلب نتائج إلى الخادم (${rest}) — لا ا�
 console.log('\n٤) إلياس مثله');
 const e=await mk('elias.html');
 t=await e.textContent('#app');
-ok(t.includes('صفحة إلياس')&&t.includes('ابدأ المحادثة'),'قسم واحد');
+ok(t.includes('صفحة إلياس')&&t.includes('ابدأ المحادثة')&&t.includes('فهم الاستماع'),'المحادثة والاستماع');
 ok(!t.includes('محاكاة شاملة')&&!t.includes('إملاء'),'وبقيّة الأقسام مخفيّة');
+ok(await e.evaluate(()=>document.querySelectorAll('.mode').length)===2,'زرّان لا أكثر');
 
-console.log('\n٥) صفحة هيا لم تُمسّ');
+console.log('\n٥) صفحة هيا لم تُمسّ — والاستماع صار عندها كذلك');
 const h=await mk('index.html');
 t=await h.textContent('#app');
 ['برنامج موهبة المكثّف','الاستدلال اللغوي','محاكاة شاملة','وضع التقوية','متابعة التقدّم',
  'عائلات الحقائق','طلاقة الحقائق','خطة الإنجليزية اليومية','إملاء بالإنجليزية','تمرين النطق',
- 'تكلّمي بالإنجليزية','جمل من كتابك','استراتيجيات موهبة'].forEach(g=>ok(t.includes(g),`«${g}» باقٍ عندها`));
-ok(await h.evaluate(()=>document.querySelectorAll('.mode').length)>=13,'وكل أزرارها');
+ 'تكلّمي بالإنجليزية','فهم الاستماع','جمل من كتابك','استراتيجيات موهبة'].forEach(g=>ok(t.includes(g),`«${g}» باقٍ عندها`));
+ok(await h.evaluate(()=>document.querySelectorAll('.mode').length)>=14,'وكل أزرارها');
 ok(t.includes('اسم المتدرّبة'),'وخطابها كما هو');
 
 console.log('\n٦) لا انحدار: الأقسام نفسها تُفتح بالشيفرة عندهم لو استُدعيت');

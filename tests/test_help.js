@@ -137,7 +137,9 @@ ok(!t.includes('جمل تصلح جواباً'),'لا جمل معروضة');
 ok(t.includes('ساعديني بجملة'),'وزرّ المساعدة ظاهر');
 calls.length=0;
 await turn(page);await page.waitForTimeout(500);
-ok((calls.slice(-1)[0]||{}).level==='A2','والمستوى يبقى A2');
+// مستواها الحقيقي صار A1 (قياس ١٥ أغسطس)، وهو أصلاً قاع سلّم coachLevel — فوحدها
+// تبقى عليه، ومع الدعم لا تهبط تحته (اختُبر في test_age.js)
+ok((calls.slice(-1)[0]||{}).level==='A1','والمستوى يبقى A1 — وحدها بلا دعم');
 ok((calls.slice(-1)[0]||{}).easy===false,'بلا تسهيل');
 ok((calls.slice(-1)[0]||{}).suggest===true,'لكن الجمل تُطلب سرّاً — لتصل فوراً عند الضغط');
 
