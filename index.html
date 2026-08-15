@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260815-2015";
+  var BUILD="build-20260815-2130";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -3160,6 +3160,23 @@ function renderAudioDiag(){
   const supported='speechSynthesis' in window;
   const voices=supported?window.speechSynthesis.getVoices():[];
   const enVoices=voices.filter(v=>v.lang&&v.lang.startsWith('en'));
+  const picked=supported?pickEnglishVoice(voices):null;
+  // هذا ما يُجيب فعلاً «كيف نتأكد من الصوت السحابي؟»: فتح هذه الصفحة على جهاز
+  // الولد نفسه يُظهر كل صوتٍ متاح عليه بعينه — سحابي أو محلّي — وأيّها سيختاره التطبيق.
+  const voiceRows=enVoices.length?enVoices.map(v=>{
+    const cloud=v.localService===false;
+    const natural=/natural|neural|enhanced|premium|online/i.test(v.name);
+    const isPicked=picked&&v.name===picked.name&&v.lang===picked.lang;
+    return `<div style="display:flex;justify-content:space-between;gap:10px;padding:5px 0;font-size:13px;border-bottom:1px solid #F1F5F9${isPicked?';font-weight:800':''}">
+      <span>${v.name} <span style="color:#94A3B8">(${v.lang})</span>${isPicked?' ← المختار':''}</span>
+      <span style="color:${cloud?'#059669':'#94A3B8'};white-space:nowrap">${cloud?'☁️ سحابي':'📴 محلّي'}${natural?' · اسمه طبيعي':''}</span>
+    </div>`}).join(""):"";
+  const pickedBox=picked
+    ?`<div style="background:${picked.localService===false?'#ECFDF5':'#FFFBEB'};border-radius:12px;padding:12px 14px;margin-top:10px;font-size:13px;color:${picked.localService===false?'#065F46':'#92400E'}">
+        الصوت الذي سيختاره التطبيق تلقائياً على <b>هذا الجهاز بالذات</b>: <b>${picked.name}</b><br>
+        ${picked.localService===false?'☁️ صوتٌ سحابي — أقرب لصوت بشري.':'📴 لا يوجد صوتٌ سحابي/طبيعي متاح على هذا الجهاز، فيُستخدم أفضل صوتٍ محلّي متوفّر.'}
+      </div>`
+    :(supported?`<div style="background:#FEF2F2;border-radius:12px;padding:12px 14px;margin-top:10px;font-size:13px;color:#991B1B">لا صوت إنجليزي على هذا الجهاز إطلاقاً</div>`:"");
   let resultBox="";
   if(audioDiagResult){
     if(audioDiagResult.status)resultBox=`<div style="background:#F1F5F9;border-radius:12px;padding:14px;margin-top:14px;font-size:14px">${audioDiagResult.status}</div>`;
@@ -3173,9 +3190,11 @@ function renderAudioDiag(){
     <div style="font-size:14px;color:#475569;line-height:1.9;margin-bottom:14px">
       يدعم المتصفح تحويل النص لصوت: <b>${supported?"نعم":"لا"}</b><br>
       عدد الأصوات المتوفرة على الجهاز: <b>${toAr(voices.length)}</b><br>
-      عدد الأصوات الإنجليزية: <b>${toAr(enVoices.length)}</b>${enVoices.length?" ("+enVoices.map(v=>v.name).join("، ")+")":""}
+      عدد الأصوات الإنجليزية: <b>${toAr(enVoices.length)}</b>
     </div>
-    <button class="btn" style="background:#0891B2" onclick="runAudioDiag()">🔊 جربي النطق الآن</button>
+    ${voiceRows?`<div style="margin-bottom:6px">${voiceRows}</div>`:""}
+    ${pickedBox}
+    <button class="btn" style="background:#0891B2;margin-top:14px" onclick="runAudioDiag()">🔊 جربي النطق الآن</button>
     ${resultBox}
     ${micDiagHTML()}
     <div style="font-size:13px;color:#94A3B8;margin-top:18px;line-height:1.8">لو ظهر "فشل النطق فعلياً"، أو ظهر "نجح" لكن ما سمعتِ صوتاً: تأكدي إن صوت الجهاز غير مكتوم وبمستوى عالٍ كافٍ، وافتحي إعدادات الهاتف ← إعدادات إضافية/تحويل النص إلى كلام ← تأكدي إن حزمة الصوت الإنجليزي منزّلة (قد تحتاجين تنزيلها لأول مرة)، ثم أعيدي المحاولة.</div>

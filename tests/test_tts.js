@@ -67,7 +67,35 @@ ok(t.includes('اضغطي 🔊 لتسمعي'),'والإرشاد الأصلي ك�
 ok(t.includes('circle'),'والكلمة ما زالت مكتوبة — تحسين دائم لا علاج طارئ');
 await page.close();
 
-console.log('\n٥) لا انحدار');
+console.log('\n٥) تشخيص الصوت: يُظهر أيّ صوتٍ سحابي فعلاً على هذا الجهاز — يُجيب «كيف نتأكد؟»');
+const MIXED=()=>{Object.defineProperty(window,'speechSynthesis',{configurable:true,value:{
+  speak(u){setTimeout(()=>u.onstart&&u.onstart(),5)},cancel(){},resume(){},pause(){},
+  getVoices:()=>[{lang:'en-US',name:'Robotic Local',localService:true},
+    {lang:'en-US',name:'Aria Online (Natural)',localService:false},
+    {lang:'en-GB',name:'Other',localService:true}],
+  speaking:false,pending:false}});
+  window.SpeechSynthesisUtterance=function(t){this.text=t}};
+page=await mk(MIXED);
+await page.evaluate(()=>startAudioDiag());
+t=await page.textContent('#app');
+ok(t.includes('Aria Online (Natural)'),'الصوت السحابي مذكورٌ في القائمة');
+ok(t.includes('Robotic Local'),'والمحلّي كذلك — القائمة كاملة لا مفلترة');
+ok(t.includes('☁️ سحابي'),'وعليه شارة «سحابي»');
+ok(/الذي سيختاره التطبيق تلقائياً.*Aria Online \(Natural\)/s.test(t),'ويُصرَّح بأنه المختار فعلاً على هذا الجهاز بعينه');
+await page.close();
+
+console.log('\n٦) بلا صوتٍ سحابي على الجهاز: يُقال ذلك بصراحة لا يُدَّعى وجوده');
+const LOCALONLY=()=>{Object.defineProperty(window,'speechSynthesis',{configurable:true,value:{
+  speak(u){setTimeout(()=>u.onstart&&u.onstart(),5)},cancel(){},resume(){},pause(){},
+  getVoices:()=>[{lang:'en-US',name:'Samantha',localService:true}],speaking:false,pending:false}});
+  window.SpeechSynthesisUtterance=function(t){this.text=t}};
+page=await mk(LOCALONLY);
+await page.evaluate(()=>startAudioDiag());
+t=await page.textContent('#app');
+ok(t.includes('لا يوجد صوتٌ سحابي/طبيعي متاح على هذا الجهاز'),'الصراحة على التجميل — لا يُقال سحابي وما هو كذلك');
+await page.close();
+
+console.log('\n٧) لا انحدار');
 page=await mk(GOOD);
 for(const [fn,md] of [["startPronunciation()",'pron'],["startSpeaking()",'speak'],["startDictation()",'dictation'],
   ["startEngPlan()",'engplan'],["startBasics('pimul3')",'basics'],["startAudioDiag()",'audiodiag'],["home()",'home']]){
