@@ -67,7 +67,22 @@ ok(pick2==='Samantha','ولو لم يوجد سحابي: en-US المحلّي أ�
 const pick3=await page.evaluate(()=>pickEnglishVoice([]));
 ok(pick3===null,'وبلا أصوات أصلاً: null بلا انهيار');
 
-console.log('\n٥) لا انحدار');
+console.log('\n٥) جهاز هيا فعلاً (صورة ١٦ أغسطس): يُسمّي اللهجة en_US بشرطة سفلية لا en-US');
+// المطابقة الحرفية 'en-US' كانت تفشل بصمت على هذا الشكل فيقع الاختيار على أوّل صوتٍ
+// بالقائمة (en_AU) لا الأمريكي — وكلّها محلّية هنا فلا فرق نقاطٍ يُنقذها.
+const pickUnderscore=await page.evaluate(()=>{
+  const voices=[
+    {lang:'en_AU',name:'English (Australia)',localService:true},
+    {lang:'en_GB',name:'English (UK)',localService:true},
+    {lang:'en_IN',name:'English (India)',localService:true},
+    {lang:'en_NG',name:'English (Nigeria)',localService:true},
+    {lang:'en_US',name:'English (US)',localService:true},
+  ];
+  return pickEnglishVoice(voices).name;
+});
+ok(pickUnderscore==='English (US)','الأمريكية تُختار رغم الشرطة السفلية لا الأستراليّة الأولى بالقائمة');
+
+console.log('\n٦) لا انحدار');
 for(const [fn,md] of [["startListen()",'listen'],["startDictation()",'dictation'],["startCoach()",'coach'],["home()",'home']]){
   const r=await page.evaluate(x=>{try{eval(x);return{m:mode}}catch(e){return{err:e.message}}},fn);
   ok(!r.err&&r.m===md,`${fn} → ${r.err||r.m}`);

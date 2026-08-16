@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260815-2130";
+  var BUILD="build-20260816-0245";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -2848,9 +2848,13 @@ document.addEventListener("click",unlockTTS,{capture:true,once:true});
 // والسحابية (localService:false) وما يحمل اسماً كـNatural/Neural/Enhanced/Premium/Online
 // أقرب لصوتٍ بشري — بلا خدمة خارجية ولا اشتراك، الاختيار وحده يتغيّر من نفس القائمة المتاحة.
 function pickEnglishVoice(voices){
-  const en=voices.filter(v=>v.lang&&v.lang.toLowerCase().startsWith('en'));
+  // بعض محرّكات النطق (أندرويد خاصةً) تُسمّي اللهجة بشرطة سفلية en_US لا شرطة en-US —
+  // فالمطابقة الحرفية en-US كانت تفشل بصمت على تلك الأجهزة، فيقع الاختيار على أوّل صوتٍ
+  // في القائمة (أستراليا مثلاً) لا الأمريكي المقصود. توحيدُ الفاصل يُصلحها للجهازين معاً.
+  const norm=l=>String(l||'').toLowerCase().replace(/_/g,'-');
+  const en=voices.filter(v=>norm(v.lang).startsWith('en'));
   if(!en.length)return null;
-  const us=en.filter(v=>v.lang==='en-US');
+  const us=en.filter(v=>norm(v.lang)==='en-us');
   const pool=us.length?us:en;
   return pool.slice().sort((a,b)=>{
     const score=v=>(v.localService===false?2:0)+(/natural|neural|enhanced|premium|online/i.test(v.name)?2:0);
@@ -2951,7 +2955,9 @@ async function runMicDiag(){
 const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEngPlan","startDictation",
   "startPronunciation","startSpeaking","startAudioDiag","runMicDiag","fetchTimeout",
   "pronStart","pronStop","pronReset","speakStart","speakStop","speakReset","speakEnglish","pickEnglishVoice",
-  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","piPickBand","piBandBoxHTML","piArm","piOk","piVals","piGateOn","piGated","piSig1","fsrsUpdate","fsrsIvl","fsrsR","fsrsInitS","fsrsInitD","fsrsNextD","fsrsClampD","fsrsRecallS","fsrsForgetS","tmplKey","spreadTemplates","drawSpread","qzErrRecord","qzDueKeys","qzInjectDue","qzErrOf","qzCardDone","fadeQText","fadeAnsText","fadeGateStart","fadeGateStop","fadeGateNeeded","copyAzRaw","esc","weakPhonemeStr","num0","profileBarHTML","renderHomeCoachOnly","learnerInfo","coachLevel","toMasc","genderizeText","genderizeNode","genderizeInit","lsGet","lsSet","lsDel","pkey","cxShuffleOrder","cxPreStart","cxPreChoose","cxPreNext","cxPreQuit","cxPreCur","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary","coachMode","coachAskHelp","coachEnd","coachReview","coachFixParse","weakClean","coachSaysNow","snapToSuggestion","editDist","coachShowSays","coachParse","coachTopicGo","coachTopicBack","coachTopicClean","coachFreeScene","wbStart","wbPick","wbUnpick","wbCheck","wbHTML","wbReady","wbSay","wbReset","wbNorm","wbDistract","wbStageGet","wbGrade","engBuildFor","dictErrRecord","dictIsBuild","dictCur","renderDictationBuild","planCheckBuild","echoRecord","echoArmed","coachBankOn","coachBankSync","coachBankCheck","fixCardSave","fixCardGrade","bugOf","basicsOpNow","basicsOperands","basicsBugNow","digitsOf","factDcpm","factDcpmBand","coachLeave","coachAutoReview","coachSetFail","coachHintNow","basicsErrDelta","shapeRecord","shapeArmed","ob1Arm","ob1Jump","ob1Back","ob1Complete","ob1BoxHTML","btArm","btBorrow","btComplete","btBoxHTML","basicsOb1Gated","basicsBtGated","basicsShapeLogRemedy","shapeLogRemedy","quotArm","quotGated","quotReset","listenBankFor","listenSrsUpdate","buildListenPlan","listenPlaysHint","startListen","listenPlay","listenChoose","listenNext","renderListen","errCollect","errDraw","errCount","errQuizCount","startErrors","errCheck","errChoose","errNext","errReplay","renderErrors"];
+  "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","piPickBand","piBandBoxHTML","piArm","piOk","piVals","piGateOn","piGated","piSig1","fsrsUpdate","fsrsIvl","fsrsR","fsrsInitS","fsrsInitD","fsrsNextD","fsrsClampD","fsrsRecallS","fsrsForgetS","tmplKey","spreadTemplates","drawSpread","qzErrRecord","qzDueKeys","qzInjectDue","qzErrOf","qzCardDone","fadeQText","fadeAnsText","fadeGateStart","fadeGateStop","fadeGateNeeded","copyAzRaw","esc","weakPhonemeStr","num0","profileBarHTML","renderHomeCoachOnly","learnerInfo","coachLevel","toMasc","genderizeText","genderizeNode","genderizeInit","lsGet","lsSet","lsDel","pkey","cxShuffleOrder","cxPreStart","cxPreChoose","cxPreNext","cxPreQuit","cxPreCur","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary","coachMode","coachAskHelp","coachEnd","coachReview","coachFixParse","weakClean","coachSaysNow","snapToSuggestion","editDist","coachShowSays","coachParse","coachTopicGo","coachTopicBack","coachTopicClean","coachFreeScene","wbStart","wbPick","wbUnpick","wbCheck","wbHTML","wbReady","wbSay","wbReset","wbNorm","wbDistract","wbStageGet","wbGrade","engBuildFor","dictErrRecord","dictIsBuild","dictCur","renderDictationBuild","planCheckBuild","echoRecord","echoArmed","coachBankOn","coachBankSync","coachBankCheck","fixCardSave","fixCardGrade","bugOf","basicsOpNow","basicsOperands","basicsBugNow","digitsOf","factDcpm","factDcpmBand","coachLeave","coachAutoReview","coachSetFail","coachHintNow","basicsErrDelta","shapeRecord","shapeArmed","ob1Arm","ob1Jump","ob1Back","ob1Complete","ob1BoxHTML","btArm","btBorrow","btComplete","btBoxHTML","basicsOb1Gated","basicsBtGated","basicsShapeLogRemedy","shapeLogRemedy","quotArm","quotGated","quotReset","listenBankFor","listenSrsUpdate","buildListenPlan","listenPlaysHint","startListen","listenPlay","listenChoose","listenNext","renderListen",
+  "readBankFor","readSrsUpdate","buildReadPlan","startRead","readChoose","readNext","renderRead",
+  "genBankLoad","genBankAdd","parseGenBlock","fetchTutorGen","genTopUp","genLogText","errCollect","errDraw","errCount","errQuizCount","startErrors","errCheck","errChoose","errNext","errReplay","renderErrors"];
 function censusMissing(){return CENSUS.filter(function(n){return typeof window[n]!=="function"})}
 function censusHTML(){
   var miss=censusMissing();
@@ -5652,6 +5658,79 @@ function renderErrors(){
   ${errLocked?`<button class="btn" style="background:#DB2777" onclick="errNext()">${errIdx+1>=errItems.length?"إنهاء":"التالي ←"}</button>`:""}`;
 }
 
+// ===== توليد بنكَي الاستماع/القراءة بالمحرّك — لا يدوياً وحده =====
+// نفس ما فُعل للفظي/العلمي عند هيا (fetchGemini): البنك المؤلَّف يبقى الأساس والقاع
+// الفوري بلا انتظار شبكة، لكنه صغيرٌ ثابت (٥-١٠/مستوى) يُستنفَد ويتكرّر — وقد ظهر هذا
+// فعلاً عند محمد (١٦ أغسطس): بنك B1 الخماسي أُعيد مرّتين خلال دقيقة، بأزمنة إجابة
+// ٢-٩ ثوانٍ لا تكفي لتشغيل مقطعٍ صوتي — الأرجح حفظ موضع الخيار لا فهمٌ متكرّر.
+// فالمحرّك (وضع "gen" الجديد في دالّة tutor نفسها — لا دالّة ثانية) يُنشئ عنصراً
+// جديداً في الخلفية بعد كل جلسة، يُخزَّن محلّياً وينضمّ للبنك القائم — ينمو حتى سقفٍ
+// معقول (GEN_BANK_MAX) ثم يتوقّف. لا تحميل ولا شاشة انتظار: الجلسة تُعرض فوراً من
+// المتاح كما كانت، والتوليد يُخصّب الجلسة القادمة لا الحالية.
+const GEN_BANK_MAX=15;
+function genBankLoad(key){try{const a=JSON.parse(lsGet(key)||"[]");return Array.isArray(a)?a:[]}catch(e){return[]}}
+function genBankSave(key,arr){try{lsSet(key,JSON.stringify(arr))}catch(e){}}
+function genBankAdd(key,item){
+  const arr=genBankLoad(key);
+  if(arr.some(function(x){return x.id===item.id}))return arr;
+  arr.push(item);genBankSave(key,arr);return arr;
+}
+// يفكّك ردّ المحرّك بصيغة TEXT/Q/A/B/C/CORRECT — أسطرٌ موسومة كما SAY:/FIX: القائمتين،
+// لا JSON مطلوبٌ من نموذج (أكثر عرضة للكسر). عنصرٌ ناقصٌ يعني null — لا تخمين لحقلٍ غائب.
+function parseGenBlock(text,domain){
+  const lines=String(text||"").split(/\r?\n/).map(function(l){return l.trim()});
+  let passage="",q="",a1="",a2="",a3="",correct="",inText=false;
+  lines.forEach(function(l){
+    let m;
+    if(m=/^TEXT:\s*(.*)$/i.exec(l)){passage=m[1];inText=true}
+    else if(m=/^Q:\s*(.+)$/i.exec(l)){q=m[1];inText=false}
+    else if(m=/^A:\s*(.+)$/i.exec(l)){a1=m[1];inText=false}
+    else if(m=/^B:\s*(.+)$/i.exec(l)){a2=m[1];inText=false}
+    else if(m=/^C:\s*(.+)$/i.exec(l)){a3=m[1];inText=false}
+    else if(m=/^CORRECT:\s*([ABC])/i.exec(l)){correct=m[1].toUpperCase();inText=false}
+    else if(inText&&l)passage+=(passage?" ":"")+l;   // TEXT قد يمتدّ سطرين
+  });
+  passage=passage.trim();
+  if(!passage||!q||!a1||!a2||!a3||!correct)return null;
+  const idx={A:0,B:1,C:2}[correct];
+  const item={id:"ai_"+domain+"_"+Date.now().toString(36)+"_"+Math.random().toString(36).slice(2,7),
+    q:q,c:[a1,a2,a3],a:idx,ai:true};
+  if(domain==="listen")item.audio=passage;else item.passage=passage;
+  return item;
+}
+// نداءٌ واحدٌ صامت — يفشل بهدوء (شبكة/مفتاح غائب) كما تفعل كل نداءات tutor الأخرى هنا،
+// فغياب التوليد ليس عطلاً: يبقى البنك المؤلَّف يعمل وحده كما كان قبل هذه الميزة.
+async function fetchTutorGen(domain,level){
+  try{
+    const res=await fetchTimeout(TUTOR_FN_URL,{method:"POST",
+      headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},
+      body:JSON.stringify({mode:"gen",domain,level})},15000);
+    if(!res||!res.ok)return null;
+    const data=await res.json();
+    if(!data||!data.ok||!data.reply)return null;
+    const item=parseGenBlock(data.reply,domain);
+    if(item)item.lv=level;
+    return item;
+  }catch(e){return null}
+}
+// تُستدعى بلا انتظار (fire-and-forget) بعد بدء الجلسة — لا تُبطئ العرض الحالي أبداً
+function genTopUp(domain,key,level){
+  const pool=(domain==="listen"?listenBankFor(level):readBankFor(level));
+  if(pool.length>=GEN_BANK_MAX)return;   // بلغ سقفه — لا حاجة لطلبٍ إضافي
+  fetchTutorGen(domain,level).then(function(item){
+    if(!item)return;
+    genBankAdd(key,item);
+  });
+}
+// الخيارات كلّها مع موضع الصواب — نفس عُرف تسجيل أسئلة الذكاء الاصطناعي في اللفظي/العلمي
+// (`«١) … | ٢) … ✓»`)، فبلا هذا لا يُعرف ماذا وُلِّد أصلاً ولا أين وقع الخيار الصحيح.
+function genLogText(it){
+  if(!it.ai)return it.q;
+  const opts=it.c.map(function(c,i){return (i+1)+") "+c+(i===it.a?" ✓":"")}).join(" | ");
+  const src=it.audio||it.passage||"";
+  return `[مولَّد] ${it.q} — النصّ: ${src} — الخيارات: ${opts}`;
+}
+
 // ===== الاستماع: فهم مسموع، لا إملاء =====
 // طُلب تصنيف مستوى الثلاثة (١٥ أغسطس)، وكشف أن هيا A1 لا A2 — وبقيت ثغرة: لا قسم
 // يقيس **الفهم** المسموع أصلاً. الإملاء يقيس التفريغ الحرفي (تكتب ما سُمع)، والمحادثة
@@ -5702,9 +5781,11 @@ const LISTEN_BANK=[
   {id:"ls_b1_4",lv:"B1",audio:"I work part-time at a coffee shop on weekends to help pay for my phone and transportation. It's tiring sometimes, especially in the morning shift, but I like meeting new people every day.",q:"لماذا يعمل جزئياً؟",c:["ليساعد في مصروفه","لأنّ العائلة تطلب منه","لأنه يحبّ القهوة فقط"],a:0},
   {id:"ls_b1_5",lv:"B1",audio:"The weather this week has been unusual — very hot on Sunday, then suddenly rainy on Wednesday. People are saying it might rain again this weekend, which is rare for this time of year.",q:"ما غير المعتاد؟",c:["الحرّ فقط","المطر في هذا الوقت من السنة","البرد الشديد"],a:1},
 ];
+const GEN_BANK_KEY_LISTEN="mawhiba_listen_aibank";
 function listenBankFor(level){
   const L=String(level||"A2");
-  const exact=LISTEN_BANK.filter(function(x){return x.lv===L});
+  const ai=genBankLoad(GEN_BANK_KEY_LISTEN).filter(function(x){return x.lv===L});
+  const exact=LISTEN_BANK.filter(function(x){return x.lv===L}).concat(ai);
   return exact.length?exact:LISTEN_BANK.filter(function(x){return x.lv==="A1"});
 }
 const LISTEN_SRS_KEY="mawhiba_listen_srs";
@@ -5734,6 +5815,7 @@ let listenItems=[],listenIdx=0,listenPicked=-1,listenLocked=false,listenScore=0,
 function startListen(){
   listenItems=buildListenPlan();listenIdx=0;listenPicked=-1;listenLocked=false;listenScore=0;listenPlays=0;listenDone=false;
   mode="listen";listenShownAt=Date.now();window.scrollTo(0,0);render();
+  genTopUp("listen",GEN_BANK_KEY_LISTEN,profileOf().level||"A2");
 }
 function listenCur(){return listenItems[listenIdx]}
 function listenPlay(){const it=listenCur();if(!it)return;listenPlays++;speakEnglish(it.audio)}
@@ -5743,7 +5825,7 @@ function listenChoose(i){
   const ok=i===it.a;if(ok)listenScore++;
   listenSrsUpdate(it.id,ok);
   logAnswer("listen",it.lv,ok,it.c[i],it.id,listenShownAt?Date.now()-listenShownAt:null,
-    {q_text:(it.q+" · plays:"+listenPlays).slice(0,300)});
+    {q_text:(genLogText(it)+" · plays:"+listenPlays).slice(0,1200)});
   render();
 }
 function listenNext(){
@@ -5782,6 +5864,122 @@ function renderListenResult(){
     <div class="score-row"><span class="score-big" style="color:${pct>=70?'#059669':pct>=50?'#D97706':'#DC2626'}">${toAr(listenScore)}</span><span class="score-total">/ ${toAr(listenItems.length)}</span><span class="score-pct">${toAr(pct)}%</span></div>
     <div style="color:#64748B;font-size:15px;margin-bottom:14px">${pct>=85?"فهمٌ ممتاز! 🌟":pct>=60?"جيّد جداً، واصل 💪":"لا بأس — هذه المقاطع تعود للمراجعة 🌱"}</div>
     <button class="btn" style="background:#0284C7" onclick="startListen()">🔁 جلسة أخرى</button>
+    <button class="link-btn" onclick="home()">→ الرئيسية</button>
+  </div>`;
+}
+
+// ===== فهم المقروء: نفس بنية الاستماع بالضبط، نصٌّ بدل صوت =====
+// نفس الثغرة التي أوجبت الاستماع: الإملاء يقيس النسخ الحرفي، والمحادثة تقيس الإنتاج،
+// ولا شيء كان يقيس أن يُفهَم نصٌّ مكتوب من غير سماعه أو إنتاجه. والصيغة نفسها معياريّاً
+// (Cambridge YLE/KET/PET، TOEFL Junior): نصٌّ قصير ثم اختيار من متعدّد عن معناه.
+// والفرق الوحيد عن الاستماع أن النصّ **يبقى مرئياً** أثناء الإجابة (خلاف الصوت العابر)،
+// فلا حاجة لعرض السؤال قبله ولا لعدّاد إعادة — الفارق من طبيعة الوسيط لا اجتهاداً.
+// وبنك البنية نفسها **من أوّل يوم لا بعد استنفاد**: buildReadPlan يحمل مراجعةً حرّة
+// حين يفرغ المستحقّ+الجديد — الدرس الذي كلّف الاستماع جلسةً ضائعة عند هيا (١٦ أغسطس)
+// مطبَّقٌ هنا وقاية لا علاجاً لاحقاً.
+const READ_BANK=[
+  // A1 — جملة أو جملتان، حقيقة واحدة ملموسة، يبقى النصّ أمامها فتُعيد النظر إليه
+  {id:"rd_a1_1",lv:"A1",passage:"This is Omar. He is nine years old. He has a black cat.",q:"كم عمر عمر؟",c:["ثمانية","تسعة","عشرة"],a:1},
+  {id:"rd_a1_2",lv:"A1",passage:"My school bag is blue. My pencil case is yellow.",q:"ما لون حقيبة المدرسة؟",c:["أصفر","أزرق","أخضر"],a:1},
+  {id:"rd_a1_3",lv:"A1",passage:"Today is Friday. Tomorrow is Saturday.",q:"ما اليوم غداً؟",c:["الخميس","الجمعة","السبت"],a:2},
+  {id:"rd_a1_4",lv:"A1",passage:"I have four brothers and one sister.",q:"كم أختاً عنده؟",c:["واحدة","اثنتان","لا يوجد"],a:0},
+  {id:"rd_a1_5",lv:"A1",passage:"Sara likes apples. She does not like bananas.",q:"ماذا لا تحبّ سارة؟",c:["التفاح","الموز","العنب"],a:1},
+  {id:"rd_a1_6",lv:"A1",passage:"Our classroom has twenty desks and one board.",q:"كم مكتباً في الصفّ؟",c:["عشرة","خمسة عشر","عشرون"],a:2},
+  {id:"rd_a1_7",lv:"A1",passage:"My father works in a hospital. He is a doctor.",q:"أين يعمل الأب؟",c:["مدرسة","مستشفى","مطعم"],a:1},
+  {id:"rd_a1_8",lv:"A1",passage:"The small dog is under the table.",q:"أين الكلب؟",c:["فوق الطاولة","تحت الطاولة","بجانب الباب"],a:1},
+  {id:"rd_a1_9",lv:"A1",passage:"I wake up at six and go to bed at nine.",q:"متى تستيقظ؟",c:["الخامسة","السادسة","السابعة"],a:1},
+  {id:"rd_a1_10",lv:"A1",passage:"Her favourite fruit is orange, not grapes.",q:"ما فاكهتها المفضّلة؟",c:["البرتقال","العنب","الموز"],a:0},
+  // A2 — رسالة أو إعلان قصير من جملتين إلى ثلاث، والسؤال عن تفصيل واحد
+  {id:"rd_a2_1",lv:"A2",passage:"Notice: The library closes at 4pm on Thursdays, but stays open until 6pm on other days.",q:"متى تُغلق المكتبة يوم الأربعاء؟",c:["الرابعة","السادسة","لا تُغلق"],a:1},
+  {id:"rd_a2_2",lv:"A2",passage:"Hi Sam, I can't come to the party on Saturday because I have a family trip. See you next week!",q:"لماذا لن يحضر الحفلة؟",c:["مريض","رحلة عائلية","نسي الموعد"],a:1},
+  {id:"rd_a2_3",lv:"A2",passage:"Sale this weekend! All shoes 20% off, but shirts are not included in the offer.",q:"ما الذي ليس ضمن العرض؟",c:["الأحذية","القمصان","كلاهما"],a:1},
+  {id:"rd_a2_4",lv:"A2",passage:"The bus to the museum leaves every hour, but the last one today is at 5pm.",q:"متى آخر حافلة اليوم؟",c:["الرابعة","الخامسة","السادسة"],a:1},
+  {id:"rd_a2_5",lv:"A2",passage:"Reminder: bring your sports shoes tomorrow — we have PE class in the morning, not the afternoon.",q:"متى حصّة الرياضة غداً؟",c:["الصباح","بعد الظهر","المساء"],a:0},
+  {id:"rd_a2_6",lv:"A2",passage:"Dear guests, breakfast is served from 7 to 10, and the pool opens at 9.",q:"متى يفتح المسبح؟",c:["السابعة","التاسعة","العاشرة"],a:1},
+  {id:"rd_a2_7",lv:"A2",passage:"I found a small grey wallet near the park gate this morning. Please call this number if it's yours.",q:"أين وُجدت المحفظة؟",c:["داخل المتنزّه","قرب بوّابة المتنزّه","في الشارع"],a:1},
+  {id:"rd_a2_8",lv:"A2",passage:"The test was moved from Monday to Wednesday because the teacher is travelling.",q:"لماذا تأجّل الاختبار؟",c:["المعلّم مسافر","الطلّاب طلبوا ذلك","خطأ في الجدول"],a:0},
+  {id:"rd_a2_9",lv:"A2",passage:"Our team won the match 3-1, even though we started slowly in the first half.",q:"كم كانت النتيجة؟",c:["١-٣","٣-١","٢-١"],a:1},
+  {id:"rd_a2_10",lv:"A2",passage:"Please switch off all lights before leaving the lab, and lock the door.",q:"ماذا يجب أن تفعل قبل المغادرة غير إطفاء الأضواء؟",c:["فتح النوافذ","قفل الباب","تنظيف الطاولة"],a:1},
+  // B1 — فقرة من أربع إلى ست جمل، والسؤال عن الفكرة الرئيسية أو تفصيل يحتاج تتبّعاً
+  {id:"rd_b1_1",lv:"B1",passage:"Many students find it hard to focus while studying at home because of phones and social media. Some experts suggest putting the phone in another room during study time. Others recommend using apps that block notifications for a set period. Either way, the goal is the same: fewer interruptions, better focus.",q:"ما الفكرة الرئيسية؟",c:["طرق لتقليل تشتّت الهاتف أثناء الدراسة","أضرار الهاتف على الصحة","أفضل تطبيقات التواصل"],a:0},
+  {id:"rd_b1_2",lv:"B1",passage:"When I first started running, I could barely finish one kilometre without stopping. I kept a simple log of my times and distances every week. After three months of slow, steady progress, I ran my first five-kilometre race. It wasn't fast, but finishing felt like a real achievement.",q:"ما الذي ساعده على التقدّم؟",c:["مدرّبٌ خاص","تسجيل تقدّمه أسبوعياً بثبات","الجري مع أصدقائه"],a:1},
+  {id:"rd_b1_3",lv:"B1",passage:"The school is introducing a new cafeteria menu next month, with more fruit and vegetable options and less fried food. The change came after a survey showed that many students wanted healthier choices. Prices will stay the same, but some popular items, like fries, will only be available twice a week instead of daily.",q:"لماذا تغيّرت القائمة؟",c:["نقص في الميزانية","استطلاعٌ طلب خياراتٍ أصحّ","قرارٌ من الحكومة"],a:1},
+  {id:"rd_b1_4",lv:"B1",passage:"Working part-time while studying can teach useful skills like managing time and money, but it can also be tiring if the hours are too long. Career advisors usually suggest students limit part-time work to around ten or fifteen hours a week during term time, so studies don't suffer.",q:"ما توصية المستشارين المهنيّين؟",c:["عدم العمل إطلاقاً أثناء الدراسة","تحديد ساعات العمل بعشر إلى خمس عشرة أسبوعياً","العمل بدوامٍ كامل في الإجازة فقط"],a:1},
+  {id:"rd_b1_5",lv:"B1",passage:"Our neighbourhood used to have only one small grocery store, so people often drove to the next town for shopping. Last year, a larger supermarket opened just two streets away. Now most residents shop locally, which has also brought more people to the small cafes and shops nearby.",q:"ما الذي تغيّر في الحيّ؟",c:["أُغلقت كل المحلّات","سوبرماركت جديد قرّب التسوّق وأنعش المحلّات القريبة","انتقل معظم السكّان إلى بلدةٍ أخرى"],a:1},
+];
+const GEN_BANK_KEY_READ="mawhiba_read_aibank";
+function readBankFor(level){
+  const L=String(level||"A2");
+  const ai=genBankLoad(GEN_BANK_KEY_READ).filter(function(x){return x.lv===L});
+  const exact=READ_BANK.filter(function(x){return x.lv===L}).concat(ai);
+  return exact.length?exact:READ_BANK.filter(function(x){return x.lv==="A1"});
+}
+const READ_SRS_KEY="mawhiba_read_srs";
+function readSrsLoad(){try{return JSON.parse(lsGet(READ_SRS_KEY)||"{}")}catch(e){return{}}}
+function readSrsSave(o){try{lsSet(READ_SRS_KEY,JSON.stringify(o))}catch(e){}}
+function readSrsUpdate(id,ok){
+  const st=readSrsLoad(),r=st[id]||{box:0,seen:0};
+  const n=fsrsUpdate(r,ok,srsToday());
+  r.box=n.box;r.due=n.due;r.seen=n.seen;r.s=n.s;r.d=n.d;r.last=n.last;
+  st[id]=r;readSrsSave(st);
+}
+const READ_N=8;
+function buildReadPlan(){
+  const st=readSrsLoad(),today=srsToday(),POOL=readBankFor(profileOf().level);
+  const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
+  const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
+  let out=due.concat(fresh).slice(0,READ_N);
+  if(!out.length)out=shuffle(POOL).slice(0,READ_N);   // مراجعة حرّة إن استُنفد المستحقّ+الجديد — كما الاستماع
+  return out;
+}
+let readItems=[],readIdx=0,readPicked=-1,readLocked=false,readScore=0,readShownAt=0,readDone=false;
+function startRead(){
+  readItems=buildReadPlan();readIdx=0;readPicked=-1;readLocked=false;readScore=0;readDone=false;
+  mode="read";readShownAt=Date.now();window.scrollTo(0,0);render();
+  genTopUp("read",GEN_BANK_KEY_READ,profileOf().level||"A2");
+}
+function readCur(){return readItems[readIdx]}
+function readChoose(i){
+  if(readLocked)return;
+  const it=readCur();readLocked=true;readPicked=i;
+  const ok=i===it.a;if(ok)readScore++;
+  readSrsUpdate(it.id,ok);
+  logAnswer("read",it.lv,ok,it.c[i],it.id,readShownAt?Date.now()-readShownAt:null,{q_text:genLogText(it).slice(0,1200)});
+  render();
+}
+function readNext(){
+  if(readIdx+1>=readItems.length){readDone=true;window.scrollTo(0,0);render();return}
+  readIdx++;readPicked=-1;readLocked=false;readShownAt=Date.now();window.scrollTo(0,0);render();
+}
+function renderRead(){
+  if(!readItems.length){app.innerHTML=`<div class="card" style="text-align:center">لا شيء مستحقّ اليوم — عودي غداً 🌱</div><button class="link-btn" onclick="home()">→ الرئيسية</button>`;return}
+  if(readDone)return renderReadResult();
+  const it=readCur();
+  const prog=`<div class="bar">${readItems.map(function(_,i){return `<div class="seg" style="background:${i<=readIdx?'#7C3AED':'#E2E8F0'};opacity:${i<=readIdx?1:.5}"></div>`}).join("")}</div>`;
+  const choices=it.c.map(function(c,i){
+    let bg="#fff",bd="#E2E8F0",col="#334155";
+    if(readLocked){if(i===it.a){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(i===readPicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}
+    return `<button class="choice" style="background:${bg};border-color:${bd};color:${col}" onclick="readChoose(${i})" ${readLocked?"disabled":""}><span class="letter">${L[i]}</span>${c}</button>`}).join("");
+  app.innerHTML=`
+  <button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
+  ${prog}
+  <div class="meta"><span>${toAr(readIdx+1)} من ${toAr(readItems.length)}</span><span>فهم المقروء · ${it.lv}</span></div>
+  <div class="card">
+    <span class="tag" style="background:#F5F3FF;color:#6D28D9">📖 اقرئي</span>
+    <div style="background:#FAF5FF;border:1px solid #E9D5FF;border-radius:12px;padding:14px;margin:14px 0;font-size:16px;line-height:1.8;direction:ltr;text-align:left;color:#4C1D95;font-family:Georgia,serif">${it.passage}</div>
+    <div class="q">${it.q}</div>
+    <div class="choices">${choices}</div>
+    ${readLocked?`<div class="explain"><div class="explain-title" style="color:${readPicked===it.a?'#059669':'#B45309'}">${readPicked===it.a?"✓ فهمتِ صحيحاً":"الصحيحة بالأخضر"}</div></div>`:""}
+  </div>
+  ${readLocked?`<button class="btn" style="background:#7C3AED" onclick="readNext()">${readIdx+1>=readItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`:""}`;
+}
+function renderReadResult(){
+  const pct=readItems.length?Math.round(readScore/readItems.length*100):0;
+  app.innerHTML=`
+  <div class="card">
+    <div class="score-row"><span class="score-big" style="color:${pct>=70?'#059669':pct>=50?'#D97706':'#DC2626'}">${toAr(readScore)}</span><span class="score-total">/ ${toAr(readItems.length)}</span><span class="score-pct">${toAr(pct)}%</span></div>
+    <div style="color:#64748B;font-size:15px;margin-bottom:14px">${pct>=85?"فهمٌ ممتاز! 🌟":pct>=60?"جيّد جداً، واصل 💪":"لا بأس — هذه النصوص تعود للمراجعة 🌱"}</div>
+    <button class="btn" style="background:#7C3AED" onclick="startRead()">🔁 جلسة أخرى</button>
     <button class="link-btn" onclick="home()">→ الرئيسية</button>
   </div>`;
 }
@@ -6934,7 +7132,7 @@ function bumpStreak(){const st=getStreak();const t=todayStr();if(st.last===t)ret
 function growthMsg(modeKey,pct){try{const key="mawhiba_best_"+modeKey;const prev=parseInt(lsGet(key)||"-1");let msg="";if(prev<0){msg="أول محاولة في هذا القسم — انطلاقة موفّقة! 🌱"}else if(pct>prev){msg=`تحسّنتِ عن أفضل نتيجة سابقة (${toAr(prev)}%)! تقدّم رائع 📈`}else if(pct===prev){msg="ثبات على أفضل مستوى سابق 💪"}else{msg="واصلي، كل محاولة تبني مهارتك 🌟"}if(pct>prev)lsSet(key,String(pct));return msg}catch(e){return""}}
 
 // ===== العرض =====
-function render(){if(mode==="home")return renderHome();if(mode==="listen")return renderListen();if(mode==="errors")return renderErrors();if(mode==="engplan")return renderEngPlan();if(mode==="factplan")return renderFactPlan();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="speak")return renderSpeak();if(mode==="coach")return renderCoach();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
+function render(){if(mode==="home")return renderHome();if(mode==="listen")return renderListen();if(mode==="read")return renderRead();if(mode==="errors")return renderErrors();if(mode==="engplan")return renderEngPlan();if(mode==="factplan")return renderFactPlan();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="speak")return renderSpeak();if(mode==="coach")return renderCoach();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
 
 // صفحة الأخوين قسمٌ واحد: المحادثة. بقيّة الأقسام بُنيت على أخطائها هي — بنك
 // أسئلتها، وتباعدها، ومنهج صفّها السادس — فوضعها أمام ولدٍ آخر يُشغله بما ليس له.
@@ -6951,6 +7149,7 @@ function renderHomeCoachOnly(){
   <div class="modes">
     <button class="mode full" style="background:${p.color};border-color:${p.color}" onclick="startCoach()"><span class="m-name">🗣️ ابدأ المحادثة</span><div class="m-sub">اختر موقفاً، ثم تكلّم — ثماني جمل في الجلسة</div></button>
     <button class="mode full" style="background:#0284C7;border-color:#0284C7" onclick="startListen()"><span class="m-name">🎧 فهم الاستماع</span><div class="m-sub">استمع لمقطعٍ قصير، وأجب عن معناه — مستوى ${p.level||"A2"}</div></button>
+    <button class="mode full" style="background:#7C3AED;border-color:#7C3AED" onclick="startRead()"><span class="m-name">📖 فهم المقروء</span><div class="m-sub">اقرأ نصّاً قصيراً، وأجب عن معناه — مستوى ${p.level||"A2"}</div></button>
     ${errCount()?`<button class="mode full" style="background:#DB2777;border-color:#DB2777" onclick="startErrors()"><span class="m-name">🎯 أخطائي · ${toAr(errCount())} مستحقّة</span><div class="m-sub">تصحيحات محادثتك السابقة — تُبنى كلمةً كلمة، وتعود عند حافّة النسيان</div></button>`:""}
   </div>
   <button class="link-btn" onclick="startAudioDiag()">🔊 الصوت ما يشتغل؟ اضغط هنا لتشخيص السبب</button>
@@ -6990,6 +7189,7 @@ function renderHome(){
     <button class="mode full" style="background:#4338CA;border-color:#4338CA" onclick="startEngPlan()"><span class="m-name">⭐ خطة الإنجليزية اليومية · ٤٠ دقيقة</span><div class="m-sub">شرح ثم تدريب، بتباعد ذكي — لا يتكرّر أي عنصر إلا في يوم استحقاقه (منهج الصف السادس)</div></button>
     <button class="mode full" style="background:#0E7490;border-color:#0E7490" onclick="startDictation()"><span class="m-name">✍️ إملاء بالإنجليزية</span><div class="m-sub">استمعي للكلمة، ثم اكتبيها — مستوى A1</div></button>
     <button class="mode full" style="background:#0284C7;border-color:#0284C7" onclick="startListen()"><span class="m-name">🎧 فهم الاستماع</span><div class="m-sub">استمعي لمقطعٍ قصير، وأجيبي عن معناه — مستوى ${profileOf().level||"A2"}</div></button>
+    <button class="mode full" style="background:#7C3AED;border-color:#7C3AED" onclick="startRead()"><span class="m-name">📖 فهم المقروء</span><div class="m-sub">اقرئي نصّاً قصيراً، وأجيبي عن معناه — مستوى ${profileOf().level||"A2"}</div></button>
     <button class="mode full" style="background:#7C3AED;border-color:#7C3AED" onclick="startPronunciation()"><span class="m-name">🎤 تمرين النطق</span><div class="m-sub">تحقّق أساسي هل نطقتِ الكلمة صح (يحتاج ميكروفون) — وليس تصحيح لهجة دقيق</div></button>
     <button class="mode full" style="background:#0E7490;border-color:#0E7490" onclick="startCoach()"><span class="m-name">🗣️ تكلّمي بالإنجليزية</span><div class="m-sub">محادثة حرّة مع شريك يردّ عليكِ بالإنجليزية — ونقيس وضوح أصواتك في كل جملة</div></button>
     <button class="mode full" style="background:#DB2777;border-color:#DB2777" onclick="startSpeaking()"><span class="m-name">🗣️ التحدّث · جمل من كتابك</span><div class="m-sub">جمل قصيرة جاهزة من وحدة Welcome: تسمعينها ثم تقولينها كاملة — تبدأ بالنص أمامك وتنتهي بالسمع فقط</div></button>

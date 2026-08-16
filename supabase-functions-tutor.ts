@@ -211,6 +211,43 @@ function systemReview(male: boolean, name: string, age: number, level: string) {
   ].join("\n");
 }
 
+// ===== وضع التوليد: بنك أسئلة الاستماع/القراءة يُنشئه المحرّك لا اليد =====
+// نفس الثغرة التي حلّها التوليد للفظي/العلمي عند هيا: بنكٌ ثابتٌ صغير (٥-١٠ عناصر
+// للمستوى) يُستنفَد بجلسةٍ أو جلستين فيتكرّر السؤال نفسه بموضع الخيار الصحيح نفسه —
+// وقد ظهر هذا فعلاً عند محمد (١٦ أغسطس): أعاد بنك B1 الخماسي مرّتين خلال دقيقة واحدة
+// بأزمنة إجابة ٢-٩ ثوانٍ، أسرع من تشغيل مقطعٍ صوتي — الأرجح حفظ موضع لا فهمٌ متكرّر.
+// فالمحرّك يُنشئ عنصراً جديداً كل استدعاء، يُخزَّن في بنك العميل وينضمّ لتناوب FSRS
+// العادي — لا خوارزمية توليد أو جدولة جديدة، توصيلٌ بالبنية القائمة فقط.
+function systemGen(domain: string, level: string) {
+  const isListen = domain === "listen";
+  const styleByLevel: Record<string, string> = {
+    A1: "ONE or TWO very short sentences. One single concrete fact (a name, age, colour, number, or day of the week). Simple present tense only. Very common words a young beginner already knows.",
+    A2: "EITHER a short two-line dialogue in the shape 'A: ... B: ...', OR a 2-3 sentence notice, message or announcement. Exactly one clear detail for the reader to find.",
+    B1: "A short paragraph of 4 to 6 sentences narrating a personal experience or explaining an everyday situation. The question should be about the main idea or a detail that needs tracking across more than one sentence.",
+  };
+  const lv = styleByLevel[level] || styleByLevel.A2;
+  return [
+    `Write ONE short English ${isListen ? "listening" : "reading"} comprehension item for a CEFR ${level} English learner.`,
+    `TEXT STYLE (CEFR ${level}): ${lv}`,
+    "",
+    "OUTPUT EXACTLY in this shape, nothing else, no numbering, no markdown, no extra commentary:",
+    "TEXT: <the English passage, on one line>",
+    "Q: <a comprehension question about it, written in ARABIC>",
+    "A: <choice 1, in ARABIC>",
+    "B: <choice 2, in ARABIC>",
+    "C: <choice 3, in ARABIC>",
+    "CORRECT: <A or B or C>",
+    "",
+    "RULES:",
+    "1. TEXT must be entirely in English, grammatically correct and natural — never Arabic.",
+    "2. Q and all three choices must be in Arabic, and answerable from TEXT alone, without outside knowledge.",
+    "3. Exactly one of A/B/C is correct; the other two must be plausible but clearly wrong given TEXT.",
+    "4. Vary names, numbers, places and topics — do not reuse a topic you would expect to be common (avoid always defaulting to the same name or scenario).",
+    "5. Keep content appropriate for a school-age learner: no violence, romance, politics or unsafe topics.",
+    "6. Keep Arabic phrasing gender-neutral (avoid gendered verb endings) since it is shown to boys and girls alike.",
+  ].join("\n");
+}
+
 function openingFor(b: Record<string, unknown>, male: boolean) {
   const L: string[] = [];
   L.push(`السؤال: ${b.question}`);
@@ -320,10 +357,11 @@ Deno.serve(async (req) => {
         providers: OAI_ORDER.concat(["gemini"]), checked: KEY_NAMES });
     }
 
+    const gen = String(b.mode || "") === "gen";
     const question = clip(b.question);
     const studentAnswer = clip(b.studentAnswer, 400);
-    const noQ = String(b.mode || "") === "chat" || String(b.mode || "") === "review";
-    if (!studentAnswer || (!question && !noQ)) {
+    const noQ = String(b.mode || "") === "chat" || String(b.mode || "") === "review" || gen;
+    if (!gen && (!studentAnswer || (!question && !noQ))) {
       return jsonOut({ error: "missing_question_or_answer" }, 400);
     }
 
@@ -344,6 +382,8 @@ Deno.serve(async (req) => {
       ? systemChat(clip(b.scene, 200) || "a friendly everyday conversation", clip(b.level, 20) || "A2",
           clip(b.focus, 200) || "Be warm and polite. Model good manners in English.",
           !!b.styleTip, male, lname, !!b.easy, !!b.suggest, !!b.openTurn, lrAge)
+      : gen
+      ? systemGen(clip(b.domain, 20) || "read", clip(b.level, 10) || "A2")
       : systemFor(subject, lrAge, male, lname);
     // النموذج: سرّ عامّ TUTOR_MODEL، أو سرّ خاصّ بالمزوّد، أو الافتراضي
     const model = (Deno.env.get("TUTOR_MODEL") || "").trim()
@@ -358,10 +398,14 @@ Deno.serve(async (req) => {
 
     // تاريخ الحوار يصل من العميل ويعود إليه: الدالة بلا ذاكرة عمداً، فلا حالة تُدار هنا
     const history = Array.isArray(b.history) ? (b.history as Record<string, unknown>[]).slice(-MAX_TURNS) : [];
-    const opening = (chat || review) ? studentAnswer
+    const opening = gen ? "Generate the item now, following the format exactly."
+      : (chat || review) ? studentAnswer
       : openingFor({ question, studentAnswer, choices: b.choices,
           correctAnswer: clip(b.correctAnswer, 200), priorErrors: clip(b.priorErrors, 300) }, male);
     const turns: Record<string, unknown>[] = history.length ? history : [{ role: "user", text: opening }];
+    // فقرة القراءة/الاستماع أطول من ردّ محادثة عادي — سقف الرموز الاعتيادي (300) كان يبتر
+    // فقرات B1 (٤-٦ جمل) قبل اكتمال السطرين CORRECT/الخيارات.
+    const maxTok = gen ? 500 : 300;
 
     let url: string, headers: Record<string, string>, body: unknown;
     if (provider === "gemini") {
@@ -371,7 +415,7 @@ Deno.serve(async (req) => {
         systemInstruction: { parts: [{ text: sysText }] },
         contents: turns.map((m) => ({ role: String(m.role) === "model" ? "model" : "user",
           parts: [{ text: clip(m.text) }] })),
-        generationConfig: { temperature: 0.6, maxOutputTokens: 300, topP: 0.9 },
+        generationConfig: { temperature: 0.6, maxOutputTokens: maxTok, topP: 0.9 },
         // طفل: نُشدّد المرشّحات فوق الافتراضي بدل الاكتفاء به
         safetySettings: ["HARM_CATEGORY_HARASSMENT", "HARM_CATEGORY_HATE_SPEECH",
           "HARM_CATEGORY_SEXUALLY_EXPLICIT", "HARM_CATEGORY_DANGEROUS_CONTENT",
@@ -385,7 +429,7 @@ Deno.serve(async (req) => {
         model,
         messages: [{ role: "system", content: sysText }].concat(
           turns.map((m) => ({ role: String(m.role) === "model" ? "assistant" : "user", content: clip(m.text) }))),
-        temperature: 0.6, max_tokens: 300, top_p: 0.9,
+        temperature: 0.6, max_tokens: maxTok, top_p: 0.9,
       };
     }
 
