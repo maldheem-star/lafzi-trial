@@ -60,6 +60,26 @@ const mItem=await page.evaluate(t=>parseGenBlock(t,'read'),MULTI);
 ok(!!mItem&&mItem.passage.includes('camping')&&mItem.passage.includes('three days'),
   `النصّان اندمجا في فقرة واحدة (${mItem&&mItem.passage})`);
 
+console.log('\n٣ب) تلوّثٌ عربي في TEXT يُرفَض — شكوى إلياس الحقيقية (١٦ أغسطس): «يسمع عربي وإنجليزي»');
+// النموذج أحياناً يُسقط وسم Q: فيبتلع سطر السؤال العربي ضمن استمرار TEXT — وTEXT تُتلى
+// بصوتٍ إنجليزي (listenPlay⇐speakEnglish)، فيُسمع عربي وإنجليزي معاً كما اشتكى فعلاً.
+const LEAK_CONTINUATION=[
+  'TEXT: My brother has a new bicycle.',
+  'ما لون الدرّاجة؟',   // سطر عربي بلا وسم Q: — يُفترض أن يُرفض لا أن يُدمج في النصّ
+  'Q: ما لون الدرّاجة؟',
+  'A: أحمر','B: أزرق','C: أخضر','CORRECT: B',
+].join('\n');
+const leakItem=await page.evaluate(t=>parseGenBlock(t,'listen'),LEAK_CONTINUATION);
+ok(!!leakItem,'العنصر يُقبل رغم السطر الشارد — لم يُفسد التحليل كلّه');
+ok(leakItem&&!/[؀-ۿ]/.test(leakItem.audio),`ولم يتسرّب العربي إلى audio (${leakItem&&leakItem.audio})`);
+
+const LEAK_SAMELINE=[
+  'TEXT: My brother has a new bicycle. ما لون الدرّاجة؟',   // عربي على سطر TEXT نفسه
+  'Q: ما لون الدرّاجة؟','A: أحمر','B: أزرق','C: أخضر','CORRECT: B',
+].join('\n');
+ok(await page.evaluate(t=>parseGenBlock(t,'listen'),LEAK_SAMELINE)===null,
+  'وتلوّثٌ على سطر TEXT نفسه يُسقط العنصر كلّه — لا نصّ يُتلى مختلطاً');
+
 console.log('\n٤) صيغة ناقصة تعود null — لا تخمين لحقلٍ غائب');
 const BAD1=['TEXT: Something.','Q: سؤال؟','A: أ','B: ب','CORRECT: A'].join('\n'); // C غائب
 const BAD2=['TEXT: Something.','Q: سؤال؟','A: أ','B: ب','C: ج'].join('\n'); // CORRECT غائب

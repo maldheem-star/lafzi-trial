@@ -138,6 +138,37 @@ function COACH_MAX(){return 8}
 ok(await page.evaluate(()=>coachDone)===true,'ينتهي بعد ثماني جمل');
 ok((await page.textContent('#app')).includes('تكلّمتِ'),'وتظهر الخلاصة');
 
+console.log('\n٩ب) خطأ حقيقي عند إلياس (١٦ أغسطس): reply · null is not an object (evaluating \'coachScene.en\')');
+// السبب: coachFinish غير متزامنة (تفريغ ثم تقييم صوتي ثم ردّ)، وكانت تقرأ coachScene
+// العامّ مباشرةً عند إرسال الردّ. لو أعاد الطالب اختيار موضوع (أو خرج) في تلك الأثناء
+// يُصفَّر coachScene قبل أن يصل هذا الدور إلى القراءة، فينهار. المحاكاة هنا: نُؤخّر ردّ
+// tutor عمداً ونُصفّر coachScene أثناء الانتظار — تماماً كما يفعل ضغطٌ سريع على الجهاز.
+page=await mk();
+stt={ok:true,heard:"I want a hot chocolate please"};az=null;
+let releaseTutor=null;
+await page.route('**/functions/v1/tutor',async r=>{
+  let x={};try{x=JSON.parse(r.request().postData()||'{}')}catch(e){}
+  logs.push({__tutor:x});
+  await new Promise(res=>{releaseTutor=res});
+  r.fulfill({status:200,contentType:'application/json',body:JSON.stringify(chat)});
+});
+await page.evaluate(()=>{startCoach();coachPick(0);coachMode('solo')});
+await page.waitForTimeout(300);
+logs.length=0;
+const finishPromise=turn(page);
+await page.waitForTimeout(200);   // بعد التفريغ والتقييم، أثناء انتظار ردّ tutor المؤخَّر
+await page.evaluate(()=>{coachScene=null});   // محاكاة إعادة اختيار موضوع في نفس اللحظة
+await page.evaluate(()=>new Promise(r=>setTimeout(r,50)));
+if(releaseTutor)releaseTutor();
+await finishPromise;
+await page.waitForTimeout(200);
+ok((await page.evaluate(()=>window.__ERRS.length))===0,'لا ينهار — لا خطأ صفحة رغم التصفير أثناء المعالجة');
+// اللقطة المحلّية أفضل من مجرّد عدم الانهيار: هذا الدور يُكمل بمشهده هو الذي بدأ به
+// (لا يُهدَر تفريغٌ وتقييمٌ صوتي حقّقهما بالفعل)، والمشهد الجديد يبدأ نظيفاً بدوره التالي
+const replyRow=logs.find(l=>l.domain==='coach'&&l.qtype==='reply');
+ok(!!replyRow,'بل يُكمل الدور بردٍّ فعلي — لا فشلٌ ولا هدرٌ لما حقَّقه التفريغ والتقييم');
+ok(await page.evaluate(()=>coachBusy)===false,'وزرّ التكلّم يعود صالحاً');
+
 console.log('\n١٠) لا انحدار');
 page=await mk();
 for(const [fn,md] of [["startBasics('percent')",'basics'],["startFactPlan()",'factplan'],["startEngPlan()",'engplan'],

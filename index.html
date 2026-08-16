@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260816-0245";
+  var BUILD="build-20260816-1100";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -4462,6 +4462,11 @@ function coachStop(){
   render();
 }
 async function coachFinish(){
+  // لقطة محلّية عند الدخول: لو أعاد الطالب اختيار موضوع (أو خرج) بينما التفريغ والتقييم
+  // الصوتي غير المتزامنَين لا يزالان يعملان من الدور السابق، يُصفَّر coachScene العامّ
+  // قبل أن يصل هذا الدور إلى إرسال الردّ — وقرأتُه وقتها فانهار: reply · null is not
+  // an object (evaluating 'coachScene.en'). اللقطة تُبقي هذا الدور على مشهده هو.
+  const scene=coachScene;
   if(coachStream){try{coachStream.getTracks().forEach(function(t){t.stop()})}catch(e){}coachStream=null}
   wavTapStop();
   const ms=Math.round(coachElapsed*1000);
@@ -4503,11 +4508,12 @@ async function coachFinish(){
   }catch(e){}
   coachMsgs.push({role:"user",text:heard,pct:pct,weak:weak});
   const said=coachMsgs.filter(function(m){return m.role==="user"}).length;
-  logAnswer("coach","say",null,heard.slice(0,600),coachScene?coachScene.id:null,ms,
-    {lesson:coachScene?coachScene.id:null,score_pct:num0(pct),weak_phonemes:weakPhonemeStr(weak),
+  logAnswer("coach","say",null,heard.slice(0,600),scene?scene.id:null,ms,
+    {lesson:scene?scene.id:null,score_pct:num0(pct),weak_phonemes:weakPhonemeStr(weak),
      // الخام يبقى في السجلّ حين يختلف: التثبيت على العرض لا على البيانات
      q_text:snapped?("سُمع: "+rawHeard).slice(0,200):null});
   render();
+  if(!scene){coachSetFail("reply","scene_gone");coachBusy=false;render();return}
   // ٣) ماذا يردّ الشريك؟
   try{
     const hist=coachMsgs.map(function(m){return{role:m.role,text:m.text}});
@@ -4517,20 +4523,20 @@ async function coachFinish(){
       // فالتصحيح في كل دور يقطع الحديث ويُشعرها أنها تُمتحَن لا تتحدّث
       // والمستوى يتبع اختيارها: مع الجمل الجاهزة يهبط إلى A1 بأسئلة مغلقة أو باختيارين،
       // فالسؤال المفتوح («What kind of…») هو ما أغرقها في جلستها الأولى.
-      body:JSON.stringify({mode:"chat",learner:learnerInfo(),scene:coachScene.en,
+      body:JSON.stringify({mode:"chat",learner:learnerInfo(),scene:scene.en,
         level:coachLevel(),easy:coachHelp==="suggest",suggest:true,
         // سؤال مفتوح كل ثالث دور حتى في الوضع السهل: ثماني جمل كلها «هذا أم ذاك»
         // تُنتج ثماني إجابات نصفها صدى للسؤال، فلا تؤلّف جملة واحدة في الجلسة
         openTurn:(said%COACH_OPEN_EVERY===0),
-        focus:coachScene.focus||"",styleTip:(said%COACH_TIP_EVERY===0),
-        question:coachScene.en,studentAnswer:heard,history:hist})});
+        focus:scene.focus||"",styleTip:(said%COACH_TIP_EVERY===0),
+        question:scene.en,studentAnswer:heard,history:hist})});
     const d=await res.json();
     if(d&&d.reply){
       // النصيحة تُعرض مستقلّة ولا تُنطق مع الردّ: صوتها يكسر الموقف
       const p=coachParse(d.reply);
       const say=p.text,tip=p.tip;
       coachMsgs.push({role:"model",text:say,tip:tip||null,says:p.says});
-      logAnswer("coach","reply",null,String(d.reply).slice(0,600),coachScene.id,null,{lesson:coachScene.id});
+      logAnswer("coach","reply",null,String(d.reply).slice(0,600),scene.id,null,{lesson:scene.id});
       coachBusy=false;
       const nSaid=coachMsgs.filter(function(m){return m.role==="user"}).length;
       if(nSaid>=COACH_MAX_TURNS){coachDone=true;setTimeout(coachReview,50)}
@@ -5677,6 +5683,11 @@ function genBankAdd(key,item){
 }
 // يفكّك ردّ المحرّك بصيغة TEXT/Q/A/B/C/CORRECT — أسطرٌ موسومة كما SAY:/FIX: القائمتين،
 // لا JSON مطلوبٌ من نموذج (أكثر عرضة للكسر). عنصرٌ ناقصٌ يعني null — لا تخمين لحقلٍ غائب.
+// النصّ الإنجليزي (TEXT) يُتلى بصوتٍ إنجليزي (listenPlay⇐speakEnglish) — فإن تسرّب إليه
+// عربي (النموذج أسقط وسم "Q:" فابتلع سطر السؤال العربي ضمن استمرار TEXT، أو خلطه على
+// السطر نفسه) سُمع عربي وإنجليزي معاً، كما اشتكى إلياس فعلاً (١٦ أغسطس). فسطر الاستمرار
+// يرفض أي سطرٍ فيه عربي، والتحقّق النهائي يرفض العنصر كلّه إن تسرّب عربي رغم ذلك.
+const AR_CHARS=/[\u0600-\u06FF]/;
 function parseGenBlock(text,domain){
   const lines=String(text||"").split(/\r?\n/).map(function(l){return l.trim()});
   let passage="",q="",a1="",a2="",a3="",correct="",inText=false;
@@ -5688,10 +5699,11 @@ function parseGenBlock(text,domain){
     else if(m=/^B:\s*(.+)$/i.exec(l)){a2=m[1];inText=false}
     else if(m=/^C:\s*(.+)$/i.exec(l)){a3=m[1];inText=false}
     else if(m=/^CORRECT:\s*([ABC])/i.exec(l)){correct=m[1].toUpperCase();inText=false}
-    else if(inText&&l)passage+=(passage?" ":"")+l;   // TEXT قد يمتدّ سطرين
+    else if(inText&&l&&!AR_CHARS.test(l))passage+=(passage?" ":"")+l;   // TEXT قد يمتدّ سطرين
   });
   passage=passage.trim();
   if(!passage||!q||!a1||!a2||!a3||!correct)return null;
+  if(AR_CHARS.test(passage))return null;   // تلوّثٌ عربي تسرّب إلى نصٍّ يُتلى إنجليزياً — يُرفض العنصر كلّه
   const idx={A:0,B:1,C:2}[correct];
   const item={id:"ai_"+domain+"_"+Date.now().toString(36)+"_"+Math.random().toString(36).slice(2,7),
     q:q,c:[a1,a2,a3],a:idx,ai:true};
@@ -5781,7 +5793,10 @@ const LISTEN_BANK=[
   {id:"ls_b1_4",lv:"B1",audio:"I work part-time at a coffee shop on weekends to help pay for my phone and transportation. It's tiring sometimes, especially in the morning shift, but I like meeting new people every day.",q:"لماذا يعمل جزئياً؟",c:["ليساعد في مصروفه","لأنّ العائلة تطلب منه","لأنه يحبّ القهوة فقط"],a:0},
   {id:"ls_b1_5",lv:"B1",audio:"The weather this week has been unusual — very hot on Sunday, then suddenly rainy on Wednesday. People are saying it might rain again this weekend, which is rare for this time of year.",q:"ما غير المعتاد؟",c:["الحرّ فقط","المطر في هذا الوقت من السنة","البرد الشديد"],a:1},
 ];
-const GEN_BANK_KEY_LISTEN="mawhiba_listen_aibank";
+// _v2: تكرارٌ وتلوّثٌ عربي-إنجليزي حقيقي وصلا للبنك v1 قبل بذرة الموضوع وحارس التلوّث
+// (١٦ أغسطس، شكوى إلياس) — مفتاحٌ جديد يهجر المخزَّن الملوَّث بدل مسحه يدوياً، كما
+// فعلت بطاقات تصحيح المحادثة (`mawhiba_coach_fix_v1`) من قبل.
+const GEN_BANK_KEY_LISTEN="mawhiba_listen_aibank_v2";
 function listenBankFor(level){
   const L=String(level||"A2");
   const ai=genBankLoad(GEN_BANK_KEY_LISTEN).filter(function(x){return x.lv===L});
@@ -5907,7 +5922,7 @@ const READ_BANK=[
   {id:"rd_b1_4",lv:"B1",passage:"Working part-time while studying can teach useful skills like managing time and money, but it can also be tiring if the hours are too long. Career advisors usually suggest students limit part-time work to around ten or fifteen hours a week during term time, so studies don't suffer.",q:"ما توصية المستشارين المهنيّين؟",c:["عدم العمل إطلاقاً أثناء الدراسة","تحديد ساعات العمل بعشر إلى خمس عشرة أسبوعياً","العمل بدوامٍ كامل في الإجازة فقط"],a:1},
   {id:"rd_b1_5",lv:"B1",passage:"Our neighbourhood used to have only one small grocery store, so people often drove to the next town for shopping. Last year, a larger supermarket opened just two streets away. Now most residents shop locally, which has also brought more people to the small cafes and shops nearby.",q:"ما الذي تغيّر في الحيّ؟",c:["أُغلقت كل المحلّات","سوبرماركت جديد قرّب التسوّق وأنعش المحلّات القريبة","انتقل معظم السكّان إلى بلدةٍ أخرى"],a:1},
 ];
-const GEN_BANK_KEY_READ="mawhiba_read_aibank";
+const GEN_BANK_KEY_READ="mawhiba_read_aibank_v2";
 function readBankFor(level){
   const L=String(level||"A2");
   const ai=genBankLoad(GEN_BANK_KEY_READ).filter(function(x){return x.lv===L});
