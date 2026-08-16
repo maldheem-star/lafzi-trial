@@ -85,9 +85,35 @@ await page.waitForTimeout(500);
 const qlog=logs.find(l=>l.domain==='quant');
 ok(!!qlog,'سطر الكمّي وصل');
 ok(qlog&&qlog.q_text&&qlog.q_text.includes('مساحة مستطيل'),`وفيه نصّ السؤال («${(qlog&&qlog.q_text||'').slice(0,30)}…») — كان null قبل اليوم`);
-ok(qlog&&qlog.response==='١٧ سم²','ومعه إجابتها المختارة');
+ok(qlog&&qlog.response&&qlog.response.indexOf('١٧ سم²')===0,'ومعه إجابتها المختارة');
 ok(qlog&&qlog.is_correct===false,'والنتيجة صحيحة الحساب');
 ok(qlog&&typeof qlog.elapsed_ms==='number','والزمن');
+// شكل الخطأ لا وقوعه في الكمّي كذلك (١٦ أغسطس): بيانات هيا الحيّة كشفت ٨ من ١٩ خطأً
+// فرقها بالضبط ±١ — فرقٌ صحيحٌ يُذكر الآن في السجلّ نفسه، بعُرف basicsErrDelta نفسه
+ok(qlog&&qlog.response==='١٧ سم² · الصواب ٦٠ سم² · فرق −٤٣',`وشكل الخطأ معه (${qlog&&qlog.response})`);
+
+console.log('\n٥ب) الكسور والرسوم لا تُحوَّل رقماً — quizErrDelta ترفضها بهدوء');
+const shapes=await page.evaluate(()=>({
+  frac:quizErrDelta('١/١٢','١/٨'),
+  svg:quizErrDelta('<svg/>','<svg/>'),
+  ok1:quizErrDelta('٦','٧'),
+  dec:quizErrDelta('٣٫٥','٣'),
+}));
+ok(shapes.frac===null,'كسرٌ ⇒ null لا رقمٌ ملفَّق');
+ok(shapes.svg===null,'رسمٌ ⇒ null');
+ok(shapes.ok1===-1,`رقمان صحيحان ⇒ فرقٌ حقيقي (${shapes.ok1})`);
+ok(shapes.dec===null,'عشريٌّ ⇒ null — ضجيج لا يُسمّى آلية');
+// وحين تُجيب صحيحاً لا شكل خطأ يُلحَق أصلاً
+logs.length=0;
+await page.evaluate(()=>{
+  filtered=[{q:"ما مساحة مستطيل طوله ١٢ سم وعرضه ٥ سم؟",d:"quant",c:["٦٠ سم²","١٧ سم²","٣٤ سم²","٧٢ سم²"],a:0,w:"شرح"}];
+  idx=0;picked=null;locked=false;done=false;score=0;answered=[];questionShownAt=Date.now();
+  mode="quiz";currentMode="quant";gateStart(filtered[0]);gateLeft=0;gateStop();render();
+});
+await page.evaluate(()=>choose(0));
+await page.waitForTimeout(400);
+const okLog=logs.find(l=>l.domain==='quant');
+ok(okLog&&okLog.response==='٦٠ سم²','والإجابة الصحيحة تُسجَّل كما هي بلا إطالة');
 
 console.log('\n٦) فحص شامل على بنك الكمّي الحقيقي');
 const sweep=await page.evaluate(()=>{

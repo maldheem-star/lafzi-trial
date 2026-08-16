@@ -1903,6 +1903,17 @@ function parseArNum(s){
   if(!/\d/.test(t))return NaN;
   return parseFloat(t);
 }
+// شكل الخطأ في اختبار الكمّي/المرونة كذلك — نفس عُرف basicsErrDelta، لا آلية جديدة.
+// كسورٌ ("١/٨") ورسومٌ (SVG) تُستبعَد: parseArNum يمحو الشرطة المائلة فيصنع رقماً
+// خاطئاً من كسر، ورسمٌ ليس رقماً أصلاً. وفرقٌ صحيحٌ فقط يُذكر — عشريّ طويل ضجيج.
+function quizErrDelta(gotTxt,correctTxt){
+  if(gotTxt==null||correctTxt==null)return null;
+  if(/\/|<svg/i.test(gotTxt)||/\/|<svg/i.test(correctTxt))return null;
+  const got=parseArNum(gotTxt),right=parseArNum(correctTxt);
+  if(!Number.isFinite(got)||!Number.isFinite(right))return null;
+  if(!Number.isInteger(got)||!Number.isInteger(right))return null;
+  return got-right;
+}
 let basicsTyped="";
 let basicsSub="multdiv",basicsStage=1,basicsStreak=0,basicsCur=null,basicsLocked=false,basicsPicked=-1,basicsMasteryStreak=0,basicsMidSupport=false,basicsMidRecoveryStreak=0,basicsFinalSupport=false,basicsFinalRecoveryStreak=0,basicsFinalCount=0,basicsBestStreak=0,basicsNotYet=false,basicsShownAt=0;
 let basicsMiss=0,basicsDropPending=false,basicsDropped=false;
@@ -5837,7 +5848,11 @@ const LISTEN_BANK=[
 // _v2: تكرارٌ وتلوّثٌ عربي-إنجليزي حقيقي وصلا للبنك v1 قبل بذرة الموضوع وحارس التلوّث
 // (١٦ أغسطس، شكوى إلياس) — مفتاحٌ جديد يهجر المخزَّن الملوَّث بدل مسحه يدوياً، كما
 // فعلت بطاقات تصحيح المحادثة (`mawhiba_coach_fix_v1`) من قبل.
-const GEN_BANK_KEY_LISTEN="mawhiba_listen_aibank_v2";
+// _v3: نفس الدرس يتكرّر (١٦ أغسطس، ساعات لاحقة) — حُوِّل Q/A/B/C إلى الإنجليزية في
+// systemGen، لكن بنكَي إلياس ومحمد المحليَّين كانا عند GEN_BANK_MAX=15 بالفعل، فبقيا
+// يُقدّمان عناصر [مولَّد] عربية القديمة إلى ما لا نهاية — genTopUp لا يطلب توليداً
+// جديداً أصلاً وقد بلغ البنك سقفه. مفتاحٌ ثالث يهجر المخزَّن العربي القديم بالآلية نفسها.
+const GEN_BANK_KEY_LISTEN="mawhiba_listen_aibank_v3";
 function listenBankFor(level){
   const L=String(level||"A2");
   const ai=genBankLoad(GEN_BANK_KEY_LISTEN).filter(function(x){return x.lv===L});
@@ -5966,7 +5981,8 @@ const READ_BANK=[
   {id:"rd_b1_4",lv:"B1",passage:"Working part-time while studying can teach useful skills like managing time and money, but it can also be tiring if the hours are too long. Career advisors usually suggest students limit part-time work to around ten or fifteen hours a week during term time, so studies don't suffer.",q:"What do career advisors recommend?",c:["Not working at all while studying","Limiting work to 10-15 hours a week","Working full-time, but only on holidays"],a:1},
   {id:"rd_b1_5",lv:"B1",passage:"Our neighbourhood used to have only one small grocery store, so people often drove to the next town for shopping. Last year, a larger supermarket opened just two streets away. Now most residents shop locally, which has also brought more people to the small cafes and shops nearby.",q:"What changed in the neighbourhood?",c:["All the shops closed","A new supermarket made shopping closer and boosted nearby shops","Most residents moved to another town"],a:1},
 ];
-const GEN_BANK_KEY_READ="mawhiba_read_aibank_v2";
+// _v3: نفس سبب GEN_BANK_KEY_LISTEN أعلاه — عناصر [مولَّد] عربية قديمة عند السقف
+const GEN_BANK_KEY_READ="mawhiba_read_aibank_v3";
 function readBankFor(level){
   const L=String(level||"A2");
   const ai=genBankLoad(GEN_BANK_KEY_READ).filter(function(x){return x.lv===L});
@@ -6815,7 +6831,14 @@ function choose(i){
         return (k+1)+") "+(/^\s*<svg/i.test(s)?"[رسم]":s.slice(0,60))+(k===q.a?" ✓":"");
       }).join(" | ")
     :"";
-  logAnswer(q.d,q.qtype||"bank",ok,ansTxt,null,elapsed,
+  // شكل الخطأ لا وقوعه هنا كذلك (١٦ أغسطس): بيانات هيا في quant كشفت ٨ من ١٩ خطأً
+  // فرقها بالضبط ±١ — وبلا هذا السطر كانت السجلّات تُقرأ «أخطأت» لا «كيف أخطأت».
+  const correctTxt=q.c&&q.c[q.a]!=null?String(q.c[q.a]):null;
+  const dlt=!ok?quizErrDelta(ansTxt,correctTxt):null;
+  const ansShape=(!ok&&dlt!=null&&ansTxt!=null)
+    ?ansTxt+" · الصواب "+correctTxt+" · فرق "+(dlt>0?"+":"−")+toAr(Math.abs(dlt))
+    :ansTxt;
+  logAnswer(q.d,q.qtype||"bank",ok,ansShape,null,elapsed,
     {q_text:(String(q.q||"")+chLog).slice(0,1200)});
   // الذاكرة قبل البطاقة: البطاقة تُقرَأ من الحالة بعد التسجيل
   const wasWrong=(qzErrOf(tmplKey(q))||{}).wrong||0;
