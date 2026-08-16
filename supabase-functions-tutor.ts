@@ -218,6 +218,20 @@ function systemReview(male: boolean, name: string, age: number, level: string) {
 // بأزمنة إجابة ٢-٩ ثوانٍ، أسرع من تشغيل مقطعٍ صوتي — الأرجح حفظ موضع لا فهمٌ متكرّر.
 // فالمحرّك يُنشئ عنصراً جديداً كل استدعاء، يُخزَّن في بنك العميل وينضمّ لتناوب FSRS
 // العادي — لا خوارزمية توليد أو جدولة جديدة، توصيلٌ بالبنية القائمة فقط.
+// ٢٩ موضوعاً متنوّعاً — الدالّة بلا ذاكرة عمداً (كبقية الدالّة)، فرقم "توسيع الموضوعات"
+// في التعليمات وحده لم يمنع نموذجاً حقيقياً من إعادة "A: I'm going to the library at
+// 3 o'clock. B: I'll meet you there at 3:30." أربع مرّات متتالية عند إلياس (١٦ أغسطس،
+// بيانات حيّة). فالموضوع يُختار هنا عشوائياً كل نداء ويُفرَض في الطلب — لا يُترك لتنويعٍ
+// ذاتي غير موثوق من نموذج عديم الذاكرة بين النداءات.
+const GEN_TOPICS = [
+  "a birthday party", "a school trip", "a lost pet", "a rainy day", "a football match",
+  "cooking a meal", "a doctor's visit", "moving to a new house", "a music class",
+  "a weekend at the beach", "fixing a bicycle", "a school project", "a family dinner",
+  "a trip to the mountains", "learning to swim", "a part-time job", "buying a new phone",
+  "grocery shopping", "a bus journey", "a science experiment", "a neighbourhood park",
+  "a video game tournament", "a camping trip", "a school exam", "helping a grandparent",
+  "a farm visit", "a train delay", "a surprise gift", "a cooking competition", "a rainy weekend at home",
+];
 function systemGen(domain: string, level: string) {
   const isListen = domain === "listen";
   const styleByLevel: Record<string, string> = {
@@ -226,9 +240,13 @@ function systemGen(domain: string, level: string) {
     B1: "A short paragraph of 4 to 6 sentences narrating a personal experience or explaining an everyday situation. The question should be about the main idea or a detail that needs tracking across more than one sentence.",
   };
   const lv = styleByLevel[level] || styleByLevel.A2;
+  const topic = GEN_TOPICS[Math.floor(Math.random() * GEN_TOPICS.length)];
   return [
     `Write ONE short English ${isListen ? "listening" : "reading"} comprehension item for a CEFR ${level} English learner.`,
     `TEXT STYLE (CEFR ${level}): ${lv}`,
+    `TOPIC FOR THIS ITEM: ${topic}. Build TEXT around this topic specifically, with your own`,
+    "invented names, numbers and details. Do NOT reuse a generic textbook example you have seen before",
+    "(for instance, do not default to a library-at-three-o'clock meeting dialogue).",
     "",
     "OUTPUT EXACTLY in this shape, nothing else, no numbering, no markdown, no extra commentary:",
     "TEXT: <the English passage, on one line>",
@@ -242,9 +260,12 @@ function systemGen(domain: string, level: string) {
     "1. TEXT must be entirely in English, grammatically correct and natural — never Arabic.",
     "2. Q and all three choices must be in Arabic, and answerable from TEXT alone, without outside knowledge.",
     "3. Exactly one of A/B/C is correct; the other two must be plausible but clearly wrong given TEXT.",
-    "4. Vary names, numbers, places and topics — do not reuse a topic you would expect to be common (avoid always defaulting to the same name or scenario).",
+    "4. Use fresh, specific names/numbers/places each time — never reuse a stock example.",
     "5. Keep content appropriate for a school-age learner: no violence, romance, politics or unsafe topics.",
     "6. Keep Arabic phrasing gender-neutral (avoid gendered verb endings) since it is shown to boys and girls alike.",
+    "7. Match Arabic grammatical gender in the question word: masculine nouns (الوقت، اللون، السبب،",
+    "   العدد، اليوم، المكان) take 'ما هو' / 'أين هو' / 'متى هو'؛ feminine nouns (الساعة، المدينة،",
+    "   الفكرة، النتيجة، المدّة) take 'ما هي' / 'أين هي' / 'متى هي'. Get this agreement right.",
   ].join("\n");
 }
 
