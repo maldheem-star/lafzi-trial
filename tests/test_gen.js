@@ -30,17 +30,17 @@ console.log('\n١) parseGenBlock: صيغة سليمة تُفكَّك بكل حق
 let page=await mk();
 const GOOD_LISTEN=[
   'TEXT: My cousin lives in Riyadh with her family.',
-  'Q: أين تعيش ابنة عمّها؟',
-  'A: جدّة',
-  'B: الرياض',
-  'C: الدمّام',
+  'Q: Where does her cousin live?',
+  'A: Jeddah',
+  'B: Riyadh',
+  'C: Dammam',
   'CORRECT: B',
 ].join('\n');
 let item=await page.evaluate(t=>parseGenBlock(t,'listen'),GOOD_LISTEN);
 ok(!!item,'لم تعد null');
 ok(item.audio==='My cousin lives in Riyadh with her family.','النصّ في audio للاستماع');
-ok(item.q==='أين تعيش ابنة عمّها؟','والسؤال');
-ok(JSON.stringify(item.c)===JSON.stringify(['جدّة','الرياض','الدمّام']),'والخيارات الثلاثة بترتيبها');
+ok(item.q==='Where does her cousin live?','والسؤال');
+ok(JSON.stringify(item.c)===JSON.stringify(['Jeddah','Riyadh','Dammam']),'والخيارات الثلاثة بترتيبها');
 ok(item.a===1,'وموضع الصواب B ⇐ فهرس ١');
 ok(item.ai===true,'ووُسم أنه مولَّد');
 ok(typeof item.id==='string'&&item.id.indexOf('ai_listen_')===0,'ومعرّفٌ يبدأ بـai_listen_');
@@ -53,21 +53,22 @@ console.log('\n٣) TEXT يمتدّ سطرين — لا يُفقَد شيء');
 const MULTI=[
   'TEXT: Last summer my family and I went camping in the desert.',
   'We stayed there for three days and watched the stars every night.',
-  'Q: كم يوماً ناموا في الصحراء؟',
-  'A: يومان','B: ثلاثة أيام','C: أسبوع','CORRECT: B',
+  'Q: How many days did they sleep in the desert?',
+  'A: Two days','B: Three days','C: A week','CORRECT: B',
 ].join('\n');
 const mItem=await page.evaluate(t=>parseGenBlock(t,'read'),MULTI);
 ok(!!mItem&&mItem.passage.includes('camping')&&mItem.passage.includes('three days'),
   `النصّان اندمجا في فقرة واحدة (${mItem&&mItem.passage})`);
 
 console.log('\n٣ب) تلوّثٌ عربي في TEXT يُرفَض — شكوى إلياس الحقيقية (١٦ أغسطس): «يسمع عربي وإنجليزي»');
-// النموذج أحياناً يُسقط وسم Q: فيبتلع سطر السؤال العربي ضمن استمرار TEXT — وTEXT تُتلى
-// بصوتٍ إنجليزي (listenPlay⇐speakEnglish)، فيُسمع عربي وإنجليزي معاً كما اشتكى فعلاً.
+// النموذج أحياناً يُسقط وسم Q: فيبتلع سطراً شارداً ضمن استمرار TEXT — وTEXT تُتلى بصوتٍ
+// إنجليزي (listenPlay⇐speakEnglish)، فيُسمع عربي وإنجليزي معاً كما اشتكى فعلاً. والعربي هنا
+// أثرٌ تاريخي من حين كانت Q عربية — الحارس نفسه يصلح لأيّ سطرٍ غير إنجليزي شارد، أياً كان.
 const LEAK_CONTINUATION=[
   'TEXT: My brother has a new bicycle.',
-  'ما لون الدرّاجة؟',   // سطر عربي بلا وسم Q: — يُفترض أن يُرفض لا أن يُدمج في النصّ
-  'Q: ما لون الدرّاجة؟',
-  'A: أحمر','B: أزرق','C: أخضر','CORRECT: B',
+  'ما لون الدرّاجة؟',   // سطر عربي شارد بلا وسم Q: — يُفترض أن يُرفض لا أن يُدمج في النصّ
+  'Q: What colour is the bicycle?',
+  'A: Red','B: Blue','C: Green','CORRECT: B',
 ].join('\n');
 const leakItem=await page.evaluate(t=>parseGenBlock(t,'listen'),LEAK_CONTINUATION);
 ok(!!leakItem,'العنصر يُقبل رغم السطر الشارد — لم يُفسد التحليل كلّه');
@@ -75,14 +76,20 @@ ok(leakItem&&!/[؀-ۿ]/.test(leakItem.audio),`ولم يتسرّب العربي �
 
 const LEAK_SAMELINE=[
   'TEXT: My brother has a new bicycle. ما لون الدرّاجة؟',   // عربي على سطر TEXT نفسه
-  'Q: ما لون الدرّاجة؟','A: أحمر','B: أزرق','C: أخضر','CORRECT: B',
+  'Q: What colour is the bicycle?','A: Red','B: Blue','C: Green','CORRECT: B',
 ].join('\n');
 ok(await page.evaluate(t=>parseGenBlock(t,'listen'),LEAK_SAMELINE)===null,
   'وتلوّثٌ على سطر TEXT نفسه يُسقط العنصر كلّه — لا نصّ يُتلى مختلطاً');
 
+console.log('\n٣ج) تلوّثٌ عربي في Q أو في خيار — لا في TEXT — يُسقط العنصر كذلك (العنصر كلّه إنجليزي الآن)');
+const LEAK_IN_Q=['TEXT: My brother has a new bicycle.','Q: ما لون الدرّاجة؟','A: Red','B: Blue','C: Green','CORRECT: B'].join('\n');
+const LEAK_IN_CHOICE=['TEXT: My brother has a new bicycle.','Q: What colour is the bicycle?','A: أحمر','B: Blue','C: Green','CORRECT: B'].join('\n');
+ok(await page.evaluate(t=>parseGenBlock(t,'listen'),LEAK_IN_Q)===null,'عربيٌّ في Q وحدها ⇒ null');
+ok(await page.evaluate(t=>parseGenBlock(t,'listen'),LEAK_IN_CHOICE)===null,'عربيٌّ في خيارٍ واحد وحده ⇒ null');
+
 console.log('\n٤) صيغة ناقصة تعود null — لا تخمين لحقلٍ غائب');
-const BAD1=['TEXT: Something.','Q: سؤال؟','A: أ','B: ب','CORRECT: A'].join('\n'); // C غائب
-const BAD2=['TEXT: Something.','Q: سؤال؟','A: أ','B: ب','C: ج'].join('\n'); // CORRECT غائب
+const BAD1=['TEXT: Something.','Q: A question?','A: a','B: b','CORRECT: A'].join('\n'); // C غائب
+const BAD2=['TEXT: Something.','Q: A question?','A: a','B: b','C: c'].join('\n'); // CORRECT غائب
 ok(await page.evaluate(t=>parseGenBlock(t,'read'),BAD1)===null,'خيارٌ ناقص ⇒ null');
 ok(await page.evaluate(t=>parseGenBlock(t,'read'),BAD2)===null,'CORRECT ناقص ⇒ null');
 ok(await page.evaluate(()=>parseGenBlock('',  'read'))===null,'نصٌّ فارغ ⇒ null بلا انهيار');
@@ -119,7 +126,7 @@ await page.evaluate(()=>{try{lsDel(GEN_BANK_KEY_LISTEN)}catch(e){}});
 
 console.log('\n٨) genTopUp: يطلب فقط إن كان البنك دون السقف، ويُخزَّن ما وصل');
 await page.evaluate(()=>{try{lsDel(GEN_BANK_KEY_READ)}catch(e){}});
-tutorReply=MULTI.replace(/Q:.*/,'Q: سؤال؟').split('\n').slice(0,4).concat(['A: أ','B: ب','C: ج','CORRECT: C']).join('\n');
+tutorReply=['TEXT: A short test passage for read top-up.','Q: A question?','A: a','B: b','C: c','CORRECT: C'].join('\n');
 tutorCalls=[];
 await page.evaluate(()=>genTopUp('read',GEN_BANK_KEY_READ,'A1'));
 await page.waitForTimeout(400);

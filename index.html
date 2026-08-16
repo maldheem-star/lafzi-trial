@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260816-1100";
+  var BUILD="build-20260816-1500";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -2569,18 +2569,51 @@ function pctOutsideOwnBand(v){
 function logPost(row){
   return fetch(`${SB_URL}/rest/v1/${TBL_LOG}`,{method:"POST",headers:{"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json","Prefer":"return-minimal"},body:JSON.stringify(row)});
 }
+// ===== طابور إعادة محلّي لتسجيلٍ فشل — القياس هنا يُفقَد لا يغيب =====
+// logAnswer كانت "أرسِل وانسَ": فشل الشبكة يُهمَل نهائياً بلا أثر. وقد وقع فعلاً:
+// جلسة استماع لهيا (٦ من ٨ حقيقية، رأتها على شاشتها) وصل منها سطرٌ واحد فقط —
+// سبعة سطور ضاعت بصمتٍ تامّ، بلا أي دليل لاحقاً أن هذا وقع. فالقياس الحقيقي وصل
+// إليها هي، وضاع منّا نحن. الحلّ موصولٌ لا مبنيّ من جديد: نفس دالّة logAnswer
+// المشتركة بين كل قسم في التطبيق، فإصلاحها هنا يُصلح الأقسام كلّها بتغييرٍ واحد.
+const LOG_QUEUE_KEY="mawhiba_log_queue_v1";
+const LOG_QUEUE_MAX=200;   // سقفٌ يمنع نموّاً بلا حدود لو انقطع الاتصال طويلاً
+function logQueueLoad(){try{const a=JSON.parse(lsGet(LOG_QUEUE_KEY)||"[]");return Array.isArray(a)?a:[]}catch(e){return[]}}
+function logQueueSave(a){try{lsSet(LOG_QUEUE_KEY,JSON.stringify(a))}catch(e){}}
+function logQueuePush(row){
+  const q=logQueueLoad();q.push(row);
+  if(q.length>LOG_QUEUE_MAX)q.splice(0,q.length-LOG_QUEUE_MAX);   // الأحدث يُبقى لا الأقدم
+  logQueueSave(q);
+}
+let logFlushBusy=false;
+// يُستدعى عند بدء التطبيق، وعند عودة الاتصال، وبعد كل تسجيل ناجح — فرصة اتصال حقيقية
+async function logQueueFlush(){
+  if(logFlushBusy)return;
+  logFlushBusy=true;
+  try{
+    let q=logQueueLoad();
+    while(q.length){
+      let r;
+      try{r=await logPost(q[0])}catch(e){break}   // الشبكة نفسها معطّلة — نحاول لاحقاً، الطابور يبقى كما هو
+      if(!r||!r.ok)break;   // رفضٌ من الخادم (لا الشبكة) — لا نُلحّ الآن، نحاول لاحقاً أيضاً
+      q.shift();logQueueSave(q);
+    }
+  }finally{logFlushBusy=false}
+}
+try{window.addEventListener("online",function(){logQueueFlush()})}catch(e){}
+async function logSend(full,base){
+  const same=JSON.stringify(full)===JSON.stringify(base);   // بلا إضافيّات: محاولة واحدة لا تكرار مطابق
+  try{const r=await logPost(full);if(r&&r.ok){logQueueFlush();return}}catch(e){}
+  if(!same){
+    try{const r2=await logPost(base);if(r2&&r2.ok){logQueueFlush();return}}catch(e){}
+  }
+  logQueuePush(base);   // فشل الاثنان (أو الوحيد): يُحفَظ الأساسي محلّياً بدل إهماله نهائياً
+}
 function logAnswer(domain,qtype,isCorrect,response,itemId,elapsedMs,extra){
   const base={student_alias:alias(),domain,qtype,is_correct:isCorrect,
     response:response==null?null:String(response),item_id:itemId||null,
     elapsed_ms:elapsedMs==null?null:Math.round(elapsedMs)};
   const full=Object.assign({},base,extra||{});
-  try{
-    logPost(full).then(function(r){
-      if(r&&!r.ok&&extra&&Object.keys(extra).length){
-        try{logPost(base).catch(function(){})}catch(e){}
-      }
-    }).catch(function(){});
-  }catch(e){}
+  try{logSend(full,base)}catch(e){}
 }
 function basicsChoose(i){
   if(basicsLocked||pctGated()||piGated())return;basicsLocked=true;basicsPicked=i;
@@ -2955,6 +2988,7 @@ async function runMicDiag(){
 const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEngPlan","startDictation",
   "startPronunciation","startSpeaking","startAudioDiag","runMicDiag","fetchTimeout",
   "pronStart","pronStop","pronReset","speakStart","speakStop","speakReset","speakEnglish","pickEnglishVoice",
+  "logQueueLoad","logQueuePush","logQueueFlush","logSend",
   "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","piPickBand","piBandBoxHTML","piArm","piOk","piVals","piGateOn","piGated","piSig1","fsrsUpdate","fsrsIvl","fsrsR","fsrsInitS","fsrsInitD","fsrsNextD","fsrsClampD","fsrsRecallS","fsrsForgetS","tmplKey","spreadTemplates","drawSpread","qzErrRecord","qzDueKeys","qzInjectDue","qzErrOf","qzCardDone","fadeQText","fadeAnsText","fadeGateStart","fadeGateStop","fadeGateNeeded","copyAzRaw","esc","weakPhonemeStr","num0","profileBarHTML","renderHomeCoachOnly","learnerInfo","coachLevel","toMasc","genderizeText","genderizeNode","genderizeInit","lsGet","lsSet","lsDel","pkey","cxShuffleOrder","cxPreStart","cxPreChoose","cxPreNext","cxPreQuit","cxPreCur","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary","coachMode","coachAskHelp","coachEnd","coachReview","coachFixParse","weakClean","coachSaysNow","snapToSuggestion","editDist","coachShowSays","coachParse","coachTopicGo","coachTopicBack","coachTopicClean","coachFreeScene","wbStart","wbPick","wbUnpick","wbCheck","wbHTML","wbReady","wbSay","wbReset","wbNorm","wbDistract","wbStageGet","wbGrade","engBuildFor","dictErrRecord","dictIsBuild","dictCur","renderDictationBuild","planCheckBuild","echoRecord","echoArmed","coachBankOn","coachBankSync","coachBankCheck","fixCardSave","fixCardGrade","bugOf","basicsOpNow","basicsOperands","basicsBugNow","digitsOf","factDcpm","factDcpmBand","coachLeave","coachAutoReview","coachSetFail","coachHintNow","basicsErrDelta","shapeRecord","shapeArmed","ob1Arm","ob1Jump","ob1Back","ob1Complete","ob1BoxHTML","btArm","btBorrow","btComplete","btBoxHTML","basicsOb1Gated","basicsBtGated","basicsShapeLogRemedy","shapeLogRemedy","quotArm","quotGated","quotReset","listenBankFor","listenSrsUpdate","buildListenPlan","listenPlaysHint","startListen","listenPlay","listenChoose","listenNext","renderListen",
   "readBankFor","readSrsUpdate","buildReadPlan","startRead","readChoose","readNext","renderRead",
   "genBankLoad","genBankAdd","parseGenBlock","fetchTutorGen","genTopUp","genLogText","errCollect","errDraw","errCount","errQuizCount","startErrors","errCheck","errChoose","errNext","errReplay","renderErrors"];
@@ -5703,7 +5737,8 @@ function parseGenBlock(text,domain){
   });
   passage=passage.trim();
   if(!passage||!q||!a1||!a2||!a3||!correct)return null;
-  if(AR_CHARS.test(passage))return null;   // تلوّثٌ عربي تسرّب إلى نصٍّ يُتلى إنجليزياً — يُرفض العنصر كلّه
+  // العنصر كلّه إنجليزي الآن (١٦ أغسطس) — تلوّثٌ عربي في أيّ حقل يُرفض العنصر كلّه
+  if(AR_CHARS.test(passage)||AR_CHARS.test(q)||AR_CHARS.test(a1)||AR_CHARS.test(a2)||AR_CHARS.test(a3))return null;
   const idx={A:0,B:1,C:2}[correct];
   const item={id:"ai_"+domain+"_"+Date.now().toString(36)+"_"+Math.random().toString(36).slice(2,7),
     q:q,c:[a1,a2,a3],a:idx,ai:true};
@@ -5750,10 +5785,12 @@ function genLogText(it){
 //
 // والصيغة معياريّة لا مخترعة: نظام Cambridge (YLE/KET/PET) وTOEFL Junior يستعملان
 // جميعاً الصيغة نفسها — مقطعٌ قصير يُسمع، فسؤال اختيار من متعدد عن معناه، والسؤال
-// يُعرض قبل الاستماع ليُصغى بانتقائية (وليس بعده كبوّابة). وIELTS للمستويات الأعلى
-// يكتفي بمرّة واحدة؛ الأدنى (YLE/KET/PET) يسمح بمرّتين — والفرق موثّق: الاستماع
-// المتكرّر يُخفّف الحمل المعرفي عند المبتدئ ولا يلزم عند الأعلى. والزرّ 🔊 لا يُقفَل
-// عدد ضغطاته تقنياً (لا فائدة تشخيصية من منعه) — يُسجَّل عدده فحسب.
+// يُعرض قبل الاستماع ليُصغى بانتقائية (وليس بعده كبوّابة). وكل مستوياتها — YLE وA2
+// Key وB1 Preliminary سواءً — تُسمِع كل مقطعٍ مرّتين («You hear each recording
+// twice»، بنصّها الحرفي من دليل كل مستوى)؛ ما كتبناه سابقاً هنا («B1 مرّة واحدة كما
+// IELTS») كان قياساً على اختبارٍ مختلف تماماً (IELTS)، لا على B1 Preliminary
+// الحقيقي — صُحِّح ١٦ أغسطس بعد نصٍّ حرفي جلبه صاحب المشروع. والزرّ 🔊 لا يُقفَل
+// عدد ضغطاته تقنياً لأيّ مستوى (لا فائدة تشخيصية من منعه) — يُسجَّل عدده فحسب.
 //
 // ووصفُ كل مستوى من CEFR نفسه (لا حدسي): A1 «كلمات وعبارات مألوفة عن نفسها وأسرتها
 // ومحيطها، بكلامٍ بطيء واضح». A2 «العبارات الأكثر شيوعاً في ما يخصّها مباشرة، وتلتقط
@@ -5763,35 +5800,39 @@ function genLogText(it){
 // لموادّه الأصلية وحدها، وBBC Learning English محظور إعادة توزيعه، وTatoeba تراخيصها
 // لكل تسجيلٍ على حدة وغالباً جملة واحدة لا حواراً) — فالتأليف هنا كما يفعله كل مصدرٍ
 // معياريّ بنفسه، لا بناءً من الصفر للآلية أو الصيغة.
+// الأسئلة والخيارات بالإنجليزية للثلاثة سواءً (١٦ أغسطس) — كانت عربية، فصُحّحت بعد
+// نصٍّ حرفيّ من كامبريدج جلبه صاحب المشروع: أوراق كامبريدج الحقيقية (YLE/KET/PET)
+// تُطبع بالإنجليزية بالكامل بلا ترجمة لأيّ لغة أمّ. تحفّظي الأصلي (خلط قدرتين لدى
+// A1 المبتدئة) طُرح وقُرِّر تجاوزه صراحةً — قرار صاحب المشروع، لا حدسي.
 const LISTEN_BANK=[
   // A1 — عبارة واحدة أو عبارتان قصيرتان، حقيقة واحدة ملموسة (اسم/عمر/لون/عدد/يوم)
-  {id:"ls_a1_1",lv:"A1",audio:"My name is Lina. I am ten years old.",q:"كم عمر لينا؟",c:["٩","١٠","١١"],a:1},
-  {id:"ls_a1_2",lv:"A1",audio:"I have a red bag.",q:"ما لون الحقيبة؟",c:["أحمر","أزرق","أخضر"],a:0},
-  {id:"ls_a1_3",lv:"A1",audio:"This is my brother. His name is Sami.",q:"ما اسم الأخ؟",c:["سعد","سامي","سالم"],a:1},
-  {id:"ls_a1_4",lv:"A1",audio:"I have two cats and one dog.",q:"كم قطة عندها؟",c:["واحدة","اثنتان","ثلاث"],a:1},
-  {id:"ls_a1_5",lv:"A1",audio:"It is Monday today.",q:"أيّ يوم اليوم؟",c:["الأحد","الاثنين","الثلاثاء"],a:1},
-  {id:"ls_a1_6",lv:"A1",audio:"My favourite colour is green.",q:"ما لونها المفضّل؟",c:["أخضر","أصفر","بنفسجي"],a:0},
-  {id:"ls_a1_7",lv:"A1",audio:"I live in a small white house.",q:"ما لون البيت؟",c:["أبيض","أسود","بنّي"],a:0},
-  {id:"ls_a1_8",lv:"A1",audio:"I have three books on the table.",q:"كم كتاباً على الطاولة؟",c:["اثنان","ثلاثة","أربعة"],a:1},
-  {id:"ls_a1_9",lv:"A1",audio:"My mother is a teacher.",q:"ما عمل الأمّ؟",c:["طبيبة","معلّمة","مهندسة"],a:1},
-  {id:"ls_a1_10",lv:"A1",audio:"I go to school by bus.",q:"كيف تذهب إلى المدرسة؟",c:["بالسيّارة","بالحافلة","مشياً"],a:1},
+  {id:"ls_a1_1",lv:"A1",audio:"My name is Lina. I am ten years old.",q:"How old is Lina?",c:["Nine","Ten","Eleven"],a:1},
+  {id:"ls_a1_2",lv:"A1",audio:"I have a red bag.",q:"What colour is the bag?",c:["Red","Blue","Green"],a:0},
+  {id:"ls_a1_3",lv:"A1",audio:"This is my brother. His name is Sami.",q:"What is the brother's name?",c:["Saad","Sami","Salem"],a:1},
+  {id:"ls_a1_4",lv:"A1",audio:"I have two cats and one dog.",q:"How many cats are there?",c:["One","Two","Three"],a:1},
+  {id:"ls_a1_5",lv:"A1",audio:"It is Monday today.",q:"What day is it today?",c:["Sunday","Monday","Tuesday"],a:1},
+  {id:"ls_a1_6",lv:"A1",audio:"My favourite colour is green.",q:"What is her favourite colour?",c:["Green","Yellow","Purple"],a:0},
+  {id:"ls_a1_7",lv:"A1",audio:"I live in a small white house.",q:"What colour is the house?",c:["White","Black","Brown"],a:0},
+  {id:"ls_a1_8",lv:"A1",audio:"I have three books on the table.",q:"How many books are on the table?",c:["Two","Three","Four"],a:1},
+  {id:"ls_a1_9",lv:"A1",audio:"My mother is a teacher.",q:"What is the mother's job?",c:["Doctor","Teacher","Engineer"],a:1},
+  {id:"ls_a1_10",lv:"A1",audio:"I go to school by bus.",q:"How does she go to school?",c:["By car","By bus","On foot"],a:1},
   // A2 — حوار قصير من دورين، والسؤال عن الفكرة أو تفصيل واحد لا أكثر
-  {id:"ls_a2_1",lv:"A2",audio:"A: Would you like tea or coffee? B: Coffee, please, with a little sugar.",q:"ماذا طلب المتحدّث الثاني؟",c:["شاي بسكّر","قهوة بسكّر قليل","قهوة بلا سكّر"],a:1},
-  {id:"ls_a2_2",lv:"A2",audio:"A: Excuse me, where is the bank? B: It's next to the pharmacy, on the left.",q:"أين البنك؟",c:["بجانب المدرسة","بجانب الصيدلية","أمام المسجد"],a:1},
-  {id:"ls_a2_3",lv:"A2",audio:"A: What time does the shop open? B: It opens at nine in the morning.",q:"متى يفتح المحلّ؟",c:["الثامنة","التاسعة","العاشرة"],a:1},
-  {id:"ls_a2_4",lv:"A2",audio:"A: How much is this shirt? B: It's twenty riyals, but the blue one is fifteen.",q:"كم سعر القميص الأزرق؟",c:["١٥ ريالاً","٢٠ ريالاً","٢٥ ريالاً"],a:0},
-  {id:"ls_a2_5",lv:"A2",audio:"A: Are you free this weekend? B: Yes, but only on Saturday, not Friday.",q:"متى هو متفرّغ؟",c:["الجمعة فقط","السبت فقط","الجمعة والسبت"],a:1},
-  {id:"ls_a2_6",lv:"A2",audio:"I usually wake up at seven, but today I woke up late, at nine.",q:"متى استيقظت اليوم؟",c:["السابعة","الثامنة","التاسعة"],a:2},
-  {id:"ls_a2_7",lv:"A2",audio:"A: Can I have a large pizza, please? B: Sorry, we only have medium and small today.",q:"أيّ حجم غير متوفّر؟",c:["كبير","متوسّط","صغير"],a:0},
-  {id:"ls_a2_8",lv:"A2",audio:"My brother plays football on Tuesdays and swims on Thursdays.",q:"متى يسبح أخوها؟",c:["الثلاثاء","الخميس","السبت"],a:1},
-  {id:"ls_a2_9",lv:"A2",audio:"A: Did you finish your homework? B: Not yet, I need ten more minutes.",q:"هل أنهى الواجب؟",c:["نعم","لا، يحتاج وقتاً أطول","لا يوجد واجب"],a:1},
-  {id:"ls_a2_10",lv:"A2",audio:"The train to Riyadh leaves at six, but it is fifteen minutes late today.",q:"متى سيصل القطار تقريباً اليوم؟",c:["السادسة","السادسة وربع","السابعة"],a:1},
+  {id:"ls_a2_1",lv:"A2",audio:"A: Would you like tea or coffee? B: Coffee, please, with a little sugar.",q:"What did the second speaker order?",c:["Tea with sugar","Coffee with a little sugar","Coffee with no sugar"],a:1},
+  {id:"ls_a2_2",lv:"A2",audio:"A: Excuse me, where is the bank? B: It's next to the pharmacy, on the left.",q:"Where is the bank?",c:["Next to the school","Next to the pharmacy","In front of the mosque"],a:1},
+  {id:"ls_a2_3",lv:"A2",audio:"A: What time does the shop open? B: It opens at nine in the morning.",q:"When does the shop open?",c:["Eight o'clock","Nine o'clock","Ten o'clock"],a:1},
+  {id:"ls_a2_4",lv:"A2",audio:"A: How much is this shirt? B: It's twenty riyals, but the blue one is fifteen.",q:"How much is the blue shirt?",c:["15 riyals","20 riyals","25 riyals"],a:0},
+  {id:"ls_a2_5",lv:"A2",audio:"A: Are you free this weekend? B: Yes, but only on Saturday, not Friday.",q:"When is he free?",c:["Friday only","Saturday only","Friday and Saturday"],a:1},
+  {id:"ls_a2_6",lv:"A2",audio:"I usually wake up at seven, but today I woke up late, at nine.",q:"When did she wake up today?",c:["Seven o'clock","Eight o'clock","Nine o'clock"],a:2},
+  {id:"ls_a2_7",lv:"A2",audio:"A: Can I have a large pizza, please? B: Sorry, we only have medium and small today.",q:"Which size is not available?",c:["Large","Medium","Small"],a:0},
+  {id:"ls_a2_8",lv:"A2",audio:"My brother plays football on Tuesdays and swims on Thursdays.",q:"When does her brother swim?",c:["Tuesday","Thursday","Saturday"],a:1},
+  {id:"ls_a2_9",lv:"A2",audio:"A: Did you finish your homework? B: Not yet, I need ten more minutes.",q:"Did he finish his homework?",c:["Yes","No, he needs more time","There's no homework"],a:1},
+  {id:"ls_a2_10",lv:"A2",audio:"The train to Riyadh leaves at six, but it is fifteen minutes late today.",q:"When will the train arrive today, approximately?",c:["Six o'clock","Quarter past six","Seven o'clock"],a:1},
   // B1 — مقطعٌ من أربع إلى ست جمل يسرد تجربة أو يشرح موقفاً، والسؤال عن الفكرة الرئيسية أو تفصيل يحتاج تتبّعاً
-  {id:"ls_b1_1",lv:"B1",audio:"Last weekend I went to Jeddah with my friends. We stayed at my cousin's house for two nights. On Saturday we went to the beach and had lunch by the sea. It was a great trip, even though the weather was a bit hot.",q:"ما الفكرة الرئيسية؟",c:["رحلة إلى جدّة مع الأصدقاء","يوم عمل في جدّة","زيارة طبيب في جدّة"],a:0},
-  {id:"ls_b1_2",lv:"B1",audio:"I've been trying to learn to cook this year. At first it was difficult, and I burned a few meals. But now I can make simple dishes like rice and grilled chicken. My family says my cooking is improving.",q:"ما الذي تحسّن؟",c:["مهارته في السباحة","مهارته في الطبخ","مهارته في القيادة"],a:1},
-  {id:"ls_b1_3",lv:"B1",audio:"Our college is planning a new library. It will have more computers and a quiet study area on the second floor. Students are excited because the old library was always full and noisy.",q:"لماذا الطلّاب متحمّسون؟",c:["مكتبة جديدة أهدأ وأوسع","إجازة جديدة","مبنى رياضي جديد"],a:0},
-  {id:"ls_b1_4",lv:"B1",audio:"I work part-time at a coffee shop on weekends to help pay for my phone and transportation. It's tiring sometimes, especially in the morning shift, but I like meeting new people every day.",q:"لماذا يعمل جزئياً؟",c:["ليساعد في مصروفه","لأنّ العائلة تطلب منه","لأنه يحبّ القهوة فقط"],a:0},
-  {id:"ls_b1_5",lv:"B1",audio:"The weather this week has been unusual — very hot on Sunday, then suddenly rainy on Wednesday. People are saying it might rain again this weekend, which is rare for this time of year.",q:"ما غير المعتاد؟",c:["الحرّ فقط","المطر في هذا الوقت من السنة","البرد الشديد"],a:1},
+  {id:"ls_b1_1",lv:"B1",audio:"Last weekend I went to Jeddah with my friends. We stayed at my cousin's house for two nights. On Saturday we went to the beach and had lunch by the sea. It was a great trip, even though the weather was a bit hot.",q:"What is the main idea?",c:["A trip to Jeddah with friends","A work day in Jeddah","A doctor's visit in Jeddah"],a:0},
+  {id:"ls_b1_2",lv:"B1",audio:"I've been trying to learn to cook this year. At first it was difficult, and I burned a few meals. But now I can make simple dishes like rice and grilled chicken. My family says my cooking is improving.",q:"What has improved?",c:["His swimming skills","His cooking skills","His driving skills"],a:1},
+  {id:"ls_b1_3",lv:"B1",audio:"Our college is planning a new library. It will have more computers and a quiet study area on the second floor. Students are excited because the old library was always full and noisy.",q:"Why are the students excited?",c:["A new, quieter and bigger library","A new holiday","A new sports building"],a:0},
+  {id:"ls_b1_4",lv:"B1",audio:"I work part-time at a coffee shop on weekends to help pay for my phone and transportation. It's tiring sometimes, especially in the morning shift, but I like meeting new people every day.",q:"Why does he work part-time?",c:["To help with his expenses","Because his family asked him to","Because he only likes coffee"],a:0},
+  {id:"ls_b1_5",lv:"B1",audio:"The weather this week has been unusual — very hot on Sunday, then suddenly rainy on Wednesday. People are saying it might rain again this weekend, which is rare for this time of year.",q:"What is unusual?",c:["The heat alone","Rain at this time of year","Extreme cold"],a:1},
 ];
 // _v2: تكرارٌ وتلوّثٌ عربي-إنجليزي حقيقي وصلا للبنك v1 قبل بذرة الموضوع وحارس التلوّث
 // (١٦ أغسطس، شكوى إلياس) — مفتاحٌ جديد يهجر المخزَّن الملوَّث بدل مسحه يدوياً، كما
@@ -5823,9 +5864,11 @@ function buildListenPlan(){
   if(!out.length)out=shuffle(POOL).slice(0,LISTEN_N);
   return out;
 }
-// الاستماع مرّتين معياريٌّ للمبتدئ (A1/A2) — يُخفّف الحمل المعرفي؛ ومرّة واحدة لِمن
-// فوقها (B1)، وهو الفارق نفسه بين YLE/KET (مرّتان) وIELTS (مرّة). إرشادٌ لا قفل تقني.
-function listenPlaysHint(lv){return lv==="B1"?"استمع مرّة واحدة إن استطعت، ثم اختر":"استمعي مرّتين، ثم اختاري"}
+// مرّتان معياريٌّ للمستويات الثلاثة سواءً — YLE وA2 Key وB1 Preliminary كلّها تنصّ
+// حرفياً «You hear each recording twice» (دليل كل مستوى). كانت هذه الدالّة تُفرّق B1
+// بمرّة واحدة قياساً على IELTS خطأً — IELTS اختبارٌ مختلف، لا B1 Preliminary
+// الحقيقي — صُحِّح ١٦ أغسطس. إرشادٌ نصّي لا قفل تقني: الزرّ لا يُمنع لأيّ مستوى.
+function listenPlaysHint(lv){return "استمعي مرّتين، ثم اختاري"}
 let listenItems=[],listenIdx=0,listenPicked=-1,listenLocked=false,listenScore=0,listenPlays=0,listenShownAt=0,listenDone=false;
 function startListen(){
   listenItems=buildListenPlan();listenIdx=0;listenPicked=-1;listenLocked=false;listenScore=0;listenPlays=0;listenDone=false;
@@ -5856,14 +5899,14 @@ function renderListen(){
   const choices=it.c.map(function(c,i){
     let bg="#fff",bd="#E2E8F0",col="#334155";
     if(listenLocked){if(i===it.a){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(i===listenPicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}
-    return `<button class="choice" style="background:${bg};border-color:${bd};color:${col}" onclick="listenChoose(${i})" ${listenLocked?"disabled":""}><span class="letter">${L[i]}</span>${c}</button>`}).join("");
+    return `<button class="choice" style="background:${bg};border-color:${bd};color:${col};direction:ltr;text-align:left;font-family:Georgia,serif" onclick="listenChoose(${i})" ${listenLocked?"disabled":""}><span class="letter">${L[i]}</span>${c}</button>`}).join("");
   app.innerHTML=`
   <button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
   ${prog}
   <div class="meta"><span>${toAr(listenIdx+1)} من ${toAr(listenItems.length)}</span><span>الاستماع · ${it.lv}</span></div>
   <div class="card" style="text-align:center">
     <span class="tag" style="background:#E0F2FE;color:#0369A1">🎧 استماع</span>
-    <div class="q" style="margin-top:10px">${it.q}</div>
+    <div class="q" style="margin-top:10px;direction:ltr;text-align:center;font-family:Georgia,serif">${it.q}</div>
     <div style="margin:16px 0"><button type="button" onclick="listenPlay()" style="background:#0284C7;color:#fff;border:none;border-radius:50%;width:64px;height:64px;font-size:26px;cursor:pointer">🔊</button></div>
     <div style="font-size:12px;color:#64748B;margin-bottom:14px">${listenPlaysHint(it.lv)}${listenPlays?` · استمعتَ ${toAr(listenPlays)} ${listenPlays===1?"مرّة":"مرّات"}`:""}</div>
     <div class="choices">${choices}</div>
@@ -5892,35 +5935,36 @@ function renderListenResult(){
 // وبنك البنية نفسها **من أوّل يوم لا بعد استنفاد**: buildReadPlan يحمل مراجعةً حرّة
 // حين يفرغ المستحقّ+الجديد — الدرس الذي كلّف الاستماع جلسةً ضائعة عند هيا (١٦ أغسطس)
 // مطبَّقٌ هنا وقاية لا علاجاً لاحقاً.
+// الأسئلة والخيارات بالإنجليزية للثلاثة سواءً — نفس السبب المذكور أعلى LISTEN_BANK
 const READ_BANK=[
   // A1 — جملة أو جملتان، حقيقة واحدة ملموسة، يبقى النصّ أمامها فتُعيد النظر إليه
-  {id:"rd_a1_1",lv:"A1",passage:"This is Omar. He is nine years old. He has a black cat.",q:"كم عمر عمر؟",c:["ثمانية","تسعة","عشرة"],a:1},
-  {id:"rd_a1_2",lv:"A1",passage:"My school bag is blue. My pencil case is yellow.",q:"ما لون حقيبة المدرسة؟",c:["أصفر","أزرق","أخضر"],a:1},
-  {id:"rd_a1_3",lv:"A1",passage:"Today is Friday. Tomorrow is Saturday.",q:"ما اليوم غداً؟",c:["الخميس","الجمعة","السبت"],a:2},
-  {id:"rd_a1_4",lv:"A1",passage:"I have four brothers and one sister.",q:"كم أختاً عنده؟",c:["واحدة","اثنتان","لا يوجد"],a:0},
-  {id:"rd_a1_5",lv:"A1",passage:"Sara likes apples. She does not like bananas.",q:"ماذا لا تحبّ سارة؟",c:["التفاح","الموز","العنب"],a:1},
-  {id:"rd_a1_6",lv:"A1",passage:"Our classroom has twenty desks and one board.",q:"كم مكتباً في الصفّ؟",c:["عشرة","خمسة عشر","عشرون"],a:2},
-  {id:"rd_a1_7",lv:"A1",passage:"My father works in a hospital. He is a doctor.",q:"أين يعمل الأب؟",c:["مدرسة","مستشفى","مطعم"],a:1},
-  {id:"rd_a1_8",lv:"A1",passage:"The small dog is under the table.",q:"أين الكلب؟",c:["فوق الطاولة","تحت الطاولة","بجانب الباب"],a:1},
-  {id:"rd_a1_9",lv:"A1",passage:"I wake up at six and go to bed at nine.",q:"متى تستيقظ؟",c:["الخامسة","السادسة","السابعة"],a:1},
-  {id:"rd_a1_10",lv:"A1",passage:"Her favourite fruit is orange, not grapes.",q:"ما فاكهتها المفضّلة؟",c:["البرتقال","العنب","الموز"],a:0},
+  {id:"rd_a1_1",lv:"A1",passage:"This is Omar. He is nine years old. He has a black cat.",q:"How old is Omar?",c:["Eight","Nine","Ten"],a:1},
+  {id:"rd_a1_2",lv:"A1",passage:"My school bag is blue. My pencil case is yellow.",q:"What colour is the school bag?",c:["Yellow","Blue","Green"],a:1},
+  {id:"rd_a1_3",lv:"A1",passage:"Today is Friday. Tomorrow is Saturday.",q:"What day is it tomorrow?",c:["Thursday","Friday","Saturday"],a:2},
+  {id:"rd_a1_4",lv:"A1",passage:"I have four brothers and one sister.",q:"How many sisters does he have?",c:["One","Two","None"],a:0},
+  {id:"rd_a1_5",lv:"A1",passage:"Sara likes apples. She does not like bananas.",q:"What does Sara not like?",c:["Apples","Bananas","Grapes"],a:1},
+  {id:"rd_a1_6",lv:"A1",passage:"Our classroom has twenty desks and one board.",q:"How many desks are in the classroom?",c:["Ten","Fifteen","Twenty"],a:2},
+  {id:"rd_a1_7",lv:"A1",passage:"My father works in a hospital. He is a doctor.",q:"Where does the father work?",c:["A school","A hospital","A restaurant"],a:1},
+  {id:"rd_a1_8",lv:"A1",passage:"The small dog is under the table.",q:"Where is the dog?",c:["On the table","Under the table","Next to the door"],a:1},
+  {id:"rd_a1_9",lv:"A1",passage:"I wake up at six and go to bed at nine.",q:"When does she wake up?",c:["Five o'clock","Six o'clock","Seven o'clock"],a:1},
+  {id:"rd_a1_10",lv:"A1",passage:"Her favourite fruit is orange, not grapes.",q:"What is her favourite fruit?",c:["Orange","Grapes","Bananas"],a:0},
   // A2 — رسالة أو إعلان قصير من جملتين إلى ثلاث، والسؤال عن تفصيل واحد
-  {id:"rd_a2_1",lv:"A2",passage:"Notice: The library closes at 4pm on Thursdays, but stays open until 6pm on other days.",q:"متى تُغلق المكتبة يوم الأربعاء؟",c:["الرابعة","السادسة","لا تُغلق"],a:1},
-  {id:"rd_a2_2",lv:"A2",passage:"Hi Sam, I can't come to the party on Saturday because I have a family trip. See you next week!",q:"لماذا لن يحضر الحفلة؟",c:["مريض","رحلة عائلية","نسي الموعد"],a:1},
-  {id:"rd_a2_3",lv:"A2",passage:"Sale this weekend! All shoes 20% off, but shirts are not included in the offer.",q:"ما الذي ليس ضمن العرض؟",c:["الأحذية","القمصان","كلاهما"],a:1},
-  {id:"rd_a2_4",lv:"A2",passage:"The bus to the museum leaves every hour, but the last one today is at 5pm.",q:"متى آخر حافلة اليوم؟",c:["الرابعة","الخامسة","السادسة"],a:1},
-  {id:"rd_a2_5",lv:"A2",passage:"Reminder: bring your sports shoes tomorrow — we have PE class in the morning, not the afternoon.",q:"متى حصّة الرياضة غداً؟",c:["الصباح","بعد الظهر","المساء"],a:0},
-  {id:"rd_a2_6",lv:"A2",passage:"Dear guests, breakfast is served from 7 to 10, and the pool opens at 9.",q:"متى يفتح المسبح؟",c:["السابعة","التاسعة","العاشرة"],a:1},
-  {id:"rd_a2_7",lv:"A2",passage:"I found a small grey wallet near the park gate this morning. Please call this number if it's yours.",q:"أين وُجدت المحفظة؟",c:["داخل المتنزّه","قرب بوّابة المتنزّه","في الشارع"],a:1},
-  {id:"rd_a2_8",lv:"A2",passage:"The test was moved from Monday to Wednesday because the teacher is travelling.",q:"لماذا تأجّل الاختبار؟",c:["المعلّم مسافر","الطلّاب طلبوا ذلك","خطأ في الجدول"],a:0},
-  {id:"rd_a2_9",lv:"A2",passage:"Our team won the match 3-1, even though we started slowly in the first half.",q:"كم كانت النتيجة؟",c:["١-٣","٣-١","٢-١"],a:1},
-  {id:"rd_a2_10",lv:"A2",passage:"Please switch off all lights before leaving the lab, and lock the door.",q:"ماذا يجب أن تفعل قبل المغادرة غير إطفاء الأضواء؟",c:["فتح النوافذ","قفل الباب","تنظيف الطاولة"],a:1},
+  {id:"rd_a2_1",lv:"A2",passage:"Notice: The library closes at 4pm on Thursdays, but stays open until 6pm on other days.",q:"When does the library close on Wednesdays?",c:["Four o'clock","Six o'clock","It doesn't close"],a:1},
+  {id:"rd_a2_2",lv:"A2",passage:"Hi Sam, I can't come to the party on Saturday because I have a family trip. See you next week!",q:"Why won't he come to the party?",c:["He is sick","A family trip","He forgot the date"],a:1},
+  {id:"rd_a2_3",lv:"A2",passage:"Sale this weekend! All shoes 20% off, but shirts are not included in the offer.",q:"What is not included in the offer?",c:["Shoes","Shirts","Both"],a:1},
+  {id:"rd_a2_4",lv:"A2",passage:"The bus to the museum leaves every hour, but the last one today is at 5pm.",q:"When is the last bus today?",c:["Four o'clock","Five o'clock","Six o'clock"],a:1},
+  {id:"rd_a2_5",lv:"A2",passage:"Reminder: bring your sports shoes tomorrow — we have PE class in the morning, not the afternoon.",q:"When is PE class tomorrow?",c:["Morning","Afternoon","Evening"],a:0},
+  {id:"rd_a2_6",lv:"A2",passage:"Dear guests, breakfast is served from 7 to 10, and the pool opens at 9.",q:"When does the pool open?",c:["Seven o'clock","Nine o'clock","Ten o'clock"],a:1},
+  {id:"rd_a2_7",lv:"A2",passage:"I found a small grey wallet near the park gate this morning. Please call this number if it's yours.",q:"Where was the wallet found?",c:["Inside the park","Near the park gate","In the street"],a:1},
+  {id:"rd_a2_8",lv:"A2",passage:"The test was moved from Monday to Wednesday because the teacher is travelling.",q:"Why was the test postponed?",c:["The teacher is travelling","The students asked for it","A scheduling mistake"],a:0},
+  {id:"rd_a2_9",lv:"A2",passage:"Our team won the match 3-1, even though we started slowly in the first half.",q:"What was the final score?",c:["1-3","3-1","2-1"],a:1},
+  {id:"rd_a2_10",lv:"A2",passage:"Please switch off all lights before leaving the lab, and lock the door.",q:"What must you do before leaving, besides switching off the lights?",c:["Open the windows","Lock the door","Clean the table"],a:1},
   // B1 — فقرة من أربع إلى ست جمل، والسؤال عن الفكرة الرئيسية أو تفصيل يحتاج تتبّعاً
-  {id:"rd_b1_1",lv:"B1",passage:"Many students find it hard to focus while studying at home because of phones and social media. Some experts suggest putting the phone in another room during study time. Others recommend using apps that block notifications for a set period. Either way, the goal is the same: fewer interruptions, better focus.",q:"ما الفكرة الرئيسية؟",c:["طرق لتقليل تشتّت الهاتف أثناء الدراسة","أضرار الهاتف على الصحة","أفضل تطبيقات التواصل"],a:0},
-  {id:"rd_b1_2",lv:"B1",passage:"When I first started running, I could barely finish one kilometre without stopping. I kept a simple log of my times and distances every week. After three months of slow, steady progress, I ran my first five-kilometre race. It wasn't fast, but finishing felt like a real achievement.",q:"ما الذي ساعده على التقدّم؟",c:["مدرّبٌ خاص","تسجيل تقدّمه أسبوعياً بثبات","الجري مع أصدقائه"],a:1},
-  {id:"rd_b1_3",lv:"B1",passage:"The school is introducing a new cafeteria menu next month, with more fruit and vegetable options and less fried food. The change came after a survey showed that many students wanted healthier choices. Prices will stay the same, but some popular items, like fries, will only be available twice a week instead of daily.",q:"لماذا تغيّرت القائمة؟",c:["نقص في الميزانية","استطلاعٌ طلب خياراتٍ أصحّ","قرارٌ من الحكومة"],a:1},
-  {id:"rd_b1_4",lv:"B1",passage:"Working part-time while studying can teach useful skills like managing time and money, but it can also be tiring if the hours are too long. Career advisors usually suggest students limit part-time work to around ten or fifteen hours a week during term time, so studies don't suffer.",q:"ما توصية المستشارين المهنيّين؟",c:["عدم العمل إطلاقاً أثناء الدراسة","تحديد ساعات العمل بعشر إلى خمس عشرة أسبوعياً","العمل بدوامٍ كامل في الإجازة فقط"],a:1},
-  {id:"rd_b1_5",lv:"B1",passage:"Our neighbourhood used to have only one small grocery store, so people often drove to the next town for shopping. Last year, a larger supermarket opened just two streets away. Now most residents shop locally, which has also brought more people to the small cafes and shops nearby.",q:"ما الذي تغيّر في الحيّ؟",c:["أُغلقت كل المحلّات","سوبرماركت جديد قرّب التسوّق وأنعش المحلّات القريبة","انتقل معظم السكّان إلى بلدةٍ أخرى"],a:1},
+  {id:"rd_b1_1",lv:"B1",passage:"Many students find it hard to focus while studying at home because of phones and social media. Some experts suggest putting the phone in another room during study time. Others recommend using apps that block notifications for a set period. Either way, the goal is the same: fewer interruptions, better focus.",q:"What is the main idea?",c:["Ways to reduce phone distraction while studying","The health risks of phones","The best social media apps"],a:0},
+  {id:"rd_b1_2",lv:"B1",passage:"When I first started running, I could barely finish one kilometre without stopping. I kept a simple log of my times and distances every week. After three months of slow, steady progress, I ran my first five-kilometre race. It wasn't fast, but finishing felt like a real achievement.",q:"What helped him improve?",c:["A personal trainer","Logging his progress steadily every week","Running with friends"],a:1},
+  {id:"rd_b1_3",lv:"B1",passage:"The school is introducing a new cafeteria menu next month, with more fruit and vegetable options and less fried food. The change came after a survey showed that many students wanted healthier choices. Prices will stay the same, but some popular items, like fries, will only be available twice a week instead of daily.",q:"Why did the menu change?",c:["A budget shortage","A survey asked for healthier options","A government decision"],a:1},
+  {id:"rd_b1_4",lv:"B1",passage:"Working part-time while studying can teach useful skills like managing time and money, but it can also be tiring if the hours are too long. Career advisors usually suggest students limit part-time work to around ten or fifteen hours a week during term time, so studies don't suffer.",q:"What do career advisors recommend?",c:["Not working at all while studying","Limiting work to 10-15 hours a week","Working full-time, but only on holidays"],a:1},
+  {id:"rd_b1_5",lv:"B1",passage:"Our neighbourhood used to have only one small grocery store, so people often drove to the next town for shopping. Last year, a larger supermarket opened just two streets away. Now most residents shop locally, which has also brought more people to the small cafes and shops nearby.",q:"What changed in the neighbourhood?",c:["All the shops closed","A new supermarket made shopping closer and boosted nearby shops","Most residents moved to another town"],a:1},
 ];
 const GEN_BANK_KEY_READ="mawhiba_read_aibank_v2";
 function readBankFor(level){
@@ -5974,7 +6018,7 @@ function renderRead(){
   const choices=it.c.map(function(c,i){
     let bg="#fff",bd="#E2E8F0",col="#334155";
     if(readLocked){if(i===it.a){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(i===readPicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}
-    return `<button class="choice" style="background:${bg};border-color:${bd};color:${col}" onclick="readChoose(${i})" ${readLocked?"disabled":""}><span class="letter">${L[i]}</span>${c}</button>`}).join("");
+    return `<button class="choice" style="background:${bg};border-color:${bd};color:${col};direction:ltr;text-align:left;font-family:Georgia,serif" onclick="readChoose(${i})" ${readLocked?"disabled":""}><span class="letter">${L[i]}</span>${c}</button>`}).join("");
   app.innerHTML=`
   <button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
   ${prog}
@@ -5982,7 +6026,7 @@ function renderRead(){
   <div class="card">
     <span class="tag" style="background:#F5F3FF;color:#6D28D9">📖 اقرئي</span>
     <div style="background:#FAF5FF;border:1px solid #E9D5FF;border-radius:12px;padding:14px;margin:14px 0;font-size:16px;line-height:1.8;direction:ltr;text-align:left;color:#4C1D95;font-family:Georgia,serif">${it.passage}</div>
-    <div class="q">${it.q}</div>
+    <div class="q" style="direction:ltr;text-align:left;font-family:Georgia,serif;margin-top:12px">${it.q}</div>
     <div class="choices">${choices}</div>
     ${readLocked?`<div class="explain"><div class="explain-title" style="color:${readPicked===it.a?'#059669':'#B45309'}">${readPicked===it.a?"✓ فهمتِ صحيحاً":"الصحيحة بالأخضر"}</div></div>`:""}
   </div>
@@ -7335,6 +7379,7 @@ function renderProgress(){
 }
 
 genderizeInit();
+logQueueFlush();
 render();
 
 </script>

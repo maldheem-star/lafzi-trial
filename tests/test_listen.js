@@ -54,10 +54,9 @@ const before=await page.evaluate(()=>({
 }));
 ok(before.hasQ&&before.choices>=3,'السؤال والخيارات ظاهران فوراً');
 
-console.log('\n٤) الاستماع مرّتين إرشاديّ للمبتدئ، ومرّة واحدة لِمن فوقه — إرشادٌ لا قفل');
+console.log('\n٤) الاستماع مرّتين للمستويات الثلاثة سواءً — معياريٌّ حرفياً (YLE/KET/PET كلّها "twice")، إرشادٌ لا قفل');
 const hints=await page.evaluate(()=>[listenPlaysHint('A1'),listenPlaysHint('A2'),listenPlaysHint('B1')]);
-ok(/مرّتين/.test(hints[0])&&/مرّتين/.test(hints[1]),'A1/A2: مرّتين');
-ok(/مرّة واحدة/.test(hints[2]),'B1: مرّة واحدة');
+ok(/مرّتين/.test(hints[0])&&/مرّتين/.test(hints[1])&&/مرّتين/.test(hints[2]),'A1/A2/B1: مرّتين للثلاثة — لا فرق IELTS الخاطئ سابقاً');
 const plays3=await page.evaluate(()=>{listenPlay();listenPlay();listenPlay();return listenPlays});
 ok(plays3>=3,'والزرّ لا يُقفَل تقنياً — لا فائدة تشخيصية من منعه');
 
