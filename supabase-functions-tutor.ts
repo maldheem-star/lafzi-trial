@@ -418,33 +418,36 @@ Deno.serve(async (req) => {
   try {
     const b = await req.json().catch(() => ({})) as Record<string, unknown>;
 
-    // يُفرض المزوّد بسرّ TUTOR_PROVIDER، وإلا فأوّل من يوجد مفتاحه، وGemini آخراً
-    const forced = (Deno.env.get("TUTOR_PROVIDER") || "").trim().toLowerCase();
+    // يُفرض المزوّد بسرّ TUTOR_PROVIDER، وإلا فكل من يوجد مفتاحه بترتيب التفضيل،
+    // وGemini آخراً — والفرق عن السابق: كانت الدالّة تختار أوّل مزوّدٍ له مفتاحٌ
+    // ثم تتوقّف، فإن فشل طلبه الفعلي (لا غياب مفتاحه) انقطعت المحادثة كليّاً ولو
+    // كان مزوّدٌ آخر مضبوطاً بمفتاحه ولم يُجرَّب قطّ. ١٧ أغسطس: llama-3.3-70b-versatile
+    // تعطّل متقطّعاً عند Groq (بيانات حيّة: عشر مرّاتٍ خلال يومٍ واحد عند إلياس ومحمد
+    // معاً) بينما Cerebras/OpenRouter/... لو كانت مضبوطة لم تُجرَّب أبداً. فالآن تُجمع
+    // كل المزوّدين الذين لهم مفتاحٌ في قائمة مرشّحين، ويُجرَّب التالي كلّما فشل الحاليّ
+    // فعلياً — لا عند غياب المفتاح وحده كما كان.
     const customUrl = (Deno.env.get("TUTOR_BASE_URL") || "").trim();
     if (customUrl) OAI.custom.url = customUrl;
-    let provider = "", found = { name: "", raw: "" };
-    const pick = (p: string) => {
-      if (p === "gemini") { const f = findKey(GEMINI_KEYS); if (f.raw) { provider = "gemini"; found = f; return true } return false }
-      const spec = OAI[p];
-      if (!spec || (p === "custom" && !spec.url)) return false;
-      const f = findKey(spec.keys);
-      if (f.raw) { provider = p; found = f; return true }
-      return false;
-    };
-    if (!forced || !pick(forced)) {
-      for (const p of OAI_ORDER) if (pick(p)) break;
-      if (!provider) pick("gemini");
+    const keyFor = (p: string) => p === "gemini" ? findKey(GEMINI_KEYS) : findKey(OAI[p].keys);
+    const hasSpec = (p: string) => p === "gemini" || (!!OAI[p] && (p !== "custom" || !!OAI[p].url));
+    const forced = (Deno.env.get("TUTOR_PROVIDER") || "").trim().toLowerCase();
+    // مزوّدٌ يُفرَض صراحةً: بلا تراجعٍ تلقائي — إجبارٌ للتشخيص، لا يُخفى فشله بمزوّدٍ آخر
+    let candidates: { provider: string; found: { name: string; raw: string } }[] = [];
+    if (forced && hasSpec(forced)) {
+      const f = keyFor(forced);
+      if (f.raw) candidates = [{ provider: forced, found: f }];
     }
-    const keyName = found.name;
-    // نفس درس Azure: محرف غير مرئي واحد ملتصق بالمفتاح يجعل الطلب يفشل فشلاً غامضاً
-    const KEY = found.raw.replace(/[^\x21-\x7E]/g, "");
-    const keyBad = Array.from(found.raw).filter((c) => !/[\x21-\x7E]/.test(c))
-      .map((c) => "U+" + (c.codePointAt(0) || 0).toString(16).toUpperCase().padStart(4, "0"));
-    if (!KEY) {
+    if (!candidates.length) {
+      for (const p of OAI_ORDER) {
+        const f = keyFor(p);
+        if (f.raw) candidates.push({ provider: p, found: f });
+      }
+      const g = keyFor("gemini");
+      if (g.raw) candidates.push({ provider: "gemini", found: g });
+    }
+    if (!candidates.length) {
       return jsonOut({ error: "not_configured",
-        detail: found.raw.length ? `${keyName} present but contains no usable characters`
-                                 : "no tutor key found under any known name",
-        keyRawLength: found.raw.length, keyBad, keyName, provider,
+        detail: "no tutor key found under any known name",
         providers: OAI_ORDER.concat(["gemini"]), checked: KEY_NAMES });
     }
 
@@ -476,16 +479,6 @@ Deno.serve(async (req) => {
       : gen
       ? systemGen(clip(b.domain, 20) || "read", clip(b.level, 10) || "A2", clip(b.word, 40))
       : systemFor(subject, lrAge, male, lname);
-    // النموذج: سرّ عامّ TUTOR_MODEL، أو سرّ خاصّ بالمزوّد، أو الافتراضي
-    const model = (Deno.env.get("TUTOR_MODEL") || "").trim()
-      || (Deno.env.get(provider.toUpperCase() + "_MODEL") || "").trim()
-      || (provider === "gemini" ? DEFAULT_GEMINI_MODEL : OAI[provider].model);
-
-    // المزوّد المخصّص بلا اسم نموذج يُنتج طلباً بحقل فارغ وخطأً غامضاً — نقولها صراحةً
-    if (!model) {
-      return jsonOut({ error: "tutor_bad_model", provider, model: "",
-        detail: `اضبط السرّ TUTOR_MODEL أو ${provider.toUpperCase()}_MODEL` });
-    }
 
     // تاريخ الحوار يصل من العميل ويعود إليه: الدالة بلا ذاكرة عمداً، فلا حالة تُدار هنا
     const history = Array.isArray(b.history) ? (b.history as Record<string, unknown>[]).slice(-MAX_TURNS) : [];
@@ -498,82 +491,126 @@ Deno.serve(async (req) => {
     // فقرات B1 (٤-٦ جمل) قبل اكتمال السطرين CORRECT/الخيارات.
     const maxTok = gen ? 500 : 300;
 
-    let url: string, headers: Record<string, string>, body: unknown;
-    if (provider === "gemini") {
-      url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
-      headers = { "x-goog-api-key": KEY, "Content-Type": "application/json" };
-      body = {
-        systemInstruction: { parts: [{ text: sysText }] },
-        contents: turns.map((m) => ({ role: String(m.role) === "model" ? "model" : "user",
-          parts: [{ text: clip(m.text) }] })),
-        generationConfig: { temperature: 0.6, maxOutputTokens: maxTok, topP: 0.9 },
-        // طفل: نُشدّد المرشّحات فوق الافتراضي بدل الاكتفاء به
-        safetySettings: ["HARM_CATEGORY_HARASSMENT", "HARM_CATEGORY_HATE_SPEECH",
-          "HARM_CATEGORY_SEXUALLY_EXPLICIT", "HARM_CATEGORY_DANGEROUS_CONTENT",
-        ].map((category) => ({ category, threshold: "BLOCK_LOW_AND_ABOVE" })),
-      };
-    } else {
-      // صيغة OpenAI: دور system صريح، وأدوار user/assistant
-      url = OAI[provider].url;
-      headers = { "Authorization": `Bearer ${KEY}`, "Content-Type": "application/json" };
-      body = {
-        model,
-        messages: [{ role: "system", content: sysText }].concat(
-          turns.map((m) => ({ role: String(m.role) === "model" ? "assistant" : "user", content: clip(m.text) }))),
-        temperature: 0.6, max_tokens: maxTok, top_p: 0.9,
-      };
-    }
+    // يُجرَّب كل مرشّحٍ بدوره حتى يصل ردٌّ نصّيّ فعليّ، أو تنتهي القائمة. كل مزوّدٍ
+    // فاشل يُسجَّل في attempts ليصل تفصيله في الخطأ الأخير إن فشل الجميع — لا تشخيصاً
+    // غامضاً بمزوّدٍ واحد كما كان.
+    let lastErr: { body: Record<string, unknown>; status: number } | null = null;
+    const attempts: string[] = [];
+    for (const cand of candidates) {
+      const provider = cand.provider, found = cand.found;
+      const keyName = found.name;
+      // نفس درس Azure: محرف غير مرئي واحد ملتصق بالمفتاح يجعل الطلب يفشل فشلاً غامضاً
+      const KEY = found.raw.replace(/[^\x21-\x7E]/g, "");
+      const keyBad = Array.from(found.raw).filter((c) => !/[\x21-\x7E]/.test(c))
+        .map((c) => "U+" + (c.codePointAt(0) || 0).toString(16).toUpperCase().padStart(4, "0"));
+      if (!KEY) {
+        attempts.push(provider + ":bad_key_chars");
+        lastErr = { status: 200, body: { error: "not_configured",
+          detail: `${keyName} present but contains no usable characters`,
+          keyRawLength: found.raw.length, keyBad, keyName, provider } };
+        continue;
+      }
 
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 20000);
-    let res: Response;
-    try {
-      res = await fetch(url, { method: "POST", headers, body: JSON.stringify(body), signal: ctrl.signal });
-    } catch (e) {
+      // النموذج: سرّ عامّ TUTOR_MODEL، أو سرّ خاصّ بالمزوّد، أو الافتراضي
+      const model = (Deno.env.get("TUTOR_MODEL") || "").trim()
+        || (Deno.env.get(provider.toUpperCase() + "_MODEL") || "").trim()
+        || (provider === "gemini" ? DEFAULT_GEMINI_MODEL : OAI[provider].model);
+      // المزوّد المخصّص بلا اسم نموذج يُنتج طلباً بحقل فارغ وخطأً غامضاً — نقولها صراحةً
+      if (!model) {
+        attempts.push(provider + ":no_model");
+        lastErr = { status: 200, body: { error: "tutor_bad_model", provider, model: "",
+          detail: `اضبط السرّ TUTOR_MODEL أو ${provider.toUpperCase()}_MODEL` } };
+        continue;
+      }
+
+      let url: string, headers: Record<string, string>, body: unknown;
+      if (provider === "gemini") {
+        url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+        headers = { "x-goog-api-key": KEY, "Content-Type": "application/json" };
+        body = {
+          systemInstruction: { parts: [{ text: sysText }] },
+          contents: turns.map((m) => ({ role: String(m.role) === "model" ? "model" : "user",
+            parts: [{ text: clip(m.text) }] })),
+          generationConfig: { temperature: 0.6, maxOutputTokens: maxTok, topP: 0.9 },
+          // طفل: نُشدّد المرشّحات فوق الافتراضي بدل الاكتفاء به
+          safetySettings: ["HARM_CATEGORY_HARASSMENT", "HARM_CATEGORY_HATE_SPEECH",
+            "HARM_CATEGORY_SEXUALLY_EXPLICIT", "HARM_CATEGORY_DANGEROUS_CONTENT",
+          ].map((category) => ({ category, threshold: "BLOCK_LOW_AND_ABOVE" })),
+        };
+      } else {
+        // صيغة OpenAI: دور system صريح، وأدوار user/assistant
+        url = OAI[provider].url;
+        headers = { "Authorization": `Bearer ${KEY}`, "Content-Type": "application/json" };
+        body = {
+          model,
+          messages: [{ role: "system", content: sysText }].concat(
+            turns.map((m) => ({ role: String(m.role) === "model" ? "assistant" : "user", content: clip(m.text) }))),
+          temperature: 0.6, max_tokens: maxTok, top_p: 0.9,
+        };
+      }
+
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 20000);
+      let res: Response;
+      try {
+        res = await fetch(url, { method: "POST", headers, body: JSON.stringify(body), signal: ctrl.signal });
+      } catch (e) {
+        clearTimeout(t);
+        attempts.push(provider + ":unreachable");
+        lastErr = { status: 200, body: { error: String(e).includes("abort") ? "tutor_timeout" : "tutor_unreachable",
+          detail: String(e).slice(0, 160), provider, model, keyBad } };
+        continue;
+      }
       clearTimeout(t);
-      return jsonOut({ error: String(e).includes("abort") ? "tutor_timeout" : "tutor_unreachable",
-        detail: String(e).slice(0, 160), provider, model, keyBad });
-    }
-    clearTimeout(t);
 
-    if (!res.ok) {
-      // المزوّد يُرفق سبب الرفض في النصّ، وقصّه مبكّراً كان يبتره قبل موضع الفائدة.
-      // نصّ خطأ لا يحمل مفتاحاً، فتوسيعه آمن ومفيد.
-      const detail = (await res.text()).slice(0, 1200);
-      // نفصل الأسباب لأن علاجها مختلف: المفتاح، والحصّة/الرصيد، واسم النموذج
-      const kind = res.status === 401 || res.status === 403 ? "tutor_auth"
-        : res.status === 404 ? "tutor_bad_model"
-        : res.status === 429 ? "tutor_quota"
-        : res.status === 400 ? (/model/i.test(detail) ? "tutor_bad_model" : "tutor_auth")
-        : "tutor_http";
-      return jsonOut({ error: kind, status: res.status, detail, provider, model, keyName });
+      if (!res.ok) {
+        // المزوّد يُرفق سبب الرفض في النصّ، وقصّه مبكّراً كان يبتره قبل موضع الفائدة.
+        // نصّ خطأ لا يحمل مفتاحاً، فتوسيعه آمن ومفيد.
+        const detail = (await res.text()).slice(0, 1200);
+        // نفصل الأسباب لأن علاجها مختلف: المفتاح، والحصّة/الرصيد، واسم النموذج
+        const kind = res.status === 401 || res.status === 403 ? "tutor_auth"
+          : res.status === 404 ? "tutor_bad_model"
+          : res.status === 429 ? "tutor_quota"
+          : res.status === 400 ? (/model/i.test(detail) ? "tutor_bad_model" : "tutor_auth")
+          : "tutor_http";
+        attempts.push(provider + ":" + kind);
+        lastErr = { status: 200, body: { error: kind, status: res.status, detail, provider, model, keyName } };
+        continue;
+      }
+
+      const j = await res.json();
+      let text = "", why = "";
+      if (provider === "gemini") {
+        const cd = (j.candidates && j.candidates[0]) || {};
+        text = ((cd.content && cd.content.parts) || [])
+          .map((p: Record<string, unknown>) => String(p.text || "")).join("").trim();
+        why = String(cd.finishReason || "") ||
+          String((j.promptFeedback && j.promptFeedback.blockReason) || "");
+      } else {
+        const ch = (j.choices && j.choices[0]) || {};
+        text = String((ch.message && ch.message.content) || "").trim();
+        why = String(ch.finish_reason || "");
+      }
+      if (!text) {
+        // حُجب أو عاد فارغاً: نُصرّح بالسبب بدل أن نُمرّر فراغاً يبدو ردّاً
+        attempts.push(provider + ":no_text");
+        lastErr = { status: 200, body: { error: "tutor_no_text", finishReason: why, provider, model } };
+        continue;
+      }
+      // المراجعة وحدها تمرّ على الحَكَم: المحادثة كلامٌ حيّ لا يُدقَّق، والشرح بالعربية
+      if (review) {
+        const j2 = await ltJudge(text);
+        return jsonOut({ ok: true, engine: provider, model, keyName, reply: j2.text,
+          ltDropped: j2.dropped, ltJudged: j2.judged, turns: 1 });
+      }
+      return jsonOut({ ok: true, engine: provider, model, keyName, reply: text,
+        turns: history.length ? Math.floor(history.length / 2) + 1 : 1 });
     }
 
-    const j = await res.json();
-    let text = "", why = "";
-    if (provider === "gemini") {
-      const cand = (j.candidates && j.candidates[0]) || {};
-      text = ((cand.content && cand.content.parts) || [])
-        .map((p: Record<string, unknown>) => String(p.text || "")).join("").trim();
-      why = String(cand.finishReason || "") ||
-        String((j.promptFeedback && j.promptFeedback.blockReason) || "");
-    } else {
-      const ch = (j.choices && j.choices[0]) || {};
-      text = String((ch.message && ch.message.content) || "").trim();
-      why = String(ch.finish_reason || "");
-    }
-    if (!text) {
-      // حُجب أو عاد فارغاً: نُصرّح بالسبب بدل أن نُمرّر فراغاً يبدو ردّاً
-      return jsonOut({ error: "tutor_no_text", finishReason: why, provider, model });
-    }
-    // المراجعة وحدها تمرّ على الحَكَم: المحادثة كلامٌ حيّ لا يُدقَّق، والشرح بالعربية
-    if (review) {
-      const j2 = await ltJudge(text);
-      return jsonOut({ ok: true, engine: provider, model, keyName, reply: j2.text,
-        ltDropped: j2.dropped, ltJudged: j2.judged, turns: 1 });
-    }
-    return jsonOut({ ok: true, engine: provider, model, keyName, reply: text,
-      turns: history.length ? Math.floor(history.length / 2) + 1 : 1 });
+    // فشل كل المرشّحين: يعود آخر خطأ بتفصيله الكامل، ومعه من جُرِّب قبله ولماذا —
+    // فالتشخيص لا يقف عند مزوّدٍ واحد كما كان (تشخيصٌ أوسع، لا سلوكٌ جديد للفشل).
+    const errBody = (lastErr ? lastErr.body : { error: "server_error", message: "no candidates attempted" });
+    return jsonOut({ ...errBody, attempts }, lastErr ? lastErr.status : 500);
   } catch (e) {
     return jsonOut({ error: "server_error", message: String(e).slice(0, 300) }, 500);
   }
