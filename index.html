@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260817-1000";
+  var BUILD="build-20260817-1100";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -6450,23 +6450,23 @@ function renderGramResult(){
 // (اختلاف الحركة الطويلة/القصيرة، وصوت النهاية، ونمط اسم/فعل) لا مؤلَّفة اعتباطاً.
 const MINPAIR_BANK=[
   // A1 — أزواج حركات أساسية شائعة عند مبتدئ صغير
-  {id:"mp_a1_1",lv:"A1",w:["ship","sheep"],ph:["ʃɪp","ʃiːp"],s:["We travelled by ship.","The sheep is in the field."]},
-  {id:"mp_a1_2",lv:"A1",w:["bit","beat"],ph:["bɪt","biːt"],s:["I ate a bit of cake.","My heart began to beat fast."]},
-  {id:"mp_a1_3",lv:"A1",w:["cat","cut"],ph:["kæt","kʌt"],s:["The cat is sleeping.","I cut the paper with scissors."]},
-  {id:"mp_a1_4",lv:"A1",w:["bed","bad"],ph:["bed","bæd"],s:["I sleep in my bed.","That was a bad idea."]},
-  {id:"mp_a1_5",lv:"A1",w:["pin","pen"],ph:["pɪn","pen"],s:["She used a pin to fix her scarf.","I write with a blue pen."]},
+  {id:"mp_a1_1",lv:"A1",w:["ship","sheep"],ph:["ʃɪp","ʃiːp"],m:["سفينة","خروف"],s:["We travelled by ship.","The sheep is in the field."]},
+  {id:"mp_a1_2",lv:"A1",w:["bit","beat"],ph:["bɪt","biːt"],m:["قطعة صغيرة","ينبض"],s:["I ate a bit of cake.","My heart began to beat fast."]},
+  {id:"mp_a1_3",lv:"A1",w:["cat","cut"],ph:["kæt","kʌt"],m:["قطّة","يقطع"],s:["The cat is sleeping.","I cut the paper with scissors."]},
+  {id:"mp_a1_4",lv:"A1",w:["bed","bad"],ph:["bed","bæd"],m:["سرير","سيّئ"],s:["I sleep in my bed.","That was a bad idea."]},
+  {id:"mp_a1_5",lv:"A1",w:["pin","pen"],ph:["pɪn","pen"],m:["دبّوس","قلم"],s:["She used a pin to fix her scarf.","I write with a blue pen."]},
   // A2 — صوت النهاية (اختلاف الصوت لا الحرف) وحركات أطول قليلاً
-  {id:"mp_a2_1",lv:"A2",w:["live","leave"],ph:["lɪv","liːv"],s:["I live in a small house.","We leave for school at seven."]},
-  {id:"mp_a2_2",lv:"A2",w:["work","walk"],ph:["wɜːrk","wɔːk"],s:["My father goes to work every day.","We walk to the park after lunch."]},
-  {id:"mp_a2_3",lv:"A2",w:["price","prize"],ph:["praɪs","praɪz"],s:["The price of the shirt is twenty riyals.","She won the first prize in the race."]},
-  {id:"mp_a2_4",lv:"A2",w:["thirty","thirsty"],ph:["ˈθɜːrti","ˈθɜːrsti"],s:["There are thirty students in our class.","I feel thirsty after running."]},
-  {id:"mp_a2_5",lv:"A2",w:["sit","seat"],ph:["sɪt","siːt"],s:["Please sit down.","This is my seat on the bus."]},
+  {id:"mp_a2_1",lv:"A2",w:["live","leave"],ph:["lɪv","liːv"],m:["يعيش","يغادر"],s:["I live in a small house.","We leave for school at seven."]},
+  {id:"mp_a2_2",lv:"A2",w:["work","walk"],ph:["wɜːrk","wɔːk"],m:["عمل","يمشي"],s:["My father goes to work every day.","We walk to the park after lunch."]},
+  {id:"mp_a2_3",lv:"A2",w:["price","prize"],ph:["praɪs","praɪz"],m:["سعر","جائزة"],s:["The price of the shirt is twenty riyals.","She won the first prize in the race."]},
+  {id:"mp_a2_4",lv:"A2",w:["thirty","thirsty"],ph:["ˈθɜːrti","ˈθɜːrsti"],m:["ثلاثون","عطشان"],s:["There are thirty students in our class.","I feel thirsty after running."]},
+  {id:"mp_a2_5",lv:"A2",w:["sit","seat"],ph:["sɪt","siːt"],m:["يجلس","مقعد"],s:["Please sit down.","This is my seat on the bus."]},
   // B1 — نمط اسم/فعل ودقّة أعلى، كالمثال الذي طلبه صاحب المشروع (chose/choose)
-  {id:"mp_b1_1",lv:"B1",w:["chose","choose"],ph:["tʃoʊz","tʃuːz"],s:["Yesterday I chose the blue shirt.","You can choose any book you like."]},
-  {id:"mp_b1_2",lv:"B1",w:["lose","loose"],ph:["luːz","luːs"],s:["Don't lose your keys again.","These trousers are too loose for me."]},
-  {id:"mp_b1_3",lv:"B1",w:["advice","advise"],ph:["ədˈvaɪs","ədˈvaɪz"],s:["Can you give me some advice?","I advise you to study every day."]},
-  {id:"mp_b1_4",lv:"B1",w:["desert","dessert"],ph:["ˈdezərt","dɪˈzɜːrt"],s:["The camel walked across the desert.","We had ice cream for dessert."]},
-  {id:"mp_b1_5",lv:"B1",w:["accept","except"],ph:["əkˈsept","ɪkˈsept"],s:["I accept your apology.","Everyone came except Sara."]},
+  {id:"mp_b1_1",lv:"B1",w:["chose","choose"],ph:["tʃoʊz","tʃuːz"],m:["اختار (ماضٍ)","يختار (مضارع)"],s:["Yesterday I chose the blue shirt.","You can choose any book you like."]},
+  {id:"mp_b1_2",lv:"B1",w:["lose","loose"],ph:["luːz","luːs"],m:["يخسر / يفقد","فضفاض"],s:["Don't lose your keys again.","These trousers are too loose for me."]},
+  {id:"mp_b1_3",lv:"B1",w:["advice","advise"],ph:["ədˈvaɪs","ədˈvaɪz"],m:["نصيحة (اسم)","ينصح (فعل)"],s:["Can you give me some advice?","I advise you to study every day."]},
+  {id:"mp_b1_4",lv:"B1",w:["desert","dessert"],ph:["ˈdezərt","dɪˈzɜːrt"],m:["صحراء","حلوى"],s:["The camel walked across the desert.","We had ice cream for dessert."]},
+  {id:"mp_b1_5",lv:"B1",w:["accept","except"],ph:["əkˈsept","ɪkˈsept"],m:["يقبل","باستثناء"],s:["I accept your apology.","Everyone came except Sara."]},
 ];
 function minpairBankFor(level){
   const L=String(level||"A2");
@@ -6543,7 +6543,8 @@ function renderMinpair(){
     ${minpairLocked?`<div class="explain">
         <div class="explain-title" style="color:${minpairPicked===minpairTarget?'#059669':'#B45309'}">${minpairPicked===minpairTarget?"✓ سمعتِها صح":"الصحيحة بالأخضر"}</div>
         <div style="margin-top:10px;background:#F8FAFC;border-radius:12px;padding:12px">
-          <div style="font-size:12px;color:#64748B;margin-bottom:4px">وفي جملة، لتتعلّمي معناها:</div>
+          <div style="font-size:15px;font-weight:800;color:#0891B2;margin-bottom:8px">${esc(it.m[minpairTarget])} = <span style="direction:ltr;font-family:Georgia,serif">${esc(it.w[minpairTarget])}</span></div>
+          <div style="font-size:12px;color:#64748B;margin-bottom:4px">وفي جملة، لترسيخ المعنى والاستعمال:</div>
           <div style="direction:ltr;text-align:left;font-family:Georgia,serif;font-size:15px;color:#0F172A;display:flex;align-items:center;gap:6px;justify-content:center">
             <span>${it.s[minpairTarget]}</span>
             <button type="button" onclick="speakEnglish(${JSON.stringify(it.s[minpairTarget])})" style="background:none;border:none;color:#0891B2;cursor:pointer;font-size:16px;padding:0">🔊</button>

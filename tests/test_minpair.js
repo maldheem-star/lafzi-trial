@@ -33,7 +33,7 @@ const banks=await page.evaluate(()=>({
   b1:minpairBankFor('B1').every(x=>x.lv==='B1'),
   n:{a1:minpairBankFor('A1').length,a2:minpairBankFor('A2').length,b1:minpairBankFor('B1').length},
   shape:MINPAIR_BANK.every(x=>Array.isArray(x.w)&&x.w.length===2&&Array.isArray(x.ph)&&x.ph.length===2
-    &&Array.isArray(x.s)&&x.s.length===2&&x.w[0]!==x.w[1]&&x.lv),
+    &&Array.isArray(x.s)&&x.s.length===2&&Array.isArray(x.m)&&x.m.length===2&&x.m[0]&&x.m[1]&&x.w[0]!==x.w[1]&&x.lv),
 }));
 ok(banks.a1&&banks.a2&&banks.b1,'لا اختلاط بين المستويات');
 ok(banks.n.a1>=5&&banks.n.a2>=5&&banks.n.b1>=5,`ولكلٍّ بنكٌ كافٍ (${JSON.stringify(banks.n)})`);
@@ -56,16 +56,17 @@ const spoken=await page.evaluate(()=>({said:window.__spoken[0],target:minpairCur
 ok(spoken.said===spoken.target,`نُطقت الكلمة الهدف («${spoken.said}»)`);
 ok(spoken.plays===1,'وعدّاد الاستماعات زاد');
 
-console.log('\n٤) اختيار صحيح يُحتسب، وتظهر الجملة الشارحة بعد القفل');
+console.log('\n٤) اختيار صحيح يُحتسب، وتظهر الجملة الشارحة والمعنى العربي بعد القفل');
 await page.evaluate(()=>startMinpair());
 let r=await page.evaluate(()=>{
   const it=minpairCur();minpairChoose(minpairTarget);
   return{picked:minpairPicked,locked:minpairLocked,ok:minpairPicked===minpairTarget,score:minpairScore,
-    sentence:it.s[minpairTarget]};
+    sentence:it.s[minpairTarget],meaning:it.m[minpairTarget],word:it.w[minpairTarget]};
 });
 ok(r.ok&&r.score===1,'الإجابة الصحيحة تُحتسب');
 let t=await page.textContent('#app');
 ok(t.includes(r.sentence),'والجملة الشارحة ظاهرة على الشاشة');
+ok(t.includes(r.meaning)&&t.includes(r.word),`والمعنى العربي ظاهر مع الكلمة («${r.meaning} = ${r.word}») — سبب طلب صاحب المشروع`);
 ok(t.includes('سمعتِها صح'),'ورسالة النجاح ظاهرة');
 
 console.log('\n٥) اختيار خاطئ لا يُحتسب، والصحيحة تلوّن بالأخضر');
