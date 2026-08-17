@@ -4264,7 +4264,22 @@ const COACH_SCENES=[
    opener:"I have a cat named Luna and she sleeps all day. Tell me about animals you like.",
    says:["I like cats because they are soft.","My favourite animal is the horse."],
    words:"cat, dog, horse, bird, fish, rabbit, pet, feed, sleep, play, favourite, because, soft"},
-  // الموقف السابع: الموضوع من عنده. الستّة قبله لكلٍّ أسلوبه المقصود، وهذا أسلوبه
+  // مشهدان يفرضان تركيباً لا ينتظرانه: الشرط والمبني للمجهول لا يظهران من تلقاء
+  // أنفسهما في حوارٍ حرّ (خلطٌ في الشرط ومبنيٌّ للمجهول مشوَّه ظهرا عند محمد، ١٧
+  // أغسطس). والبحث يؤكّد أن الجمع بين مهمّةٍ تواصلية تفرض التركيب وشرحٍ صريح
+  // (focus-on-form) أفعل من انتظاره عرضاً في حوارٍ عام — فالمشهد نفسه يستدعي
+  // التركيب لا التعليمة النصّية وحدها. تظهر للثلاثة سواءً كبقية المشاهد.
+  {id:"ifonly",ar:"لو صار كذا... 🤔",en:"You are a friend asking the student hypothetical 'what if' questions about everyday situations.",
+   focus:"Model CONDITIONAL SENTENCES. Ask 'What would you do if...?' questions, and answer your own with a full if-clause: 'If I were you, I would...'. Encourage complete if-clauses, not just 'will' alone.",
+   opener:"Here's a fun one — what would you do if you found some money on the street?",
+   says:["If I found some money, I would tell someone.","I would try to find who lost it first."],
+   words:"if, would, find, lose, keep, decide, imagine, situation, choice, probably, honest"},
+  {id:"howmade",ar:"كيف يُصنَع؟ 🏭",en:"You are a curious friend asking the student to explain how everyday things are made or done.",
+   focus:"Model PASSIVE VOICE for describing processes. Ask 'How is it made?' or 'How is it done?', and answer using passive forms yourself: 'It is grown, then it is dried, then it is packed.'",
+   opener:"I was just wondering — do you know how chocolate is made?",
+   says:["First the beans are grown, then they are dried.","I think it is mixed with sugar and milk."],
+   words:"made, grown, dried, packed, mixed, produced, factory, process, steps, first, then, finally"},
+  // الموقف التاسع: الموضوع من عنده. الثمانية قبله لكلٍّ أسلوبه المقصود، وهذا أسلوبه
   // إدارة الحديث نفسه — سؤالٌ ورأيٌ بسبب — لأنّ الموضوع لا يُعرف قبل أن يُكتب.
   {id:"free",ar:"موضوع من عندك ✍️",free:true,en:"",focus:"",opener:""},
 ];
@@ -6107,6 +6122,16 @@ const WRITE_BANK=[
   {id:"wr_b1_4",lv:"B1",min:70,prompt:"Write an email to a friend about a part-time job or hobby you have.\nInclude: what you do, why you like it, and one challenge.\nWrite about 80–100 words."},
   {id:"wr_b1_5",lv:"B1",min:70,prompt:"Write a short story that begins with this sentence:\n“The phone rang at midnight.”\nWrite about 80–100 words."},
   {id:"wr_b1_6",lv:"B1",min:70,prompt:"Write an email to a friend recommending a place to visit in your city.\nInclude: what it is, why you like it, and what to do there.\nWrite about 80–100 words."},
+  // دمج الجمل (sentence combining) — البحث يؤكّد أنه يرفع التعقيد النحوي والدقّة
+  // معاً في كتابة متعلّمي اللغة الثانية، ويستهدف بالضبط ما كشفه تحليل إنتاج محمد
+  // الحرّ (١٧ أغسطس): جملته تنهار عند أقصى تعقيدٍ يحاوله لا قبله. موصولٌ بنفس مسار
+  // الكتابة الحرّ بالكامل (type:"combine" وحدها الفارق) — نفس textarea، نفس مراجعة
+  // LanguageTool، نفس FSRS؛ فقط معيار النجاح يختلف: نظافة نحوية لا عدد كلمات فقط.
+  {id:"wr_b1_sc1",lv:"B1",min:8,type:"combine",prompt:"Combine these two sentences into ONE sentence using a joining word (when, because, so, although...):\n1) It started raining.\n2) We went home early."},
+  {id:"wr_b1_sc2",lv:"B1",min:10,type:"combine",prompt:"Combine these two sentences into ONE sentence using a joining word (so that, because...):\n1) She works every weekend.\n2) She can save money for university."},
+  {id:"wr_b1_sc3",lv:"B1",min:10,type:"combine",prompt:"Combine these two sentences into ONE sentence using a joining word (although, but...):\n1) The museum is very old.\n2) Thousands of people visit it every year."},
+  {id:"wr_b1_sc4",lv:"B1",min:8,type:"combine",prompt:"Combine these two sentences into ONE sentence using a joining word (after, before...):\n1) He finished his homework.\n2) He watched a movie."},
+  {id:"wr_b1_sc5",lv:"B1",min:10,type:"combine",prompt:"Combine these two sentences into ONE sentence using 'which' (a relative clause):\n1) The bridge was built in 1990.\n2) It connects the two islands."},
 ];
 // مثالٌ محلول واحد لكل مستوى — نفس مبدأ "السلّم المتلاشي" (worked examples) المعتمد
 // أصلاً في وضع التقوية (fadeStage===1)، لا ميزة جديدة. وعمداً لموضوعٍ آخر غير سؤالها
@@ -6181,9 +6206,7 @@ async function writeSubmit(){
   const txt=(el?el.value:"").trim();
   if(!txt)return;   // لا نحرق محاولة على حقلٍ فارغ — كنظيرتها في الأساسيات
   writeTyped=txt;writeCount=writeWordCount(txt);
-  const ok=writeCount>=it.min;
-  writeSrsUpdate(it.id,ok);
-  if(ok)writeScore++;
+  const lenOk=writeCount>=it.min;
   writeBusy=true;writeFix=[];writeFixFail="";writeLtDropped=0;writeLtJudged=0;render();
   try{
     const lines=writeSentences(txt).map(function(s,i){return (i+1)+". "+s}).join("\n");
@@ -6196,6 +6219,11 @@ async function writeSubmit(){
     else writeFixFail=(d&&d.error)||"reply";
   }catch(e){writeFixFail="network"}
   writeBusy=false;
+  // دمج الجمل: النجاح نظافة نحوية لا عدد كلمات وحده — بلا فحصٍ نحوي (تعذّر الاتصال)
+  // يُحكم بالطول وحده، كبقية الكتابة، لا يُعاقَب على عطلٍ ليس منه
+  const ok=it.type==="combine"?(lenOk&&(writeFixFail?true:!writeFix.length)):lenOk;
+  writeSrsUpdate(it.id,ok);
+  if(ok)writeScore++;
   // q_text وresponse كاملان — بلا هذين لا تشخيص، ونفس عُرف تسجيل الفرق/الشكل في بقية التطبيق
   logAnswer("write",it.lv,ok,txt,it.id,writeShownAt?Date.now()-writeShownAt:null,
     {q_text:(it.prompt+" · الهدف "+it.min+" كلمة · كتبت "+writeCount+" · lt:"+writeLtJudged+"/"+writeLtDropped+" · مثال:"+writeModelViews).slice(0,1200)});
@@ -6215,9 +6243,16 @@ function writeNext(){
   writeShownAt=Date.now();window.scrollTo(0,0);render();
 }
 function renderWriteFeedback(it){
-  const ok=writeCount>=it.min;
-  const head=`<div class="explain"><div class="explain-title" style="color:${ok?'#059669':'#B45309'}">${ok?"✓ بلغتِ عدد الكلمات":"عدد الكلمات أقلّ من الهدف"}</div>
-    <div class="explain-body">كتبتِ ${toAr(writeCount)} كلمة، والهدف ${toAr(it.min)}.</div></div>`;
+  const isCombine=it.type==="combine";
+  const lenOk=writeCount>=it.min;
+  // دمج الجمل: لا نحكم «سليم» قبل عودة فحص القواعد — عكس الكتابة الحرّة حيث الطول وحده يكفي
+  const ok=isCombine?(lenOk&&!writeBusy&&(writeFixFail?true:!writeFix.length)):lenOk;
+  const title=isCombine
+    ?(writeBusy?"نراجع جملتك المدمَجة…":ok?"✓ جملة مدمَجة سليمة":lenOk?"الجملة تحتاج تصحيحاً":"ادمجي الجملتين في جملةٍ واحدة أطول")
+    :(ok?"✓ بلغتِ عدد الكلمات":"عدد الكلمات أقلّ من الهدف");
+  const body=isCombine?`دمجتِ الجملتين في ${toAr(writeCount)} كلمة.`:`كتبتِ ${toAr(writeCount)} كلمة، والهدف ${toAr(it.min)}.`;
+  const head=`<div class="explain"><div class="explain-title" style="color:${writeBusy&&isCombine?'#64748B':(ok?'#059669':'#B45309')}">${title}</div>
+    <div class="explain-body">${body}</div></div>`;
   if(writeBusy)return head+`<div style="text-align:center;padding:10px"><div class="spin" style="width:28px;height:28px"></div><div style="font-size:13px;color:#64748B;margin-top:8px">نراجع جملك…</div></div>`;
   if(writeFixFail)return head+`<div style="font-size:13px;color:#991B1B;margin-top:10px">تعذّرت مراجعة القواعد — ودرجة عدد الكلمات أعلاه سليمة.</div>`;
   if(!writeFix.length)return head+`<div style="font-size:13px;color:#059669;margin-top:10px">لا تصحيح — جملك سليمة نحوياً ✓</div>`;
@@ -6254,7 +6289,7 @@ function renderWrite(){
     <button type="button" onclick="writeToggleModel()" style="background:none;border:none;color:#1D4ED8;font-size:13px;cursor:pointer;padding:0 0 12px;font-family:inherit;display:block">${writeModelShown?"▲ إخفاء المثال":"📘 شاهدي مثالاً محلولاً قبل أن تبدئي"}</button>
     ${writeModelShown?renderWriteModel(it.lv):""}
     <textarea id="writeIn" rows="5" ${writeSubmitted?"disabled":""} style="width:100%;padding:14px;border-radius:12px;border:2px solid #E2E8F0;font-size:16px;direction:ltr;text-align:left;font-family:Georgia,serif;resize:vertical" placeholder="type your answer here" autocomplete="off" autocapitalize="sentences" spellcheck="true">${writeSubmitted?esc(writeTyped):""}</textarea>
-    <div style="font-size:12px;color:#94A3B8;margin-top:6px">الهدف: ${toAr(it.min)} كلمة على الأقلّ</div>
+    <div style="font-size:12px;color:#94A3B8;margin-top:6px">${it.type==="combine"?"اكتبي جملةً واحدة مدمَجة، لا نسخ الجملتين منفصلتين":"الهدف: "+toAr(it.min)+" كلمة على الأقلّ"}</div>
     ${writeSubmitted?renderWriteFeedback(it):""}
   </div>
   ${writeSubmitted?`<button class="btn" style="background:#0E7490" onclick="writeNext()">${writeIdx+1>=writeItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`
@@ -6362,10 +6397,44 @@ const GRAM_BANK=[
     {t:"I used to play football every weekend when I was young.",ok:true,why:"صحيحة — used to لعادةٍ ماضية"},
     {t:"I was used to play football every weekend when I was young.",ok:false,why:"used to (عادة ماضية) لا تحتاج was قبلها"},
     {t:"I used to played football every weekend when I was young.",ok:false,why:"بعد used to يأتي الفعل بصورته الأساسية (play) لا الماضي (played)"}]},
+  // B1+ — تمديدٌ لا مستوًى جديد: تراكيب English Profile المُميِّزة لـB2 تحديداً
+  // (الشرط المختلط، والمبني للمجهول بأنماط أعقد) — أُضيفت بعد تحليل إنتاج محمد الحرّ
+  // الفعلي (١٧ أغسطس): خلط نوعي الشرط («If I didn't help, I will» بدل would)، ومبنيٌّ
+  // للمجهول مشوَّه («…protects by strong shielding» بدل is protected by). لا بنكاً
+  // عاماً لـB2 — بل توسيعٌ يُضاف إلى بنك B1 عند من مستواه B1 تحديداً (gramBankFor)
+  {id:"gr_b1p_1",lv:"B1+",c:[
+    {t:"If I didn't help my family, I will feel bad.",ok:false,why:"خلطٌ بين نوعي الشرط: ماضٍ في الجملة الشرطية مع will في الجواب لا يصحّان معاً"},
+    {t:"If I don't help my family, I will feel bad.",ok:true,why:"صحيحة — شرطٌ أوّل: مضارعٌ بسيط + will، لموقفٍ حقيقيّ محتمل"},
+    {t:"If I don't helped my family, I would feel bad.",ok:false,why:"بعد if في الشرط الأوّل يأتي مضارعٌ بسيط (help) لا ماضٍ (helped)"},
+    {t:"If I wouldn't help my family, I will feel bad.",ok:false,why:"لا تدخل would في جملة if نفسها"}]},
+  {id:"gr_b1p_2",lv:"B1+",c:[
+    {t:"If I had more time, I will travel more.",ok:false,why:"شرطٌ ثانٍ (had) يحتاج would في الجواب لا will"},
+    {t:"If I had more time, I would travel more.",ok:true,why:"صحيحة — شرطٌ ثانٍ: ماضٍ + would، لموقفٍ افتراضي غير واقعي الآن"},
+    {t:"If I have more time, I would travel more.",ok:false,why:"جملة if هنا مضارعة (have) لكن الجواب افتراضي (would) — لا يتطابقان، فإمّا have+will أو had+would"},
+    {t:"If I would have more time, I would travel more.",ok:false,why:"لا تدخل would في جملة if نفسها"}]},
+  {id:"gr_b1p_3",lv:"B1+",c:[
+    {t:"The crew should protect by strong shielding.",ok:false,why:"بعد should في المبني للمجهول يلزم be: should be protected"},
+    {t:"The crew should be protected by strong shielding.",ok:true,why:"صحيحة — مبنيٌّ للمجهول بعد فعل ناقص: should be + التصريف الثالث"},
+    {t:"The crew should protected by strong shielding.",ok:false,why:"ينقص be بين should والتصريف الثالث protected"},
+    {t:"The crew should being protected by strong shielding.",ok:false,why:"بعد should نستعمل be لا being"}]},
+  {id:"gr_b1p_4",lv:"B1+",c:[
+    {t:"The reactor needs design carefully.",ok:false,why:"ينقص to be قبل التصريف الثالث design(ed)"},
+    {t:"The reactor needs to be designed carefully.",ok:true,why:"صحيحة — مبنيٌّ للمجهول بالمصدر: to be + التصريف الثالث"},
+    {t:"The reactor need to be design carefully.",ok:false,why:"الفاعل مفرد (reactor) فالفعل need يأخذ -s، والتصريف الثالث designed لا design"},
+    {t:"The reactor needs to designed carefully.",ok:false,why:"ينقص be بين to والتصريف الثالث designed"}]},
+  {id:"gr_b1p_5",lv:"B1+",c:[
+    {t:"A prize was given to he.",ok:false,why:"بعد حرف الجرّ to يأتي ضمير المفعول him لا he"},
+    {t:"He was given a prize.",ok:true,why:"صحيحة — مبنيٌّ للمجهول بمفعولين: الشخص فاعل المبني للمجهول مباشرة"},
+    {t:"He was gave a prize.",ok:false,why:"بعد was في المبني للمجهول نستعمل التصريف الثالث given لا الماضي gave"},
+    {t:"Him was given a prize.",ok:false,why:"فاعل الجملة يحتاج ضمير الفاعل he لا ضمير المفعول him"}]},
 ];
 function gramBankFor(level){
   const L=String(level||"A2");
-  const exact=GRAM_BANK.filter(function(x){return x.lv===L});
+  let exact=GRAM_BANK.filter(function(x){return x.lv===L});
+  // B1+ ليس مستوًى قائماً بذاته في التطبيق (لا بنك استماع/قراءة B2) — بل تمديدٌ
+  // يُضاف إلى بنك من مستواه B1 تحديداً، بعد تحليل إنتاجٍ حرّ أظهر تراكيب فوق B1
+  // بدأ يحاولها بنجاحٍ جزئي (٧٧٪ على تراكيب فوق الأساسي) — لا استبدال تصنيفه المقيس
+  if(L==="B1")exact=exact.concat(GRAM_BANK.filter(function(x){return x.lv==="B1+"}));
   return exact.length?exact:GRAM_BANK.filter(function(x){return x.lv==="A1"});
 }
 const GRAM_SRS_KEY="mawhiba_gram_srs";
