@@ -32,8 +32,11 @@ const jsonOut = (o: unknown, status = 200) =>
 // كلها طبقات مجانية دائمة بلا بطاقة (بحدود طلبات لا رصيد)، وحاجتنا عشرات الطلبات
 // يومياً — أي جزء من واحد بالمئة من أصغرها.
 const OAI = {
+  // llama-3.3-70b-versatile أوقفته Groq نهائياً ١٦ أغسطس ٢٠٢٦ (أُعلن الإيقاف ١٧ يونيو)؛
+  // بديلها الموصى به من Groq نفسها openai/gpt-oss-120b — كشفه عطلٌ حيّ عند إلياس ومحمد
+  // معاً (tutor_bad_model، ١٧ أغسطس) بعد أن كشف تسجيل التفصيل الحقيقي السبب أخيراً.
   groq:       { url: "https://api.groq.com/openai/v1/chat/completions",
-                keys: ["GROQ_API_KEY", "GROQ_KEY"], model: "llama-3.3-70b-versatile" },
+                keys: ["GROQ_API_KEY", "GROQ_KEY"], model: "openai/gpt-oss-120b" },
   cerebras:   { url: "https://api.cerebras.ai/v1/chat/completions",
                 keys: ["CEREBRAS_API_KEY"], model: "llama-3.3-70b" },
   openrouter: { url: "https://openrouter.ai/api/v1/chat/completions",
