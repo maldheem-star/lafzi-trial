@@ -31,13 +31,14 @@ ok(t.includes('ابدأ المحادثة'),'وزرّ البدء');
 ok(t.includes('فهم الاستماع'),'وزرّ الاستماع — يعمّم على الثلاثة كالمحادثة و«أخطائي»، لا خاصّاً بمنهج هيا');
 ok(t.includes('فهم المقروء'),'وزرّ القراءة كذلك — نفس التعميم');
 ok(t.includes('الكتابة'),'وزرّ الكتابة كذلك — نفس التعميم');
+ok(t.includes('لعبة الاستماع'),'وزرّ لعبة الأزواج المتشابهة (chose/choose) كذلك — نفس التعميم');
 const gone=['الاستدلال اللغوي','الرياضي والمكاني','الاستدلال العلمي','المرونة والأنماط',
   'محاكاة شاملة','وضع التقوية','متابعة التقدّم','عائلات الحقائق','طلاقة الحقائق',
   'خطة الإنجليزية اليومية','إملاء بالإنجليزية','تمرين النطق','جمل من كتابك','استراتيجيات موهبة',
   'برنامج موهبة المكثّف'];
 gone.forEach(g=>ok(!t.includes(g),`«${g}» اختفى`));
-ok(await m.evaluate(()=>document.querySelectorAll('.mode').length)===4,
-  `أربعة أزرار لا أكثر — المحادثة والاستماع والقراءة والكتابة (${await m.evaluate(()=>document.querySelectorAll('.mode').length)})`);
+ok(await m.evaluate(()=>document.querySelectorAll('.mode').length)===5,
+  `خمسة أزرار لا أكثر — المحادثة والاستماع والقراءة والكتابة ولعبة الأزواج (${await m.evaluate(()=>document.querySelectorAll('.mode').length)})`);
 ok(t.includes('الصوت ما يشتغل؟'),'ورابط تشخيص الصوت باقٍ — بلا ميكروفون لا محادثة');
 ok(!/اختاري|ابدئي|تكلّمي|اضغطي/.test(t),'وبلا خطاب مؤنّث');
 
@@ -62,9 +63,9 @@ ok(rest===0,`ولا طلب نتائج إلى الخادم (${rest}) — لا ا�
 console.log('\n٤) إلياس مثله');
 const e=await mk('elias.html');
 t=await e.textContent('#app');
-ok(t.includes('صفحة إلياس')&&t.includes('ابدأ المحادثة')&&t.includes('فهم الاستماع')&&t.includes('فهم المقروء')&&t.includes('الكتابة'),'المحادثة والاستماع والقراءة والكتابة');
+ok(t.includes('صفحة إلياس')&&t.includes('ابدأ المحادثة')&&t.includes('فهم الاستماع')&&t.includes('فهم المقروء')&&t.includes('الكتابة')&&t.includes('لعبة الاستماع'),'المحادثة والاستماع والقراءة والكتابة ولعبة الأزواج');
 ok(!t.includes('محاكاة شاملة')&&!t.includes('إملاء'),'وبقيّة الأقسام مخفيّة');
-ok(await e.evaluate(()=>document.querySelectorAll('.mode').length)===4,'أربعة أزرار لا أكثر');
+ok(await e.evaluate(()=>document.querySelectorAll('.mode').length)===5,'خمسة أزرار لا أكثر');
 
 console.log('\n٥) صفحة هيا لم تُمسّ — والاستماع والقراءة صارا عندها كذلك');
 const h=await mk('index.html');
