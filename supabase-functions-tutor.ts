@@ -232,7 +232,78 @@ const GEN_TOPICS = [
   "a video game tournament", "a camping trip", "a school exam", "helping a grandparent",
   "a farm visit", "a train delay", "a surprise gift", "a cooking competition", "a rainy weekend at home",
 ];
-function systemGen(domain: string, level: string) {
+// ===== الكتابة: يُنشئ سؤالاً جديداً بصيغة WRITE_BANK نفسها، لا يُصحّح ولا يحكم =====
+// نفس ثغرة الاستماع/القراءة بالضبط: WRITE_BANK ثابتٌ (٦-٨ للمستوى) بلا أي نموّ —
+// وخطّته الأصلية اعتمدت على التباعد وحده ليخفّف الاستنفاد، لكن جلسةً واحدة (WRITE_N=٣)
+// يومياً كافيةٌ لاستنفاده خلال أسبوعين. الصيغة نفسها المعتمَدة في الشيفرة الثابتة —
+// Movers/Flyers (A1)، A2 Key Part 6 (A2)، B1 Preliminary Part 2 (B1) — لا صيغة جديدة.
+function systemGenWrite(level: string) {
+  const shape: Record<string, string> = {
+    A1: [
+      "Write ONE guided-writing prompt for a CEFR A1 learner, in the style of Cambridge",
+      "Movers/Flyers: a short topic instruction (one line, e.g. 'Write about your pet.'),",
+      "followed by 2 simple guiding questions, each on its own line, numbered '1) ' and '2) '.",
+      "MIN must be 10.",
+    ].join(" "),
+    A2: [
+      "Write ONE guided message-writing prompt for a CEFR A2 learner, in the style of",
+      "Cambridge A2 Key Part 6: one line setting an everyday situation, then a line 'Say:',",
+      "then exactly 3 content points to include, each on its own line starting with '• ',",
+      "then a final line 'Write 25–35 words.'. MIN must be 25.",
+    ].join(" "),
+    B1: [
+      "Write ONE creative-writing prompt for a CEFR B1 learner, in the style of Cambridge",
+      "B1 Preliminary Part 2: EITHER a short story prompt (one line naming a sentence in",
+      "double quotes the story must begin or end with, e.g. Write a short story that begins",
+      "with this sentence: \"...\"), OR an email/message topic with 2 to 3 points to include",
+      "each on its own line starting with '• '. End with a line 'Write about 80–100 words.'.",
+      "MIN must be 70.",
+    ].join(" "),
+  };
+  const topic = GEN_TOPICS[Math.floor(Math.random() * GEN_TOPICS.length)];
+  return [
+    shape[level] || shape.A2,
+    `TOPIC FOR THIS ITEM: ${topic}. Build the prompt around this topic specifically. Do NOT`,
+    "reuse a stock textbook example you have seen before.",
+    "",
+    "OUTPUT EXACTLY in this shape, nothing else, no markdown, no extra commentary:",
+    "PROMPT: <the full prompt text, with line breaks written as the two characters \\n>",
+    "MIN: <the minimum word count as a plain number>",
+    "",
+    "RULES:",
+    "1. The PROMPT text must be entirely in English — ZERO Arabic characters anywhere.",
+    "2. Follow the exact shape described above for this level — this is a real exam task",
+    "   type, not a free choice of format.",
+    "3. Keep content appropriate for a school-age learner: no violence, romance, politics or unsafe topics.",
+  ].join("\n");
+}
+
+// ===== الأزواج المتشابهة: جملةٌ جديدة لزوجٍ صوتيٍّ ثابتٍ معروف، لا زوجٌ جديد =====
+// الفرق عن الاستماع/القراءة/الكتابة مقصود: هناك النموذج يُنشئ المحتوى كلّه لأن أيّ
+// فقرة متماسكة تصلح، أمّا هنا فصحّة الزوج نفسه (أن ship/sheep تباعدهما فعلاً حركة
+// طويلة/قصيرة لا خطأً فونيتيكياً) لا يمكن التحقّق منها آلياً بلا صوت. فالأزواج نفسها
+// تبقى مؤلَّفةً يدوياً ومُراجَعة (MINPAIR_BANK)، والنموذج يُنشئ فقط جملة تعليمية جديدة
+// لكلمةٍ معروفة الصحّة مسبقاً — خطرٌ أدنى بكثير، وقابلٌ للتحقّق (هل الكلمة داخل الجملة).
+function systemGenMinpair(level: string, word: string) {
+  return [
+    `Write ONE natural, simple English sentence for a CEFR ${level} school-age learner`,
+    `that uses the word "${word}" clearly in context, so the meaning can be guessed from`,
+    "the sentence alone. 5 to 14 words. Do NOT reuse a stock textbook example.",
+    "",
+    "OUTPUT EXACTLY in this shape, nothing else, no markdown, no extra commentary:",
+    "SENT: <the sentence, one line, ending with . ! or ?>",
+    "",
+    "RULES:",
+    "1. The sentence must be entirely in English — ZERO Arabic characters.",
+    `2. The word "${word}" must appear in the sentence in exactly this form, not a different`,
+    "   inflection or spelling.",
+    "3. Keep content appropriate for a school-age learner: no violence, romance, politics or unsafe topics.",
+  ].join("\n");
+}
+
+function systemGen(domain: string, level: string, word: string) {
+  if (domain === "write") return systemGenWrite(level);
+  if (domain === "minpair") return systemGenMinpair(level, word);
   const isListen = domain === "listen";
   const styleByLevel: Record<string, string> = {
     A1: "ONE or TWO very short sentences. One single concrete fact (a name, age, colour, number, or day of the week). Simple present tense only. Very common words a young beginner already knows.",
@@ -403,7 +474,7 @@ Deno.serve(async (req) => {
           clip(b.focus, 200) || "Be warm and polite. Model good manners in English.",
           !!b.styleTip, male, lname, !!b.easy, !!b.suggest, !!b.openTurn, lrAge)
       : gen
-      ? systemGen(clip(b.domain, 20) || "read", clip(b.level, 10) || "A2")
+      ? systemGen(clip(b.domain, 20) || "read", clip(b.level, 10) || "A2", clip(b.word, 40))
       : systemFor(subject, lrAge, male, lname);
     // النموذج: سرّ عامّ TUTOR_MODEL، أو سرّ خاصّ بالمزوّد، أو الافتراضي
     const model = (Deno.env.get("TUTOR_MODEL") || "").trim()
