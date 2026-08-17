@@ -6060,6 +6060,212 @@ function renderReadResult(){
   </div>`;
 }
 
+// ===== الكتابة: إنتاجٌ حرّ لا اختيارٌ من متعدد =====
+// الفجوة هنا مختلفة عن الاستماع والمقروء: كلاهما فهمٌ، وهذا إنتاج. وبنك الكلمات
+// (wb*) القائم يقيس ترتيب كلماتٍ أُعطيت لها، لا تأليفها من الصفر — وهو بالضبط ما
+// كشفه القياس عن هيا (متوسّط جملتها ١٤ حرفاً، ٤ من ١٥ نسخٌ حرفيّ). فهذا القسم يطلب
+// نصّاً كاملاً تكتبه هي، لا كلماتٍ تُعيد ترتيبها.
+// والصيغة معياريّة كسابقتيها لا مخترعة: مهامّ Cambridge الكتابية — Movers/Flyers (A1)
+// توجّه بأسئلةٍ عن صورة، وA2 Key Part 6 برسالة قصيرة بثلاث نقاط محتوى مفروضة (٢٥-٣٥
+// كلمة)، وB1 Preliminary Part 2 بقصّة أو رسالة قصيرة (٨٠-١٠٠ كلمة) بلا نقاط مفروضة.
+// ولا صورة حقيقية متاحة هنا، فوصفٌ نصّي يحلّ محلّها — كما حلّ النصّ محلّ الصوت الحقيقي
+// في LISTEN_BANK؛ الفارق من طبيعة الوسيط لا اجتهاداً.
+// والتصحيح موصولٌ لا مبنيّ من جديد بالكامل: نفس مسار مراجعة المحادثة (mode:"review"
+// في tutor، محكوماً بـLanguageTool)، وتصحيحاته تدخل بطاقات «أخطائي» (fixCardSave)
+// كتصحيحات المحادثة سواءً بسواء — لا مسار تصحيح ثانٍ ولا بطاقة نوعٍ جديدة.
+// والنجاح هنا **يُقاس لا يُفترض**: لا «صواب» واحد لنصٍّ حرٍّ، فالمقياس عدد الكلمات
+// (هل بلغت الحدّ الأدنى المعياري لمستواها) — قابلٌ للقياس فعلاً، بخلاف «جودة» الإنتاج
+// التي تبقى تصحيحاً معروضاً لا درجة.
+const WRITE_BANK=[
+  // A1 — كما Movers/Flyers: أسئلة توجيهية تُجاب بجملٍ كاملة، لا فقرة حرّة
+  {id:"wr_a1_1",lv:"A1",min:10,prompt:"Write about your family.\n1) How many brothers or sisters do you have?\n2) What is one thing you like doing together?"},
+  {id:"wr_a1_2",lv:"A1",min:10,prompt:"Write about your favourite animal.\n1) What animal is it?\n2) What colour is it?\n3) What can it do?"},
+  {id:"wr_a1_3",lv:"A1",min:10,prompt:"Write about your school day.\n1) What time do you go to school?\n2) What is your favourite subject?"},
+  {id:"wr_a1_4",lv:"A1",min:10,prompt:"Write about your bedroom.\n1) What colour is it?\n2) What is one thing in your room?"},
+  {id:"wr_a1_5",lv:"A1",min:10,prompt:"Write about your best friend.\n1) What is their name?\n2) What do you both like doing?"},
+  {id:"wr_a1_6",lv:"A1",min:10,prompt:"Write about today's weather.\n1) What is the weather like today?\n2) What are you wearing?"},
+  {id:"wr_a1_7",lv:"A1",min:10,prompt:"Write about your favourite food.\n1) What food is it?\n2) When do you eat it?"},
+  {id:"wr_a1_8",lv:"A1",min:10,prompt:"Write about a pet you have or want.\n1) What animal is it?\n2) Why do you like it?"},
+  // A2 — كما A2 Key Part 6: رسالة قصيرة بثلاث نقاط محتوى مفروضة، ٢٥-٣٥ كلمة
+  {id:"wr_a2_1",lv:"A2",min:25,prompt:"Your friend invited you to their birthday party this weekend. Write a message to your friend.\nSay:\n• thank them for the invitation\n• what you will bring\n• what time you will arrive\nWrite 25–35 words."},
+  {id:"wr_a2_2",lv:"A2",min:25,prompt:"Your English pen friend wants to know about your weekend. Write them an email.\nSay:\n• what you did on Saturday\n• who you were with\n• how you felt\nWrite 25–35 words."},
+  {id:"wr_a2_3",lv:"A2",min:25,prompt:"You cannot go to football practice tomorrow. Write a message to your coach.\nSay:\n• why you cannot come\n• when you can come next\n• say sorry\nWrite 25–35 words."},
+  {id:"wr_a2_4",lv:"A2",min:25,prompt:"A new student is joining your class next week. Write a message to welcome them.\nSay:\n• your name\n• one thing about the school\n• one question for them\nWrite 25–35 words."},
+  {id:"wr_a2_5",lv:"A2",min:25,prompt:"You borrowed a book from a friend and it is late. Write them a message.\nSay:\n• say sorry\n• when you will return it\n• thank them for lending it\nWrite 25–35 words."},
+  {id:"wr_a2_6",lv:"A2",min:25,prompt:"Your friend is sick and could not come to school today. Write them a message.\nSay:\n• ask how they feel\n• what they missed today\n• wish them well\nWrite 25–35 words."},
+  {id:"wr_a2_7",lv:"A2",min:25,prompt:"You want to invite a friend to the cinema this weekend. Write them a message.\nSay:\n• which film\n• what day and time\n• ask them to reply\nWrite 25–35 words."},
+  {id:"wr_a2_8",lv:"A2",min:25,prompt:"You lost your bag at school yesterday. Write a notice for the noticeboard.\nSay:\n• what you lost\n• where you think you lost it\n• how to contact you\nWrite 25–35 words."},
+  // B1 — كما B1 Preliminary Part 2: قصّة قصيرة أو رسالة، بلا نقاط محتوى مفروضة، ٨٠-١٠٠ كلمة
+  {id:"wr_b1_1",lv:"B1",min:70,prompt:"Write a short story that begins with this sentence:\n“It was raining when Sam left the house.”\nWrite about 80–100 words."},
+  {id:"wr_b1_2",lv:"B1",min:70,prompt:"Write an email to a friend describing a trip you took recently.\nInclude: where you went, what you did, and whether you would go again.\nWrite about 80–100 words."},
+  {id:"wr_b1_3",lv:"B1",min:70,prompt:"Write a short story that ends with this sentence:\n“...and that is how I learned my lesson.”\nWrite about 80–100 words."},
+  {id:"wr_b1_4",lv:"B1",min:70,prompt:"Write an email to a friend about a part-time job or hobby you have.\nInclude: what you do, why you like it, and one challenge.\nWrite about 80–100 words."},
+  {id:"wr_b1_5",lv:"B1",min:70,prompt:"Write a short story that begins with this sentence:\n“The phone rang at midnight.”\nWrite about 80–100 words."},
+  {id:"wr_b1_6",lv:"B1",min:70,prompt:"Write an email to a friend recommending a place to visit in your city.\nInclude: what it is, why you like it, and what to do there.\nWrite about 80–100 words."},
+];
+// مثالٌ محلول واحد لكل مستوى — نفس مبدأ "السلّم المتلاشي" (worked examples) المعتمد
+// أصلاً في وضع التقوية (fadeStage===1)، لا ميزة جديدة. وعمداً لموضوعٍ آخر غير سؤالها
+// هي: عرض إجابةٍ جاهزة لنفس السؤال يُخاطر بأن تُنسَخ حرفياً بدل أن تُنتَج — وهذا بالذات
+// ما وقع سابقاً حين اقتُرحت عليها جملة مكسورة فكرّرتها كما هي («الدعم الذي يُعلّم خطأً
+// أسوأ من غيابه»). فالمثال يُظهر الشكل المتوقَّع (طول، بنية، تغطية النقاط) لا الجواب.
+const WRITE_MODEL={
+  A1:{prompt:"Write about your weekend.\n1) What did you do on Friday?\n2) Who were you with?",
+    text:"On Friday I went to my grandmother's house. I was with my mother and my little brother."},
+  A2:{prompt:"Your neighbour helped you carry your heavy bags yesterday. Write them a short message.\nSay:\n• thank them\n• say what they helped with\n• invite them for tea\nWrite 25–35 words.",
+    text:"Hi Mr Ahmed, Thank you so much for helping me carry my bags yesterday, it was very kind of you. Would you like to come for tea on Friday? Sara"},
+  B1:{prompt:"Write a short story that begins with this sentence:\n“The bus was late again.”\nWrite about 80–100 words.",
+    text:"The bus was late again. Ali stood at the stop, checking his watch every few minutes. He was already ten minutes late for his job interview, and his hands felt cold with worry. Finally, the bus appeared around the corner. He jumped on, found a seat near the front, and tried to calm his breathing. When he arrived at the office, the receptionist smiled and said the interviewer was running late too. Ali laughed with relief. Sometimes the things we worry about most turn out fine in the end."},
+};
+function writeModelFor(lv){return WRITE_MODEL[lv]||WRITE_MODEL.A2}
+function writeBankFor(level){
+  const L=String(level||"A2");
+  const exact=WRITE_BANK.filter(function(x){return x.lv===L});
+  return exact.length?exact:WRITE_BANK.filter(function(x){return x.lv==="A1"});
+}
+const WRITE_SRS_KEY="mawhiba_write_srs";
+function writeSrsLoad(){try{return JSON.parse(lsGet(WRITE_SRS_KEY)||"{}")}catch(e){return{}}}
+function writeSrsSave(o){try{lsSet(WRITE_SRS_KEY,JSON.stringify(o))}catch(e){}}
+function writeSrsUpdate(id,ok){
+  const st=writeSrsLoad(),r=st[id]||{box:0,seen:0};
+  const n=fsrsUpdate(r,ok,srsToday());
+  r.box=n.box;r.due=n.due;r.seen=n.seen;r.s=n.s;r.d=n.d;r.last=n.last;
+  st[id]=r;writeSrsSave(st);
+}
+// جلسة أقصر من الاستماع/المقروء عمداً: كتابة نصٍّ كاملٍ أثقل من اختيار إجابة
+const WRITE_N=3;
+function buildWritePlan(){
+  const st=writeSrsLoad(),today=srsToday(),POOL=writeBankFor(profileOf().level);
+  const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
+  const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
+  let out=due.concat(fresh).slice(0,WRITE_N);
+  if(!out.length)out=shuffle(POOL).slice(0,WRITE_N);   // مراجعة حرّة إن استُنفد المستحقّ+الجديد — كدرس الاستماع
+  return out;
+}
+function writeWordCount(t){const m=String(t||"").trim().match(/[A-Za-z']+/g);return m?m.length:0}
+// تُقسَّم الفقرة إلى جملٍ مرقّمة — نفس شكل رسائل المحادثة إلى المراجعة (coachReview)،
+// فالنموذج مُدرَّب على "You will receive their sentences, numbered" لا فقرةً واحدة خام
+function writeSentences(t){
+  const parts=String(t||"").split(/([.!?]+)/),out=[];
+  for(let i=0;i<parts.length;i+=2){
+    const s=(parts[i]||"").trim(),p=parts[i+1]||"";
+    if(s)out.push((s+p).trim());
+  }
+  return out.length?out.slice(0,10):(String(t||"").trim()?[String(t).trim()]:[]);
+}
+let writeItems=[],writeIdx=0,writeDone=false,writeScore=0,writeShownAt=0,writeTyped="",
+  writeSubmitted=false,writeBusy=false,writeFix=[],writeFixFail="",writeCount=0,writeLtDropped=0,writeLtJudged=0,
+  writeModelShown=false,writeModelViews=0;
+function startWrite(){
+  writeItems=buildWritePlan();writeIdx=0;writeDone=false;writeScore=0;
+  writeSubmitted=false;writeBusy=false;writeFix=[];writeFixFail="";writeTyped="";writeCount=0;
+  writeLtDropped=0;writeLtJudged=0;writeModelShown=false;writeModelViews=0;
+  mode="write";writeShownAt=Date.now();window.scrollTo(0,0);render();
+}
+// نفس عُرف عدّاد إعادة الاستماع (listenPlays): لا يُمنع الزرّ ولا يُقفَل، ويُسجَّل عدده
+// فحسب — فيُقاس أثره لاحقاً (هل من يفتحه يبلغ الهدف أكثر ممّن لا يفتحه)
+function writeToggleModel(){
+  writeModelShown=!writeModelShown;
+  if(writeModelShown)writeModelViews++;
+  render();
+}
+function writeCur(){return writeItems[writeIdx]}
+async function writeSubmit(){
+  if(writeSubmitted||writeBusy)return;
+  const it=writeCur();if(!it)return;
+  const el=document.getElementById('writeIn');
+  const txt=(el?el.value:"").trim();
+  if(!txt)return;   // لا نحرق محاولة على حقلٍ فارغ — كنظيرتها في الأساسيات
+  writeTyped=txt;writeCount=writeWordCount(txt);
+  const ok=writeCount>=it.min;
+  writeSrsUpdate(it.id,ok);
+  if(ok)writeScore++;
+  writeBusy=true;writeFix=[];writeFixFail="";writeLtDropped=0;writeLtJudged=0;render();
+  try{
+    const lines=writeSentences(txt).map(function(s,i){return (i+1)+". "+s}).join("\n");
+    const res=await fetchTimeout(TUTOR_FN_URL,{method:"POST",
+      headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},
+      body:JSON.stringify({mode:"review",learner:learnerInfo(),level:profileOf().level||"A2",
+        scene:"a written composition",question:"review",studentAnswer:lines})});
+    const d=await res.json();
+    if(d&&d.reply){writeFix=coachFixParse(d.reply);writeLtDropped=d.ltDropped|0;writeLtJudged=d.ltJudged|0}
+    else writeFixFail=(d&&d.error)||"reply";
+  }catch(e){writeFixFail="network"}
+  writeBusy=false;
+  // q_text وresponse كاملان — بلا هذين لا تشخيص، ونفس عُرف تسجيل الفرق/الشكل في بقية التطبيق
+  logAnswer("write",it.lv,ok,txt,it.id,writeShownAt?Date.now()-writeShownAt:null,
+    {q_text:(it.prompt+" · الهدف "+it.min+" كلمة · كتبت "+writeCount+" · lt:"+writeLtJudged+"/"+writeLtDropped+" · مثال:"+writeModelViews).slice(0,1200)});
+  // نفس مسار بطاقات تصحيح المحادثة بالضبط: بطاقةٌ مجدولة تعود عند حافّة النسيان،
+  // ووضع «أخطائي» يُدرّبها بنائياً — لا مسار ثانٍ
+  writeFix.forEach(function(f){fixCardSave(f)});
+  writeFix.forEach(function(f){
+    logAnswer("write","fix",null,(f.said+" ⇐ "+f.fix).slice(0,300),it.id,null,
+      {q_text:String(f.why||"").slice(0,200)});
+  });
+  writeSubmitted=true;render();
+}
+function writeNext(){
+  if(writeIdx+1>=writeItems.length){writeDone=true;window.scrollTo(0,0);render();return}
+  writeIdx++;writeSubmitted=false;writeBusy=false;writeFix=[];writeFixFail="";writeTyped="";writeCount=0;
+  writeModelShown=false;writeModelViews=0;
+  writeShownAt=Date.now();window.scrollTo(0,0);render();
+}
+function renderWriteFeedback(it){
+  const ok=writeCount>=it.min;
+  const head=`<div class="explain"><div class="explain-title" style="color:${ok?'#059669':'#B45309'}">${ok?"✓ بلغتِ عدد الكلمات":"عدد الكلمات أقلّ من الهدف"}</div>
+    <div class="explain-body">كتبتِ ${toAr(writeCount)} كلمة، والهدف ${toAr(it.min)}.</div></div>`;
+  if(writeBusy)return head+`<div style="text-align:center;padding:10px"><div class="spin" style="width:28px;height:28px"></div><div style="font-size:13px;color:#64748B;margin-top:8px">نراجع جملك…</div></div>`;
+  if(writeFixFail)return head+`<div style="font-size:13px;color:#991B1B;margin-top:10px">تعذّرت مراجعة القواعد — ودرجة عدد الكلمات أعلاه سليمة.</div>`;
+  if(!writeFix.length)return head+`<div style="font-size:13px;color:#059669;margin-top:10px">لا تصحيح — جملك سليمة نحوياً ✓</div>`;
+  return head+`<div style="margin-top:12px">
+    ${writeFix.map(function(f){return `<div style="border-inline-start:3px solid #FCD34D;padding-inline-start:10px;margin-bottom:12px">
+      <div style="direction:ltr;text-align:left;font-family:Georgia,serif;font-size:14px;color:#B45309;text-decoration:line-through">${esc(f.said)}</div>
+      <div style="direction:ltr;text-align:left;font-family:Georgia,serif;font-size:15px;color:#065F46;font-weight:700;margin-top:4px">${esc(f.fix)}</div>
+      ${f.why?`<div style="font-size:12px;color:#475569;line-height:1.8;margin-top:4px">${esc(f.why)}</div>`:""}
+    </div>`}).join("")}
+  </div>`;
+}
+// نفس شكل صندوق «مثال محلول» في وضع التقوية (fadeStage===1: #EFF6FF/#1E40AF/📘)،
+// لا لونٌ ولا اسمٌ جديد — والتحذير الصريح ضدّ النسخ شرطٌ لا زخرفة (انظر التعليق أعلى WRITE_MODEL)
+function renderWriteModel(lv){
+  const m=writeModelFor(lv);
+  return `<div style="background:#EFF6FF;border-radius:14px;padding:16px;margin-bottom:14px">
+    <div style="font-size:13px;color:#1E40AF;font-weight:700;margin-bottom:8px">📘 مثال محلول — لسؤالٍ آخر غير سؤالك، لا تنسخيه: اكتبي إجابتك أنتِ</div>
+    <div style="font-size:13px;color:#3730A3;line-height:1.8;direction:ltr;text-align:left;font-family:Georgia,serif;white-space:pre-line;margin-bottom:10px">${esc(m.prompt)}</div>
+    <div style="background:#fff;border-radius:10px;padding:12px;font-size:15px;line-height:1.8;direction:ltr;text-align:left;font-family:Georgia,serif;color:#1E293B">${esc(m.text)}</div>
+  </div>`;
+}
+function renderWrite(){
+  if(!writeItems.length){app.innerHTML=`<div class="card" style="text-align:center">لا شيء مستحقّ اليوم — عودي غداً 🌱</div><button class="link-btn" onclick="home()">→ الرئيسية</button>`;return}
+  if(writeDone)return renderWriteResult();
+  const it=writeCur();
+  const prog=`<div class="bar">${writeItems.map(function(_,i){return `<div class="seg" style="background:${i<=writeIdx?'#0E7490':'#E2E8F0'};opacity:${i<=writeIdx?1:.5}"></div>`}).join("")}</div>`;
+  app.innerHTML=`
+  <button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
+  ${prog}
+  <div class="meta"><span>${toAr(writeIdx+1)} من ${toAr(writeItems.length)}</span><span>الكتابة · ${it.lv}</span></div>
+  <div class="card">
+    <span class="tag" style="background:#ECFEFF;color:#0E7490">✍️ اكتبي</span>
+    <div style="background:#F0FDFA;border:1px solid #99F6E4;border-radius:12px;padding:14px;margin:14px 0;font-size:16px;line-height:1.9;direction:ltr;text-align:left;font-family:Georgia,serif;color:#134E4A;white-space:pre-line">${esc(it.prompt)}</div>
+    <button type="button" onclick="writeToggleModel()" style="background:none;border:none;color:#1D4ED8;font-size:13px;cursor:pointer;padding:0 0 12px;font-family:inherit;display:block">${writeModelShown?"▲ إخفاء المثال":"📘 شاهدي مثالاً محلولاً قبل أن تبدئي"}</button>
+    ${writeModelShown?renderWriteModel(it.lv):""}
+    <textarea id="writeIn" rows="5" ${writeSubmitted?"disabled":""} style="width:100%;padding:14px;border-radius:12px;border:2px solid #E2E8F0;font-size:16px;direction:ltr;text-align:left;font-family:Georgia,serif;resize:vertical" placeholder="type your answer here" autocomplete="off" autocapitalize="sentences" spellcheck="true">${writeSubmitted?esc(writeTyped):""}</textarea>
+    <div style="font-size:12px;color:#94A3B8;margin-top:6px">الهدف: ${toAr(it.min)} كلمة على الأقلّ</div>
+    ${writeSubmitted?renderWriteFeedback(it):""}
+  </div>
+  ${writeSubmitted?`<button class="btn" style="background:#0E7490" onclick="writeNext()">${writeIdx+1>=writeItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`
+    :`<button class="btn" style="background:#0E7490" onclick="writeSubmit()">تحقّقي</button>`}`;
+}
+function renderWriteResult(){
+  const pct=writeItems.length?Math.round(writeScore/writeItems.length*100):0;
+  app.innerHTML=`
+  <div class="card">
+    <div class="score-row"><span class="score-big" style="color:${pct>=70?'#059669':pct>=50?'#D97706':'#DC2626'}">${toAr(writeScore)}</span><span class="score-total">/ ${toAr(writeItems.length)}</span><span class="score-pct">${toAr(pct)}%</span></div>
+    <div style="color:#64748B;font-size:15px;margin-bottom:14px">بلغتِ الهدف في ${toAr(writeScore)} من ${toAr(writeItems.length)} — والتصحيحات النحوية دخلت بطاقات «أخطائي» لتعود عند حافّة النسيان.</div>
+    <button class="btn" style="background:#0E7490" onclick="startWrite()">🔁 جلسة أخرى</button>
+    <button class="link-btn" onclick="home()">→ الرئيسية</button>
+  </div>`;
+}
+
 // ===== لعبة الاستماع: أزواج شبه متطابقة (minimal pairs) — طُلبت (١٦ أغسطس) بعد
 // لقطة شاشة من تطبيقٍ آخر (chose/choose). نفس بنية الاستماع/القراءة تماماً: بنكٌ
 // بمستويات + fsrsUpdate للتباعد + شاشة نتيجة — لا آلية جديدة. والفرق الوحيد من طبيعة
@@ -7339,7 +7545,7 @@ function bumpStreak(){const st=getStreak();const t=todayStr();if(st.last===t)ret
 function growthMsg(modeKey,pct){try{const key="mawhiba_best_"+modeKey;const prev=parseInt(lsGet(key)||"-1");let msg="";if(prev<0){msg="أول محاولة في هذا القسم — انطلاقة موفّقة! 🌱"}else if(pct>prev){msg=`تحسّنتِ عن أفضل نتيجة سابقة (${toAr(prev)}%)! تقدّم رائع 📈`}else if(pct===prev){msg="ثبات على أفضل مستوى سابق 💪"}else{msg="واصلي، كل محاولة تبني مهارتك 🌟"}if(pct>prev)lsSet(key,String(pct));return msg}catch(e){return""}}
 
 // ===== العرض =====
-function render(){if(mode==="home")return renderHome();if(mode==="listen")return renderListen();if(mode==="read")return renderRead();if(mode==="minpair")return renderMinpair();if(mode==="errors")return renderErrors();if(mode==="engplan")return renderEngPlan();if(mode==="factplan")return renderFactPlan();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="speak")return renderSpeak();if(mode==="coach")return renderCoach();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
+function render(){if(mode==="home")return renderHome();if(mode==="listen")return renderListen();if(mode==="read")return renderRead();if(mode==="write")return renderWrite();if(mode==="minpair")return renderMinpair();if(mode==="errors")return renderErrors();if(mode==="engplan")return renderEngPlan();if(mode==="factplan")return renderFactPlan();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="speak")return renderSpeak();if(mode==="coach")return renderCoach();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
 
 // صفحة الأخوين قسمٌ واحد: المحادثة. بقيّة الأقسام بُنيت على أخطائها هي — بنك
 // أسئلتها، وتباعدها، ومنهج صفّها السادس — فوضعها أمام ولدٍ آخر يُشغله بما ليس له.
@@ -7357,6 +7563,7 @@ function renderHomeCoachOnly(){
     <button class="mode full" style="background:${p.color};border-color:${p.color}" onclick="startCoach()"><span class="m-name">🗣️ ابدأ المحادثة</span><div class="m-sub">اختر موقفاً، ثم تكلّم — ثماني جمل في الجلسة</div></button>
     <button class="mode full" style="background:#0284C7;border-color:#0284C7" onclick="startListen()"><span class="m-name">🎧 فهم الاستماع</span><div class="m-sub">استمع لمقطعٍ قصير، وأجب عن معناه — مستوى ${p.level||"A2"}</div></button>
     <button class="mode full" style="background:#7C3AED;border-color:#7C3AED" onclick="startRead()"><span class="m-name">📖 فهم المقروء</span><div class="m-sub">اقرأ نصّاً قصيراً، وأجب عن معناه — مستوى ${p.level||"A2"}</div></button>
+    <button class="mode full" style="background:#059669;border-color:#059669" onclick="startWrite()"><span class="m-name">📝 الكتابة</span><div class="m-sub">اكتب نصّاً حرّاً عن سؤالٍ نموذجي — تصحيح نحوي فوري يغذّي «أخطائي» — مستوى ${p.level||"A2"}</div></button>
     <button class="mode full" style="background:#0891B2;border-color:#0891B2" onclick="startMinpair()"><span class="m-name">👂 لعبة الاستماع</span><div class="m-sub">كلمتان متشابهتا النطق (chose/choose) — أيّهما سمعت؟ ثم مثالٌ يشرح معناها</div></button>
     ${errCount()?`<button class="mode full" style="background:#DB2777;border-color:#DB2777" onclick="startErrors()"><span class="m-name">🎯 أخطائي · ${toAr(errCount())} مستحقّة</span><div class="m-sub">تصحيحات محادثتك السابقة — تُبنى كلمةً كلمة، وتعود عند حافّة النسيان</div></button>`:""}
   </div>
@@ -7398,6 +7605,7 @@ function renderHome(){
     <button class="mode full" style="background:#0E7490;border-color:#0E7490" onclick="startDictation()"><span class="m-name">✍️ إملاء بالإنجليزية</span><div class="m-sub">استمعي للكلمة، ثم اكتبيها — مستوى A1</div></button>
     <button class="mode full" style="background:#0284C7;border-color:#0284C7" onclick="startListen()"><span class="m-name">🎧 فهم الاستماع</span><div class="m-sub">استمعي لمقطعٍ قصير، وأجيبي عن معناه — مستوى ${profileOf().level||"A2"}</div></button>
     <button class="mode full" style="background:#7C3AED;border-color:#7C3AED" onclick="startRead()"><span class="m-name">📖 فهم المقروء</span><div class="m-sub">اقرئي نصّاً قصيراً، وأجيبي عن معناه — مستوى ${profileOf().level||"A2"}</div></button>
+    <button class="mode full" style="background:#059669;border-color:#059669" onclick="startWrite()"><span class="m-name">📝 الكتابة</span><div class="m-sub">اكتبي نصّاً حرّاً عن سؤالٍ نموذجي — تصحيح نحوي فوري يغذّي «أخطائي» — مستوى ${profileOf().level||"A2"}</div></button>
     <button class="mode full" style="background:#0891B2;border-color:#0891B2" onclick="startMinpair()"><span class="m-name">👂 لعبة الاستماع</span><div class="m-sub">كلمتان متشابهتا النطق (chose/choose) — أيّتهما سمعتِ؟ ثم مثالٌ يشرح معناها</div></button>
     <button class="mode full" style="background:#7C3AED;border-color:#7C3AED" onclick="startPronunciation()"><span class="m-name">🎤 تمرين النطق</span><div class="m-sub">تحقّق أساسي هل نطقتِ الكلمة صح (يحتاج ميكروفون) — وليس تصحيح لهجة دقيق</div></button>
     <button class="mode full" style="background:#0E7490;border-color:#0E7490" onclick="startCoach()"><span class="m-name">🗣️ تكلّمي بالإنجليزية</span><div class="m-sub">محادثة حرّة مع شريك يردّ عليكِ بالإنجليزية — ونقيس وضوح أصواتك في كل جملة</div></button>
