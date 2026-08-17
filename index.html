@@ -6102,6 +6102,20 @@ const WRITE_BANK=[
   {id:"wr_b1_5",lv:"B1",min:70,prompt:"Write a short story that begins with this sentence:\n“The phone rang at midnight.”\nWrite about 80–100 words."},
   {id:"wr_b1_6",lv:"B1",min:70,prompt:"Write an email to a friend recommending a place to visit in your city.\nInclude: what it is, why you like it, and what to do there.\nWrite about 80–100 words."},
 ];
+// مثالٌ محلول واحد لكل مستوى — نفس مبدأ "السلّم المتلاشي" (worked examples) المعتمد
+// أصلاً في وضع التقوية (fadeStage===1)، لا ميزة جديدة. وعمداً لموضوعٍ آخر غير سؤالها
+// هي: عرض إجابةٍ جاهزة لنفس السؤال يُخاطر بأن تُنسَخ حرفياً بدل أن تُنتَج — وهذا بالذات
+// ما وقع سابقاً حين اقتُرحت عليها جملة مكسورة فكرّرتها كما هي («الدعم الذي يُعلّم خطأً
+// أسوأ من غيابه»). فالمثال يُظهر الشكل المتوقَّع (طول، بنية، تغطية النقاط) لا الجواب.
+const WRITE_MODEL={
+  A1:{prompt:"Write about your weekend.\n1) What did you do on Friday?\n2) Who were you with?",
+    text:"On Friday I went to my grandmother's house. I was with my mother and my little brother."},
+  A2:{prompt:"Your neighbour helped you carry your heavy bags yesterday. Write them a short message.\nSay:\n• thank them\n• say what they helped with\n• invite them for tea\nWrite 25–35 words.",
+    text:"Hi Mr Ahmed, Thank you so much for helping me carry my bags yesterday, it was very kind of you. Would you like to come for tea on Friday? Sara"},
+  B1:{prompt:"Write a short story that begins with this sentence:\n“The bus was late again.”\nWrite about 80–100 words.",
+    text:"The bus was late again. Ali stood at the stop, checking his watch every few minutes. He was already ten minutes late for his job interview, and his hands felt cold with worry. Finally, the bus appeared around the corner. He jumped on, found a seat near the front, and tried to calm his breathing. When he arrived at the office, the receptionist smiled and said the interviewer was running late too. Ali laughed with relief. Sometimes the things we worry about most turn out fine in the end."},
+};
+function writeModelFor(lv){return WRITE_MODEL[lv]||WRITE_MODEL.A2}
 function writeBankFor(level){
   const L=String(level||"A2");
   const exact=WRITE_BANK.filter(function(x){return x.lv===L});
@@ -6138,12 +6152,20 @@ function writeSentences(t){
   return out.length?out.slice(0,10):(String(t||"").trim()?[String(t).trim()]:[]);
 }
 let writeItems=[],writeIdx=0,writeDone=false,writeScore=0,writeShownAt=0,writeTyped="",
-  writeSubmitted=false,writeBusy=false,writeFix=[],writeFixFail="",writeCount=0,writeLtDropped=0,writeLtJudged=0;
+  writeSubmitted=false,writeBusy=false,writeFix=[],writeFixFail="",writeCount=0,writeLtDropped=0,writeLtJudged=0,
+  writeModelShown=false,writeModelViews=0;
 function startWrite(){
   writeItems=buildWritePlan();writeIdx=0;writeDone=false;writeScore=0;
   writeSubmitted=false;writeBusy=false;writeFix=[];writeFixFail="";writeTyped="";writeCount=0;
-  writeLtDropped=0;writeLtJudged=0;
+  writeLtDropped=0;writeLtJudged=0;writeModelShown=false;writeModelViews=0;
   mode="write";writeShownAt=Date.now();window.scrollTo(0,0);render();
+}
+// نفس عُرف عدّاد إعادة الاستماع (listenPlays): لا يُمنع الزرّ ولا يُقفَل، ويُسجَّل عدده
+// فحسب — فيُقاس أثره لاحقاً (هل من يفتحه يبلغ الهدف أكثر ممّن لا يفتحه)
+function writeToggleModel(){
+  writeModelShown=!writeModelShown;
+  if(writeModelShown)writeModelViews++;
+  render();
 }
 function writeCur(){return writeItems[writeIdx]}
 async function writeSubmit(){
@@ -6170,7 +6192,7 @@ async function writeSubmit(){
   writeBusy=false;
   // q_text وresponse كاملان — بلا هذين لا تشخيص، ونفس عُرف تسجيل الفرق/الشكل في بقية التطبيق
   logAnswer("write",it.lv,ok,txt,it.id,writeShownAt?Date.now()-writeShownAt:null,
-    {q_text:(it.prompt+" · الهدف "+it.min+" كلمة · كتبت "+writeCount+" · lt:"+writeLtJudged+"/"+writeLtDropped).slice(0,1200)});
+    {q_text:(it.prompt+" · الهدف "+it.min+" كلمة · كتبت "+writeCount+" · lt:"+writeLtJudged+"/"+writeLtDropped+" · مثال:"+writeModelViews).slice(0,1200)});
   // نفس مسار بطاقات تصحيح المحادثة بالضبط: بطاقةٌ مجدولة تعود عند حافّة النسيان،
   // ووضع «أخطائي» يُدرّبها بنائياً — لا مسار ثانٍ
   writeFix.forEach(function(f){fixCardSave(f)});
@@ -6183,6 +6205,7 @@ async function writeSubmit(){
 function writeNext(){
   if(writeIdx+1>=writeItems.length){writeDone=true;window.scrollTo(0,0);render();return}
   writeIdx++;writeSubmitted=false;writeBusy=false;writeFix=[];writeFixFail="";writeTyped="";writeCount=0;
+  writeModelShown=false;writeModelViews=0;
   writeShownAt=Date.now();window.scrollTo(0,0);render();
 }
 function renderWriteFeedback(it){
@@ -6200,6 +6223,16 @@ function renderWriteFeedback(it){
     </div>`}).join("")}
   </div>`;
 }
+// نفس شكل صندوق «مثال محلول» في وضع التقوية (fadeStage===1: #EFF6FF/#1E40AF/📘)،
+// لا لونٌ ولا اسمٌ جديد — والتحذير الصريح ضدّ النسخ شرطٌ لا زخرفة (انظر التعليق أعلى WRITE_MODEL)
+function renderWriteModel(lv){
+  const m=writeModelFor(lv);
+  return `<div style="background:#EFF6FF;border-radius:14px;padding:16px;margin-bottom:14px">
+    <div style="font-size:13px;color:#1E40AF;font-weight:700;margin-bottom:8px">📘 مثال محلول — لسؤالٍ آخر غير سؤالك، لا تنسخيه: اكتبي إجابتك أنتِ</div>
+    <div style="font-size:13px;color:#3730A3;line-height:1.8;direction:ltr;text-align:left;font-family:Georgia,serif;white-space:pre-line;margin-bottom:10px">${esc(m.prompt)}</div>
+    <div style="background:#fff;border-radius:10px;padding:12px;font-size:15px;line-height:1.8;direction:ltr;text-align:left;font-family:Georgia,serif;color:#1E293B">${esc(m.text)}</div>
+  </div>`;
+}
 function renderWrite(){
   if(!writeItems.length){app.innerHTML=`<div class="card" style="text-align:center">لا شيء مستحقّ اليوم — عودي غداً 🌱</div><button class="link-btn" onclick="home()">→ الرئيسية</button>`;return}
   if(writeDone)return renderWriteResult();
@@ -6212,6 +6245,8 @@ function renderWrite(){
   <div class="card">
     <span class="tag" style="background:#ECFEFF;color:#0E7490">✍️ اكتبي</span>
     <div style="background:#F0FDFA;border:1px solid #99F6E4;border-radius:12px;padding:14px;margin:14px 0;font-size:16px;line-height:1.9;direction:ltr;text-align:left;font-family:Georgia,serif;color:#134E4A;white-space:pre-line">${esc(it.prompt)}</div>
+    <button type="button" onclick="writeToggleModel()" style="background:none;border:none;color:#1D4ED8;font-size:13px;cursor:pointer;padding:0 0 12px;font-family:inherit;display:block">${writeModelShown?"▲ إخفاء المثال":"📘 شاهدي مثالاً محلولاً قبل أن تبدئي"}</button>
+    ${writeModelShown?renderWriteModel(it.lv):""}
     <textarea id="writeIn" rows="5" ${writeSubmitted?"disabled":""} style="width:100%;padding:14px;border-radius:12px;border:2px solid #E2E8F0;font-size:16px;direction:ltr;text-align:left;font-family:Georgia,serif;resize:vertical" placeholder="type your answer here" autocomplete="off" autocapitalize="sentences" spellcheck="true">${writeSubmitted?esc(writeTyped):""}</textarea>
     <div style="font-size:12px;color:#94A3B8;margin-top:6px">الهدف: ${toAr(it.min)} كلمة على الأقلّ</div>
     ${writeSubmitted?renderWriteFeedback(it):""}

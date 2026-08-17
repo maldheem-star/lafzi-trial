@@ -67,6 +67,37 @@ await page.evaluate(()=>startWrite());
 const n=await page.evaluate(()=>writeItems.length);
 ok(n>0&&n<=3,`٣ عناصر على الأكثر (${n})`);
 
+console.log('\n٣ب) مثالٌ محلول لكل مستوى — لموضوعٍ آخر غير بنك الأسئلة، لا يُنسخ');
+const models=await page.evaluate(()=>({
+  a1:writeModelFor('A1'),a2:writeModelFor('A2'),b1:writeModelFor('B1'),
+  a1Overlap:writeBankFor('A1').some(x=>x.prompt===writeModelFor('A1').prompt),
+  a2Overlap:writeBankFor('A2').some(x=>x.prompt===writeModelFor('A2').prompt),
+  b1Overlap:writeBankFor('B1').some(x=>x.prompt===writeModelFor('B1').prompt),
+}));
+ok(models.a1.text&&models.a2.text&&models.b1.text,'ولكلّ مستوى مثالٌ محلول');
+ok(!models.a1Overlap&&!models.a2Overlap&&!models.b1Overlap,'وموضوعه مختلفٌ عن أيّ سؤالٍ في بنك مستواه — لا يصلح جواباً منسوخاً');
+
+console.log('\n٣ج) الزرّ اختياريّ: مخفيٌّ افتراضياً، يظهر بالضغط، ويُسجَّل عدد مشاهداته لا يُمنع');
+let t3=await page.textContent('#app');
+ok(!t3.includes('مثال محلول'),'المثال مخفيٌّ حتى تطلبه');
+await page.click('button[onclick="writeToggleModel()"]');
+t3=await page.textContent('#app');
+const cur=await page.evaluate(()=>writeCur());
+ok(t3.includes('مثال محلول')&&t3.includes(cur.lv==='A1'?"grandmother's house":cur.lv==='A2'?'Mr Ahmed':'bus was late again'),'يظهر مثال مستواها بعد الضغط');
+ok(await page.evaluate(()=>writeModelViews)===1,'وعدّاد المشاهدات ١');
+await page.click('button[onclick="writeToggleModel()"]');
+t3=await page.textContent('#app');
+ok(!t3.includes('مثال محلول'),'ويُخفى بالضغط ثانية');
+ok(await page.evaluate(()=>writeModelViews)===1,'دون أن يُنقَص العدّاد — القياس تراكميّ');
+logs=[];
+await page.fill('#writeIn','I like cats. They are very nice pets to have at home every day.');
+await page.click('button[onclick="writeSubmit()"]');
+await page.waitForTimeout(300);
+const rowM=logs.find(l=>l.domain==='write'&&l.qtype!=='fix');
+ok(!!rowM&&rowM.q_text.includes('مثال:1'),'وعدد مشاهداته يدخل السجلّ مع كل محاولة — لنقارن لاحقاً من فتحه بمن لم يفتحه');
+await page.evaluate(()=>writeNext());
+ok(await page.evaluate(()=>writeModelViews)===0,'ويُصفَّر عند الانتقال للسؤال التالي — لا يتراكم عبر الأسئلة');
+
 console.log('\n٤) الإرسال يُقاس بعدد الكلمات لا بجوابٍ واحد صحيح');
 logs=[];calls=[];
 page=await mk();
