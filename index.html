@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260817-0900";
+  var BUILD="build-20260817-1000";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -3003,7 +3003,8 @@ const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEn
   "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","piPickBand","piBandBoxHTML","piArm","piOk","piVals","piGateOn","piGated","piSig1","fsrsUpdate","fsrsIvl","fsrsR","fsrsInitS","fsrsInitD","fsrsNextD","fsrsClampD","fsrsRecallS","fsrsForgetS","tmplKey","spreadTemplates","drawSpread","qzErrRecord","qzDueKeys","qzInjectDue","qzErrOf","qzCardDone","fadeQText","fadeAnsText","fadeGateStart","fadeGateStop","fadeGateNeeded","copyAzRaw","esc","weakPhonemeStr","num0","profileBarHTML","renderHomeCoachOnly","learnerInfo","coachLevel","toMasc","genderizeText","genderizeNode","genderizeInit","lsGet","lsSet","lsDel","pkey","cxShuffleOrder","cxPreStart","cxPreChoose","cxPreNext","cxPreQuit","cxPreCur","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary","coachMode","coachAskHelp","coachEnd","coachReview","coachFixParse","weakClean","coachSaysNow","snapToSuggestion","editDist","coachShowSays","coachParse","coachTopicGo","coachTopicBack","coachTopicClean","coachFreeScene","wbStart","wbPick","wbUnpick","wbCheck","wbHTML","wbReady","wbSay","wbReset","wbNorm","wbDistract","wbStageGet","wbGrade","engBuildFor","dictErrRecord","dictIsBuild","dictCur","renderDictationBuild","planCheckBuild","echoRecord","echoArmed","coachBankOn","coachBankSync","coachBankCheck","fixCardSave","fixCardGrade","bugOf","basicsOpNow","basicsOperands","basicsBugNow","digitsOf","factDcpm","factDcpmBand","coachLeave","coachAutoReview","coachSetFail","coachHintNow","basicsErrDelta","shapeRecord","shapeArmed","ob1Arm","ob1Jump","ob1Back","ob1Complete","ob1BoxHTML","btArm","btBorrow","btComplete","btBoxHTML","basicsOb1Gated","basicsBtGated","basicsShapeLogRemedy","shapeLogRemedy","quotArm","quotGated","quotReset","listenBankFor","listenSrsUpdate","buildListenPlan","listenPlaysHint","startListen","listenPlay","listenChoose","listenNext","renderListen",
   "readBankFor","readSrsUpdate","buildReadPlan","startRead","readChoose","readNext","renderRead",
   "genBankLoad","genBankAdd","parseGenBlock","fetchTutorGen","genTopUp","genLogText","errCollect","errDraw","errCount","errQuizCount","startErrors","errCheck","errChoose","errNext","errReplay","renderErrors",
-  "minpairBankFor","minpairSrsUpdate","buildMinpairPlan","startMinpair","minpairPlay","minpairChoose","minpairNext","renderMinpair"];
+  "minpairBankFor","minpairSrsUpdate","buildMinpairPlan","startMinpair","minpairPlay","minpairChoose","minpairNext","renderMinpair",
+  "gramBankFor","gramSrsUpdate","buildGramPlan","startGram","gramChoose","gramNext","renderGram"];
 function censusMissing(){return CENSUS.filter(function(n){return typeof window[n]!=="function"})}
 function censusHTML(){
   var miss=censusMissing();
@@ -6270,6 +6271,176 @@ function renderWriteResult(){
   </div>`;
 }
 
+// ===== دقّة القواعد: اختاري الجملة الصحيحة من أربع (Grammaticality Judgment Task) =====
+// طلب صاحب المشروع تدريباً داخل قسم الكتابة: أربع جملٍ، صحيحةٌ واحدة والباقي أخطاء،
+// مع شرح كل خيار لا الصحيحة وحدها. الصيغة معياريّة لا مخترعة: Grammaticality Judgment
+// Task أداة قياسٍ قائمة في أبحاث اكتساب اللغة الثانية (Spinner & Gass، Routledge؛
+// Cambridge Core، فصل "Grammaticality judgment tasks"). ومحتوى كل مستوى من English
+// Profile (مشروع كامبريدج الذي يُحدّد التراكيب "المُميِّزة" لكل درجة CEFR) ومن أخطاء
+// المتعلّمين الموثَّقة لكل درجة — لا تخميناً: نسيان -s مع الغائب (A1-A2)، وتسوية
+// الأفعال الشاذّة في الماضي (A2)، والمضارع التامّ نقطة التعثّر الموثَّقة عالمياً عند B1.
+// وشرح كل خيار لا الصحيحة وحدها (بدل التلوين بالأخضر فقط كالاستماع/المقروء): توصيتي
+// حين سُئلت — أقرب لمبدأ «شكل الخطأ لا وقوعه» المعتمد أصلاً، فتُعلَّم عائلة الخطأ لا
+// فقط الجواب. نفس بنية الاستماع/القراءة بالضبط تبنيةً — بنكٌ بمستويات + fsrsUpdate +
+// شاشة نتيجة، لا آلية جديدة.
+const GRAM_BANK=[
+  // A1 — تصريف الغائب، تطابق be، جمع الأعداد، ترتيب الصفة، الملكية
+  {id:"gr_a1_1",lv:"A1",c:[
+    {t:"My sister go to school every day.",ok:false,why:"نسيتِ -s: الفعل مع he/she/it يأخذ -s"},
+    {t:"My sister goes to school every day.",ok:true,why:"صحيحة — الفعل تصرّف مع الغائب المفرد"},
+    {t:"My sister is go to school every day.",ok:false,why:"لا نجمع be مع فعلٍ أساسي هكذا"},
+    {t:"My sisters goes to school every day.",ok:false,why:"الفاعل جمع (sisters)، والفعل هنا للمفرد"}]},
+  {id:"gr_a1_2",lv:"A1",c:[
+    {t:"He are happy today.",ok:false,why:"he تأخذ is لا are"},
+    {t:"He is happy today.",ok:true,why:"صحيحة — he مع is"},
+    {t:"He am happy today.",ok:false,why:"am تُستعمل مع I فقط"},
+    {t:"He happy today.",ok:false,why:"الجملة تحتاج فعل be (is) قبل الصفة"}]},
+  {id:"gr_a1_3",lv:"A1",c:[
+    {t:"I have three book in my bag.",ok:false,why:"بعد عددٍ أكبر من واحد يأخذ الاسم -s"},
+    {t:"I have three books in my bag.",ok:true,why:"صحيحة — الجمع بعد العدد ثلاثة"},
+    {t:"I have three bookes in my bag.",ok:false,why:"book جمعها books لا bookes"},
+    {t:"I have three the books in my bag.",ok:false,why:"لا تأتي the قبل عددٍ هكذا"}]},
+  {id:"gr_a1_4",lv:"A1",c:[
+    {t:"I have a car red.",ok:false,why:"الصفة تأتي قبل الاسم في الإنجليزية لا بعده"},
+    {t:"I have a red car.",ok:true,why:"صحيحة — الصفة قبل الاسم"},
+    {t:"I have red a car.",ok:false,why:"ترتيب الصفة وأداة التنكير مقلوب"},
+    {t:"I have a car is red.",ok:false,why:"لا حاجة لفعل be هنا مع صفةٍ مباشرة قبل الاسم"}]},
+  {id:"gr_a1_5",lv:"A1",c:[
+    {t:"This is my brother book.",ok:false,why:"الملكية تحتاج 's بعد صاحب الشيء"},
+    {t:"This is my brother's book.",ok:true,why:"صحيحة — 's تدلّ على الملكية"},
+    {t:"This is my brothers book.",ok:false,why:"هذه جمعٌ (brothers) لا ملكية (brother's)"},
+    {t:"This is book of my brother.",ok:false,why:"تُحذف أداة التعريف the، والأصح 's لا of مع الأشخاص"}]},
+  // A2 — الماضي الشاذّ، المقارنة، حروف جرّ الوقت، much/many، صيغة السؤال
+  {id:"gr_a2_1",lv:"A2",c:[
+    {t:"Yesterday I go to the beach with my friends.",ok:false,why:"الفعل بلا تصريفٍ للماضي"},
+    {t:"Yesterday I went to the beach with my friends.",ok:true,why:"صحيحة — went ماضي go الشاذّ"},
+    {t:"Yesterday I goed to the beach with my friends.",ok:false,why:"go فعلٌ شاذّ، ماضيه went لا goed"},
+    {t:"Yesterday I was go to the beach with my friends.",ok:false,why:"لا نجمع was مع الفعل الأساسي هكذا"}]},
+  {id:"gr_a2_2",lv:"A2",c:[
+    {t:"This bag is more big than that one.",ok:false,why:"big كلمة قصيرة، مقارنتها bigger لا more big"},
+    {t:"This bag is bigger than that one.",ok:true,why:"صحيحة — bigger للمقارنة بين اثنين"},
+    {t:"This bag is biggest than that one.",ok:false,why:"biggest للتفضيل بين أكثر من اثنين، لا للمقارنة بين اثنين"},
+    {t:"This bag is more bigger than that one.",ok:false,why:"لا نجمع more مع -er معاً"}]},
+  {id:"gr_a2_3",lv:"A2",c:[
+    {t:"The party is in Friday at 5 pm.",ok:false,why:"الأيام تأخذ on لا in"},
+    {t:"The party is on Friday at 5 pm.",ok:true,why:"صحيحة — on مع الأيام، at مع الساعة"},
+    {t:"The party is at Friday at 5 pm.",ok:false,why:"at للوقت المحدّد لا لليوم"},
+    {t:"The party is on Friday in 5 pm.",ok:false,why:"الساعة المحدّدة تأخذ at لا in"}]},
+  {id:"gr_a2_4",lv:"A2",c:[
+    {t:"How much people came to the party?",ok:false,why:"people قابلة للعدّ، فتأخذ many لا much"},
+    {t:"How many people came to the party?",ok:true,why:"صحيحة — many مع الأسماء القابلة للعدّ"},
+    {t:"How many money did you spend?",ok:false,why:"money غير قابلة للعدّ، فتأخذ much لا many"},
+    {t:"How much peoples came to the party?",ok:false,why:"people بالأصل جمعٌ، فلا تُجمع peoples"}]},
+  {id:"gr_a2_5",lv:"A2",c:[
+    {t:"You like coffee or tea?",ok:false,why:"السؤال يحتاج Do في بدايته"},
+    {t:"Do you like coffee or tea?",ok:true,why:"صحيحة — Do في بداية السؤال"},
+    {t:"Do you likes coffee or tea?",ok:false,why:"بعد Do يعود الفعل لصورته الأساسية بلا -s"},
+    {t:"Like you coffee or tea?",ok:false,why:"الفعل الأساسي لا يتقدّم على الفاعل هكذا"}]},
+  // B1 — المضارع التامّ، المبني للمجهول، جملة الشرط الأولى، الموصول، used to
+  {id:"gr_b1_1",lv:"B1",c:[
+    {t:"I work at this company since three years.",ok:false,why:"لا زمن تامّ هنا، وsince تحتاج نقطة زمن لا مدّة"},
+    {t:"I have worked at this company for three years.",ok:true,why:"صحيحة — تامّ + for مع المدّة"},
+    {t:"I have worked at this company since three years.",ok:false,why:"الزمن صحيح، لكن since تحتاج نقطة بداية (since 2020) لا مدّة"},
+    {t:"I am working at this company for three years.",ok:false,why:"المضارع المستمر لا يوصل معنى الامتداد من الماضي حتى الآن كالتامّ"}]},
+  {id:"gr_b1_2",lv:"B1",c:[
+    {t:"The email written by my manager yesterday.",ok:false,why:"ينقص فعل be (was) لبناء المبني للمجهول"},
+    {t:"The email was written by my manager yesterday.",ok:true,why:"صحيحة — was + التصريف الثالث"},
+    {t:"The email was wrote by my manager yesterday.",ok:false,why:"بعد was نستعمل written لا الماضي البسيط wrote"},
+    {t:"The email was writing by my manager yesterday.",ok:false,why:"بعد was في المبني للمجهول نستعمل written لا writing"}]},
+  {id:"gr_b1_3",lv:"B1",c:[
+    {t:"If it will rain, I will stay home.",ok:false,why:"جملة الشرط (if) تأخذ مضارعاً بسيطاً لا will"},
+    {t:"If it rains, I will stay home.",ok:true,why:"صحيحة — if+مضارع، وwill في الجواب"},
+    {t:"If it rains, I stay home.",ok:false,why:"جواب الشرط هنا توقّعٌ مستقبلي فيحتاج will"},
+    {t:"If it will rains, I will stay home.",ok:false,why:"will وs معاً على الفعل نفسه (will rains) لا يصحّان"}]},
+  {id:"gr_b1_4",lv:"B1",c:[
+    {t:"The man who he called me is my teacher.",ok:false,why:"بعد who لا نكرّر الفاعل بضمير (he) ثانية"},
+    {t:"The man who called me is my teacher.",ok:true,why:"صحيحة — who تربط الوصف بالاسم بلا تكرار"},
+    {t:"The man which called me is my teacher.",ok:false,why:"which للأشياء، وwho للأشخاص"},
+    {t:"The man called me is my teacher.",ok:false,why:"الجملة تحتاج who لتربط الوصف بالاسم"}]},
+  {id:"gr_b1_5",lv:"B1",c:[
+    {t:"I use to play football every weekend when I was young.",ok:false,why:"used to تُكتب بصيغة الماضي use**d** to"},
+    {t:"I used to play football every weekend when I was young.",ok:true,why:"صحيحة — used to لعادةٍ ماضية"},
+    {t:"I was used to play football every weekend when I was young.",ok:false,why:"used to (عادة ماضية) لا تحتاج was قبلها"},
+    {t:"I used to played football every weekend when I was young.",ok:false,why:"بعد used to يأتي الفعل بصورته الأساسية (play) لا الماضي (played)"}]},
+];
+function gramBankFor(level){
+  const L=String(level||"A2");
+  const exact=GRAM_BANK.filter(function(x){return x.lv===L});
+  return exact.length?exact:GRAM_BANK.filter(function(x){return x.lv==="A1"});
+}
+const GRAM_SRS_KEY="mawhiba_gram_srs";
+function gramSrsLoad(){try{return JSON.parse(lsGet(GRAM_SRS_KEY)||"{}")}catch(e){return{}}}
+function gramSrsSave(o){try{lsSet(GRAM_SRS_KEY,JSON.stringify(o))}catch(e){}}
+function gramSrsUpdate(id,ok){
+  const st=gramSrsLoad(),r=st[id]||{box:0,seen:0};
+  const n=fsrsUpdate(r,ok,srsToday());
+  r.box=n.box;r.due=n.due;r.seen=n.seen;r.s=n.s;r.d=n.d;r.last=n.last;
+  st[id]=r;gramSrsSave(st);
+}
+const GRAM_N=5;
+function buildGramPlan(){
+  const st=gramSrsLoad(),today=srsToday(),POOL=gramBankFor(profileOf().level);
+  const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
+  const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
+  let out=due.concat(fresh).slice(0,GRAM_N);
+  if(!out.length)out=shuffle(POOL).slice(0,GRAM_N);
+  return out;
+}
+let gramItems=[],gramIdx=0,gramOrder=[0,1,2,3],gramPicked=-1,gramLocked=false,gramScore=0,gramShownAt=0,gramDone=false;
+function startGram(){
+  gramItems=buildGramPlan();gramIdx=0;gramScore=0;gramDone=false;
+  mode="gram";gramSetupRound();window.scrollTo(0,0);render();
+}
+function gramSetupRound(){gramOrder=shuffle([0,1,2,3]);gramPicked=-1;gramLocked=false;gramShownAt=Date.now()}
+function gramCur(){return gramItems[gramIdx]}
+function gramChoose(i){
+  if(gramLocked)return;
+  gramPicked=i;gramLocked=true;
+  const it=gramCur(),ok=!!it.c[i].ok;
+  if(ok)gramScore++;
+  const elapsed=Date.now()-gramShownAt;
+  gramSrsUpdate(it.id,ok);
+  logAnswer("gram","sentence",ok,it.c[i].t,it.id,elapsed,
+    {q_text:it.c.map(function(x,k){return (k+1)+") "+x.t+(x.ok?" ✓":"")}).join(" | ")});
+  render();
+}
+function gramNext(){
+  if(gramIdx+1>=gramItems.length){gramDone=true;render();return}
+  gramIdx++;gramSetupRound();render();
+}
+function renderGram(){
+  if(!gramItems.length){app.innerHTML=`<div class="card" style="text-align:center">لا شيء مستحقّ اليوم — عودي غداً 🌱</div><button class="link-btn" onclick="home()">→ الرئيسية</button>`;return}
+  if(gramDone)return renderGramResult();
+  const it=gramCur();
+  const prog=`<div class="bar">${gramItems.map(function(_,i){return `<div class="seg" style="background:${i<=gramIdx?'#0E7490':'#E2E8F0'};opacity:${i<=gramIdx?1:.5}"></div>`}).join("")}</div>`;
+  const choices=gramOrder.map(function(wi){
+    const opt=it.c[wi];
+    let bg="#fff",bd="#E2E8F0",col="#0F172A";
+    if(gramLocked){if(opt.ok){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(wi===gramPicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}
+    const why=gramLocked?`<div style="margin-top:5px;font-size:12px;color:${opt.ok?'#059669':'#B45309'}">${opt.ok?"✓ ":"✗ "}${esc(opt.why)}</div>`:"";
+    return `<button class="choice" style="background:${bg};border-color:${bd};color:${col};direction:ltr;text-align:left;font-family:Georgia,serif;display:block" onclick="gramChoose(${wi})" ${gramLocked?"disabled":""}>${esc(opt.t)}${why}</button>`;
+  }).join("");
+  app.innerHTML=`
+  <button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
+  ${prog}
+  <div class="meta"><span>${toAr(gramIdx+1)} من ${toAr(gramItems.length)}</span><span>دقّة القواعد · ${it.lv}</span></div>
+  <div class="card">
+    <span class="tag" style="background:#CFFAFE;color:#0E7490">✍️ أيّ جملةٍ صحيحة؟</span>
+    <div class="choices" style="margin-top:12px">${choices}</div>
+  </div>
+  ${gramLocked?`<button class="btn" style="background:#0E7490" onclick="gramNext()">${gramIdx+1>=gramItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`:""}`;
+}
+function renderGramResult(){
+  const pct=gramItems.length?Math.round(gramScore/gramItems.length*100):0;
+  app.innerHTML=`
+  <div class="card">
+    <div class="score-row"><span class="score-big" style="color:${pct>=70?'#059669':pct>=50?'#D97706':'#DC2626'}">${toAr(gramScore)}</span><span class="score-total">/ ${toAr(gramItems.length)}</span><span class="score-pct">${toAr(pct)}%</span></div>
+    <div style="color:#64748B;font-size:15px;margin-bottom:14px">${pct>=85?"دقّةٌ ممتازة! 🌟":pct>=60?"جيّد جداً، واصلي 💪":"لا بأس — هذه القواعد تعود للمراجعة 🌱"}</div>
+    <button class="btn" style="background:#0E7490" onclick="startGram()">🔁 جلسة أخرى</button>
+    <button class="link-btn" onclick="home()">→ الرئيسية</button>
+  </div>`;
+}
+
 // ===== لعبة الاستماع: أزواج شبه متطابقة (minimal pairs) — طُلبت (١٦ أغسطس) بعد
 // لقطة شاشة من تطبيقٍ آخر (chose/choose). نفس بنية الاستماع/القراءة تماماً: بنكٌ
 // بمستويات + fsrsUpdate للتباعد + شاشة نتيجة — لا آلية جديدة. والفرق الوحيد من طبيعة
@@ -7549,7 +7720,7 @@ function bumpStreak(){const st=getStreak();const t=todayStr();if(st.last===t)ret
 function growthMsg(modeKey,pct){try{const key="mawhiba_best_"+modeKey;const prev=parseInt(lsGet(key)||"-1");let msg="";if(prev<0){msg="أول محاولة في هذا القسم — انطلاقة موفّقة! 🌱"}else if(pct>prev){msg=`تحسّنتِ عن أفضل نتيجة سابقة (${toAr(prev)}%)! تقدّم رائع 📈`}else if(pct===prev){msg="ثبات على أفضل مستوى سابق 💪"}else{msg="واصلي، كل محاولة تبني مهارتك 🌟"}if(pct>prev)lsSet(key,String(pct));return msg}catch(e){return""}}
 
 // ===== العرض =====
-function render(){if(mode==="home")return renderHome();if(mode==="listen")return renderListen();if(mode==="read")return renderRead();if(mode==="write")return renderWrite();if(mode==="minpair")return renderMinpair();if(mode==="errors")return renderErrors();if(mode==="engplan")return renderEngPlan();if(mode==="factplan")return renderFactPlan();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="speak")return renderSpeak();if(mode==="coach")return renderCoach();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
+function render(){if(mode==="home")return renderHome();if(mode==="listen")return renderListen();if(mode==="read")return renderRead();if(mode==="write")return renderWrite();if(mode==="gram")return renderGram();if(mode==="minpair")return renderMinpair();if(mode==="errors")return renderErrors();if(mode==="engplan")return renderEngPlan();if(mode==="factplan")return renderFactPlan();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="speak")return renderSpeak();if(mode==="coach")return renderCoach();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
 
 // صفحة الأخوين قسمٌ واحد: المحادثة. بقيّة الأقسام بُنيت على أخطائها هي — بنك
 // أسئلتها، وتباعدها، ومنهج صفّها السادس — فوضعها أمام ولدٍ آخر يُشغله بما ليس له.
@@ -7568,6 +7739,7 @@ function renderHomeCoachOnly(){
     <button class="mode full" style="background:#0284C7;border-color:#0284C7" onclick="startListen()"><span class="m-name">🎧 فهم الاستماع</span><div class="m-sub">استمع لمقطعٍ قصير، وأجب عن معناه — مستوى ${p.level||"A2"}</div></button>
     <button class="mode full" style="background:#7C3AED;border-color:#7C3AED" onclick="startRead()"><span class="m-name">📖 فهم المقروء</span><div class="m-sub">اقرأ نصّاً قصيراً، وأجب عن معناه — مستوى ${p.level||"A2"}</div></button>
     <button class="mode full" style="background:#059669;border-color:#059669" onclick="startWrite()"><span class="m-name">📝 الكتابة</span><div class="m-sub">اكتب نصّاً حرّاً عن سؤالٍ نموذجي — تصحيح نحوي فوري يغذّي «أخطائي» — مستوى ${p.level||"A2"}</div></button>
+    <button class="mode full" style="background:#9333EA;border-color:#9333EA" onclick="startGram()"><span class="m-name">✍️ دقّة القواعد</span><div class="m-sub">أربع جملٍ، صحيحةٌ واحدة — اختر ثم اقرأ لماذا كل خيار صحيح أو خاطئ</div></button>
     <button class="mode full" style="background:#0891B2;border-color:#0891B2" onclick="startMinpair()"><span class="m-name">👂 لعبة الاستماع</span><div class="m-sub">كلمتان متشابهتا النطق (chose/choose) — أيّهما سمعت؟ ثم مثالٌ يشرح معناها</div></button>
     ${errCount()?`<button class="mode full" style="background:#DB2777;border-color:#DB2777" onclick="startErrors()"><span class="m-name">🎯 أخطائي · ${toAr(errCount())} مستحقّة</span><div class="m-sub">تصحيحات محادثتك السابقة — تُبنى كلمةً كلمة، وتعود عند حافّة النسيان</div></button>`:""}
   </div>
@@ -7610,6 +7782,7 @@ function renderHome(){
     <button class="mode full" style="background:#0284C7;border-color:#0284C7" onclick="startListen()"><span class="m-name">🎧 فهم الاستماع</span><div class="m-sub">استمعي لمقطعٍ قصير، وأجيبي عن معناه — مستوى ${profileOf().level||"A2"}</div></button>
     <button class="mode full" style="background:#7C3AED;border-color:#7C3AED" onclick="startRead()"><span class="m-name">📖 فهم المقروء</span><div class="m-sub">اقرئي نصّاً قصيراً، وأجيبي عن معناه — مستوى ${profileOf().level||"A2"}</div></button>
     <button class="mode full" style="background:#059669;border-color:#059669" onclick="startWrite()"><span class="m-name">📝 الكتابة</span><div class="m-sub">اكتبي نصّاً حرّاً عن سؤالٍ نموذجي — تصحيح نحوي فوري يغذّي «أخطائي» — مستوى ${profileOf().level||"A2"}</div></button>
+    <button class="mode full" style="background:#9333EA;border-color:#9333EA" onclick="startGram()"><span class="m-name">✍️ دقّة القواعد</span><div class="m-sub">أربع جملٍ، صحيحةٌ واحدة — اختاري ثم اقرئي لماذا كل خيار صحيح أو خاطئ</div></button>
     <button class="mode full" style="background:#0891B2;border-color:#0891B2" onclick="startMinpair()"><span class="m-name">👂 لعبة الاستماع</span><div class="m-sub">كلمتان متشابهتا النطق (chose/choose) — أيّتهما سمعتِ؟ ثم مثالٌ يشرح معناها</div></button>
     <button class="mode full" style="background:#7C3AED;border-color:#7C3AED" onclick="startPronunciation()"><span class="m-name">🎤 تمرين النطق</span><div class="m-sub">تحقّق أساسي هل نطقتِ الكلمة صح (يحتاج ميكروفون) — وليس تصحيح لهجة دقيق</div></button>
     <button class="mode full" style="background:#0E7490;border-color:#0E7490" onclick="startCoach()"><span class="m-name">🗣️ تكلّمي بالإنجليزية</span><div class="m-sub">محادثة حرّة مع شريك يردّ عليكِ بالإنجليزية — ونقيس وضوح أصواتك في كل جملة</div></button>
