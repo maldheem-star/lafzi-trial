@@ -260,6 +260,32 @@ const out=await page.evaluate(()=>{
 ok(out.length>0,`buildWritePlan لا تعود فارغة (${out.length} عنصراً)`);
 await page.evaluate(()=>{try{lsDel('mawhiba_write_srs')}catch(e){}});
 
+console.log('\n١٣ب) نسخ نصّ السؤال يُكتشَف — بيانات حيّة (١٧ أغسطس): أوّل ٣ محاولات كتابة');
+// عدد الكلمات وحده لا يكشف النسخ — أُبلغ الهدف في إحدى الثلاث رغم كونها نسخاً بحتاً
+const copy=await page.evaluate(()=>({
+  c1:writeIsCopy("Write about your family","Write about your family.\n1) How many brothers or sisters do you have?\n2) What is one thing you like doing together?"),
+  c2:writeIsCopy("Write about your school day. What time do you go to school?","Write about your school day.\n1) What time do you go to school?\n2) What is your favourite subject?"),
+  c3:writeIsCopy("Write about your best friend.  What is their name?","Write about your best friend.\n1) What is their name?\n2) What do you both like doing?"),
+  real1:writeIsCopy("I have two brothers and one sister. We like playing football together.","Write about your family.\n1) How many brothers or sisters do you have?\n2) What is one thing you like doing together?"),
+}));
+ok(copy.c1&&copy.c2&&copy.c3,'الثلاث محاولات الحقيقية المنسوخة تُكتشَف رغم اختلاف علامات الترقيم التوجيهية (1)/(2))');
+ok(!copy.real1,'وإجابة حقيقية بنفس الموضوع لا تُتَّهم زوراً');
+logs=[];calls=[];
+page=await mk();
+await page.evaluate(()=>{startWrite();writeItems[0]={id:'wr_copy',lv:'A1',min:10,
+  prompt:"Write about your school day.\n1) What time do you go to school?\n2) What is your favourite subject?"};writeIdx=0;render()});
+await page.fill('#writeIn','Write about your school day. What time do you go to school?');
+await page.click('button[onclick="writeSubmit()"]');
+await page.waitForTimeout(300);
+const cst=await page.evaluate(()=>({writeCopy,writeScore,writeSubmitted}));
+ok(cst.writeCopy===true,'النسخ يُكتشَف في المسار الحقيقي (writeSubmit) لا الدالة المعزولة وحدها');
+ok(cst.writeScore===0,'ولا يُحتسب في الهدف رغم أن عدد كلماته يبلغه (١٢ كلمة، الهدف ١٠)');
+ok(calls.filter(c=>c.mode==='review').length===0,'ولا طلب مراجعة نحوية — نصٌّ منسوخ سليمٌ نحوياً حتماً، فلا فائدة من الشبكة');
+let ct=await page.textContent('#app');
+ok(ct.includes('نسخٌ من نصّ السؤال'),'ويُقال لها ذلك صراحةً بدل «أحسنتِ» زائفة');
+const crow=logs.find(l=>l.domain==='write'&&l.qtype!=='fix');
+ok(crow&&crow.q_text.includes('نسخ:1'),'ويُسجَّل — فيُقاس تكرار النسخ لاحقاً لا يُخمَّن');
+
 console.log('\n١٤) لا انحدار');
 for(const [pg,fn,md] of [['index.html',"startWrite()",'write'],['index.html',"startRead()",'read'],
   ['index.html',"home()",'home'],['mohammed.html',"startWrite()",'write'],['elias.html',"startWrite()",'write']]){

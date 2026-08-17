@@ -552,7 +552,11 @@ function gAgeChain(){
   const p=rand(2,5),q=rand(2,6),r=rand(3,8),dAge=rand(18,30);
   const cAge=dAge-r,bAge=cAge+q,aAge=bAge-p;
   if(aAge<5||cAge<5)return gAgeChain();
-  return qz("quant",`إذا كان ${A} أصغر من ${B} بـ(${toAr(p)}) سنوات، و${B} أكبر من ${C} بـ(${toAr(q)}) سنوات، و${C} أصغر من ${D} بـ(${toAr(r)}) سنوات. إذا كان عُمر ${D} (${toAr(dAge)}) سنة، فما عُمر ${A}؟`,aAge,[aAge+2,aAge-2,dAge-p],
+  // ١٧ أغسطس: مموّه "aAge+2" الثابت كان يتصادف عددياً مع bAge (الحلقة قبل الأخيرة)
+  // كلّما كان p=٢ بالضبط — فأخطأتها هيا مرّتين في نفس اليوم وp=٢ في الاثنتين، ولم
+  // نستطع الحكم: أخمّنت +٢ عشوائياً أم توقّفت فعلاً عند bAge؟ فصار bAge نفسه هو
+  // المموّه (لا رقماً ثابتاً)، فيصير اختياره دليلاً لا صدفة: قياسٌ أدقّ قبل أي علاج.
+  return qz("quant",`إذا كان ${A} أصغر من ${B} بـ(${toAr(p)}) سنوات، و${B} أكبر من ${C} بـ(${toAr(q)}) سنوات، و${C} أصغر من ${D} بـ(${toAr(r)}) سنوات. إذا كان عُمر ${D} (${toAr(dAge)}) سنة، فما عُمر ${A}؟`,aAge,[bAge,aAge-2,dAge-p],
     `نبدأ من المعلوم: ${D} = ${toAr(dAge)}. ${C} أصغر منه بـ${toAr(r)} → ${toAr(cAge)}. ${B} أكبر من ${C} بـ${toAr(q)} → ${toAr(bAge)}. ${A} أصغر من ${B} بـ${toAr(p)} → ${toAr(aAge)} سنة.`);
 }
 // لغز الساعة: مربع (س÷أ) = مكعب (س÷٢أ) ← الحل س = ٨أ
@@ -868,6 +872,20 @@ function spreadTemplates(list){
   for(let p=1;p<n;p+=2)out[p]=flat[i++];
   return out.every(Boolean)?out:list.slice();
 }
+// ===== بطاقة الخطأ المتكرّر (qzCard) ⇐ رابطٌ مباشر لشرحٍ موجودٍ أصلاً =====
+// ١٧ أغسطس: زاوية المروحة (gAngleEqualRays) أخطأتها هيا ٣ من ٣ باختيار المجموع غير
+// المقسوم بالضبط — moّهٌ مقصودٌ أصلاً في mcNum (total ضمن الخيارات)، لا قرباً عددياً
+// يُحتمَل تفسيره بغير ذلك. وqzCard كانت تُنبّه على التكرار («أخطأتِه من قبل») بلا أن
+// تشرح — والشرح موجودٌ أصلاً في وضع التقوية (FADE_TOPICS) لهذا النوع بالذات. فبدل بناء
+// شرحٍ ثانٍ، القالب المتكرّر يُربَط بموضوع التقوية الجاهز إن وُجد — سطرٌ في جدول، لا
+// آلية جديدة، تماماً كعُرف BUG_GATES. والقالب يُشتقّ من مولّده نفسه (tmplKey على ناتج
+// نداءٍ حقيقي) لا نصّاً مكرَّراً يدوياً، فيبقى صحيحاً تلقائياً لو تغيّرت صياغة السؤال.
+// وgPercent هو نفسه «دفع سالم ٪ من راتبه» الموثَّق سابقاً (صفر من ثلاث) — علاجه المخطَّط
+// له أصلاً كان «بطاقة الباقي=١٠٠٪−المدفوع بمثال محلول»، وهي موجودة في fade "percent"
+// بالفعل؛ الربط هنا يُنفّذه لا يخترعه. والقائمة تُوسَّع بسطر واحد كلّما تأكّد قالبٌ آخر.
+const QZ_CARD_FADE_LINK={};
+[[gAngleEqualRays,"angles"],[gPercent,"percent"],[gMedian,"median"],[gCube,"cube"],[gPyramid,"pyramid"]]
+  .forEach(function(pair){try{QZ_CARD_FADE_LINK[tmplKey(pair[0]())]=pair[1]}catch(e){}});
 // والتوزيع وحده لا يكفي حين يُنتج المولّد سبعة من قالب واحد في اثني عشر سؤالاً: لا
 // ترتيب يُباعد بينها حينئذ. فيُسحب بحصّة — ثلث العدد لكل قالب على الأكثر، وإن نفدت
 // المحاولات قُبل ما جاء (سؤال أقلّ تنويعاً خيرٌ من سؤال ناقص).
@@ -6172,6 +6190,19 @@ function buildWritePlan(){
   return out;
 }
 function writeWordCount(t){const m=String(t||"").trim().match(/[A-Za-z']+/g);return m?m.length:0}
+// ١٧ أغسطس: أوّل ثلاث محاولات كتابة على الإطلاق (بيانات حيّة) كانت الثلاث نسخاً لنصّ
+// السؤال نفسه («Write about your family» رُدّت كما هي)، لا إجابة عليه. وعدد الكلمات
+// وحده لا يكشف هذا — نصٌّ منسوخ سليمٌ نحوياً فيمرّ حتى من حَكَم اللغة، وقد بلغ الهدف
+// العددي فعلاً في إحدى الثلاث رغم كونه نسخاً بحتاً. فيُفحَص قبل احتساب الهدف: نصّها
+// الحرفي (بعد تطبيع بسيط) هل يظهر كاملاً داخل نصّ السؤال — لا تخميناً بل احتواءً فعلياً.
+// الأرقام تُحذَف لا تُبقى: علامات الترقيم التوجيهية ("1)"، "2)") في نصّ السؤال تكسر
+// الاحتواء الحرفي لو أُبقيت — نسختها هيا فعلياً بلا هذه العلامات («day what time» بدل
+// «day 1) what time»)، فلم يُطابق الاحتواء الأول قبل حذف الأرقام (بيانات حيّة، تحقّق)
+function writeNorm(t){return String(t||"").toLowerCase().replace(/[^a-z\s]/g,"").replace(/\s+/g," ").trim()}
+function writeIsCopy(txt,prompt){
+  const a=writeNorm(txt),b=writeNorm(prompt);
+  return a.length>=6 && b.indexOf(a)>=0;
+}
 // تُقسَّم الفقرة إلى جملٍ مرقّمة — نفس شكل رسائل المحادثة إلى المراجعة (coachReview)،
 // فالنموذج مُدرَّب على "You will receive their sentences, numbered" لا فقرةً واحدة خام
 function writeSentences(t){
@@ -6184,11 +6215,11 @@ function writeSentences(t){
 }
 let writeItems=[],writeIdx=0,writeDone=false,writeScore=0,writeShownAt=0,writeTyped="",
   writeSubmitted=false,writeBusy=false,writeFix=[],writeFixFail="",writeCount=0,writeLtDropped=0,writeLtJudged=0,
-  writeModelShown=false,writeModelViews=0;
+  writeModelShown=false,writeModelViews=0,writeCopy=false;
 function startWrite(){
   writeItems=buildWritePlan();writeIdx=0;writeDone=false;writeScore=0;
   writeSubmitted=false;writeBusy=false;writeFix=[];writeFixFail="";writeTyped="";writeCount=0;
-  writeLtDropped=0;writeLtJudged=0;writeModelShown=false;writeModelViews=0;
+  writeLtDropped=0;writeLtJudged=0;writeModelShown=false;writeModelViews=0;writeCopy=false;
   mode="write";writeShownAt=Date.now();window.scrollTo(0,0);render();
 }
 // نفس عُرف عدّاد إعادة الاستماع (listenPlays): لا يُمنع الزرّ ولا يُقفَل، ويُسجَّل عدده
@@ -6205,28 +6236,33 @@ async function writeSubmit(){
   const el=document.getElementById('writeIn');
   const txt=(el?el.value:"").trim();
   if(!txt)return;   // لا نحرق محاولة على حقلٍ فارغ — كنظيرتها في الأساسيات
-  writeTyped=txt;writeCount=writeWordCount(txt);
+  writeTyped=txt;writeCount=writeWordCount(txt);writeCopy=writeIsCopy(txt,it.prompt);
   const lenOk=writeCount>=it.min;
-  writeBusy=true;writeFix=[];writeFixFail="";writeLtDropped=0;writeLtJudged=0;render();
-  try{
-    const lines=writeSentences(txt).map(function(s,i){return (i+1)+". "+s}).join("\n");
-    const res=await fetchTimeout(TUTOR_FN_URL,{method:"POST",
-      headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},
-      body:JSON.stringify({mode:"review",learner:learnerInfo(),level:profileOf().level||"A2",
-        scene:"a written composition",question:"review",studentAnswer:lines})});
-    const d=await res.json();
-    if(d&&d.reply){writeFix=coachFixParse(d.reply);writeLtDropped=d.ltDropped|0;writeLtJudged=d.ltJudged|0}
-    else writeFixFail=(d&&d.error)||"reply";
-  }catch(e){writeFixFail="network"}
-  writeBusy=false;
+  writeFix=[];writeFixFail="";writeLtDropped=0;writeLtJudged=0;
+  // نسخٌ محض لا يستحقّ مراجعة نحوية: نصّ السؤال نفسه سليمٌ نحوياً حتماً، فطلبٌ للشبكة بلا فائدة
+  if(!writeCopy){
+    writeBusy=true;render();
+    try{
+      const lines=writeSentences(txt).map(function(s,i){return (i+1)+". "+s}).join("\n");
+      const res=await fetchTimeout(TUTOR_FN_URL,{method:"POST",
+        headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},
+        body:JSON.stringify({mode:"review",learner:learnerInfo(),level:profileOf().level||"A2",
+          scene:"a written composition",question:"review",studentAnswer:lines})});
+      const d=await res.json();
+      if(d&&d.reply){writeFix=coachFixParse(d.reply);writeLtDropped=d.ltDropped|0;writeLtJudged=d.ltJudged|0}
+      else writeFixFail=(d&&d.error)||"reply";
+    }catch(e){writeFixFail="network"}
+    writeBusy=false;
+  }
   // دمج الجمل: النجاح نظافة نحوية لا عدد كلمات وحده — بلا فحصٍ نحوي (تعذّر الاتصال)
-  // يُحكم بالطول وحده، كبقية الكتابة، لا يُعاقَب على عطلٍ ليس منه
-  const ok=it.type==="combine"?(lenOk&&(writeFixFail?true:!writeFix.length)):lenOk;
+  // يُحكم بالطول وحده، كبقية الكتابة، لا يُعاقَب على عطلٍ ليس منه. والنسخ يُسقط
+  // النجاح في الحالتين سواءً — نسخ جملةٍ مصدرٍ واحدة ليس دمجاً كما نسخ السؤال ليس إجابة
+  const ok=writeCopy?false:(it.type==="combine"?(lenOk&&(writeFixFail?true:!writeFix.length)):lenOk);
   writeSrsUpdate(it.id,ok);
   if(ok)writeScore++;
   // q_text وresponse كاملان — بلا هذين لا تشخيص، ونفس عُرف تسجيل الفرق/الشكل في بقية التطبيق
   logAnswer("write",it.lv,ok,txt,it.id,writeShownAt?Date.now()-writeShownAt:null,
-    {q_text:(it.prompt+" · الهدف "+it.min+" كلمة · كتبت "+writeCount+" · lt:"+writeLtJudged+"/"+writeLtDropped+" · مثال:"+writeModelViews).slice(0,1200)});
+    {q_text:(it.prompt+" · الهدف "+it.min+" كلمة · كتبت "+writeCount+" · lt:"+writeLtJudged+"/"+writeLtDropped+" · مثال:"+writeModelViews+" · نسخ:"+(writeCopy?1:0)).slice(0,1200)});
   // نفس مسار بطاقات تصحيح المحادثة بالضبط: بطاقةٌ مجدولة تعود عند حافّة النسيان،
   // ووضع «أخطائي» يُدرّبها بنائياً — لا مسار ثانٍ
   writeFix.forEach(function(f){fixCardSave(f)});
@@ -6238,11 +6274,18 @@ async function writeSubmit(){
 }
 function writeNext(){
   if(writeIdx+1>=writeItems.length){writeDone=true;window.scrollTo(0,0);render();return}
-  writeIdx++;writeSubmitted=false;writeBusy=false;writeFix=[];writeFixFail="";writeTyped="";writeCount=0;
+  writeIdx++;writeSubmitted=false;writeBusy=false;writeFix=[];writeFixFail="";writeTyped="";writeCount=0;writeCopy=false;
   writeModelShown=false;writeModelViews=0;
   writeShownAt=Date.now();window.scrollTo(0,0);render();
 }
 function renderWriteFeedback(it){
+  if(writeCopy){
+    const copyMsg=it.type==="combine"
+      ?"ادمجي الجملتين بكلماتك — لا تنسخي إحداهما أو نصّ السؤال نفسه."
+      :"اكتبي بكلماتك أنتِ — جملة عن نفسك تجيب عن السؤال، لا نصّ السؤال نفسه.";
+    return `<div class="explain"><div class="explain-title" style="color:#B45309">هذا نسخٌ من نصّ السؤال، لا إجابة</div>
+      <div class="explain-body">${copyMsg}</div></div>`;
+  }
   const isCombine=it.type==="combine";
   const lenOk=writeCount>=it.min;
   // دمج الجمل: لا نحكم «سليم» قبل عودة فحص القواعد — عكس الكتابة الحرّة حيث الطول وحده يكفي
@@ -7899,13 +7942,15 @@ function renderQuiz(){
     if(locked){if(i===q.a){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(i===picked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}
     return `<button class="choice" style="background:${bg};border-color:${bd};color:${col}" onclick="choose(${i})" ${locked?"disabled":""}><span class="letter">${L[i]}</span>${c}</button>`}).join("");
   // بطاقة التكرار: تُعرض مكان زرّ الانتقال، فلا تُتجاوز بالضغط المتتابع
+  const fadeLink=qzCard?QZ_CARD_FADE_LINK[qzCard.k]:null;
   const repeatCard=(qzCard&&locked)?`<div style="background:#FEF2F2;border:1.5px solid #FECACA;border-radius:14px;padding:16px;margin-top:14px">
     <div style="font-weight:800;color:#991B1B;font-size:15px;margin-bottom:8px">🔁 هذا النوع من الأسئلة أخطأتِه من قبل</div>
     <div style="font-size:14px;color:#7F1D1D;line-height:1.9">
       أخطأتِ فيه ${toAr(qzCard.wrong)} مرات${qzCard.prev?` — وفي المرة الماضية اخترتِ <b>${esc(qzCard.prev)}</b>`:""}.
       اقرئي التفسير أعلاه قبل الانتقال، فهذا النوع سيعود.
     </div>
-    <button class="btn" style="background:#B91C1C;margin:12px 0 0" onclick="qzCardDone()">قرأتُ التفسير ←</button>
+    ${fadeLink?`<button class="btn" style="background:#059669;margin:12px 0 0" onclick="startFade('${fadeLink}')">🎓 تدرّبي عليه خطوة بخطوة</button>`:""}
+    <button class="${fadeLink?"link-btn":"btn"}" style="${fadeLink?"":"background:#B91C1C;"}margin:${fadeLink?"6px":"12px"} 0 0" onclick="qzCardDone()">${fadeLink?"لا، أكملي الاختبار":"قرأتُ التفسير ←"}</button>
   </div>`:"";
   const explain=locked?`<div class="explain"><div class="explain-title" style="color:${picked===q.a?'#059669':'#B45309'}">${picked===q.a?"✓ إجابة صحيحة":"الصحيحة بالأخضر"}</div><div class="explain-body">${q.w||""}</div></div>`:"";
   const svg=q.svg?`<div class="svgbox" style="background:#F8FAFC;border-radius:14px;padding:16px;display:flex;justify-content:center;margin-bottom:16px">${q.svg}</div>`:"";
