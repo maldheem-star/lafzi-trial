@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260817-1100";
+  var BUILD="build-20260817-1500";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -4596,7 +4596,7 @@ async function coachFinish(){
     // (١٧ أغسطس، إلياس ومحمد معاً) ولم أستطع معرفة السبب: الاسم الحقيقي للنموذج
     // المرفوض كان موجوداً في ردّ الخادم نفسه (d.detail/d.model/d.provider) ويُهمَل هنا.
     coachSetFail((d&&d.error)==="not_configured"?"nokey":"reply",
-      d&&(String(d.error||"")+(d.provider?" · "+d.provider+"/"+(d.model||""):"")+(d.detail?" · "+d.detail:"")));
+      d&&(String(d.error||"")+(d.provider?" · "+d.provider+"/"+(d.model||""):"")+(d.detail?" · "+d.detail:"")+(d.finishReason?" · finish:"+d.finishReason:"")));
   }catch(e){coachSetFail("reply",e)}
   coachBusy=false;render();
 }

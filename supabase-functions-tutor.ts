@@ -428,7 +428,12 @@ Deno.serve(async (req) => {
     const turns: Record<string, unknown>[] = history.length ? history : [{ role: "user", text: opening }];
     // فقرة القراءة/الاستماع أطول من ردّ محادثة عادي — سقف الرموز الاعتيادي (300) كان يبتر
     // فقرات B1 (٤-٦ جمل) قبل اكتمال السطرين CORRECT/الخيارات.
-    const maxTok = gen ? 500 : 300;
+    let maxTok = gen ? 500 : 300;
+    // gpt-oss نماذج تفكير: تُنفق من سقف الرموز نفسه على تفكيرٍ داخلي قبل الجواب،
+    // فسقفٌ ٣٠٠ كان يُستنفَد كلّه تفكيراً ويعود جوابٌ فارغ (tutor_no_text، محمد ١٧ أغسطس،
+    // finishReason="length") — مؤكَّدٌ من مصدر Groq نفسه: خفض الجهد وسقفٌ أعلى يُصلحانه معاً.
+    const isGptOss = /gpt-oss/i.test(model);
+    if (isGptOss) maxTok = Math.max(maxTok, 1200);
 
     let url: string, headers: Record<string, string>, body: unknown;
     if (provider === "gemini") {
@@ -453,6 +458,8 @@ Deno.serve(async (req) => {
         messages: [{ role: "system", content: sysText }].concat(
           turns.map((m) => ({ role: String(m.role) === "model" ? "assistant" : "user", content: clip(m.text) }))),
         temperature: 0.6, max_tokens: maxTok, top_p: 0.9,
+        // low يكفي لتصحيح/محادثة قصيرة، ويُبقي معظم السقف للجواب لا للتفكير الداخلي
+        ...(isGptOss ? { reasoning_effort: "low" } : {}),
       };
     }
 
