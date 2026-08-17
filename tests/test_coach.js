@@ -169,6 +169,31 @@ const replyRow=logs.find(l=>l.domain==='coach'&&l.qtype==='reply');
 ok(!!replyRow,'بل يُكمل الدور بردٍّ فعلي — لا فشلٌ ولا هدرٌ لما حقَّقه التفريغ والتقييم');
 ok(await page.evaluate(()=>coachBusy)===false,'وزرّ التكلّم يعود صالحاً');
 
+console.log('\n٩ج) tutor_bad_model حيّ عند إلياس ومحمد معاً (١٧ أغسطس): كانت تُسجَّل بشيفرة الخطأ وحدها');
+// السجلّ القديم: response="reply · tutor_bad_model" — بلا اسم النموذج ولا نصّ الرفض
+// الحقيقي، رغم أن الخادم يُعيدهما في الردّ نفسه (d.detail/d.provider/d.model) وكانا
+// يُهمَلان قبل هذا الإصلاح. الآن يُسجَّلان معاً فيُعرف السبب الحقيقي من أوّل سطر.
+page=await mk();
+stt={ok:true,heard:"I want a hot chocolate please"};az=null;
+chat={error:"tutor_bad_model",status:400,provider:"groq",model:"llama-3.3-70b-versatile",
+  detail:"The model `llama-3.3-70b-versatile` has been decommissioned."};
+await page.route('**/functions/v1/tutor',async r=>{
+  let x={};try{x=JSON.parse(r.request().postData()||'{}')}catch(e){}
+  logs.push({__tutor:x});r.fulfill({status:200,contentType:'application/json',body:JSON.stringify(chat)});
+});
+await page.evaluate(()=>{startCoach();coachPick(0);coachMode('solo')});
+await page.waitForTimeout(300);
+logs.length=0;
+await turn(page);
+await page.waitForTimeout(300);
+const failRow=logs.find(l=>l.domain==='coach'&&l.qtype==='fail');
+ok(!!failRow,'سطر الفشل وصل');
+ok(failRow&&failRow.response.includes('tutor_bad_model'),`ومعه شيفرة الخطأ (${failRow&&failRow.response})`);
+ok(failRow&&failRow.response.includes('groq/llama-3.3-70b-versatile'),'ومعه المزوّد والنموذج الحقيقيان — لا تخمين لاحقاً');
+ok(failRow&&failRow.response.includes('decommissioned'),'ونصّ الرفض من المزوّد نفسه — السبب الحقيقي لا الشيفرة وحدها');
+ok((await page.evaluate(()=>window.__ERRS.length))===0,'ولا خطأ صفحة');
+chat={ok:true,reply:"Great choice! Would you like it with milk?"};   // إعادة الحالة الافتراضية لبقية الملفّ
+
 console.log('\n١٠) لا انحدار');
 page=await mk();
 for(const [fn,md] of [["startBasics('percent')",'basics'],["startFactPlan()",'factplan'],["startEngPlan()",'engplan'],
