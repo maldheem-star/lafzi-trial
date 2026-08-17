@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260816-1500";
+  var BUILD="build-20260816-1730";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -3002,7 +3002,8 @@ const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEn
   "logQueueLoad","logQueuePush","logQueueFlush","logSend",
   "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","piPickBand","piBandBoxHTML","piArm","piOk","piVals","piGateOn","piGated","piSig1","fsrsUpdate","fsrsIvl","fsrsR","fsrsInitS","fsrsInitD","fsrsNextD","fsrsClampD","fsrsRecallS","fsrsForgetS","tmplKey","spreadTemplates","drawSpread","qzErrRecord","qzDueKeys","qzInjectDue","qzErrOf","qzCardDone","fadeQText","fadeAnsText","fadeGateStart","fadeGateStop","fadeGateNeeded","copyAzRaw","esc","weakPhonemeStr","num0","profileBarHTML","renderHomeCoachOnly","learnerInfo","coachLevel","toMasc","genderizeText","genderizeNode","genderizeInit","lsGet","lsSet","lsDel","pkey","cxShuffleOrder","cxPreStart","cxPreChoose","cxPreNext","cxPreQuit","cxPreCur","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary","coachMode","coachAskHelp","coachEnd","coachReview","coachFixParse","weakClean","coachSaysNow","snapToSuggestion","editDist","coachShowSays","coachParse","coachTopicGo","coachTopicBack","coachTopicClean","coachFreeScene","wbStart","wbPick","wbUnpick","wbCheck","wbHTML","wbReady","wbSay","wbReset","wbNorm","wbDistract","wbStageGet","wbGrade","engBuildFor","dictErrRecord","dictIsBuild","dictCur","renderDictationBuild","planCheckBuild","echoRecord","echoArmed","coachBankOn","coachBankSync","coachBankCheck","fixCardSave","fixCardGrade","bugOf","basicsOpNow","basicsOperands","basicsBugNow","digitsOf","factDcpm","factDcpmBand","coachLeave","coachAutoReview","coachSetFail","coachHintNow","basicsErrDelta","shapeRecord","shapeArmed","ob1Arm","ob1Jump","ob1Back","ob1Complete","ob1BoxHTML","btArm","btBorrow","btComplete","btBoxHTML","basicsOb1Gated","basicsBtGated","basicsShapeLogRemedy","shapeLogRemedy","quotArm","quotGated","quotReset","listenBankFor","listenSrsUpdate","buildListenPlan","listenPlaysHint","startListen","listenPlay","listenChoose","listenNext","renderListen",
   "readBankFor","readSrsUpdate","buildReadPlan","startRead","readChoose","readNext","renderRead",
-  "genBankLoad","genBankAdd","parseGenBlock","fetchTutorGen","genTopUp","genLogText","errCollect","errDraw","errCount","errQuizCount","startErrors","errCheck","errChoose","errNext","errReplay","renderErrors"];
+  "genBankLoad","genBankAdd","parseGenBlock","fetchTutorGen","genTopUp","genLogText","errCollect","errDraw","errCount","errQuizCount","startErrors","errCheck","errChoose","errNext","errReplay","renderErrors",
+  "minpairBankFor","minpairSrsUpdate","buildMinpairPlan","startMinpair","minpairPlay","minpairChoose","minpairNext","renderMinpair"];
 function censusMissing(){return CENSUS.filter(function(n){return typeof window[n]!=="function"})}
 function censusHTML(){
   var miss=censusMissing();
@@ -6059,6 +6060,130 @@ function renderReadResult(){
   </div>`;
 }
 
+// ===== لعبة الاستماع: أزواج شبه متطابقة (minimal pairs) — طُلبت (١٦ أغسطس) بعد
+// لقطة شاشة من تطبيقٍ آخر (chose/choose). نفس بنية الاستماع/القراءة تماماً: بنكٌ
+// بمستويات + fsrsUpdate للتباعد + شاشة نتيجة — لا آلية جديدة. والفرق الوحيد من طبيعة
+// التمرين لا اجتهاداً: هدفان محتملان لا واحد (يُختار أحدهما عشوائياً كل جولة ويُسمَع)،
+// وبعد القفل تُعرض الكلمة الصحيحة داخل جملة بسيطة (نصّاً وصوتاً) لتعليم معناها —
+// طلبٌ صريح من صاحب المشروع، لا تخمين. والأزواج معياريّة من تدريس النطق الإنجليزي
+// (اختلاف الحركة الطويلة/القصيرة، وصوت النهاية، ونمط اسم/فعل) لا مؤلَّفة اعتباطاً.
+const MINPAIR_BANK=[
+  // A1 — أزواج حركات أساسية شائعة عند مبتدئ صغير
+  {id:"mp_a1_1",lv:"A1",w:["ship","sheep"],ph:["ʃɪp","ʃiːp"],s:["We travelled by ship.","The sheep is in the field."]},
+  {id:"mp_a1_2",lv:"A1",w:["bit","beat"],ph:["bɪt","biːt"],s:["I ate a bit of cake.","My heart began to beat fast."]},
+  {id:"mp_a1_3",lv:"A1",w:["cat","cut"],ph:["kæt","kʌt"],s:["The cat is sleeping.","I cut the paper with scissors."]},
+  {id:"mp_a1_4",lv:"A1",w:["bed","bad"],ph:["bed","bæd"],s:["I sleep in my bed.","That was a bad idea."]},
+  {id:"mp_a1_5",lv:"A1",w:["pin","pen"],ph:["pɪn","pen"],s:["She used a pin to fix her scarf.","I write with a blue pen."]},
+  // A2 — صوت النهاية (اختلاف الصوت لا الحرف) وحركات أطول قليلاً
+  {id:"mp_a2_1",lv:"A2",w:["live","leave"],ph:["lɪv","liːv"],s:["I live in a small house.","We leave for school at seven."]},
+  {id:"mp_a2_2",lv:"A2",w:["work","walk"],ph:["wɜːrk","wɔːk"],s:["My father goes to work every day.","We walk to the park after lunch."]},
+  {id:"mp_a2_3",lv:"A2",w:["price","prize"],ph:["praɪs","praɪz"],s:["The price of the shirt is twenty riyals.","She won the first prize in the race."]},
+  {id:"mp_a2_4",lv:"A2",w:["thirty","thirsty"],ph:["ˈθɜːrti","ˈθɜːrsti"],s:["There are thirty students in our class.","I feel thirsty after running."]},
+  {id:"mp_a2_5",lv:"A2",w:["sit","seat"],ph:["sɪt","siːt"],s:["Please sit down.","This is my seat on the bus."]},
+  // B1 — نمط اسم/فعل ودقّة أعلى، كالمثال الذي طلبه صاحب المشروع (chose/choose)
+  {id:"mp_b1_1",lv:"B1",w:["chose","choose"],ph:["tʃoʊz","tʃuːz"],s:["Yesterday I chose the blue shirt.","You can choose any book you like."]},
+  {id:"mp_b1_2",lv:"B1",w:["lose","loose"],ph:["luːz","luːs"],s:["Don't lose your keys again.","These trousers are too loose for me."]},
+  {id:"mp_b1_3",lv:"B1",w:["advice","advise"],ph:["ədˈvaɪs","ədˈvaɪz"],s:["Can you give me some advice?","I advise you to study every day."]},
+  {id:"mp_b1_4",lv:"B1",w:["desert","dessert"],ph:["ˈdezərt","dɪˈzɜːrt"],s:["The camel walked across the desert.","We had ice cream for dessert."]},
+  {id:"mp_b1_5",lv:"B1",w:["accept","except"],ph:["əkˈsept","ɪkˈsept"],s:["I accept your apology.","Everyone came except Sara."]},
+];
+function minpairBankFor(level){
+  const L=String(level||"A2");
+  const exact=MINPAIR_BANK.filter(function(x){return x.lv===L});
+  return exact.length?exact:MINPAIR_BANK.filter(function(x){return x.lv==="A1"});
+}
+const MINPAIR_SRS_KEY="mawhiba_minpair_srs";
+function minpairSrsLoad(){try{return JSON.parse(lsGet(MINPAIR_SRS_KEY)||"{}")}catch(e){return{}}}
+function minpairSrsSave(o){try{lsSet(MINPAIR_SRS_KEY,JSON.stringify(o))}catch(e){}}
+function minpairSrsUpdate(id,ok){
+  const st=minpairSrsLoad(),r=st[id]||{box:0,seen:0};
+  const n=fsrsUpdate(r,ok,srsToday());
+  r.box=n.box;r.due=n.due;r.seen=n.seen;r.s=n.s;r.d=n.d;r.last=n.last;
+  st[id]=r;minpairSrsSave(st);
+}
+const MINPAIR_N=8;
+function buildMinpairPlan(){
+  const st=minpairSrsLoad(),today=srsToday(),POOL=minpairBankFor(profileOf().level);
+  const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
+  const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
+  let out=due.concat(fresh).slice(0,MINPAIR_N);
+  if(!out.length)out=shuffle(POOL).slice(0,MINPAIR_N);
+  return out;
+}
+let minpairItems=[],minpairIdx=0,minpairTarget=0,minpairOrder=[0,1],minpairPicked=-1,minpairLocked=false,
+  minpairScore=0,minpairPlays=0,minpairShownAt=0,minpairDone=false;
+function startMinpair(){
+  minpairItems=buildMinpairPlan();minpairIdx=0;minpairScore=0;minpairDone=false;
+  mode="minpair";minpairSetupRound();window.scrollTo(0,0);render();
+}
+// هدفٌ عشوائي كل جولة (لا الأول دائماً) وترتيب عرضٍ عشوائي — لا انحياز موضع
+function minpairSetupRound(){
+  minpairTarget=Math.random()<0.5?0:1;minpairOrder=shuffle([0,1]);
+  minpairPicked=-1;minpairLocked=false;minpairPlays=0;minpairShownAt=Date.now();
+}
+function minpairCur(){return minpairItems[minpairIdx]}
+function minpairPlay(){const it=minpairCur();if(!it)return;minpairPlays++;speakEnglish(it.w[minpairTarget])}
+function minpairChoose(i){
+  if(minpairLocked)return;
+  minpairPicked=i;minpairLocked=true;
+  const it=minpairCur(),ok=i===minpairTarget;
+  if(ok)minpairScore++;
+  const elapsed=Date.now()-minpairShownAt;
+  minpairSrsUpdate(it.id,ok);
+  logAnswer("minpair","pair",ok,it.w[i],it.id,elapsed,
+    {q_text:`${it.w[0]} / ${it.w[1]} · الهدف: ${it.w[minpairTarget]} · استماعات:${minpairPlays}`});
+  render();
+}
+function minpairNext(){
+  if(minpairIdx+1>=minpairItems.length){minpairDone=true;render();return}
+  minpairIdx++;minpairSetupRound();render();
+}
+function renderMinpair(){
+  if(!minpairItems.length){app.innerHTML=`<div class="card" style="text-align:center">لا شيء مستحقّ اليوم — عودي غداً 🌱</div><button class="link-btn" onclick="home()">→ الرئيسية</button>`;return}
+  if(minpairDone)return renderMinpairResult();
+  const it=minpairCur();
+  const prog=`<div class="bar">${minpairItems.map(function(_,i){return `<div class="seg" style="background:${i<=minpairIdx?'#0891B2':'#E2E8F0'};opacity:${i<=minpairIdx?1:.5}"></div>`}).join("")}</div>`;
+  const choices=minpairOrder.map(function(wi){
+    let bg="#fff",bd="#E2E8F0",col="#0F172A";
+    if(minpairLocked){if(wi===minpairTarget){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(wi===minpairPicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}
+    return `<button class="choice" style="background:${bg};border-color:${bd};color:${col};direction:ltr;text-align:center;font-family:Georgia,serif;display:flex;flex-direction:column;gap:3px;padding:16px 10px;flex:1" onclick="minpairChoose(${wi})" ${minpairLocked?"disabled":""}>
+      <span style="font-size:19px;font-weight:800">${it.w[wi]}</span>
+      <span style="font-size:13px;color:#64748B">/${it.ph[wi]}/</span>
+    </button>`}).join("");
+  app.innerHTML=`
+  <button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
+  ${prog}
+  <div class="meta"><span>${toAr(minpairIdx+1)} من ${toAr(minpairItems.length)}</span><span>لعبة الاستماع · ${it.lv}</span></div>
+  <div class="card" style="text-align:center">
+    <span class="tag" style="background:#CFFAFE;color:#0E7490">🎧 أيّ كلمة سمعتِ؟</span>
+    <div style="margin:16px 0"><button type="button" onclick="minpairPlay()" style="background:#0891B2;color:#fff;border:none;border-radius:50%;width:64px;height:64px;font-size:26px;cursor:pointer">🔊</button></div>
+    <div style="font-size:12px;color:#64748B;margin-bottom:14px">استمعي، ثم اختاري الكلمة${minpairPlays?` · استمعتِ ${toAr(minpairPlays)} ${minpairPlays===1?"مرّة":"مرّات"}`:""}</div>
+    <div style="display:flex;gap:10px;justify-content:center">${choices}</div>
+    ${minpairLocked?`<div class="explain">
+        <div class="explain-title" style="color:${minpairPicked===minpairTarget?'#059669':'#B45309'}">${minpairPicked===minpairTarget?"✓ سمعتِها صح":"الصحيحة بالأخضر"}</div>
+        <div style="margin-top:10px;background:#F8FAFC;border-radius:12px;padding:12px">
+          <div style="font-size:12px;color:#64748B;margin-bottom:4px">وفي جملة، لتتعلّمي معناها:</div>
+          <div style="direction:ltr;text-align:left;font-family:Georgia,serif;font-size:15px;color:#0F172A;display:flex;align-items:center;gap:6px;justify-content:center">
+            <span>${it.s[minpairTarget]}</span>
+            <button type="button" onclick="speakEnglish(${JSON.stringify(it.s[minpairTarget])})" style="background:none;border:none;color:#0891B2;cursor:pointer;font-size:16px;padding:0">🔊</button>
+          </div>
+        </div>
+      </div>`:""}
+  </div>
+  ${minpairLocked?`<button class="btn" style="background:#0891B2" onclick="minpairNext()">${minpairIdx+1>=minpairItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`:""}`;
+  if(!minpairLocked&&minpairPlays===0)setTimeout(function(){minpairPlay()},300);
+}
+function renderMinpairResult(){
+  const pct=minpairItems.length?Math.round(minpairScore/minpairItems.length*100):0;
+  app.innerHTML=`
+  <div class="card">
+    <div class="score-row"><span class="score-big" style="color:${pct>=70?'#059669':pct>=50?'#D97706':'#DC2626'}">${toAr(minpairScore)}</span><span class="score-total">/ ${toAr(minpairItems.length)}</span><span class="score-pct">${toAr(pct)}%</span></div>
+    <div style="color:#64748B;font-size:15px;margin-bottom:14px">${pct>=85?"أذنٌ ممتازة! 🌟":pct>=60?"جيّد جداً، واصلي 💪":"لا بأس — هذه الكلمات تعود للمراجعة 🌱"}</div>
+    <button class="btn" style="background:#0891B2" onclick="startMinpair()">🔁 جلسة أخرى</button>
+    <button class="link-btn" onclick="home()">→ الرئيسية</button>
+  </div>`;
+}
+
 // ===== النطق: تحقّق أساسي عبر تسجيل الصوت + Groq Whisper (يعمل على كل الأجهزة، بما فيها آيفون؛ تحقّق كلمة لا تقييم دقّة اللهجة) =====
 function micSupported(){return !!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia&&window.MediaRecorder)}
 const PRON_GROQ_FN_URL=SB_URL+"/functions/v1/assess-pronunciation-groq";
@@ -7214,7 +7339,7 @@ function bumpStreak(){const st=getStreak();const t=todayStr();if(st.last===t)ret
 function growthMsg(modeKey,pct){try{const key="mawhiba_best_"+modeKey;const prev=parseInt(lsGet(key)||"-1");let msg="";if(prev<0){msg="أول محاولة في هذا القسم — انطلاقة موفّقة! 🌱"}else if(pct>prev){msg=`تحسّنتِ عن أفضل نتيجة سابقة (${toAr(prev)}%)! تقدّم رائع 📈`}else if(pct===prev){msg="ثبات على أفضل مستوى سابق 💪"}else{msg="واصلي، كل محاولة تبني مهارتك 🌟"}if(pct>prev)lsSet(key,String(pct));return msg}catch(e){return""}}
 
 // ===== العرض =====
-function render(){if(mode==="home")return renderHome();if(mode==="listen")return renderListen();if(mode==="read")return renderRead();if(mode==="errors")return renderErrors();if(mode==="engplan")return renderEngPlan();if(mode==="factplan")return renderFactPlan();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="speak")return renderSpeak();if(mode==="coach")return renderCoach();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
+function render(){if(mode==="home")return renderHome();if(mode==="listen")return renderListen();if(mode==="read")return renderRead();if(mode==="minpair")return renderMinpair();if(mode==="errors")return renderErrors();if(mode==="engplan")return renderEngPlan();if(mode==="factplan")return renderFactPlan();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="speak")return renderSpeak();if(mode==="coach")return renderCoach();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
 
 // صفحة الأخوين قسمٌ واحد: المحادثة. بقيّة الأقسام بُنيت على أخطائها هي — بنك
 // أسئلتها، وتباعدها، ومنهج صفّها السادس — فوضعها أمام ولدٍ آخر يُشغله بما ليس له.
@@ -7232,6 +7357,7 @@ function renderHomeCoachOnly(){
     <button class="mode full" style="background:${p.color};border-color:${p.color}" onclick="startCoach()"><span class="m-name">🗣️ ابدأ المحادثة</span><div class="m-sub">اختر موقفاً، ثم تكلّم — ثماني جمل في الجلسة</div></button>
     <button class="mode full" style="background:#0284C7;border-color:#0284C7" onclick="startListen()"><span class="m-name">🎧 فهم الاستماع</span><div class="m-sub">استمع لمقطعٍ قصير، وأجب عن معناه — مستوى ${p.level||"A2"}</div></button>
     <button class="mode full" style="background:#7C3AED;border-color:#7C3AED" onclick="startRead()"><span class="m-name">📖 فهم المقروء</span><div class="m-sub">اقرأ نصّاً قصيراً، وأجب عن معناه — مستوى ${p.level||"A2"}</div></button>
+    <button class="mode full" style="background:#0891B2;border-color:#0891B2" onclick="startMinpair()"><span class="m-name">👂 لعبة الاستماع</span><div class="m-sub">كلمتان متشابهتا النطق (chose/choose) — أيّهما سمعت؟ ثم مثالٌ يشرح معناها</div></button>
     ${errCount()?`<button class="mode full" style="background:#DB2777;border-color:#DB2777" onclick="startErrors()"><span class="m-name">🎯 أخطائي · ${toAr(errCount())} مستحقّة</span><div class="m-sub">تصحيحات محادثتك السابقة — تُبنى كلمةً كلمة، وتعود عند حافّة النسيان</div></button>`:""}
   </div>
   <button class="link-btn" onclick="startAudioDiag()">🔊 الصوت ما يشتغل؟ اضغط هنا لتشخيص السبب</button>
@@ -7272,6 +7398,7 @@ function renderHome(){
     <button class="mode full" style="background:#0E7490;border-color:#0E7490" onclick="startDictation()"><span class="m-name">✍️ إملاء بالإنجليزية</span><div class="m-sub">استمعي للكلمة، ثم اكتبيها — مستوى A1</div></button>
     <button class="mode full" style="background:#0284C7;border-color:#0284C7" onclick="startListen()"><span class="m-name">🎧 فهم الاستماع</span><div class="m-sub">استمعي لمقطعٍ قصير، وأجيبي عن معناه — مستوى ${profileOf().level||"A2"}</div></button>
     <button class="mode full" style="background:#7C3AED;border-color:#7C3AED" onclick="startRead()"><span class="m-name">📖 فهم المقروء</span><div class="m-sub">اقرئي نصّاً قصيراً، وأجيبي عن معناه — مستوى ${profileOf().level||"A2"}</div></button>
+    <button class="mode full" style="background:#0891B2;border-color:#0891B2" onclick="startMinpair()"><span class="m-name">👂 لعبة الاستماع</span><div class="m-sub">كلمتان متشابهتا النطق (chose/choose) — أيّتهما سمعتِ؟ ثم مثالٌ يشرح معناها</div></button>
     <button class="mode full" style="background:#7C3AED;border-color:#7C3AED" onclick="startPronunciation()"><span class="m-name">🎤 تمرين النطق</span><div class="m-sub">تحقّق أساسي هل نطقتِ الكلمة صح (يحتاج ميكروفون) — وليس تصحيح لهجة دقيق</div></button>
     <button class="mode full" style="background:#0E7490;border-color:#0E7490" onclick="startCoach()"><span class="m-name">🗣️ تكلّمي بالإنجليزية</span><div class="m-sub">محادثة حرّة مع شريك يردّ عليكِ بالإنجليزية — ونقيس وضوح أصواتك في كل جملة</div></button>
     <button class="mode full" style="background:#DB2777;border-color:#DB2777" onclick="startSpeaking()"><span class="m-name">🗣️ التحدّث · جمل من كتابك</span><div class="m-sub">جمل قصيرة جاهزة من وحدة Welcome: تسمعينها ثم تقولينها كاملة — تبدأ بالنص أمامك وتنتهي بالسمع فقط</div></button>
