@@ -82,6 +82,21 @@ const srs=await page.evaluate(()=>{
 });
 ok(srs.hasDue&&srs.hasS,'يُجدوَل بـfsrsUpdate نفسها — لا خوارزمية جديدة');
 
+console.log('\n٦ب) نقصٌ لا خواءٌ تامّ — عنصرٌ مستحقٌّ واحد لا يُنتج جلسةً من سؤالٍ واحد (طلب صاحب المشروع، ١٨ أغسطس)');
+// كانت buildListenPlan تُكمل من البنك كلّه عند خواء المستحقّ+الجديد تماماً (out.length===0)
+// لا عند نقصه — فطالبٌ له عنصرٌ مستحقٌّ واحد فقط كان يحصل على «جلسة» من سؤالٍ واحد،
+// وهو بالضبط ما ظهر في بيانات حيّة (إلياس ومحمد، ١٨ أغسطس)
+const partial=await page.evaluate(()=>{
+  const POOL=listenBankFor(profileOf().level);
+  const st={};
+  POOL.forEach((i,idx)=>{st[i.id]={box:idx===0?0:2,due:idx===0?srsToday():srsToday()+30,seen:idx===0?0:3}});
+  lsSet(LISTEN_SRS_KEY,JSON.stringify(st));
+  return {plan:buildListenPlan(),want:Math.min(LISTEN_N,POOL.length)};
+});
+ok(partial.plan.length===partial.want,`عنصرٌ واحد مستحقّ ⇐ جلسةٌ كاملة (${partial.plan.length} من ${partial.want})، لا سؤالٌ واحد`);
+ok(new Set(partial.plan.map(i=>i.id)).size===partial.plan.length,'بلا تكرار عنصرٍ مرّتين في نفس الجلسة');
+await page.evaluate(()=>{try{lsDel('mawhiba_listen_srs')}catch(e){}});
+
 console.log('\n٧) جلسة كاملة، ثم النتيجة');
 async function step(){
   const it=await page.evaluate(()=>listenCur());

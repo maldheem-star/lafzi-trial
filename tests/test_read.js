@@ -72,6 +72,19 @@ const out=await page.evaluate(()=>{
 ok(out.length>0,`buildReadPlan لا تعود فارغة (${out.length} عنصراً)`);
 await page.evaluate(()=>{try{lsDel('mawhiba_read_srs')}catch(e){}});
 
+console.log('\n٥ب) نقصٌ لا خواءٌ تامّ — عنصرٌ مستحقٌّ واحد لا يُنتج جلسةً من سؤالٍ واحد (طلب صاحب المشروع، ١٨ أغسطس)');
+const partial=await page.evaluate(()=>{
+  const POOL=readBankFor('A1');
+  const st={};
+  POOL.forEach((i,idx)=>{st[i.id]={box:idx===0?0:2,due:idx===0?srsToday():srsToday()+30,seen:idx===0?0:3}});
+  lsSet(READ_SRS_KEY,JSON.stringify(st));
+  return {plan:buildReadPlan(),want:Math.min(READ_N,POOL.length)};
+});
+ok(partial.plan.length===partial.want,
+  `عنصرٌ واحد مستحقّ ⇐ جلسةٌ كاملة (${partial.plan.length} من ${partial.want})، لا سؤالٌ واحد`);
+ok(new Set(partial.plan.map(i=>i.id)).size===partial.plan.length,'بلا تكرار عنصرٍ مرّتين في نفس الجلسة');
+await page.evaluate(()=>{try{lsDel('mawhiba_read_srs')}catch(e){}});
+
 console.log('\n٦) جلسة كاملة، ثم النتيجة');
 async function step(){
   const it=await page.evaluate(()=>readCur());

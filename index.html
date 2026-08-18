@@ -222,6 +222,16 @@ const DAILY_CAP=80; // حد أقصى لطلبات الذكاء الاصطناع�
 const rand=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
 const pick=a=>a[Math.floor(Math.random()*a.length)];
 function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+// أيّ تدريبٍ غير مقاليّ لا يقلّ عن N (طلب صاحب المشروع، ١٨ أغسطس) — كانت جلساتٌ حيّة
+// تُنهي بسؤالٍ واحد فقط لأن buildXPlan تُكمل من البنك كلّه عند خواء المستحقّ+الجديد
+// تماماً (out.length===0) لا عند نقصه (١-٤ عناصر): طالبٌ له عنصرٌ مستحقٌّ واحد فقط كان
+// يحصل على «جلسة» من سؤالٍ واحد. مشتركة بين الاستماع/المقروء/القواعد/الأزواج/الكتابة
+// بدل تكرار المنطق نفسه خمس مرّات.
+function topUpPlan(out,POOL,N){
+  if(out.length>=N)return out;
+  const have=new Set(out.map(function(i){return i.id}));
+  return out.concat(shuffle(POOL.filter(function(i){return !have.has(i.id)}))).slice(0,N);
+}
 const toAr=n=>String(n).replace(/[0-9]/g,d=>"٠١٢٣٤٥٦٧٨٩"[d]);
 function arSeq(a){return a.map(toAr).join(" ، ")}
 function mcNum(correct,cands){const opts=[correct];(cands||[]).forEach(x=>{x=Math.round(x);if(opts.length<4&&Number.isFinite(x)&&x>=0&&!opts.includes(x))opts.push(x)});let p=1;while(opts.length<4){[correct+p,correct-p].forEach(x=>{if(opts.length<4&&x>=0&&!opts.includes(x))opts.push(x)});p++;if(p>300)break}const sh=shuffle(opts);return{choices:sh.map(x=>Number.isInteger(x)?toAr(x):arDec(x)),answer:sh.indexOf(correct)}}
@@ -5915,8 +5925,8 @@ function buildListenPlan(){
   let out=due.concat(fresh).slice(0,LISTEN_N);
   // بنكٌ ثابتٌ صغير (١٠/مستوى) يُستنفَد بجلسةٍ أو جلستين فتُقفَل «الاستماع» بلا سبب —
   // نفس ما تحلّه buildSpeakSession أصلاً: مراجعة حرّة من البنك كلّه بدل شاشة فارغة.
-  if(!out.length)out=shuffle(POOL).slice(0,LISTEN_N);
-  return out;
+  // ونقصٌ لا خواءٌ تامّ (سؤالٌ واحد مستحقّ) يُكمَّل كذلك — topUpPlan لا حالة خاصّة.
+  return topUpPlan(out,POOL,LISTEN_N);
 }
 // مرّتان معياريٌّ للمستويات الثلاثة سواءً — YLE وA2 Key وB1 Preliminary كلّها تنصّ
 // حرفياً «You hear each recording twice» (دليل كل مستوى). كانت هذه الدالّة تُفرّق B1
@@ -6043,8 +6053,7 @@ function buildReadPlan(){
   const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
   const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
   let out=due.concat(fresh).slice(0,READ_N);
-  if(!out.length)out=shuffle(POOL).slice(0,READ_N);   // مراجعة حرّة إن استُنفد المستحقّ+الجديد — كما الاستماع
-  return out;
+  return topUpPlan(out,POOL,READ_N);   // مراجعة حرّة إن استُنفد المستحقّ+الجديد — كما الاستماع، ونقصٌ يُكمَّل كذلك
 }
 let readItems=[],readIdx=0,readPicked=-1,readLocked=false,readScore=0,readShownAt=0,readDone=false;
 function startRead(){
@@ -6186,8 +6195,7 @@ function buildWritePlan(){
   const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
   const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
   let out=due.concat(fresh).slice(0,WRITE_N);
-  if(!out.length)out=shuffle(POOL).slice(0,WRITE_N);   // مراجعة حرّة إن استُنفد المستحقّ+الجديد — كدرس الاستماع
-  return out;
+  return topUpPlan(out,POOL,WRITE_N);   // مراجعة حرّة إن استُنفد المستحقّ+الجديد — كدرس الاستماع، ونقصٌ يُكمَّل كذلك
 }
 function writeWordCount(t){const m=String(t||"").trim().match(/[A-Za-z']+/g);return m?m.length:0}
 // ١٧ أغسطس: أوّل ثلاث محاولات كتابة على الإطلاق (بيانات حيّة) كانت الثلاث نسخاً لنصّ
@@ -6495,8 +6503,7 @@ function buildGramPlan(){
   const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
   const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
   let out=due.concat(fresh).slice(0,GRAM_N);
-  if(!out.length)out=shuffle(POOL).slice(0,GRAM_N);
-  return out;
+  return topUpPlan(out,POOL,GRAM_N);
 }
 let gramItems=[],gramIdx=0,gramOrder=[0,1,2,3],gramPicked=-1,gramLocked=false,gramScore=0,gramShownAt=0,gramDone=false;
 function startGram(){
@@ -6600,8 +6607,7 @@ function buildMinpairPlan(){
   const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
   const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
   let out=due.concat(fresh).slice(0,MINPAIR_N);
-  if(!out.length)out=shuffle(POOL).slice(0,MINPAIR_N);
-  return out;
+  return topUpPlan(out,POOL,MINPAIR_N);
 }
 let minpairItems=[],minpairIdx=0,minpairTarget=0,minpairOrder=[0,1],minpairPicked=-1,minpairLocked=false,
   minpairScore=0,minpairPlays=0,minpairShownAt=0,minpairDone=false;

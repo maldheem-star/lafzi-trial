@@ -100,6 +100,18 @@ const srs=await page.evaluate(()=>{
 });
 ok(srs.hasDue&&srs.hasS,'يُجدوَل بـfsrsUpdate نفسها — لا خوارزمية جديدة');
 
+console.log('\n٨ب) نقصٌ لا خواءٌ تامّ — عنصرٌ مستحقٌّ واحد لا يُنتج جلسةً من سؤالٍ واحد (طلب صاحب المشروع، ١٨ أغسطس)');
+const partial=await page.evaluate(()=>{
+  const POOL=gramBankFor(profileOf().level);
+  const st={};
+  POOL.forEach((i,idx)=>{st[i.id]={box:idx===0?0:2,due:idx===0?srsToday():srsToday()+30,seen:idx===0?0:3}});
+  lsSet(GRAM_SRS_KEY,JSON.stringify(st));
+  return {plan:buildGramPlan(),want:Math.min(GRAM_N,POOL.length)};
+});
+ok(partial.plan.length===partial.want,`عنصرٌ واحد مستحقّ ⇐ جلسةٌ كاملة (${partial.plan.length} من ${partial.want})، لا سؤالٌ واحد`);
+ok(new Set(partial.plan.map(i=>i.id)).size===partial.plan.length,'بلا تكرار عنصرٍ مرّتين في نفس الجلسة');
+await page.evaluate(()=>{try{lsDel('mawhiba_gram_srs')}catch(e){}});
+
 console.log('\n٩) جلسة كاملة، ثم النتيجة');
 async function step(){
   const it=await page.evaluate(()=>gramCur());

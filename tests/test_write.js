@@ -260,7 +260,18 @@ const out=await page.evaluate(()=>{
 ok(out.length>0,`buildWritePlan لا تعود فارغة (${out.length} عنصراً)`);
 await page.evaluate(()=>{try{lsDel('mawhiba_write_srs')}catch(e){}});
 
-console.log('\n١٣ب) نسخ نصّ السؤال يُكتشَف — بيانات حيّة (١٧ أغسطس): أوّل ٣ محاولات كتابة');
+console.log('\n١٣ب) نقصٌ لا خواءٌ تامّ — عنصرٌ مستحقٌّ واحد لا يُنتج جلسةً من سؤالٍ واحد (طلب صاحب المشروع، ١٨ أغسطس)');
+const partial=await page.evaluate(()=>{
+  const POOL=writeBankFor('A1');
+  const st={};
+  POOL.forEach((i,idx)=>{st[i.id]={box:idx===0?0:2,due:idx===0?srsToday():srsToday()+30,seen:idx===0?0:3}});
+  lsSet(WRITE_SRS_KEY,JSON.stringify(st));
+  return {plan:buildWritePlan(),want:Math.min(WRITE_N,POOL.length)};
+});
+ok(partial.plan.length===partial.want,`عنصرٌ واحد مستحقّ ⇐ جلسةٌ كاملة (${partial.plan.length} من ${partial.want})`);
+await page.evaluate(()=>{try{lsDel('mawhiba_write_srs')}catch(e){}});
+
+console.log('\n١٣ج) نسخ نصّ السؤال يُكتشَف — بيانات حيّة (١٧ أغسطس): أوّل ٣ محاولات كتابة');
 // عدد الكلمات وحده لا يكشف النسخ — أُبلغ الهدف في إحدى الثلاث رغم كونها نسخاً بحتاً
 const copy=await page.evaluate(()=>({
   c1:writeIsCopy("Write about your family","Write about your family.\n1) How many brothers or sisters do you have?\n2) What is one thing you like doing together?"),
