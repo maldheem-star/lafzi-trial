@@ -413,6 +413,27 @@ async function ltJudge(reply: string): Promise<{ text: string; dropped: number; 
   return { text: out.join("\n"), dropped, judged };
 }
 
+// ===== تجريد تفكير النموذج قبل أن يصل إليها =====
+// ١٨ أغسطس، بيانات حيّة من جهاز صاحب المشروع: بعد ضبط GROQ_MODEL على qwen/qwen3.6-27b
+// ظهرت على شاشة التشخيص كتلةُ تفكيرٍ خام داخل <think> بدل الردّ، وفيها «Correct Answer:
+// yet» وقواعد النظام بالإنجليزية — أي أن الشاشة كشفت الجواب للطالبة، وهو نقضٌ للحدّ
+// الأوّل المعلَن في رأس هذا الملفّ («النموذج يشرح ولا يحكم»، ولا يُعطي الصواب مباشرةً).
+// وانقطع النصّ عند سقف الرموز قبل أن يصل إلى الردّ أصلاً.
+//
+// والعلاج طبقتان عمداً، لأن الأولى وحدها تتعلّق بمزوّدٍ بعينه:
+//   ١) منعٌ عند المصدر: reasoning_effort:"none" لنماذج Qwen 3 (موثَّق عند Groq).
+//   ٢) وهذه: تنظيفٌ دفاعي لا يسأل عن المزوّد ولا النموذج — فأيّ نموذج تفكيرٍ قادم
+//      (أو تغييرُ سرٍّ لا أعلمه) لا يستطيع تسريب تفكيره إليها.
+// والقطع نصف الجملة مقصود: <think> بلا إغلاق يعني أن الردّ بُتر داخل التفكير، فما بعده
+// ليس ردّاً — يُحذف كلّه فيعود النصّ فارغاً، ويتكفّل tutor_no_text بالانتقال للمزوّد التالي.
+function stripThink(s: string): string {
+  let t = String(s || "");
+  t = t.replace(/<\s*(think|thinking|reasoning)\s*>[\s\S]*?<\s*\/\s*\1\s*>/gi, "");
+  t = t.replace(/<\s*(think|thinking|reasoning)\s*>[\s\S]*$/i, "");   // بُتر داخل التفكير
+  t = t.replace(/^[\s\S]*?<\s*\/\s*(think|thinking|reasoning)\s*>/i, ""); // إغلاقٌ بلا فتح
+  return t.trim();
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   try {
@@ -489,7 +510,10 @@ Deno.serve(async (req) => {
     const turns: Record<string, unknown>[] = history.length ? history : [{ role: "user", text: opening }];
     // فقرة القراءة/الاستماع أطول من ردّ محادثة عادي — سقف الرموز الاعتيادي (300) كان يبتر
     // فقرات B1 (٤-٦ جمل) قبل اكتمال السطرين CORRECT/الخيارات.
-    const maxTok = gen ? 500 : 300;
+    // ورُفع سقف المحادثة ٣٠٠ ⇐ ٧٠٠ بعد بترٍ حقيقي شوهد على جهاز صاحب المشروع (١٨ أغسطس):
+    // نموذجٌ مفكّر استهلك الميزانية كلّها في تفكيره فانقطع قبل الردّ. والسقف ليس طول الردّ —
+    // طوله تحكمه قواعد النظام («جملتان أو ثلاث») — بل حدٌّ أعلى يمنع البتر، فرفعه لا يُطيل شيئاً.
+    const maxTok = gen ? 500 : 700;
 
     // يُجرَّب كل مرشّحٍ بدوره حتى يصل ردٌّ نصّيّ فعليّ، أو تنتهي القائمة. كل مزوّدٍ
     // فاشل يُسجَّل في attempts ليصل تفصيله في الخطأ الأخير إن فشل الجميع — لا تشخيصاً
@@ -541,12 +565,17 @@ Deno.serve(async (req) => {
         // صيغة OpenAI: دور system صريح، وأدوار user/assistant
         url = OAI[provider].url;
         headers = { "Authorization": `Bearer ${KEY}`, "Content-Type": "application/json" };
-        body = {
+        const oai: Record<string, unknown> = {
           model,
           messages: [{ role: "system", content: sysText }].concat(
             turns.map((m) => ({ role: String(m.role) === "model" ? "assistant" : "user", content: clip(m.text) }))),
           temperature: 0.6, max_tokens: maxTok, top_p: 0.9,
         };
+        // نماذج Qwen 3 تُفكّر افتراضاً وتضع تفكيرها في نصّ الردّ — ووثائق Groq تنصّ على
+        // reasoning_effort:"none" لإيقافه. مشروطٌ باسم النموذج لا مُرسَلٌ دائماً: حقلٌ
+        // لا يعرفه مزوّدٌ آخر (أو نموذجٌ غير مفكّر) قد يُرَدّ بـ400، فيقع عطلٌ مكان علاج.
+        if (/qwen3/i.test(model)) oai.reasoning_effort = "none";
+        body = oai;
       }
 
       const ctrl = new AbortController();
@@ -591,6 +620,8 @@ Deno.serve(async (req) => {
         text = String((ch.message && ch.message.content) || "").trim();
         why = String(ch.finish_reason || "");
       }
+      // يُجرَّد التفكير قبل أي استعمال — قبل حَكَم LanguageTool وقبل أن يصل العميل
+      text = stripThink(text);
       if (!text) {
         // حُجب أو عاد فارغاً: نُصرّح بالسبب بدل أن نُمرّر فراغاً يبدو ردّاً
         attempts.push(provider + ":no_text");
