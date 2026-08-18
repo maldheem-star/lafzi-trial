@@ -11,6 +11,7 @@ const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium'});
 let logs=[],calls=[];
 let review={ok:true,ltJudged:1,ltDropped:0,reply:"FIX: I go school every day | I go to school every day. | تحتاج حرف جرّ to قبل school"};
 let reviewFail=false;
+let genReply="PROMPT: Describe your favourite hobby and why you enjoy it.\nMIN: 20";
 const mk=async(f)=>{
   const page=await b.newPage({viewport:{width:420,height:900}});
   page.on('pageerror',e=>{console.log('  ✗ PAGEERROR '+e.message);fails++});
@@ -22,6 +23,7 @@ const mk=async(f)=>{
     let x={};try{x=JSON.parse(r.request().postData()||'{}')}catch(e){}
     calls.push(x);
     if(reviewFail)return r.abort();
+    if(x.mode==='gen')return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,reply:genReply})});
     r.fulfill({status:200,contentType:'application/json',body:JSON.stringify(review)});
   });
   await page.goto('http://127.0.0.1:8931/'+(f||'index.html'));
@@ -149,9 +151,22 @@ const row=logs.find(l=>l.domain==='write'&&l.qtype!=='fix');
 ok(!!row,'سطرٌ وصل الخادم');
 ok(row.response==='I go school every day. I like it a lot.','النصّ الكامل مسجَّل');
 ok(row.q_text&&row.q_text.includes('test prompt')&&row.q_text.includes('كتبت'),'والسؤال وعدد الكلمات معه');
+ok(row.q_text.includes('review:fixes:1'),'وحال المراجعة صريح في السجلّ (وُجد تصحيح واحد) — لا مجرّد lt:٠/٠ غامض');
+
+console.log('\n٨ب) «سليمة نحوياً» و«تعذّرت المراجعة» كانتا تُسجَّلان بالشكل نفسه — صار كلٌّ منهما صريحاً الآن');
+review={ok:true,reply:"NONE"};
+logs=[];calls=[];
+page=await mk();
+await page.evaluate(()=>{startWrite();writeItems[0]={id:'wr_clean',lv:'A1',min:3,prompt:'test clean'};writeIdx=0;render()});
+await page.fill('#writeIn','I like cats a lot.');
+await page.click('button[onclick="writeSubmit()"]');
+await page.waitForTimeout(400);
+const cleanRow=logs.find(l=>l.domain==='write'&&l.qtype!=='fix');
+ok(cleanRow&&cleanRow.q_text.includes('review:none'),`النصّ السليم فعلاً يُسجَّل «review:none» صراحةً لا «lt:٠/٠» وحده (${cleanRow&&cleanRow.q_text})`);
 
 console.log('\n٩) تعذّر المراجعة لا يمنع تسجيل عدد الكلمات ولا يوقف الجلسة');
 reviewFail=true;
+logs=[];calls=[];
 await page.close();page=await mk();
 await page.evaluate(()=>{startWrite();writeItems[0]={id:'wr_test3',lv:'A1',min:3,prompt:'test'};writeIdx=0;render()});
 await page.fill('#writeIn','I like cats a lot.');
@@ -161,6 +176,8 @@ t=await page.textContent('#app');
 ok(t.includes('تعذّرت مراجعة القواعد'),'يُقال بصراحة');
 ok(t.includes('بلغتِ عدد الكلمات'),'ودرجة عدد الكلمات سليمة رغم ذلك');
 ok(await page.evaluate(()=>writeScore)===1,'واحتُسبت في النتيجة');
+const failRow=logs.find(l=>l.domain==='write'&&l.qtype!=='fix');
+ok(failRow&&failRow.q_text.includes('review:fail:network'),`والفشل نفسه صريحٌ في السجلّ الآن — لا يبدو كسلامةٍ نحوية (${failRow&&failRow.q_text})`);
 reviewFail=false;
 
 console.log('\n١٠) جلسة كاملة، ثم النتيجة');
@@ -296,6 +313,40 @@ let ct=await page.textContent('#app');
 ok(ct.includes('نسخٌ من نصّ السؤال'),'ويُقال لها ذلك صراحةً بدل «أحسنتِ» زائفة');
 const crow=logs.find(l=>l.domain==='write'&&l.qtype!=='fix');
 ok(crow&&crow.q_text.includes('نسخ:1'),'ويُسجَّل — فيُقاس تكرار النسخ لاحقاً لا يُخمَّن');
+ok(crow&&crow.q_text.includes('review:skip:copy'),'وحال المراجعة "skip:copy" صراحةً — لا "none" الذي يوهم بمراجعةٍ جرت فعلاً');
+
+console.log('\n١٣ج) التوليد الآلي (١٧ أغسطس): عنصرٌ مولَّدٌ من tutor يدخل البنك بعد رقابة العميل البعدية');
+page=await mk();
+const genParse=await page.evaluate(()=>({
+  ok:parseGenWriteBlock("PROMPT: Describe your favourite hobby and why you enjoy it.\nMIN: 20"),
+  badMin:parseGenWriteBlock("PROMPT: Hi.\nMIN: 2"),
+  badAr:parseGenWriteBlock("PROMPT: صف يومك المدرسي.\nMIN: 20"),
+  missing:parseGenWriteBlock("just some text"),
+}));
+ok(!!genParse.ok&&genParse.ok.min===20&&/hobby/.test(genParse.ok.prompt)&&genParse.ok.ai===true,'نصٌّ سليمٌ يُقبل ومعه علامة ai:true');
+ok(genParse.badMin===null,'وحدٌّ أدنى ضعيف (٢ كلمة) يُرفض');
+ok(genParse.badAr===null,'وتلوّثٌ عربي يُرفض رغم شكلٍ سليم ظاهرياً');
+ok(genParse.missing===null,'ونصٌّ بلا وسم PROMT/MIN يُرفض');
+await page.evaluate(()=>{try{lsDel('mawhiba_write_aibank_v1')}catch(e){}});
+calls=[];
+await page.evaluate(level=>writeGenTopUp(level),'A1');
+await page.waitForTimeout(300);
+const genCall=calls.find(c=>c.mode==='gen'&&c.domain==='write');
+ok(!!genCall&&genCall.level==='A1','writeGenTopUp يطلب توليداً بمستواها');
+const aiBank=await page.evaluate(()=>genBankLoad('mawhiba_write_aibank_v1'));
+ok(aiBank.length===1&&aiBank[0].lv==='A1'&&aiBank[0].ai===true,'والعنصر المقبول يدخل بنك التوليد المحلّي');
+const mergedBank=await page.evaluate(()=>writeBankFor('A1'));
+ok(mergedBank.some(x=>x.ai===true),'ويظهر ضمن writeBankFor مع البنك المؤلَّف — لا بديلاً عنه');
+ok(mergedBank.some(x=>!x.ai),'والبنك المؤلَّف الأصلي يبقى حاضراً كذلك');
+
+console.log('\n١٣د) العنصر المولَّد يُسجَّل موسوماً «[مولَّد]» — لا يختلط بالمؤلَّف عند التشخيص');
+logs=[];
+await page.evaluate(()=>{startWrite();writeItems[0]=genBankLoad('mawhiba_write_aibank_v1')[0];writeIdx=0;render()});
+await page.fill('#writeIn','This is a real answer with more than twenty words written to reach the minimum target for this generated writing prompt about hobbies today.');
+await page.click('button[onclick="writeSubmit()"]');
+await page.waitForTimeout(300);
+const aiRow=logs.find(l=>l.domain==='write'&&l.qtype!=='fix');
+ok(aiRow&&aiRow.q_text.startsWith('[مولَّد]'),`والسجلّ يُصرِّح بأنه مولَّد (${aiRow&&aiRow.q_text.slice(0,20)})`);
 
 console.log('\n١٤) لا انحدار');
 for(const [pg,fn,md] of [['index.html',"startWrite()",'write'],['index.html',"startRead()",'read'],

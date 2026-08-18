@@ -235,7 +235,78 @@ const GEN_TOPICS = [
   "a video game tournament", "a camping trip", "a school exam", "helping a grandparent",
   "a farm visit", "a train delay", "a surprise gift", "a cooking competition", "a rainy weekend at home",
 ];
-function systemGen(domain: string, level: string) {
+// ===== الكتابة: يُنشئ سؤالاً جديداً بصيغة WRITE_BANK نفسها، لا يُصحّح ولا يحكم =====
+// نفس ثغرة الاستماع/القراءة بالضبط: WRITE_BANK ثابتٌ (٦-٨ للمستوى) بلا أي نموّ —
+// وخطّته الأصلية اعتمدت على التباعد وحده ليخفّف الاستنفاد، لكن جلسةً واحدة (WRITE_N=٣)
+// يومياً كافيةٌ لاستنفاده خلال أسبوعين. الصيغة نفسها المعتمَدة في الشيفرة الثابتة —
+// Movers/Flyers (A1)، A2 Key Part 6 (A2)، B1 Preliminary Part 2 (B1) — لا صيغة جديدة.
+function systemGenWrite(level: string) {
+  const shape: Record<string, string> = {
+    A1: [
+      "Write ONE guided-writing prompt for a CEFR A1 learner, in the style of Cambridge",
+      "Movers/Flyers: a short topic instruction (one line, e.g. 'Write about your pet.'),",
+      "followed by 2 simple guiding questions, each on its own line, numbered '1) ' and '2) '.",
+      "MIN must be 10.",
+    ].join(" "),
+    A2: [
+      "Write ONE guided message-writing prompt for a CEFR A2 learner, in the style of",
+      "Cambridge A2 Key Part 6: one line setting an everyday situation, then a line 'Say:',",
+      "then exactly 3 content points to include, each on its own line starting with '• ',",
+      "then a final line 'Write 25–35 words.'. MIN must be 25.",
+    ].join(" "),
+    B1: [
+      "Write ONE creative-writing prompt for a CEFR B1 learner, in the style of Cambridge",
+      "B1 Preliminary Part 2: EITHER a short story prompt (one line naming a sentence in",
+      "double quotes the story must begin or end with, e.g. Write a short story that begins",
+      "with this sentence: \"...\"), OR an email/message topic with 2 to 3 points to include",
+      "each on its own line starting with '• '. End with a line 'Write about 80–100 words.'.",
+      "MIN must be 70.",
+    ].join(" "),
+  };
+  const topic = GEN_TOPICS[Math.floor(Math.random() * GEN_TOPICS.length)];
+  return [
+    shape[level] || shape.A2,
+    `TOPIC FOR THIS ITEM: ${topic}. Build the prompt around this topic specifically. Do NOT`,
+    "reuse a stock textbook example you have seen before.",
+    "",
+    "OUTPUT EXACTLY in this shape, nothing else, no markdown, no extra commentary:",
+    "PROMPT: <the full prompt text, with line breaks written as the two characters \\n>",
+    "MIN: <the minimum word count as a plain number>",
+    "",
+    "RULES:",
+    "1. The PROMPT text must be entirely in English — ZERO Arabic characters anywhere.",
+    "2. Follow the exact shape described above for this level — this is a real exam task",
+    "   type, not a free choice of format.",
+    "3. Keep content appropriate for a school-age learner: no violence, romance, politics or unsafe topics.",
+  ].join("\n");
+}
+
+// ===== الأزواج المتشابهة: جملةٌ جديدة لزوجٍ صوتيٍّ ثابتٍ معروف، لا زوجٌ جديد =====
+// الفرق عن الاستماع/القراءة/الكتابة مقصود: هناك النموذج يُنشئ المحتوى كلّه لأن أيّ
+// فقرة متماسكة تصلح، أمّا هنا فصحّة الزوج نفسه (أن ship/sheep تباعدهما فعلاً حركة
+// طويلة/قصيرة لا خطأً فونيتيكياً) لا يمكن التحقّق منها آلياً بلا صوت. فالأزواج نفسها
+// تبقى مؤلَّفةً يدوياً ومُراجَعة (MINPAIR_BANK)، والنموذج يُنشئ فقط جملة تعليمية جديدة
+// لكلمةٍ معروفة الصحّة مسبقاً — خطرٌ أدنى بكثير، وقابلٌ للتحقّق (هل الكلمة داخل الجملة).
+function systemGenMinpair(level: string, word: string) {
+  return [
+    `Write ONE natural, simple English sentence for a CEFR ${level} school-age learner`,
+    `that uses the word "${word}" clearly in context, so the meaning can be guessed from`,
+    "the sentence alone. 5 to 14 words. Do NOT reuse a stock textbook example.",
+    "",
+    "OUTPUT EXACTLY in this shape, nothing else, no markdown, no extra commentary:",
+    "SENT: <the sentence, one line, ending with . ! or ?>",
+    "",
+    "RULES:",
+    "1. The sentence must be entirely in English — ZERO Arabic characters.",
+    `2. The word "${word}" must appear in the sentence in exactly this form, not a different`,
+    "   inflection or spelling.",
+    "3. Keep content appropriate for a school-age learner: no violence, romance, politics or unsafe topics.",
+  ].join("\n");
+}
+
+function systemGen(domain: string, level: string, word: string) {
+  if (domain === "write") return systemGenWrite(level);
+  if (domain === "minpair") return systemGenMinpair(level, word);
   const isListen = domain === "listen";
   const styleByLevel: Record<string, string> = {
     A1: "ONE or TWO very short sentences. One single concrete fact (a name, age, colour, number, or day of the week). Simple present tense only. Very common words a young beginner already knows.",
@@ -345,38 +416,62 @@ async function ltJudge(reply: string): Promise<{ text: string; dropped: number; 
   return { text: out.join("\n"), dropped, judged };
 }
 
+// ===== تجريد تفكير النموذج قبل أن يصل إليها =====
+// ١٨ أغسطس، بيانات حيّة من جهاز صاحب المشروع: بعد ضبط GROQ_MODEL على qwen/qwen3.6-27b
+// ظهرت على شاشة التشخيص كتلةُ تفكيرٍ خام داخل <think> بدل الردّ، وفيها «Correct Answer:
+// yet» وقواعد النظام بالإنجليزية — أي أن الشاشة كشفت الجواب للطالبة، وهو نقضٌ للحدّ
+// الأوّل المعلَن في رأس هذا الملفّ («النموذج يشرح ولا يحكم»، ولا يُعطي الصواب مباشرةً).
+// وانقطع النصّ عند سقف الرموز قبل أن يصل إلى الردّ أصلاً.
+//
+// والعلاج طبقتان عمداً، لأن الأولى وحدها تتعلّق بمزوّدٍ بعينه:
+//   ١) منعٌ عند المصدر: reasoning_effort:"none" لنماذج Qwen 3 (موثَّق عند Groq).
+//   ٢) وهذه: تنظيفٌ دفاعي لا يسأل عن المزوّد ولا النموذج — فأيّ نموذج تفكيرٍ قادم
+//      (أو تغييرُ سرٍّ لا أعلمه) لا يستطيع تسريب تفكيره إليها.
+// والقطع نصف الجملة مقصود: <think> بلا إغلاق يعني أن الردّ بُتر داخل التفكير، فما بعده
+// ليس ردّاً — يُحذف كلّه فيعود النصّ فارغاً، ويتكفّل tutor_no_text بالانتقال للمزوّد التالي.
+function stripThink(s: string): string {
+  let t = String(s || "");
+  t = t.replace(/<\s*(think|thinking|reasoning)\s*>[\s\S]*?<\s*\/\s*\1\s*>/gi, "");
+  t = t.replace(/<\s*(think|thinking|reasoning)\s*>[\s\S]*$/i, "");   // بُتر داخل التفكير
+  t = t.replace(/^[\s\S]*?<\s*\/\s*(think|thinking|reasoning)\s*>/i, ""); // إغلاقٌ بلا فتح
+  return t.trim();
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   try {
     const b = await req.json().catch(() => ({})) as Record<string, unknown>;
 
-    // يُفرض المزوّد بسرّ TUTOR_PROVIDER، وإلا فأوّل من يوجد مفتاحه، وGemini آخراً
-    const forced = (Deno.env.get("TUTOR_PROVIDER") || "").trim().toLowerCase();
+    // يُفرض المزوّد بسرّ TUTOR_PROVIDER، وإلا فكل من يوجد مفتاحه بترتيب التفضيل،
+    // وGemini آخراً — والفرق عن السابق: كانت الدالّة تختار أوّل مزوّدٍ له مفتاحٌ
+    // ثم تتوقّف، فإن فشل طلبه الفعلي (لا غياب مفتاحه) انقطعت المحادثة كليّاً ولو
+    // كان مزوّدٌ آخر مضبوطاً بمفتاحه ولم يُجرَّب قطّ. ١٧ أغسطس: llama-3.3-70b-versatile
+    // تعطّل متقطّعاً عند Groq (بيانات حيّة: عشر مرّاتٍ خلال يومٍ واحد عند إلياس ومحمد
+    // معاً) بينما Cerebras/OpenRouter/... لو كانت مضبوطة لم تُجرَّب أبداً. فالآن تُجمع
+    // كل المزوّدين الذين لهم مفتاحٌ في قائمة مرشّحين، ويُجرَّب التالي كلّما فشل الحاليّ
+    // فعلياً — لا عند غياب المفتاح وحده كما كان.
     const customUrl = (Deno.env.get("TUTOR_BASE_URL") || "").trim();
     if (customUrl) OAI.custom.url = customUrl;
-    let provider = "", found = { name: "", raw: "" };
-    const pick = (p: string) => {
-      if (p === "gemini") { const f = findKey(GEMINI_KEYS); if (f.raw) { provider = "gemini"; found = f; return true } return false }
-      const spec = OAI[p];
-      if (!spec || (p === "custom" && !spec.url)) return false;
-      const f = findKey(spec.keys);
-      if (f.raw) { provider = p; found = f; return true }
-      return false;
-    };
-    if (!forced || !pick(forced)) {
-      for (const p of OAI_ORDER) if (pick(p)) break;
-      if (!provider) pick("gemini");
+    const keyFor = (p: string) => p === "gemini" ? findKey(GEMINI_KEYS) : findKey(OAI[p].keys);
+    const hasSpec = (p: string) => p === "gemini" || (!!OAI[p] && (p !== "custom" || !!OAI[p].url));
+    const forced = (Deno.env.get("TUTOR_PROVIDER") || "").trim().toLowerCase();
+    // مزوّدٌ يُفرَض صراحةً: بلا تراجعٍ تلقائي — إجبارٌ للتشخيص، لا يُخفى فشله بمزوّدٍ آخر
+    let candidates: { provider: string; found: { name: string; raw: string } }[] = [];
+    if (forced && hasSpec(forced)) {
+      const f = keyFor(forced);
+      if (f.raw) candidates = [{ provider: forced, found: f }];
     }
-    const keyName = found.name;
-    // نفس درس Azure: محرف غير مرئي واحد ملتصق بالمفتاح يجعل الطلب يفشل فشلاً غامضاً
-    const KEY = found.raw.replace(/[^\x21-\x7E]/g, "");
-    const keyBad = Array.from(found.raw).filter((c) => !/[\x21-\x7E]/.test(c))
-      .map((c) => "U+" + (c.codePointAt(0) || 0).toString(16).toUpperCase().padStart(4, "0"));
-    if (!KEY) {
+    if (!candidates.length) {
+      for (const p of OAI_ORDER) {
+        const f = keyFor(p);
+        if (f.raw) candidates.push({ provider: p, found: f });
+      }
+      const g = keyFor("gemini");
+      if (g.raw) candidates.push({ provider: "gemini", found: g });
+    }
+    if (!candidates.length) {
       return jsonOut({ error: "not_configured",
-        detail: found.raw.length ? `${keyName} present but contains no usable characters`
-                                 : "no tutor key found under any known name",
-        keyRawLength: found.raw.length, keyBad, keyName, provider,
+        detail: "no tutor key found under any known name",
         providers: OAI_ORDER.concat(["gemini"]), checked: KEY_NAMES });
     }
 
@@ -406,18 +501,8 @@ Deno.serve(async (req) => {
           clip(b.focus, 200) || "Be warm and polite. Model good manners in English.",
           !!b.styleTip, male, lname, !!b.easy, !!b.suggest, !!b.openTurn, lrAge)
       : gen
-      ? systemGen(clip(b.domain, 20) || "read", clip(b.level, 10) || "A2")
+      ? systemGen(clip(b.domain, 20) || "read", clip(b.level, 10) || "A2", clip(b.word, 40))
       : systemFor(subject, lrAge, male, lname);
-    // النموذج: سرّ عامّ TUTOR_MODEL، أو سرّ خاصّ بالمزوّد، أو الافتراضي
-    const model = (Deno.env.get("TUTOR_MODEL") || "").trim()
-      || (Deno.env.get(provider.toUpperCase() + "_MODEL") || "").trim()
-      || (provider === "gemini" ? DEFAULT_GEMINI_MODEL : OAI[provider].model);
-
-    // المزوّد المخصّص بلا اسم نموذج يُنتج طلباً بحقل فارغ وخطأً غامضاً — نقولها صراحةً
-    if (!model) {
-      return jsonOut({ error: "tutor_bad_model", provider, model: "",
-        detail: `اضبط السرّ TUTOR_MODEL أو ${provider.toUpperCase()}_MODEL` });
-    }
 
     // تاريخ الحوار يصل من العميل ويعود إليه: الدالة بلا ذاكرة عمداً، فلا حالة تُدار هنا
     const history = Array.isArray(b.history) ? (b.history as Record<string, unknown>[]).slice(-MAX_TURNS) : [];
@@ -428,91 +513,148 @@ Deno.serve(async (req) => {
     const turns: Record<string, unknown>[] = history.length ? history : [{ role: "user", text: opening }];
     // فقرة القراءة/الاستماع أطول من ردّ محادثة عادي — سقف الرموز الاعتيادي (300) كان يبتر
     // فقرات B1 (٤-٦ جمل) قبل اكتمال السطرين CORRECT/الخيارات.
-    let maxTok = gen ? 500 : 300;
-    // gpt-oss نماذج تفكير: تُنفق من سقف الرموز نفسه على تفكيرٍ داخلي قبل الجواب،
-    // فسقفٌ ٣٠٠ كان يُستنفَد كلّه تفكيراً ويعود جوابٌ فارغ (tutor_no_text، محمد ١٧ أغسطس،
-    // finishReason="length") — مؤكَّدٌ من مصدر Groq نفسه: خفض الجهد وسقفٌ أعلى يُصلحانه معاً.
-    const isGptOss = /gpt-oss/i.test(model);
-    if (isGptOss) maxTok = Math.max(maxTok, 1200);
+    // ورُفع سقف المحادثة ٣٠٠ ⇐ ٧٠٠ بعد بترٍ حقيقي شوهد على جهاز صاحب المشروع (١٨ أغسطس):
+    // نموذجٌ مفكّر استهلك الميزانية كلّها في تفكيره فانقطع قبل الردّ. والسقف ليس طول الردّ —
+    // طوله تحكمه قواعد النظام («جملتان أو ثلاث») — بل حدٌّ أعلى يمنع البتر، فرفعه لا يُطيل شيئاً.
+    // وهذا قاعٌ لكل المرشّحين؛ ورفعه لنموذجٍ مفكّرٍ بعينه يقع داخل الحلقة حيث يُعرف اسمه.
+    const maxTokBase = gen ? 500 : 700;
 
-    let url: string, headers: Record<string, string>, body: unknown;
-    if (provider === "gemini") {
-      url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
-      headers = { "x-goog-api-key": KEY, "Content-Type": "application/json" };
-      body = {
-        systemInstruction: { parts: [{ text: sysText }] },
-        contents: turns.map((m) => ({ role: String(m.role) === "model" ? "model" : "user",
-          parts: [{ text: clip(m.text) }] })),
-        generationConfig: { temperature: 0.6, maxOutputTokens: maxTok, topP: 0.9 },
-        // طفل: نُشدّد المرشّحات فوق الافتراضي بدل الاكتفاء به
-        safetySettings: ["HARM_CATEGORY_HARASSMENT", "HARM_CATEGORY_HATE_SPEECH",
-          "HARM_CATEGORY_SEXUALLY_EXPLICIT", "HARM_CATEGORY_DANGEROUS_CONTENT",
-        ].map((category) => ({ category, threshold: "BLOCK_LOW_AND_ABOVE" })),
-      };
-    } else {
-      // صيغة OpenAI: دور system صريح، وأدوار user/assistant
-      url = OAI[provider].url;
-      headers = { "Authorization": `Bearer ${KEY}`, "Content-Type": "application/json" };
-      body = {
-        model,
-        messages: [{ role: "system", content: sysText }].concat(
-          turns.map((m) => ({ role: String(m.role) === "model" ? "assistant" : "user", content: clip(m.text) }))),
-        temperature: 0.6, max_tokens: maxTok, top_p: 0.9,
-        // low يكفي لتصحيح/محادثة قصيرة، ويُبقي معظم السقف للجواب لا للتفكير الداخلي
-        ...(isGptOss ? { reasoning_effort: "low" } : {}),
-      };
-    }
+    // يُجرَّب كل مرشّحٍ بدوره حتى يصل ردٌّ نصّيّ فعليّ، أو تنتهي القائمة. كل مزوّدٍ
+    // فاشل يُسجَّل في attempts ليصل تفصيله في الخطأ الأخير إن فشل الجميع — لا تشخيصاً
+    // غامضاً بمزوّدٍ واحد كما كان.
+    let lastErr: { body: Record<string, unknown>; status: number } | null = null;
+    const attempts: string[] = [];
+    for (const cand of candidates) {
+      const provider = cand.provider, found = cand.found;
+      const keyName = found.name;
+      // نفس درس Azure: محرف غير مرئي واحد ملتصق بالمفتاح يجعل الطلب يفشل فشلاً غامضاً
+      const KEY = found.raw.replace(/[^\x21-\x7E]/g, "");
+      const keyBad = Array.from(found.raw).filter((c) => !/[\x21-\x7E]/.test(c))
+        .map((c) => "U+" + (c.codePointAt(0) || 0).toString(16).toUpperCase().padStart(4, "0"));
+      if (!KEY) {
+        attempts.push(provider + ":bad_key_chars");
+        lastErr = { status: 200, body: { error: "not_configured",
+          detail: `${keyName} present but contains no usable characters`,
+          keyRawLength: found.raw.length, keyBad, keyName, provider } };
+        continue;
+      }
 
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 20000);
-    let res: Response;
-    try {
-      res = await fetch(url, { method: "POST", headers, body: JSON.stringify(body), signal: ctrl.signal });
-    } catch (e) {
+      // النموذج: سرّ عامّ TUTOR_MODEL، أو سرّ خاصّ بالمزوّد، أو الافتراضي
+      const model = (Deno.env.get("TUTOR_MODEL") || "").trim()
+        || (Deno.env.get(provider.toUpperCase() + "_MODEL") || "").trim()
+        || (provider === "gemini" ? DEFAULT_GEMINI_MODEL : OAI[provider].model);
+      // المزوّد المخصّص بلا اسم نموذج يُنتج طلباً بحقل فارغ وخطأً غامضاً — نقولها صراحةً
+      if (!model) {
+        attempts.push(provider + ":no_model");
+        lastErr = { status: 200, body: { error: "tutor_bad_model", provider, model: "",
+          detail: `اضبط السرّ TUTOR_MODEL أو ${provider.toUpperCase()}_MODEL` } };
+        continue;
+      }
+
+      // ميزانية الرموز وضبط التفكير يُحسبان لكل نموذجٍ على حدة، لا مرّةً للجميع: الحلقة
+      // قد تنتقل من مزوّدٍ مفكّرٍ إلى غيره، فسقفٌ واحدٌ محسوبٌ قبلها يُخطئ أحدهما حتماً.
+      // gpt-oss تُنفق من السقف نفسه على تفكيرٍ داخلي قبل الجواب، فسقفٌ ٣٠٠ كان يُستنفَد
+      // كلّه تفكيراً ويعود جوابٌ فارغ (tutor_no_text، محمد ١٧ أغسطس، finishReason="length").
+      const isGptOss = /gpt-oss/i.test(model);
+      const maxTok = isGptOss ? Math.max(maxTokBase, 1200) : maxTokBase;
+
+      let url: string, headers: Record<string, string>, body: unknown;
+      if (provider === "gemini") {
+        url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+        headers = { "x-goog-api-key": KEY, "Content-Type": "application/json" };
+        body = {
+          systemInstruction: { parts: [{ text: sysText }] },
+          contents: turns.map((m) => ({ role: String(m.role) === "model" ? "model" : "user",
+            parts: [{ text: clip(m.text) }] })),
+          generationConfig: { temperature: 0.6, maxOutputTokens: maxTok, topP: 0.9 },
+          // طفل: نُشدّد المرشّحات فوق الافتراضي بدل الاكتفاء به
+          safetySettings: ["HARM_CATEGORY_HARASSMENT", "HARM_CATEGORY_HATE_SPEECH",
+            "HARM_CATEGORY_SEXUALLY_EXPLICIT", "HARM_CATEGORY_DANGEROUS_CONTENT",
+          ].map((category) => ({ category, threshold: "BLOCK_LOW_AND_ABOVE" })),
+        };
+      } else {
+        // صيغة OpenAI: دور system صريح، وأدوار user/assistant
+        url = OAI[provider].url;
+        headers = { "Authorization": `Bearer ${KEY}`, "Content-Type": "application/json" };
+        const oai: Record<string, unknown> = {
+          model,
+          messages: [{ role: "system", content: sysText }].concat(
+            turns.map((m) => ({ role: String(m.role) === "model" ? "assistant" : "user", content: clip(m.text) }))),
+          temperature: 0.6, max_tokens: maxTok, top_p: 0.9,
+        };
+        // ضبط التفكير مشروطٌ باسم النموذج لا مُرسَلٌ دائماً: حقلٌ لا يعرفه مزوّدٌ آخر
+        // (أو نموذجٌ غير مفكّر) قد يُرَدّ بـ400، فيقع عطلٌ مكان علاج. والقيمتان تختلفان
+        // لأن النموذجين يختلفان: gpt-oss لا تقبل إيقافاً تامّاً فتُخفَّض إلى low ويُرفع
+        // سقفها، وQwen 3 تقبل none فيُوقَف تفكيرها من أصله (كلاهما موثَّق عند Groq).
+        if (isGptOss) oai.reasoning_effort = "low";
+        else if (/qwen3/i.test(model)) oai.reasoning_effort = "none";
+        body = oai;
+      }
+
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 20000);
+      let res: Response;
+      try {
+        res = await fetch(url, { method: "POST", headers, body: JSON.stringify(body), signal: ctrl.signal });
+      } catch (e) {
+        clearTimeout(t);
+        attempts.push(provider + ":unreachable");
+        lastErr = { status: 200, body: { error: String(e).includes("abort") ? "tutor_timeout" : "tutor_unreachable",
+          detail: String(e).slice(0, 160), provider, model, keyBad } };
+        continue;
+      }
       clearTimeout(t);
-      return jsonOut({ error: String(e).includes("abort") ? "tutor_timeout" : "tutor_unreachable",
-        detail: String(e).slice(0, 160), provider, model, keyBad });
-    }
-    clearTimeout(t);
 
-    if (!res.ok) {
-      // المزوّد يُرفق سبب الرفض في النصّ، وقصّه مبكّراً كان يبتره قبل موضع الفائدة.
-      // نصّ خطأ لا يحمل مفتاحاً، فتوسيعه آمن ومفيد.
-      const detail = (await res.text()).slice(0, 1200);
-      // نفصل الأسباب لأن علاجها مختلف: المفتاح، والحصّة/الرصيد، واسم النموذج
-      const kind = res.status === 401 || res.status === 403 ? "tutor_auth"
-        : res.status === 404 ? "tutor_bad_model"
-        : res.status === 429 ? "tutor_quota"
-        : res.status === 400 ? (/model/i.test(detail) ? "tutor_bad_model" : "tutor_auth")
-        : "tutor_http";
-      return jsonOut({ error: kind, status: res.status, detail, provider, model, keyName });
+      if (!res.ok) {
+        // المزوّد يُرفق سبب الرفض في النصّ، وقصّه مبكّراً كان يبتره قبل موضع الفائدة.
+        // نصّ خطأ لا يحمل مفتاحاً، فتوسيعه آمن ومفيد.
+        const detail = (await res.text()).slice(0, 1200);
+        // نفصل الأسباب لأن علاجها مختلف: المفتاح، والحصّة/الرصيد، واسم النموذج
+        const kind = res.status === 401 || res.status === 403 ? "tutor_auth"
+          : res.status === 404 ? "tutor_bad_model"
+          : res.status === 429 ? "tutor_quota"
+          : res.status === 400 ? (/model/i.test(detail) ? "tutor_bad_model" : "tutor_auth")
+          : "tutor_http";
+        attempts.push(provider + ":" + kind);
+        lastErr = { status: 200, body: { error: kind, status: res.status, detail, provider, model, keyName } };
+        continue;
+      }
+
+      const j = await res.json();
+      let text = "", why = "";
+      if (provider === "gemini") {
+        const cd = (j.candidates && j.candidates[0]) || {};
+        text = ((cd.content && cd.content.parts) || [])
+          .map((p: Record<string, unknown>) => String(p.text || "")).join("").trim();
+        why = String(cd.finishReason || "") ||
+          String((j.promptFeedback && j.promptFeedback.blockReason) || "");
+      } else {
+        const ch = (j.choices && j.choices[0]) || {};
+        text = String((ch.message && ch.message.content) || "").trim();
+        why = String(ch.finish_reason || "");
+      }
+      // يُجرَّد التفكير قبل أي استعمال — قبل حَكَم LanguageTool وقبل أن يصل العميل
+      text = stripThink(text);
+      if (!text) {
+        // حُجب أو عاد فارغاً: نُصرّح بالسبب بدل أن نُمرّر فراغاً يبدو ردّاً
+        attempts.push(provider + ":no_text");
+        lastErr = { status: 200, body: { error: "tutor_no_text", finishReason: why, provider, model } };
+        continue;
+      }
+      // المراجعة وحدها تمرّ على الحَكَم: المحادثة كلامٌ حيّ لا يُدقَّق، والشرح بالعربية
+      if (review) {
+        const j2 = await ltJudge(text);
+        return jsonOut({ ok: true, engine: provider, model, keyName, reply: j2.text,
+          ltDropped: j2.dropped, ltJudged: j2.judged, turns: 1 });
+      }
+      return jsonOut({ ok: true, engine: provider, model, keyName, reply: text,
+        turns: history.length ? Math.floor(history.length / 2) + 1 : 1 });
     }
 
-    const j = await res.json();
-    let text = "", why = "";
-    if (provider === "gemini") {
-      const cand = (j.candidates && j.candidates[0]) || {};
-      text = ((cand.content && cand.content.parts) || [])
-        .map((p: Record<string, unknown>) => String(p.text || "")).join("").trim();
-      why = String(cand.finishReason || "") ||
-        String((j.promptFeedback && j.promptFeedback.blockReason) || "");
-    } else {
-      const ch = (j.choices && j.choices[0]) || {};
-      text = String((ch.message && ch.message.content) || "").trim();
-      why = String(ch.finish_reason || "");
-    }
-    if (!text) {
-      // حُجب أو عاد فارغاً: نُصرّح بالسبب بدل أن نُمرّر فراغاً يبدو ردّاً
-      return jsonOut({ error: "tutor_no_text", finishReason: why, provider, model });
-    }
-    // المراجعة وحدها تمرّ على الحَكَم: المحادثة كلامٌ حيّ لا يُدقَّق، والشرح بالعربية
-    if (review) {
-      const j2 = await ltJudge(text);
-      return jsonOut({ ok: true, engine: provider, model, keyName, reply: j2.text,
-        ltDropped: j2.dropped, ltJudged: j2.judged, turns: 1 });
-    }
-    return jsonOut({ ok: true, engine: provider, model, keyName, reply: text,
-      turns: history.length ? Math.floor(history.length / 2) + 1 : 1 });
+    // فشل كل المرشّحين: يعود آخر خطأ بتفصيله الكامل، ومعه من جُرِّب قبله ولماذا —
+    // فالتشخيص لا يقف عند مزوّدٍ واحد كما كان (تشخيصٌ أوسع، لا سلوكٌ جديد للفشل).
+    const errBody = (lastErr ? lastErr.body : { error: "server_error", message: "no candidates attempted" });
+    return jsonOut({ ...errBody, attempts }, lastErr ? lastErr.status : 500);
   } catch (e) {
     return jsonOut({ error: "server_error", message: String(e).slice(0, 300) }, 500);
   }
