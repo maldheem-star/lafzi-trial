@@ -222,6 +222,22 @@ const errGone=await p3.evaluate(()=>{
 });
 ok(errGone===0,'وثلاث إصابات تُخرجها من القائمة — لا تبقى تُثقلها أبداً');
 
+console.log('\n١١) الأفعال المركّبة (phrasal verbs): شرحٌ سببي لا معنًى فقط (طلب صاحب المشروع، ١٨ أغسطس)');
+// أخطأت هيا "look after"/"look like" بترجمةٍ حرفية كلمةً كلمة أكثر من مرّة — الشرح
+// السببي (فعلٌ مركّب، لا يُترجَم جزءاً جزءاً) أُضيف لمعالجة سبب الخطأ لا معناه فقط
+const phrasal=await p3.evaluate(()=>{
+  const ids=['u1_v8','u1_v9','u2_v9','u8_v3'];
+  const items=ids.map(id=>ENG_ITEMS.find(x=>x.id===id));
+  const shape=items.every(it=>it&&/فعلٌ مركّب/.test(it.w));
+  const it=items[0];
+  errItems=[{kind:'item',it,key:it.id}];errIdx=0;errLocked=false;errOk=false;errPicked=null;render();
+  errChoose(it.a);
+  const shown=document.body.innerText.includes('فعلٌ مركّب');
+  return {shape,shown};
+});
+ok(phrasal.shape,'الأربعة (look after/look like/fall over/sign up) تحمل السبب في حقل w');
+ok(phrasal.shown,'ويظهر على الشاشة فعلياً بعد الإجابة — لا نصّاً محفوظاً بلا عرض');
+
 console.log('\n'+(fails?`=== ${fails} فشل ===`:'=== كل الاختبارات نجحت ==='));
 await b.close();process.exit(fails?1:0);
 })();
