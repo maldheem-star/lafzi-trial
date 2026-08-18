@@ -6768,18 +6768,15 @@ const STEP_N=6;
 // الجلسة تخلط الأنواع كما يخلطها الاختبار نفسه، ولا تُبقي الترتيب فتُحفَظ المواضع.
 // وضمانُ عنصر ترتيبٍ واحد على الأقلّ مقصود: هو أثقل الأنواع وأقلّها عدداً في البنك،
 // فلولا الضمان لغاب عن أكثر الجلسات بحكم الاحتمال وحده.
-// ⚠ تنسيقٌ بين جلستين (١٨ أغسطس): هذه **بانيةٌ سادسة** بنفس نمط الخمس الأخرى
-// (listen/read/write/gram/minpair). وجلسةٌ موازية على فرع talent-app-fixes-visuals
-// أثبتت فيها جميعاً عيب «النقص» (under-fill): الاحتياط أدناه يعمل عند الفراغ التامّ
-// لا عند النقص، فجلسةٌ بعنصرين مستحقّين تُعطي ٢ لا STEP_N. وهي تبني مساعِداً مشتركاً
-// لخمسة مواقع — **فالمواقع ستّة الآن، وهذا سادسها**. تُرك العيب هنا عمداً لا سهواً:
-// إصلاحٌ موضعيّ منّي كان سيتعارض مع مساعِدها المشترك ويُرمى. يُوصَل بالمساعِد عند وصوله.
+// تنسيقٌ بين جلستين (١٨ أغسطس): هذه بانيةٌ سادسة بنفس نمط الخمس الأخرى
+// (listen/read/write/gram/minpair)، فوُصلت بمساعدها المشترك topUpPlan حين وصل —
+// دليلٌ ميداني أثبت العيب نفسه فيها (جلسة قواعد لمحمد ٠٩:٠٩ أعطت عنصرين لا خمسة).
 function buildStepPlan(){
   const st=stepSrsLoad(),today=srsToday(),POOL=stepBankFor(profileOf().level);
   const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
   const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
   let out=due.concat(fresh).slice(0,STEP_N);
-  if(!out.length)out=shuffle(POOL).slice(0,STEP_N);   // البنك مستنفَد: مراجعة حرّة لا شاشة فارغة
+  out=topUpPlan(out,POOL,STEP_N);   // البنك مستنفَد أو ناقصٌ: مراجعة حرّة لا جلسةٌ منقوصة
   if(out.length>1&&!out.some(function(i){return i.type==="order"})){
     const ord=shuffle(POOL.filter(function(i){return i.type==="order"}))[0];
     if(ord)out[out.length-1]=ord;

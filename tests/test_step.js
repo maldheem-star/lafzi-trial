@@ -145,6 +145,39 @@ const out=await page.evaluate(()=>{
 ok(out>0,`buildStepPlan لا تعود فارغة (${out})`);
 await page.evaluate(()=>{try{lsDel('mawhiba_step_srs')}catch(e){}});
 
+console.log('\n١١ب) نقصٌ لا خواءٌ تامّ — عنصرٌ مستحقٌّ واحد لا يُنتج جلسةً من سؤالٍ واحد (طلب صاحب المشروع، ١٨ أغسطس)');
+// دليلٌ ميداني: جلسة قواعد لمحمد ٠٩:٠٩ أعطت عنصرين والحدّ خمسة — نفس عيب buildXPlan
+// الخمسة الأخرى (الاستماع/المقروء/الكتابة/القواعد/الأزواج)، وSTEP بانيةٌ سادسة على
+// النمط نفسه فوُصلت بنفس المساعد المشترك (topUpPlan)
+const partial=await page.evaluate(()=>{
+  const POOL=stepBankFor(profileOf().level);
+  const st={};
+  POOL.forEach((i,idx)=>{st[i.id]={box:idx===0?0:2,due:idx===0?srsToday():srsToday()+30,seen:idx===0?0:3}});
+  lsSet(STEP_SRS_KEY,JSON.stringify(st));
+  return {plan:buildStepPlan(),want:Math.min(STEP_N,POOL.length)};
+});
+ok(partial.plan.length===partial.want,`عنصرٌ واحد مستحقّ ⇐ جلسةٌ كاملة (${partial.plan.length} من ${partial.want})، لا سؤالٌ واحد`);
+ok(new Set(partial.plan.map(i=>i.id)).size===partial.plan.length,'بلا تكرار عنصرٍ مرّتين في نفس الجلسة');
+await page.evaluate(()=>{try{lsDel('mawhiba_step_srs')}catch(e){}});
+
+console.log('\n١١ج) ضمانان عبر مئة جلسة عشوائية: عنصر ترتيبٍ دائماً، ولا تجاوز STEP_N أبداً');
+// ليس ضماناً واحداً كافياً — topUpPlan وضمان الترتيب يعملان معاً في كل استدعاء،
+// وحالةٌ واحدة رُهنت أعلاه؛ هذا يُثبته عبر عشوائيةٍ حقيقية لا حالةً مُدبَّرة
+const stress=await page.evaluate(()=>{
+  const TRIALS=100;let hasOrder=0,fail=null;
+  for(let i=0;i<TRIALS;i++){
+    try{lsDel('mawhiba_step_srs')}catch(e){}
+    const plan=buildStepPlan();
+    const r={n:plan.length,ord:plan.filter(function(x){return x.type==="order"}).length};
+    if(r.ord>0)hasOrder++;                 // ١) عنصر ترتيبٍ في كل جلسة
+    if(r.n>6){fail={i:i,n:r.n};break}      // ٢) وألّا تتجاوز STEP_N
+  }
+  return {hasOrder:hasOrder,fail:fail,trials:TRIALS};
+});
+ok(!stress.fail,stress.fail?`الجلسة ${stress.fail.i} تجاوزت الحدّ (${stress.fail.n})`:'لا جلسةٌ تجاوزت STEP_N=6 عبر مئة محاولة');
+ok(stress.hasOrder===stress.trials,`عنصر ترتيبٍ في كل الجلسات (${stress.hasOrder}/${stress.trials})`);
+await page.evaluate(()=>{try{lsDel('mawhiba_step_srs')}catch(e){}});
+
 console.log('\n١٢) جلسة كاملة ثم النتيجة');
 await page.close();page=await mk();
 await page.evaluate(()=>startStep());
