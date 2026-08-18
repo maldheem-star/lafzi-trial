@@ -13,18 +13,34 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260817-1500";
+  var BUILD="build-20260818-1215";
   try{window.__BUILD=BUILD}catch(e){}
+  // يُصدَّر ليستعمله زرّ التحديث القسري في صفحة التشخيص (خارج هذا الغلاف)
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
   function fetchHtml(){return fetch(url(),{cache:"no-store"}).then(function(r){return r.text()})}
+  // النسخة التي يعرضها المتصفّح فعلاً (لا الحيّة): force-cache يُعيد ما في ذاكرته إن وُجد،
+  // وإلا سقط إلى الشبكة فعاد مطابقاً للحيّ — أي لا إنذار كاذب في الحالة الأسوأ.
+  // ويُطلب الرابط كاملاً بالاستعلام (location.href) لا المسار وحده، لأن مفتاح التخزين
+  // هو الرابط كاملاً: صفحة محمد هي index.html?p=mohammed، فطلبُ المسار وحده يقرأ إدخالاً آخر.
+  function fetchCached(){
+    return fetch(location.href.split("#")[0],{cache:"force-cache"})
+      .then(function(r){return r.text()}).catch(function(){return null});
+  }
+  // الهويّة من الرابط وحده (?p=mohammed) ولا تُحفَظ — فإعادة التحميل يجب أن تصون الاستعلام.
+  // وكانت تُسقطه: location.pathname+"?_r=" يُعيد محمداً وإلياس إلى صفحة هيا بلا أن يشعرا.
+  function reloadUrl(){
+    var q=location.search.replace(/([?&])_r=\d+&?/,"$1").replace(/[?&]$/,"");
+    return location.pathname+(q?q+"&":"?")+"_r="+Date.now();
+  }
+  try{window.__reloadUrl=reloadUrl}catch(e){}
   function banner(){
     if(notified)return; notified=true;
     var d=document.createElement("div");
     d.setAttribute("style","position:fixed;inset-inline:0;bottom:0;z-index:9999;background:#1D4ED8;color:#fff;"+
       "padding:14px 16px;font:700 15px system-ui,sans-serif;text-align:center;cursor:pointer;box-shadow:0 -2px 12px rgba(0,0,0,.2)");
     d.textContent="🔄 يوجد تحديث جديد للتطبيق — اضغطي هنا للتحديث";
-    d.onclick=function(){location.href=location.pathname+"?_r="+Date.now()};
+    d.onclick=function(){location.href=reloadUrl()};
     document.body.appendChild(d);
   }
   // عند التحميل: لو كان المتصفّح يعرض نسخة مخزّنة أقدم من الخادم، نُحدّث فوراً (لا عمل جارياً بعد)
@@ -33,12 +49,22 @@
   var GUARD="mawhiba_reload_guard";
   function guardGet(){try{return parseInt(sessionStorage.getItem(GUARD)||"0",10)||0}catch(e){return 9}}
   function guardSet(n){try{sessionStorage.setItem(GUARD,String(n))}catch(e){}}
-  fetchHtml().then(function(html){
-    baseLen=html.length;
-    if(html.indexOf(BUILD)===-1){
+  // فحصان لا واحد، لأن الأوّل وحده أثبت أنه يفشل بصمت:
+  //  (١) وسم البناء BUILD — صريحٌ لكنه معلّقٌ على أن يتذكّر إنسانٌ تحديثه كل شحنة. ونُسي
+  //      فعلاً ثماني شحنات متتالية (١٧ أغسطس ١٤:٤٥ ⇐ ١٨ أغسطس)، فبقي محمد على نسخةٍ لا
+  //      تصلها تدريباته: نسخته تحمل الوسم والصفحةُ الحيّة تحمله أيضاً، فيُطابق النصّ نفسه
+  //      ويظنّ نفسه محدَّثاً. والعيب نفسه سبق أن أُصلح ثم عاد — فالتذكّر ليس آلية.
+  //  (٢) طولُ النسخة المخزّنة مقابل الحيّة — تلقائيٌّ بالكامل، يتحرّك مع أيّ تعديل مهما
+  //      صَغُر، فيصمد لو نُسي BUILD ثانيةً. واتجاه خطئه آمن: تعذّرُ قراءة المخزّنة يُعيد
+  //      الحيّ فيتطابقان، فيفوت الإنذار ولا يقع كاذباً — والكاذب أسوأ لأنه حلقةُ تحميل.
+  Promise.all([fetchHtml(),fetchCached()]).then(function(res){
+    var live=res[0],cached=res[1];
+    baseLen=live.length;
+    var stale=(live.indexOf(BUILD)===-1)||(cached!==null&&cached.length!==live.length);
+    if(stale){
       if(guardGet()>=1){banner();return}
       guardSet(1);
-      location.href=location.pathname+"?_r="+Date.now();
+      location.href=reloadUrl();
     }else{try{sessionStorage.removeItem(GUARD)}catch(e){}}
   }).catch(function(){});
   // بعد ذلك: لا نُحدّث تلقائياً حتى لا نُضيّع إجابة جارية — نعرض شريطاً تضغطه هي
@@ -3191,7 +3217,10 @@ function azDiagHTML(){
 function hardReload(){
   try{if(window.caches&&caches.keys)caches.keys().then(function(ks){ks.forEach(function(k){caches.delete(k)})})}catch(e){}
   try{sessionStorage.removeItem("mawhiba_reload_guard")}catch(e){}
-  location.replace(location.pathname+"?_r="+Date.now());
+  // الهويّة من الرابط وحده ولا تُحفَظ — وكان هذا السطر يُسقط ?p=mohammed فيُنزل الأخوين
+  // في ملفّ هيا. وهو الزرّ الذي يُوصى بضغطه عند تعذّر التحديث تحديداً: أي أن علاج العطل
+  // كان يُبدّل المتعلّم بمتعلّمٍ آخر بلا أن يشعر.
+  location.replace(window.__reloadUrl?window.__reloadUrl():location.pathname+location.search);
 }
 function micDiagHTML(){
   const yn=v=>v?'<b style="color:#059669">نعم</b>':'<b style="color:#DC2626">لا</b>';
