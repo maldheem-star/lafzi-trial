@@ -6,13 +6,20 @@ const {chromium}=require('/opt/node22/lib/node_modules/playwright');
 let fails=0;const ok=(c,m)=>{console.log((c?'  ✓ ':'  ✗ FAIL ')+m);if(!c)fails++};
 (async()=>{
 const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium'});
-let logs=[];
+let logs=[],calls=[];
+let genReply="SENT: The choose word will be replaced per test.";
 const mk=async(f)=>{
   const page=await b.newPage({viewport:{width:420,height:900}});
   page.on('pageerror',e=>{console.log('  ✗ PAGEERROR '+e.message);fails++});
   await page.route('**/rest/v1/**',async r=>{
     let x={};try{x=JSON.parse(r.request().postData()||'{}')}catch(e){}
     logs.push(x);r.fulfill({status:201,contentType:'application/json',body:'[]'});
+  });
+  await page.route('**/functions/v1/tutor',async r=>{
+    let x={};try{x=JSON.parse(r.request().postData()||'{}')}catch(e){}
+    calls.push(x);
+    const reply=(x.domain==='minpair'&&x.word)?`SENT: Today the word ${x.word} appears right here.`:genReply;
+    r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,reply})});
   });
   await page.addInitScript(()=>{
     window.__spoken=[];
@@ -36,7 +43,7 @@ const banks=await page.evaluate(()=>({
     &&Array.isArray(x.s)&&x.s.length===2&&Array.isArray(x.m)&&x.m.length===2&&x.m[0]&&x.m[1]&&x.w[0]!==x.w[1]&&x.lv),
 }));
 ok(banks.a1&&banks.a2&&banks.b1,'لا اختلاط بين المستويات');
-ok(banks.n.a1>=5&&banks.n.a2>=5&&banks.n.b1>=5,`ولكلٍّ بنكٌ كافٍ (${JSON.stringify(banks.n)})`);
+ok(banks.n.a1>=10&&banks.n.a2>=10&&banks.n.b1>=10,`ولكلٍّ بنكٌ موسَّع (١٦ أغسطس) (${JSON.stringify(banks.n)})`);
 ok(banks.shape,'وكل عنصر بشكل سليم (كلمتان مختلفتان، ونُطقان، وجملتان)');
 
 console.log('\n٢) بدء الجلسة: هدفٌ عشوائي وترتيبٌ عشوائي — لا انحياز موضع');
@@ -113,6 +120,36 @@ while(!(await page.evaluate(()=>minpairDone)))await step();
 ok(await page.evaluate(()=>minpairDone)===true,'انتهت الجلسة');
 t=await page.textContent('#app');
 ok(/جلسة أخرى/.test(t),'وتُعرض شاشة النتيجة');
+
+console.log('\n٩ب) التوليد الآلي (١٧ أغسطس): جملةٌ إضافية لزوجٍ موجود، لا زوجٌ جديد — رقابة قبلية');
+const sentParse=await page.evaluate(()=>({
+  ok:parseMinpairSentBlock("SENT: I chose the red bike yesterday.","chose"),
+  wrongWord:parseMinpairSentBlock("SENT: I picked the red bike yesterday.","chose"),
+  badAr:parseMinpairSentBlock("SENT: اخترت الدراجة الحمراء.","chose"),
+  missing:parseMinpairSentBlock("no sent tag here","chose"),
+}));
+ok(sentParse.ok==="I chose the red bike yesterday.",'جملةٌ تحوي الكلمة الهدف بحدودها تُقبل');
+ok(sentParse.wrongWord===null,'وجملةٌ لا تحوي الكلمة الهدف بالضبط تُرفض قبل أن تُخزَّن — لا بعد عرضها');
+ok(sentParse.badAr===null,'وتلوّثٌ عربي يُرفض');
+ok(sentParse.missing===null,'ونصٌّ بلا وسم SENT يُرفض');
+
+calls=[];
+await page.evaluate(()=>{try{lsDel('mawhiba_minpair_extra_v1')}catch(e){}});
+await page.evaluate(()=>minpairGenTopUp('A1'));
+await page.waitForTimeout(300);
+const gc=calls.find(c=>c.mode==='gen'&&c.domain==='minpair');
+ok(!!gc&&gc.level==='A1'&&!!gc.word,`minpairGenTopUp يطلب جملةً لكلمةٍ من زوجٍ موجود لا زوجاً جديداً (${gc&&gc.word})`);
+const extraAfter=await page.evaluate(()=>minpairExtraLoad());
+const extraCount=Object.values(extraAfter).reduce((n,a)=>n+a.length,0);
+ok(extraCount===1,'والجملة المقبولة تُخزَّن محلّياً — لا يتغيّر بنك الأزواج نفسه (MINPAIR_BANK يبقى بشرياً بالكامل)');
+const cands=await page.evaluate(word=>{
+  const k=Object.keys(minpairExtraLoad())[0];
+  const [pairId,wordIdx]=[k.slice(0,k.lastIndexOf('_')),k.slice(k.lastIndexOf('_')+1)];
+  const it=MINPAIR_BANK.find(x=>x.id===pairId);
+  return{list:minpairSentencesFor(it,+wordIdx),fixed:it.s[+wordIdx]};
+},gc&&gc.word);
+ok(cands.list.length===2&&cands.list[0]===cands.fixed&&cands.list[1]===`Today the word ${gc.word} appears right here.`,
+  'وminpairSentencesFor تضيف المولَّدة إلى الثابتة بدل استبدالها — الثابتة أولاً دائماً');
 
 console.log('\n١٠) يظهر على الصفحات الثلاث');
 const h=await mk('index.html');
