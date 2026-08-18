@@ -38,8 +38,8 @@ const gone=['الاستدلال اللغوي','الرياضي والمكاني',
   'خطة الإنجليزية اليومية','إملاء بالإنجليزية','تمرين النطق','جمل من كتابك','استراتيجيات موهبة',
   'برنامج موهبة المكثّف'];
 gone.forEach(g=>ok(!t.includes(g),`«${g}» اختفى`));
-ok(await m.evaluate(()=>document.querySelectorAll('.mode').length)===6,
-  `ستّة أزرار لا أكثر — المحادثة والاستماع والقراءة والكتابة ودقّة القواعد ولعبة الأزواج (${await m.evaluate(()=>document.querySelectorAll('.mode').length)})`);
+ok(await m.evaluate(()=>document.querySelectorAll('.mode').length)===7,
+  `سبعة أزرار لا أكثر — المحادثة والاستماع والقراءة والكتابة ودقّة القواعد ونمط STEP ولعبة الأزواج (${await m.evaluate(()=>document.querySelectorAll('.mode').length)})`);
 ok(t.includes('الصوت ما يشتغل؟'),'ورابط تشخيص الصوت باقٍ — بلا ميكروفون لا محادثة');
 ok(!/اختاري|ابدئي|تكلّمي|اضغطي/.test(t),'وبلا خطاب مؤنّث');
 
@@ -66,7 +66,7 @@ const e=await mk('elias.html');
 t=await e.textContent('#app');
 ok(t.includes('صفحة إلياس')&&t.includes('ابدأ المحادثة')&&t.includes('فهم الاستماع')&&t.includes('فهم المقروء')&&t.includes('الكتابة')&&t.includes('دقّة القواعد')&&t.includes('لعبة الاستماع'),'المحادثة والاستماع والقراءة والكتابة ودقّة القواعد ولعبة الأزواج');
 ok(!t.includes('محاكاة شاملة')&&!t.includes('إملاء'),'وبقيّة الأقسام مخفيّة');
-ok(await e.evaluate(()=>document.querySelectorAll('.mode').length)===6,'ستّة أزرار لا أكثر');
+ok(await e.evaluate(()=>document.querySelectorAll('.mode').length)===7,'سبعة أزرار لا أكثر');
 
 console.log('\n٥) صفحة هيا لم تُمسّ — والاستماع والقراءة صارا عندها كذلك');
 const h=await mk('index.html');

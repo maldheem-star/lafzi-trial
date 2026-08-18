@@ -3022,7 +3022,7 @@ const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEn
   "readBankFor","readSrsUpdate","buildReadPlan","startRead","readChoose","readNext","renderRead",
   "genBankLoad","genBankAdd","parseGenBlock","fetchTutorGen","genTopUp","genLogText","errCollect","errDraw","errCount","errQuizCount","startErrors","errCheck","errChoose","errNext","errReplay","renderErrors",
   "minpairBankFor","minpairSrsUpdate","buildMinpairPlan","startMinpair","minpairPlay","minpairChoose","minpairNext","renderMinpair",
-  "gramBankFor","gramSrsUpdate","buildGramPlan","startGram","gramChoose","gramNext","renderGram"];
+  "gramBankFor","gramSrsUpdate","buildGramPlan","startGram","gramChoose","gramNext","renderGram","stepBankFor","stepSrsUpdate","buildStepPlan","startStep","stepChoose","stepSeqPick","stepSeqUnpick","stepSeqSubmit","stepNext","renderStep"];
 function censusMissing(){return CENSUS.filter(function(n){return typeof window[n]!=="function"})}
 function censusHTML(){
   var miss=censusMissing();
@@ -6600,6 +6600,289 @@ function renderGramResult(){
   </div>`;
 }
 
+// ===== قسم STEP: نوعية أسئلة اختبار كفايات اللغة الإنجليزية (١٨ أغسطس) =====
+// طلبٌ صريح من صاحب المشروع بعد أن عرض صفحة تدريبٍ حقيقية على STEP («أضف نوعية هذه
+// الأسئلة للثلاثة كلٌ حسب مستواه مع الشرح بعد الإجابة»).
+//
+// والبنية مأخوذة من الاختبار نفسه لا من حدسي: قسم القواعد ثاني أكبر أقسام STEP (٤٠٪)،
+// ويشمل «التحليل الكتابي» — وهو حرفياً: علامات الترقيم، وترتيب الجمل، واختيار الجملة
+// الأصحّ، والكبتلة (مصدر: qiyas.sa وأدلّة STEP). فالأنواع الثلاثة هنا ليست تقسيماً
+// اخترعته، بل ما يحويه القسم فعلاً.
+//
+// وموصولٌ لا مبنيّ من جديد: نفس fsrsUpdate للتباعد، ونفس logAnswer وأعرافه، ونفس شكل
+// أزرار الخيارات وشاشة النتيجة. ونوع "pick" مطابقٌ عمداً لشكل GRAM_BANK (أربع جملٍ
+// وشرحٌ لكلٍّ بعد القفل) — لأن سؤال «اختر الجملة الأصحّ» في STEP هو هو.
+//
+// ولماذا قسمٌ مستقلّ لا توسيعٌ لـGRAM: (١) GRAM أداة قياسٍ معياريّة مسمّاة
+// (Grammaticality Judgment Task) وخلطُ صيغة امتحانٍ بها يُفسد ما تقيسه؛ (٢) نوعا
+// الفراغ والترتيب لا يقبلهما شكل GRAM أصلاً؛ (٣) domain='step' منفصلٌ يجعل الاستعداد
+// للاختبار قابلاً للقياس وحده.
+//
+// وهيا (١١، A1) ليست من مُتقدّمي STEP — الاختبار للجامعة. لكن صيغته (ترتيب الكلمات،
+// حروف الجرّ، الكبتلة) تدريبٌ نافع في مستواها، فبنكها مكتوبٌ بمفرداتها لا بمفردات
+// الاختبار. ومحمد (١٩، B1) هو المعنيّ فعلاً، فبنكه أقرب ما يكون لصعوبة STEP الحقيقية.
+const STEP_BANK=[
+  // ============ A1 — هيا ============
+  {id:"st_a1_1",lv:"A1",type:"pick",tag:"ترتيب الكلمات",c:[
+    {t:"Every morning milk drinks my brother.",ok:false,why:"الترتيب مقلوب: المفعول (milk) جاء قبل الفاعل والفعل"},
+    {t:"My brother drinks milk every morning.",ok:true,why:"صحيحة — فاعل ثم فعل ثم مفعول، والزمن في آخر الجملة"},
+    {t:"Drinks my brother milk every morning.",ok:false,why:"الفعل لا يسبق الفاعل في الجملة الخبرية"},
+    {t:"My brother every morning milk drinks.",ok:false,why:"الفعل لا يُؤخَّر إلى آخر الجملة في الإنجليزية"}]},
+  {id:"st_a1_2",lv:"A1",type:"pick",tag:"الحروف الكبيرة",c:[
+    {t:"on friday i visit my grandmother.",ok:false,why:"أوّل الجملة وأيام الأسبوع وI تُكتب كبيرة"},
+    {t:"On Friday I visit my grandmother.",ok:true,why:"صحيحة — أوّل الجملة، واسم اليوم Friday، وI دائماً كبيرة"},
+    {t:"On friday I visit my Grandmother.",ok:false,why:"Friday يوم فيُكبَّر، وgrandmother اسم عامّ فلا يُكبَّر"},
+    {t:"on Friday i visit my grandmother.",ok:false,why:"أوّل الجملة يبدأ بحرفٍ كبير، وI كبيرة دائماً"}]},
+  {id:"st_a1_3",lv:"A1",type:"gap",tag:"المضارع البسيط",q:"My father ......... to work every day.",c:[
+    {t:"go",ok:false,why:"الفاعل مفرد غائب (father) فيحتاج -s"},
+    {t:"goes",ok:true,why:"صحيحة — مع he/she/it نضيف -s للفعل في المضارع البسيط"},
+    {t:"going",ok:false,why:"going تحتاج is/are قبلها"},
+    {t:"gone",ok:false,why:"gone تصريفٌ ثالث يحتاج has/have"}]},
+  {id:"st_a1_4",lv:"A1",type:"gap",tag:"حروف الجرّ",q:"The book is ......... the table.",c:[
+    {t:"on",ok:true,why:"صحيحة — on للسطح الذي يلامسه الشيء"},
+    {t:"in",ok:false,why:"in تعني داخل شيءٍ مغلق"},
+    {t:"at",ok:false,why:"at للمكان كنقطة (at school) لا للسطح"},
+    {t:"to",ok:false,why:"to للاتجاه والحركة لا للمكان الثابت"}]},
+  {id:"st_a1_5",lv:"A1",type:"gap",tag:"a / an",q:"She has ......... orange bag.",c:[
+    {t:"a",ok:false,why:"قبل الحرف المتحرّك (o) نستعمل an"},
+    {t:"an",ok:true,why:"صحيحة — an قبل صوت متحرّك: a, e, i, o, u"},
+    {t:"the",ok:false,why:"the للمعرفة، والجملة تُعرّف شيئاً لأوّل مرّة"},
+    {t:"some",ok:false,why:"some للجمع أو غير المعدود لا للمفرد"}]},
+  {id:"st_a1_6",lv:"A1",type:"order",tag:"ترتيب الجمل",
+    s:["Maha wanted to make a cake.",
+       "First, she put the eggs and the sugar in a bowl.",
+       "Then she baked it for thirty minutes.",
+       "Finally, she ate the cake with her family."],
+    why:"الجملة الأولى تقول ماذا أرادت — وهي رأس الفقرة. ثم الترتيب من كلمات الإشارة نفسها: First ثم Then ثم Finally."},
+
+  // ============ A2 — إلياس ============
+  {id:"st_a2_1",lv:"A2",type:"pick",tag:"ترتيب الكلمات",c:[
+    {t:"Always my sister to school walks in the morning.",ok:false,why:"always يقع قبل الفعل الأساسي لا في أوّل الجملة هكذا"},
+    {t:"My sister walks always to school in the morning.",ok:false,why:"always لا تقع بعد الفعل الأساسي مباشرةً"},
+    {t:"My sister always walks to school in the morning.",ok:true,why:"صحيحة — ظرف التكرار (always) قبل الفعل الأساسي، ثم المكان ثم الزمان"},
+    {t:"My sister walks to school always in the morning.",ok:false,why:"موضعٌ غير طبيعي؛ الترتيب المعتاد مكان ثم زمان"}]},
+  {id:"st_a2_2",lv:"A2",type:"pick",tag:"الحروف الكبيرة",c:[
+    {t:"we study english and math at riyadh school in september.",ok:false,why:"أوّل الجملة، واللغة English، واسم العلم Riyadh، والشهر September — كلّها تُكبَّر"},
+    {t:"We study English and Math at Riyadh school in september.",ok:false,why:"ثلاثة أخطاء: الشهر September يُكبَّر، وMath مادّة عامّة فلا تُكبَّر، وSchool هنا جزءٌ من اسم المدرسة فتُكبَّر"},
+    {t:"We study English and math at Riyadh School in September.",ok:true,why:"صحيحة — اللغة English واسم المدرسة والشهر تُكبَّر، وmath مادّة عامّة فلا تُكبَّر"},
+    {t:"We Study English and Math at Riyadh School in September.",ok:false,why:"Study فعلٌ عادي وسط الجملة فلا يُكبَّر"}]},
+  {id:"st_a2_3",lv:"A2",type:"pick",tag:"علامات الترقيم",c:[
+    {t:"I bought apples oranges and bananas.",ok:false,why:"عناصر القائمة تُفصَل بفواصل"},
+    {t:"I bought apples, oranges, and bananas.",ok:true,why:"صحيحة — فاصلة بين كل عنصرين في القائمة"},
+    {t:"I bought, apples oranges and bananas.",ok:false,why:"لا فاصلة بين الفعل ومفعوله"},
+    {t:"I bought apples, oranges and bananas,",ok:false,why:"الجملة تنتهي بنقطة لا بفاصلة"}]},
+  {id:"st_a2_4",lv:"A2",type:"gap",tag:"الماضي البسيط",q:"We ......... to the beach two weeks ago.",c:[
+    {t:"go",ok:false,why:"ago تدلّ على الماضي، فالفعل يجب أن يكون ماضياً"},
+    {t:"went",ok:true,why:"صحيحة — ago مع الماضي البسيط دائماً، وماضي go هو went"},
+    {t:"have gone",ok:false,why:"المضارع التامّ لا يُستعمل مع زمنٍ ماضٍ محدّد مثل ago"},
+    {t:"are going",ok:false,why:"المضارع المستمرّ للحاضر أو المستقبل لا للماضي"}]},
+  {id:"st_a2_5",lv:"A2",type:"gap",tag:"حروف الجرّ",q:"He lives ......... Jeddah, and he works ......... a hospital.",c:[
+    {t:"in / in",ok:true,why:"صحيحة — in مع المدن، وin مع المباني الكبيرة كمكان عمل"},
+    {t:"at / in",ok:false,why:"at لا تُستعمل مع اسم مدينة"},
+    {t:"on / at",ok:false,why:"on للسطوح والتواريخ لا للمدن"},
+    {t:"in / on",ok:false,why:"on a hospital تعني فوق سطحه لا داخله"}]},
+  {id:"st_a2_6",lv:"A2",type:"gap",tag:"أدوات الربط",q:"I stayed at home ......... the weather was very bad.",c:[
+    {t:"but",ok:false,why:"but للتضادّ، والجملتان هنا سببٌ ونتيجة"},
+    {t:"because",ok:true,why:"صحيحة — because تُدخِل السبب: بقيتُ لأن الجوّ كان سيّئاً"},
+    {t:"so",ok:false,why:"so تُدخِل النتيجة لا السبب، والترتيب هنا معكوس"},
+    {t:"or",ok:false,why:"or للاختيار بين أمرين"}]},
+  {id:"st_a2_7",lv:"A2",type:"gap",tag:"صيغة السؤال",q:"......... your brother play football?",c:[
+    {t:"Do",ok:false,why:"مع الغائب المفرد (brother) نستعمل Does"},
+    {t:"Does",ok:true,why:"صحيحة — Does مع he/she/it، والفعل بعدها يبقى مجرّداً (play)"},
+    {t:"Is",ok:false,why:"Is تحتاج playing لا play"},
+    {t:"Are",ok:false,why:"Are للجمع أو you، والفاعل هنا مفرد"}]},
+  {id:"st_a2_8",lv:"A2",type:"order",tag:"ترتيب الجمل",
+    s:["Omar decided to fix his old bicycle.",
+       "To start, he cleaned the chain and checked the tyres.",
+       "Then he replaced the broken brake with a new one.",
+       "After that, he painted the frame blue.",
+       "In the end, the bicycle looked almost new."],
+    why:"الجملة الأولى تُعلن الموضوع (قرّر أن يُصلح) — رأس الفقرة، ولا كلمة إشارة فيها. والباقي يترتّب بكلمات الإشارة نفسها: To start ثم Then ثم After that ثم In the end."},
+
+  // ============ B1 — محمد (الأقرب لصعوبة STEP الحقيقية) ============
+  {id:"st_b1_1",lv:"B1",type:"pick",tag:"ترتيب الكلمات",c:[
+    {t:"Because it was raining heavily, the match which we had waited for was cancelled.",ok:true,why:"صحيحة — شبه جملة السبب أوّلاً وبعدها فاصلة، ثم الفاعل مع جملة الوصل ثم الفعل"},
+    {t:"The match was cancelled which we had waited for because heavily it was raining.",ok:false,why:"جملة الوصل ابتعدت عن موصوفها، وheavily في غير موضعها"},
+    {t:"Was cancelled the match which we had waited for because it was raining heavily.",ok:false,why:"الفعل لا يسبق الفاعل في الجملة الخبرية"},
+    {t:"The match which we had waited for because it was raining heavily was cancelled.",ok:false,why:"وضعُ السبب داخل جملة الوصل يقلب المعنى: صار الانتظار بسبب المطر"}]},
+  {id:"st_b1_2",lv:"B1",type:"pick",tag:"علامات الترقيم",c:[
+    {t:"The test was difficult, I passed it anyway.",ok:false,why:"وصلٌ بفاصلة (comma splice): جملتان تامّتان لا تُوصلان بفاصلة وحدها"},
+    {t:"The test was difficult; I passed it anyway.",ok:true,why:"صحيحة — الفاصلة المنقوطة توصل جملتين تامّتين مترابطتين"},
+    {t:"The test was difficult I passed it anyway.",ok:false,why:"لا فاصل إطلاقاً بين جملتين تامّتين"},
+    {t:"The test was difficult, however I passed it anyway.",ok:false,why:"however بين جملتين تحتاج فاصلة منقوطة قبلها وفاصلة بعدها"}]},
+  {id:"st_b1_3",lv:"B1",type:"gap",tag:"المضارع التامّ",q:"She ......... in this company since 2019.",c:[
+    {t:"works",ok:false,why:"since تربط الماضي بالحاضر، والمضارع البسيط لا يفعل ذلك"},
+    {t:"worked",ok:false,why:"الماضي البسيط يُنهي الحدث، وsince تدلّ على استمراره"},
+    {t:"has worked",ok:true,why:"صحيحة — since مع المضارع التامّ: بدأ في الماضي ومستمرّ حتى الآن"},
+    {t:"is working",ok:false,why:"المضارع المستمرّ لا يُستعمل مع since لبيان المدّة الممتدّة"}]},
+  {id:"st_b1_4",lv:"B1",type:"gap",tag:"التضادّ",q:"He could have finished the project on time, .........",c:[
+    {t:"but he didn't",ok:true,why:"صحيحة — could have تعني أن الأمر كان ممكناً ولم يقع، فالتكملة تضادّ"},
+    {t:"so he did",ok:false,why:"so نتيجة، وcould have تدلّ أصلاً على أنه لم يفعل"},
+    {t:"and he did",ok:false,why:"تناقض: could have تعني أنه لم يفعل"},
+    {t:"but he did",ok:false,why:"لو فعلها لقيل he finished لا could have finished"}]},
+  {id:"st_b1_5",lv:"B1",type:"gap",tag:"أدوات الربط",q:"You will not pass the exam ......... you study harder.",c:[
+    {t:"because",ok:false,why:"because سبب، والجملة تضع شرطاً"},
+    {t:"unless",ok:true,why:"صحيحة — unless = if not: لن تنجح إن لم تذاكر أكثر"},
+    {t:"until",ok:false,why:"until للزمن لا للشرط"},
+    {t:"although",ok:false,why:"although للتنازل والتضادّ لا للشرط"}]},
+  {id:"st_b1_6",lv:"B1",type:"gap",tag:"المبني للمجهول",q:"The new library ......... last year.",c:[
+    {t:"built",ok:false,why:"المكتبة لا تبني نفسها، فالفعل يجب أن يكون مبنيّاً للمجهول"},
+    {t:"was built",ok:true,why:"صحيحة — المبني للمجهول في الماضي: was + التصريف الثالث"},
+    {t:"is built",ok:false,why:"last year ماضٍ، فيلزم was لا is"},
+    {t:"has built",ok:false,why:"مبنيٌّ للمعلوم، ويحتاج فاعلاً يبني"}]},
+  {id:"st_b1_7",lv:"B1",type:"gap",tag:"ضمائر الوصل",q:"The student ......... won the prize is my cousin.",c:[
+    {t:"which",ok:false,why:"which لغير العاقل"},
+    {t:"who",ok:true,why:"صحيحة — who للعاقل، وهي هنا فاعل جملة الوصل"},
+    {t:"whose",ok:false,why:"whose للملكية ويأتي بعدها اسم"},
+    {t:"where",ok:false,why:"where للمكان لا للأشخاص"}]},
+  {id:"st_b1_8",lv:"B1",type:"order",tag:"ترتيب الجمل",
+    s:["Nora wanted to improve her English writing.",
+       "To begin with, she started keeping a short diary in English every night.",
+       "She then asked a teacher to mark her mistakes once a week.",
+       "After a few months, she noticed that her sentences had become longer and clearer.",
+       "Eventually, she was able to write a full essay without any help."],
+    why:"ابحث أوّلاً عن الجملة التي لا تشير إلى ما قبلها ولا تحمل كلمة تسلسل — وهي رأس الفقرة (أرادت أن تُحسّن). ثم رتّب بكلمات الإشارة: To begin with ثم then ثم After a few months ثم Eventually."},
+];
+function stepBankFor(level){
+  const L=String(level||"A2");
+  const exact=STEP_BANK.filter(function(x){return x.lv===L});
+  return exact.length?exact:STEP_BANK.filter(function(x){return x.lv==="A1"});
+}
+const STEP_SRS_KEY="mawhiba_step_srs";
+function stepSrsLoad(){try{return JSON.parse(lsGet(STEP_SRS_KEY)||"{}")}catch(e){return{}}}
+function stepSrsSave(o){try{lsSet(STEP_SRS_KEY,JSON.stringify(o))}catch(e){}}
+function stepSrsUpdate(id,ok){
+  const st=stepSrsLoad(),r=st[id]||{box:0,seen:0};
+  const n=fsrsUpdate(r,ok,srsToday());
+  r.box=n.box;r.due=n.due;r.seen=n.seen;r.s=n.s;r.d=n.d;r.last=n.last;
+  st[id]=r;stepSrsSave(st);
+}
+const STEP_N=6;
+// الجلسة تخلط الأنواع كما يخلطها الاختبار نفسه، ولا تُبقي الترتيب فتُحفَظ المواضع.
+// وضمانُ عنصر ترتيبٍ واحد على الأقلّ مقصود: هو أثقل الأنواع وأقلّها عدداً في البنك،
+// فلولا الضمان لغاب عن أكثر الجلسات بحكم الاحتمال وحده.
+function buildStepPlan(){
+  const st=stepSrsLoad(),today=srsToday(),POOL=stepBankFor(profileOf().level);
+  const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
+  const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
+  let out=due.concat(fresh).slice(0,STEP_N);
+  if(!out.length)out=shuffle(POOL).slice(0,STEP_N);   // البنك مستنفَد: مراجعة حرّة لا شاشة فارغة
+  if(out.length>1&&!out.some(function(i){return i.type==="order"})){
+    const ord=shuffle(POOL.filter(function(i){return i.type==="order"}))[0];
+    if(ord)out[out.length-1]=ord;
+  }
+  return shuffle(out);
+}
+let stepItems=[],stepIdx=0,stepOrder=[0,1,2,3],stepPicked=-1,stepLocked=false,stepScore=0,
+  stepShownAt=0,stepDone=false,stepSeq=[],stepSeqPicked=[];
+function startStep(){
+  stepItems=buildStepPlan();stepIdx=0;stepScore=0;stepDone=false;
+  mode="step";stepSetupRound();window.scrollTo(0,0);render();
+}
+function stepSetupRound(){
+  const it=stepCur();
+  stepPicked=-1;stepLocked=false;stepShownAt=Date.now();stepSeqPicked=[];
+  stepOrder=shuffle([0,1,2,3]);
+  // ترتيبُ عرضٍ مخلوط لعناصر الترتيب — وإلا ظهرت الجمل مرتّبةً أصلاً فلا سؤال
+  stepSeq=it&&it.type==="order"?shuffle(it.s.map(function(_,i){return i})):[];
+}
+function stepCur(){return stepItems[stepIdx]}
+function stepChoose(i){
+  if(stepLocked)return;
+  const it=stepCur();if(!it||it.type==="order")return;
+  stepPicked=i;stepLocked=true;
+  const ok=!!it.c[i].ok;
+  if(ok)stepScore++;
+  stepSrsUpdate(it.id,ok);
+  logAnswer("step",it.type,ok,it.c[i].t,it.id,Date.now()-stepShownAt,
+    {q_text:((it.tag?"["+it.tag+"] ":"")+(it.q?it.q+" · ":"")
+      +it.c.map(function(x,k){return (k+1)+") "+x.t+(x.ok?" ✓":"")}).join(" | ")).slice(0,1200)});
+  render();
+}
+function stepSeqPick(i){if(stepLocked||stepSeqPicked.indexOf(i)>=0)return;stepSeqPicked.push(i);render()}
+function stepSeqUnpick(k){if(stepLocked)return;stepSeqPicked.splice(k,1);render()}
+function stepSeqSubmit(){
+  if(stepLocked)return;
+  const it=stepCur();if(!it||it.type!=="order")return;
+  if(stepSeqPicked.length<it.s.length)return;   // ناقصٌ: لا يُحرق العنصر
+  stepLocked=true;
+  const ok=stepSeqPicked.every(function(v,k){return v===k});
+  if(ok)stepScore++;
+  stepSrsUpdate(it.id,ok);
+  logAnswer("step","order",ok,stepSeqPicked.map(function(v){return v+1}).join("-"),it.id,
+    Date.now()-stepShownAt,
+    {q_text:("[ترتيب] الصواب "+it.s.map(function(_,k){return k+1}).join("-")+" · "
+      +it.s.map(function(t,k){return (k+1)+") "+t}).join(" | ")).slice(0,1200)});
+  render();
+}
+function stepNext(){
+  if(stepIdx+1>=stepItems.length){stepDone=true;render();return}
+  stepIdx++;stepSetupRound();render();
+}
+function renderStep(){
+  if(!stepItems.length){app.innerHTML=`<div class="card" style="text-align:center">لا شيء مستحقّ اليوم — عودي غداً 🌱</div><button class="link-btn" onclick="home()">→ الرئيسية</button>`;return}
+  if(stepDone)return renderStepResult();
+  const it=stepCur(),p=profileOf(),m=p.g==="m";
+  const prog=`<div class="bar">${stepItems.map(function(_,i){return `<div class="seg" style="background:${i<=stepIdx?'#B45309':'#E2E8F0'};opacity:${i<=stepIdx?1:.5}"></div>`}).join("")}</div>`;
+  let body="";
+  if(it.type==="order"){
+    const chosen=stepSeqPicked.length
+      ? stepSeqPicked.map(function(i,k){return `<button type="button" ${stepLocked?"disabled":""} onclick="stepSeqUnpick(${k})"
+          style="display:block;width:100%;text-align:left;direction:ltr;background:#B45309;color:#fff;border:none;border-radius:10px;
+          padding:10px 12px;margin-bottom:6px;font-family:Georgia,serif;font-size:15px;cursor:${stepLocked?'default':'pointer'}">
+          <b>${toAr(k+1)}.</b> ${esc(it.s[i])}</button>`}).join("")
+      : `<span style="color:#94A3B8;font-size:14px">${m?"اضغط الجمل بالترتيب الصحيح…":"اضغطي الجمل بالترتيب الصحيح…"}</span>`;
+    const tiles=stepSeq.map(function(i){
+      const used=stepSeqPicked.indexOf(i)>=0;
+      return `<button type="button" ${(used||stepLocked)?"disabled":""} onclick="stepSeqPick(${i})"
+        style="display:block;width:100%;text-align:left;direction:ltr;background:${used?'#F1F5F9':'#fff'};
+        color:${used?'#CBD5E1':'#0F172A'};border:1.5px solid ${used?'#E2E8F0':'#FDE68A'};border-radius:10px;
+        padding:10px 12px;margin-bottom:6px;font-family:Georgia,serif;font-size:15px;
+        cursor:${(used||stepLocked)?'default':'pointer'}">${esc(it.s[i])}</button>`}).join("");
+    const okAll=stepLocked&&stepSeqPicked.every(function(v,k){return v===k});
+    const fix=stepLocked?`<div style="margin-top:12px;background:${okAll?'#ECFDF5':'#FEF2F2'};border-radius:12px;padding:12px">
+        <div style="font-weight:800;color:${okAll?'#065F46':'#991B1B'};margin-bottom:8px">${okAll?"✓ الترتيب صحيح":"✗ الترتيب الصحيح:"}</div>
+        ${okAll?"":it.s.map(function(t,k){return `<div style="direction:ltr;text-align:left;font-family:Georgia,serif;font-size:14px;color:#0F172A;margin-bottom:4px"><b>${k+1}.</b> ${esc(t)}</div>`}).join("")}
+        <div style="margin-top:8px;font-size:13px;color:#78350F;line-height:1.9">💡 ${esc(it.why)}</div>
+      </div>`:"";
+    body=`<div style="font-size:13px;color:#64748B;margin-bottom:10px">${m?"رتّب الجمل لتصير فقرةً مترابطة":"رتّبي الجمل لتصير فقرةً مترابطة"}</div>
+      <div style="background:#FFFBEB;border:2px dashed #FCD34D;border-radius:12px;padding:10px;min-height:56px;margin-bottom:12px">${chosen}</div>
+      ${stepLocked?"":tiles}
+      ${(!stepLocked&&stepSeqPicked.length>=it.s.length)?`<button class="btn" style="background:#B45309;margin-top:6px" onclick="stepSeqSubmit()">تحقّق من الترتيب</button>`:""}
+      ${fix}`;
+  }else{
+    const choices=stepOrder.map(function(wi){
+      const opt=it.c[wi];
+      let bg="#fff",bd="#E2E8F0",col="#0F172A";
+      if(stepLocked){if(opt.ok){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(wi===stepPicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}
+      const why=stepLocked?`<div style="margin-top:5px;font-size:12px;color:${opt.ok?'#059669':'#B45309'}">${opt.ok?"✓ ":"✗ "}${esc(opt.why)}</div>`:"";
+      return `<button class="choice" style="background:${bg};border-color:${bd};color:${col};direction:ltr;text-align:left;font-family:Georgia,serif;display:block" onclick="stepChoose(${wi})" ${stepLocked?"disabled":""}>${esc(opt.t)}${why}</button>`;
+    }).join("");
+    const stem=it.q?`<div style="direction:ltr;text-align:left;font-family:Georgia,serif;font-size:17px;color:#0F172A;margin-bottom:12px">${esc(it.q)}</div>`
+      :`<div style="font-size:13px;color:#64748B;margin-bottom:10px">${m?"أيّ جملةٍ صحيحة تماماً؟":"أيّ جملةٍ صحيحة تماماً؟"}</div>`;
+    body=stem+`<div class="choices">${choices}</div>`;
+  }
+  app.innerHTML=`
+  <button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
+  ${prog}
+  <div class="meta"><span>${toAr(stepIdx+1)} من ${toAr(stepItems.length)}</span><span>نمط STEP · ${it.lv}</span></div>
+  <div class="card">
+    <span class="tag" style="background:#FEF3C7;color:#B45309">📋 ${esc(it.tag||"نمط STEP")}</span>
+    <div style="margin-top:12px">${body}</div>
+  </div>
+  ${stepLocked?`<button class="btn" style="background:#B45309" onclick="stepNext()">${stepIdx+1>=stepItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`:""}`;
+}
+function renderStepResult(){
+  const pct=stepItems.length?Math.round(stepScore/stepItems.length*100):0;
+  app.innerHTML=`
+  <div class="card">
+    <div class="score-row"><span class="score-big" style="color:${pct>=70?'#059669':pct>=50?'#D97706':'#DC2626'}">${toAr(stepScore)}</span><span class="score-total">/ ${toAr(stepItems.length)}</span><span class="score-pct">${toAr(pct)}%</span></div>
+    <div style="color:#64748B;font-size:15px;margin-bottom:14px">${pct>=85?"نمط الاختبار صار مألوفاً! 🌟":pct>=60?"جيّد — والأخطاء تعود للمراجعة 💪":"لا بأس — هذه الأنماط تُتقَن بالتكرار 🌱"}</div>
+    <button class="btn" style="background:#B45309" onclick="startStep()">🔁 جلسة أخرى</button>
+    <button class="link-btn" onclick="home()">→ الرئيسية</button>
+  </div>`;
+}
+
 // ===== لعبة الاستماع: أزواج شبه متطابقة (minimal pairs) — طُلبت (١٦ أغسطس) بعد
 // لقطة شاشة من تطبيقٍ آخر (chose/choose). نفس بنية الاستماع/القراءة تماماً: بنكٌ
 // بمستويات + fsrsUpdate للتباعد + شاشة نتيجة — لا آلية جديدة. والفرق الوحيد من طبيعة
@@ -7960,7 +8243,7 @@ function bumpStreak(){const st=getStreak();const t=todayStr();if(st.last===t)ret
 function growthMsg(modeKey,pct){try{const key="mawhiba_best_"+modeKey;const prev=parseInt(lsGet(key)||"-1");let msg="";if(prev<0){msg="أول محاولة في هذا القسم — انطلاقة موفّقة! 🌱"}else if(pct>prev){msg=`تحسّنتِ عن أفضل نتيجة سابقة (${toAr(prev)}%)! تقدّم رائع 📈`}else if(pct===prev){msg="ثبات على أفضل مستوى سابق 💪"}else{msg="واصلي، كل محاولة تبني مهارتك 🌟"}if(pct>prev)lsSet(key,String(pct));return msg}catch(e){return""}}
 
 // ===== العرض =====
-function render(){if(mode==="home")return renderHome();if(mode==="listen")return renderListen();if(mode==="read")return renderRead();if(mode==="write")return renderWrite();if(mode==="gram")return renderGram();if(mode==="minpair")return renderMinpair();if(mode==="errors")return renderErrors();if(mode==="engplan")return renderEngPlan();if(mode==="factplan")return renderFactPlan();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="speak")return renderSpeak();if(mode==="coach")return renderCoach();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
+function render(){if(mode==="home")return renderHome();if(mode==="listen")return renderListen();if(mode==="read")return renderRead();if(mode==="write")return renderWrite();if(mode==="gram")return renderGram();if(mode==="step")return renderStep();if(mode==="minpair")return renderMinpair();if(mode==="errors")return renderErrors();if(mode==="engplan")return renderEngPlan();if(mode==="factplan")return renderFactPlan();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="speak")return renderSpeak();if(mode==="coach")return renderCoach();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
 
 // صفحة الأخوين قسمٌ واحد: المحادثة. بقيّة الأقسام بُنيت على أخطائها هي — بنك
 // أسئلتها، وتباعدها، ومنهج صفّها السادس — فوضعها أمام ولدٍ آخر يُشغله بما ليس له.
@@ -7980,6 +8263,7 @@ function renderHomeCoachOnly(){
     <button class="mode full" style="background:#7C3AED;border-color:#7C3AED" onclick="startRead()"><span class="m-name">📖 فهم المقروء</span><div class="m-sub">اقرأ نصّاً قصيراً، وأجب عن معناه — مستوى ${p.level||"A2"}</div></button>
     <button class="mode full" style="background:#059669;border-color:#059669" onclick="startWrite()"><span class="m-name">📝 الكتابة</span><div class="m-sub">اكتب نصّاً حرّاً عن سؤالٍ نموذجي — تصحيح نحوي فوري يغذّي «أخطائي» — مستوى ${p.level||"A2"}</div></button>
     <button class="mode full" style="background:#9333EA;border-color:#9333EA" onclick="startGram()"><span class="m-name">✍️ دقّة القواعد</span><div class="m-sub">أربع جملٍ، صحيحةٌ واحدة — اختر ثم اقرأ لماذا كل خيار صحيح أو خاطئ</div></button>
+    <button class="mode full" style="background:#B45309;border-color:#B45309" onclick="startStep()"><span class="m-name">📋 نمط اختبار STEP</span><div class="m-sub">أسئلة الاختبار نفسها: ترتيب الكلمات، الفراغات، الترقيم والكبتلة، وترتيب فقرة — مع شرح كل خيار بعد الإجابة</div></button>
     <button class="mode full" style="background:#0891B2;border-color:#0891B2" onclick="startMinpair()"><span class="m-name">👂 لعبة الاستماع</span><div class="m-sub">كلمتان متشابهتا النطق (chose/choose) — أيّهما سمعت؟ ثم مثالٌ يشرح معناها</div></button>
     ${errCount()?`<button class="mode full" style="background:#DB2777;border-color:#DB2777" onclick="startErrors()"><span class="m-name">🎯 أخطائي · ${toAr(errCount())} مستحقّة</span><div class="m-sub">تصحيحات محادثتك السابقة — تُبنى كلمةً كلمة، وتعود عند حافّة النسيان</div></button>`:""}
   </div>
@@ -8023,6 +8307,7 @@ function renderHome(){
     <button class="mode full" style="background:#7C3AED;border-color:#7C3AED" onclick="startRead()"><span class="m-name">📖 فهم المقروء</span><div class="m-sub">اقرئي نصّاً قصيراً، وأجيبي عن معناه — مستوى ${profileOf().level||"A2"}</div></button>
     <button class="mode full" style="background:#059669;border-color:#059669" onclick="startWrite()"><span class="m-name">📝 الكتابة</span><div class="m-sub">اكتبي نصّاً حرّاً عن سؤالٍ نموذجي — تصحيح نحوي فوري يغذّي «أخطائي» — مستوى ${profileOf().level||"A2"}</div></button>
     <button class="mode full" style="background:#9333EA;border-color:#9333EA" onclick="startGram()"><span class="m-name">✍️ دقّة القواعد</span><div class="m-sub">أربع جملٍ، صحيحةٌ واحدة — اختاري ثم اقرئي لماذا كل خيار صحيح أو خاطئ</div></button>
+    <button class="mode full" style="background:#B45309;border-color:#B45309" onclick="startStep()"><span class="m-name">📋 نمط اختبار STEP</span><div class="m-sub">أسئلة الاختبار نفسها: ترتيب الكلمات، الفراغات، الترقيم والكبتلة، وترتيب فقرة — مع شرح كل خيار بعد الإجابة</div></button>
     <button class="mode full" style="background:#0891B2;border-color:#0891B2" onclick="startMinpair()"><span class="m-name">👂 لعبة الاستماع</span><div class="m-sub">كلمتان متشابهتا النطق (chose/choose) — أيّتهما سمعتِ؟ ثم مثالٌ يشرح معناها</div></button>
     <button class="mode full" style="background:#7C3AED;border-color:#7C3AED" onclick="startPronunciation()"><span class="m-name">🎤 تمرين النطق</span><div class="m-sub">تحقّق أساسي هل نطقتِ الكلمة صح (يحتاج ميكروفون) — وليس تصحيح لهجة دقيق</div></button>
     <button class="mode full" style="background:#0E7490;border-color:#0E7490" onclick="startCoach()"><span class="m-name">🗣️ تكلّمي بالإنجليزية</span><div class="m-sub">محادثة حرّة مع شريك يردّ عليكِ بالإنجليزية — ونقيس وضوح أصواتك في كل جملة</div></button>
