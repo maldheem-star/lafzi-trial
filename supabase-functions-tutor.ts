@@ -32,8 +32,11 @@ const jsonOut = (o: unknown, status = 200) =>
 // كلها طبقات مجانية دائمة بلا بطاقة (بحدود طلبات لا رصيد)، وحاجتنا عشرات الطلبات
 // يومياً — أي جزء من واحد بالمئة من أصغرها.
 const OAI = {
+  // llama-3.3-70b-versatile أوقفته Groq نهائياً ١٦ أغسطس ٢٠٢٦ (أُعلن الإيقاف ١٧ يونيو)؛
+  // بديلها الموصى به من Groq نفسها openai/gpt-oss-120b — كشفه عطلٌ حيّ عند إلياس ومحمد
+  // معاً (tutor_bad_model، ١٧ أغسطس) بعد أن كشف تسجيل التفصيل الحقيقي السبب أخيراً.
   groq:       { url: "https://api.groq.com/openai/v1/chat/completions",
-                keys: ["GROQ_API_KEY", "GROQ_KEY"], model: "llama-3.3-70b-versatile" },
+                keys: ["GROQ_API_KEY", "GROQ_KEY"], model: "openai/gpt-oss-120b" },
   cerebras:   { url: "https://api.cerebras.ai/v1/chat/completions",
                 keys: ["CEREBRAS_API_KEY"], model: "llama-3.3-70b" },
   openrouter: { url: "https://openrouter.ai/api/v1/chat/completions",
@@ -513,7 +516,8 @@ Deno.serve(async (req) => {
     // ورُفع سقف المحادثة ٣٠٠ ⇐ ٧٠٠ بعد بترٍ حقيقي شوهد على جهاز صاحب المشروع (١٨ أغسطس):
     // نموذجٌ مفكّر استهلك الميزانية كلّها في تفكيره فانقطع قبل الردّ. والسقف ليس طول الردّ —
     // طوله تحكمه قواعد النظام («جملتان أو ثلاث») — بل حدٌّ أعلى يمنع البتر، فرفعه لا يُطيل شيئاً.
-    const maxTok = gen ? 500 : 700;
+    // وهذا قاعٌ لكل المرشّحين؛ ورفعه لنموذجٍ مفكّرٍ بعينه يقع داخل الحلقة حيث يُعرف اسمه.
+    const maxTokBase = gen ? 500 : 700;
 
     // يُجرَّب كل مرشّحٍ بدوره حتى يصل ردٌّ نصّيّ فعليّ، أو تنتهي القائمة. كل مزوّدٍ
     // فاشل يُسجَّل في attempts ليصل تفصيله في الخطأ الأخير إن فشل الجميع — لا تشخيصاً
@@ -547,6 +551,13 @@ Deno.serve(async (req) => {
         continue;
       }
 
+      // ميزانية الرموز وضبط التفكير يُحسبان لكل نموذجٍ على حدة، لا مرّةً للجميع: الحلقة
+      // قد تنتقل من مزوّدٍ مفكّرٍ إلى غيره، فسقفٌ واحدٌ محسوبٌ قبلها يُخطئ أحدهما حتماً.
+      // gpt-oss تُنفق من السقف نفسه على تفكيرٍ داخلي قبل الجواب، فسقفٌ ٣٠٠ كان يُستنفَد
+      // كلّه تفكيراً ويعود جوابٌ فارغ (tutor_no_text، محمد ١٧ أغسطس، finishReason="length").
+      const isGptOss = /gpt-oss/i.test(model);
+      const maxTok = isGptOss ? Math.max(maxTokBase, 1200) : maxTokBase;
+
       let url: string, headers: Record<string, string>, body: unknown;
       if (provider === "gemini") {
         url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
@@ -571,10 +582,12 @@ Deno.serve(async (req) => {
             turns.map((m) => ({ role: String(m.role) === "model" ? "assistant" : "user", content: clip(m.text) }))),
           temperature: 0.6, max_tokens: maxTok, top_p: 0.9,
         };
-        // نماذج Qwen 3 تُفكّر افتراضاً وتضع تفكيرها في نصّ الردّ — ووثائق Groq تنصّ على
-        // reasoning_effort:"none" لإيقافه. مشروطٌ باسم النموذج لا مُرسَلٌ دائماً: حقلٌ
-        // لا يعرفه مزوّدٌ آخر (أو نموذجٌ غير مفكّر) قد يُرَدّ بـ400، فيقع عطلٌ مكان علاج.
-        if (/qwen3/i.test(model)) oai.reasoning_effort = "none";
+        // ضبط التفكير مشروطٌ باسم النموذج لا مُرسَلٌ دائماً: حقلٌ لا يعرفه مزوّدٌ آخر
+        // (أو نموذجٌ غير مفكّر) قد يُرَدّ بـ400، فيقع عطلٌ مكان علاج. والقيمتان تختلفان
+        // لأن النموذجين يختلفان: gpt-oss لا تقبل إيقافاً تامّاً فتُخفَّض إلى low ويُرفع
+        // سقفها، وQwen 3 تقبل none فيُوقَف تفكيرها من أصله (كلاهما موثَّق عند Groq).
+        if (isGptOss) oai.reasoning_effort = "low";
+        else if (/qwen3/i.test(model)) oai.reasoning_effort = "none";
         body = oai;
       }
 

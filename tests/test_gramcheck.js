@@ -24,7 +24,7 @@ let page=await mk('index.html');
 const banks=await page.evaluate(()=>({
   a1:gramBankFor('A1').every(x=>x.lv==='A1'),
   a2:gramBankFor('A2').every(x=>x.lv==='A2'),
-  b1:gramBankFor('B1').every(x=>x.lv==='B1'),
+  b1:gramBankFor('B1').every(x=>x.lv==='B1'||x.lv==='B1+'),
   n:{a1:gramBankFor('A1').length,a2:gramBankFor('A2').length,b1:gramBankFor('B1').length},
   shape:GRAM_BANK.every(x=>Array.isArray(x.c)&&x.c.length===4
     &&x.c.filter(o=>o.ok).length===1
@@ -34,6 +34,17 @@ const banks=await page.evaluate(()=>({
 ok(banks.a1&&banks.a2&&banks.b1,'لا اختلاط بين المستويات');
 ok(banks.n.a1>=5&&banks.n.a2>=5&&banks.n.b1>=5,`ولكلٍّ بنكٌ كافٍ (${JSON.stringify(banks.n)})`);
 ok(banks.shape,'وكل عنصر بشكل سليم: أربع جملٍ مختلفة، صحيحةٌ واحدة بالضبط، وشرحٌ لكلٍّ');
+
+console.log('\n١ب) تمديد B1+ (شرطٌ مختلط ومبنيٌّ للمجهول) — يُضاف إلى B1 وحده، بلا تسرّب');
+const ext=await page.evaluate(()=>({
+  b1HasPlus:gramBankFor('B1').some(x=>x.lv==='B1+'),
+  a1NoPlus:!gramBankFor('A1').some(x=>x.lv==='B1+'),
+  a2NoPlus:!gramBankFor('A2').some(x=>x.lv==='B1+'),
+  plusCount:GRAM_BANK.filter(x=>x.lv==='B1+').length,
+}));
+ok(ext.b1HasPlus,'بنك B1 يحوي عناصر B1+');
+ok(ext.a1NoPlus&&ext.a2NoPlus,'ولا تتسرّب إلى A1/A2');
+ok(ext.plusCount>=5,`وعددٌ كافٍ منها (${ext.plusCount})`);
 
 console.log('\n٢) بدء الجلسة: ترتيب عرضٍ عشوائي — لا انحياز موضع');
 await page.evaluate(()=>startGram());
@@ -110,8 +121,8 @@ const m=await mk('mohammed.html');
 const mLv=await m.evaluate(()=>({level:profileOf().level,btn:document.body.innerText.indexOf('دقّة القواعد')>=0}));
 ok(mLv.level==='B1'&&mLv.btn,`محمد B1 والزرّ ظاهر (${mLv.level})`);
 await m.evaluate(()=>startGram());
-const mBank=await m.evaluate(()=>gramItems.every(x=>x.lv==='B1'));
-ok(mBank,'وجلسته من بنك B1 وحده');
+const mBank=await m.evaluate(()=>gramItems.every(x=>x.lv==='B1'||x.lv==='B1+'));
+ok(mBank,'وجلسته من بنك B1 (ومعه تمديد B1+) وحده');
 const e=await mk('elias.html');
 const eLv=await e.evaluate(()=>({level:profileOf().level,btn:document.body.innerText.indexOf('دقّة القواعد')>=0}));
 ok(eLv.level==='A2'&&eLv.btn,`إلياس A2 والزرّ ظاهر (${eLv.level})`);

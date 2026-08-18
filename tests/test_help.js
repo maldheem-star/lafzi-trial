@@ -175,7 +175,7 @@ console.log('\n٧) الموقف الحرّ يسأل عن الطريقة قبل �
 page=await mk('index.html');
 // نُسلّح البوّابة صراحةً: الغرض إثبات أنها تتبع المتعلّم لا الموقف
 await page.evaluate(()=>{try{localStorage.setItem('mawhiba_echo_v1',JSON.stringify({r:[1,1]}))}catch(e){}});
-await page.evaluate(()=>{startCoach();coachPick(6)});
+await page.evaluate(()=>{startCoach();coachPick(COACH_SCENES.length-1)});
 await page.waitForTimeout(150);
 ok((await page.textContent('#app')).includes('كيف تحبّين'),'الطريقة أولاً');
 await page.click("button[onclick=\"coachMode('suggest')\"]");

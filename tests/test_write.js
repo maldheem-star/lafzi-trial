@@ -44,12 +44,14 @@ ok(banks.n.a1>=5&&banks.n.a2>=5&&banks.n.b1>=5,`ولكلٍّ بنكٌ كافٍ (
 const shape=await page.evaluate(()=>WRITE_BANK.every(x=>x.prompt&&x.min>0));
 ok(shape,'وكل عنصر بشكل سليم (سؤالٌ وهدف كلماتٍ)');
 const rising=await page.evaluate(()=>{
+  // دمج الجمل (type:"combine") هدفٌ قصير عمداً (جملة واحدة لا فقرة) — يُستثنى من
+  // ترتيب الطول الصاعد، فهو معيارٌ مختلف (نظافة نحوية) لا امتداد الكتابة الحرّة
   const a1=Math.max(...writeBankFor('A1').map(x=>x.min));
   const a2=Math.min(...writeBankFor('A2').map(x=>x.min));
-  const b1=Math.min(...writeBankFor('B1').map(x=>x.min));
+  const b1=Math.min(...writeBankFor('B1').filter(x=>x.type!=="combine").map(x=>x.min));
   return a1<a2&&a2<b1;
 });
-ok(rising,'وهدف الكلمات يرتفع مع المستوى — A1 < A2 < B1');
+ok(rising,'وهدف الكلمات يرتفع مع المستوى — A1 < A2 < B1 (بلا دمج الجمل)');
 
 console.log('\n٢) عدّاد الكلمات وتقسيم الجمل يعملان بشكل صحيح');
 const wc=await page.evaluate(()=>({
@@ -102,7 +104,7 @@ ok(await page.evaluate(()=>writeModelViews)===0,'ويُصفَّر عند الا�
 
 console.log('\n٤) الإرسال يُقاس بعدد الكلمات لا بجوابٍ واحد صحيح');
 logs=[];calls=[];
-page=await mk();
+await page.close();page=await mk();
 await page.evaluate(()=>{startWrite();writeItems[0]={id:'wr_test',lv:'A2',min:25,prompt:'test prompt'};writeIdx=0;render()});
 await page.fill('#writeIn','Too short.');
 await page.click('button[onclick="writeSubmit()"]');
@@ -113,7 +115,7 @@ let t=await page.textContent('#app');
 ok(t.includes('عدد الكلمات أقلّ من الهدف'),'ويُقال ذلك صراحةً');
 
 console.log('\n٥) الفراغ لا يُحرَق محاولة');
-page=await mk();
+await page.close();page=await mk();
 await page.evaluate(()=>startWrite());
 await page.click('button[onclick="writeSubmit()"]');
 await page.waitForTimeout(150);
@@ -121,7 +123,7 @@ ok(await page.evaluate(()=>writeSubmitted)===false,'لا شيء يُسجَّل �
 
 console.log('\n٦) التصحيح يمرّ على مسار المراجعة نفسه (review)، ويُرقَّم الجمل');
 logs=[];calls=[];
-page=await mk();
+await page.close();page=await mk();
 await page.evaluate(()=>{startWrite();writeItems[0]={id:'wr_test2',lv:'A2',min:5,prompt:'test prompt'};writeIdx=0;render()});
 await page.fill('#writeIn','I go school every day. I like it a lot.');
 await page.click('button[onclick="writeSubmit()"]');
@@ -165,7 +167,7 @@ ok(cleanRow&&cleanRow.q_text.includes('review:none'),`النصّ السليم ف
 console.log('\n٩) تعذّر المراجعة لا يمنع تسجيل عدد الكلمات ولا يوقف الجلسة');
 reviewFail=true;
 logs=[];calls=[];
-page=await mk();
+await page.close();page=await mk();
 await page.evaluate(()=>{startWrite();writeItems[0]={id:'wr_test3',lv:'A1',min:3,prompt:'test'};writeIdx=0;render()});
 await page.fill('#writeIn','I like cats a lot.');
 await page.click('button[onclick="writeSubmit()"]');
@@ -180,7 +182,7 @@ reviewFail=false;
 
 console.log('\n١٠) جلسة كاملة، ثم النتيجة');
 review={ok:true,reply:"NONE"};
-page=await mk();
+await page.close();page=await mk();
 await page.evaluate(()=>startWrite());
 async function step(){
   const has=await page.evaluate(()=>!!writeCur());
@@ -194,23 +196,68 @@ while(!(await page.evaluate(()=>writeDone)))await step();
 t=await page.textContent('#app');
 ok(/جلسة أخرى/.test(t),'وتُعرض شاشة النتيجة');
 
+console.log('\n١٠ب) دمج الجمل (type:"combine") — النجاح نظافة نحوية لا طولٌ فقط');
+const combineShape=await page.evaluate(()=>WRITE_BANK.filter(x=>x.type==='combine').every(x=>x.lv==='B1'&&x.prompt.includes('1)')&&x.prompt.includes('2)')));
+ok(combineShape,'كل عناصر الدمج من B1، وفيها جملتان مرقّمتان للدمج');
+const combineCount=await page.evaluate(()=>WRITE_BANK.filter(x=>x.type==='combine').length);
+ok(combineCount>=5,`وعددٌ كافٍ منها (${combineCount})`);
+
+// نُعيد استعمال نفس الصفحة المفتوحة (كبقية الاختبارات هنا) بدل فتح صفحةٍ جديدة
+// لكل حالة — startWrite() يُصفّر الحالة كاملة، فلا حاجة لصفحةٍ منفصلة
+review={ok:true,reply:"NONE"};
+await page.evaluate(()=>{startWrite();writeItems[0]={id:'wr_c1',lv:'B1',min:8,type:'combine',prompt:'combine test'};writeIdx=0;render()});
+await page.fill('#writeIn','Because it started raining, we went home early.');
+await page.click('button[onclick="writeSubmit()"]');
+await page.waitForTimeout(400);
+let tc=await page.textContent('#app');
+ok(tc.includes('جملة مدمَجة سليمة'),'طولٌ كافٍ + لا تصحيح ⇒ سليمة');
+ok(await page.evaluate(()=>writeScore)===1,'واحتُسبت نجاحاً');
+
+review={ok:true,ltJudged:1,ltDropped:0,reply:"FIX: It started raining we went home early | Because it started raining, we went home early. | جملة مركبة بلا أداة ربط"};
+await page.evaluate(()=>{startWrite();writeItems[0]={id:'wr_c2',lv:'B1',min:8,type:'combine',prompt:'combine test'};writeIdx=0;render()});
+await page.fill('#writeIn','It started raining hard and we went home early.');
+await page.click('button[onclick="writeSubmit()"]');
+await page.waitForTimeout(400);
+tc=await page.textContent('#app');
+ok(tc.includes('الجملة تحتاج تصحيحاً'),'طولٌ كافٍ لكن تصحيحٌ ⇒ غير سليمة رغم الطول');
+ok(await page.evaluate(()=>writeScore)===0,'ولم تُحتسب نجاحاً — الفارق عن الكتابة الحرّة العادية');
+
+await page.evaluate(()=>{startWrite();writeItems[0]={id:'wr_c3',lv:'B1',min:8,type:'combine',prompt:'combine test'};writeIdx=0;render()});
+await page.fill('#writeIn','It rained.');
+await page.click('button[onclick="writeSubmit()"]');
+await page.waitForTimeout(400);
+ok(await page.evaluate(()=>writeScore)===0,'قصيرة جداً ⇒ لا تُحتسب حتى لو مرّت المراجعة');
+
+reviewFail=true;
+await page.evaluate(()=>{startWrite();writeItems[0]={id:'wr_c4',lv:'B1',min:8,type:'combine',prompt:'combine test'};writeIdx=0;render()});
+await page.fill('#writeIn','Because it started raining, we went home early.');
+await page.click('button[onclick="writeSubmit()"]');
+await page.waitForTimeout(400);
+ok(await page.evaluate(()=>writeScore)===1,'تعذّر فحص القواعد + طولٌ كافٍ ⇒ لا تُعاقَب على عطلٍ ليس منها');
+reviewFail=false;
+
 console.log('\n١١) يظهر على الصفحات الثلاث — كلٌّ بمستواه');
+await page.close();
 const m=await mk('mohammed.html');
 const mLv=await m.evaluate(()=>({level:profileOf().level,btn:document.body.innerText.indexOf('الكتابة')>=0}));
 ok(mLv.level==='B1'&&mLv.btn,`محمد B1 والزرّ ظاهر (${mLv.level})`);
 await m.evaluate(()=>startWrite());
 const mBank=await m.evaluate(()=>writeItems.every(x=>x.lv==='B1'));
 ok(mBank,'وجلسته من بنك B1 وحده');
+await m.close();
 
 const e=await mk('elias.html');
 const eLv=await e.evaluate(()=>({level:profileOf().level,btn:document.body.innerText.indexOf('الكتابة')>=0}));
 ok(eLv.level==='A2'&&eLv.btn,`إلياس A2 والزرّ ظاهر (${eLv.level})`);
+await e.close();
 
 const h=await mk('index.html');
 const hBtn=await h.evaluate(()=>document.body.innerText.indexOf('الكتابة')>=0);
 ok(hBtn,'وهيا كذلك — الثلاثة سواءً');
+await h.close();
 
 console.log('\n١٢) التباعد: FSRS، لا سلّمٌ جديد');
+page=await mk();
 const srs=await page.evaluate(()=>{
   const id='wr_a1_1';
   writeSrsUpdate(id,true);
@@ -298,6 +345,7 @@ for(const [pg,fn,md] of [['index.html',"startWrite()",'write'],['index.html',"st
   ok(!r2.err&&r2.m===md,`${pg} ${fn} → ${r2.err||r2.m}`);
   ok((await pp.evaluate(()=>censusMissing())).length===0,`${pg}: كل الدوال معرَّفة`);
   ok((await pp.evaluate(()=>window.__ERRS.length))===0,`${pg}: لا خطأ`);
+  await pp.close();
 }
 
 console.log('\n'+(fails?`=== ${fails} فشل ===`:'=== كل الاختبارات نجحت ==='));

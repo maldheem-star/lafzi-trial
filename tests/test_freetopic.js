@@ -43,17 +43,18 @@ const turn=page=>page.evaluate(()=>{coachElapsed=2.5;
 
 let page=await mk('index.html');
 
-console.log('\n١) سبعة مواقف، والسابع حرّ');
+console.log('\n١) الموقف الأخير حرّ، والباقي محدَّد');
 const S=await page.evaluate(()=>COACH_SCENES.map(s=>({id:s.id,ar:s.ar,free:!!s.free})));
-ok(S.length===7,`${S.length} مواقف`);
-ok(S[6].free===true&&S[6].id==='free','والسابع «موضوع من عندك»');
-ok(S.slice(0,6).every(s=>!s.free),'والستّة قبله كما كانت');
+const freeIdx=S.length-1;
+ok(S.length>=6,`${S.length} مواقف`);
+ok(S[freeIdx].free===true&&S[freeIdx].id==='free','والأخير «موضوع من عندك»');
+ok(S.slice(0,freeIdx).every(s=>!s.free),'وما قبله محدَّد كلّه');
 await page.evaluate(()=>startCoach());
-ok((await page.evaluate(()=>document.querySelectorAll('.choice').length))===7,'وسبعة أزرار في الاختيار');
+ok((await page.evaluate(()=>document.querySelectorAll('.choice').length))===S.length,`و${S.length} أزرار في الاختيار`);
 ok((await page.textContent('#app')).includes('موضوع من عندك'),'وظاهر بالاسم');
 
 console.log('\n٢) اختياره يسأل عن الموضوع ولا يبدأ حديثاً');
-await page.click('button[onclick="coachPick(6)"]');
+await page.evaluate(fi=>coachPick(fi),freeIdx);
 await page.waitForTimeout(150);
 await page.click("button[onclick=\"coachMode('solo')\"]");
 await page.waitForTimeout(200);
@@ -103,7 +104,7 @@ ok((calls.slice(-1)[0]||{}).history.length===2,'والتاريخ يتراكم');
 console.log('\n٦) تعذّر الاتصال عند البداية لا يمنع الحديث');
 page=await mk('index.html');
 chatFail=true;
-await page.evaluate(()=>{startCoach();coachPick(6);coachMode('solo')});
+await page.evaluate(()=>{startCoach();coachPick(COACH_SCENES.length-1);coachMode('solo')});
 await page.waitForTimeout(150);
 await page.fill('#coachTopicIn','كرة القدم');
 await page.click('button[onclick="coachTopicGo()"]');
@@ -129,7 +130,7 @@ ok(cl[3]==='','والفارغ يبقى فارغاً');
 
 console.log('\n٨) الموضوع لا يُحقن في الصفحة');
 page=await mk('index.html');
-await page.evaluate(()=>{startCoach();coachPick(6);coachMode('solo')});
+await page.evaluate(()=>{startCoach();coachPick(COACH_SCENES.length-1);coachMode('solo')});
 await page.waitForTimeout(150);
 await page.fill('#coachTopicIn','<img src=x onerror=window.__XSS=1>');
 await page.click('button[onclick="coachTopicGo()"]');
@@ -139,7 +140,7 @@ ok(await page.evaluate(()=>document.querySelectorAll('#app img').length)===0,'و
 
 console.log('\n٩) الرجوع من شاشة الموضوع');
 page=await mk('index.html');
-await page.evaluate(()=>{startCoach();coachPick(6);coachMode('solo')});
+await page.evaluate(()=>{startCoach();coachPick(COACH_SCENES.length-1);coachMode('solo')});
 await page.waitForTimeout(120);
 await page.click('button[onclick="coachTopicBack()"]');
 await page.waitForTimeout(120);
@@ -150,7 +151,7 @@ ok(await page.evaluate(()=>coachTopic)==='','وبدء جلسة جديدة يُص
 
 console.log('\n١٠) عند الأخوين كذلك، وبخطاب المذكّر');
 const m=await mk('mohammed.html');
-await m.evaluate(()=>{startCoach();coachPick(6);coachMode('solo')});
+await m.evaluate(()=>{startCoach();coachPick(COACH_SCENES.length-1);coachMode('solo')});
 await m.waitForTimeout(250);
 t=await m.textContent('#app');
 ok(t.includes('عن أي شيء تحبّ')&&!t.includes('تحبّين'),'«عن أي شيء تحبّ» لا «تحبّين»');

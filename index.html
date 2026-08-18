@@ -13,7 +13,7 @@
    الحل: فحص عند التحميل بعلامة الإصدار، ثم فحص دوري وعند العودة للتبويب بمقارنة حجم الملف —
    وهذه تلقائية لا تحتاج تحديثاً يدوياً، فتصمد لو نسيتُ تحديث BUILD مرة أخرى. */
 (function(){
-  var BUILD="build-20260817-1000";
+  var BUILD="build-20260817-1500";
   try{window.__BUILD=BUILD}catch(e){}
   var url=function(){return location.pathname+"?_cb="+Date.now()};
   var baseLen=null, notified=false;
@@ -4282,7 +4282,22 @@ const COACH_SCENES=[
    opener:"I have a cat named Luna and she sleeps all day. Tell me about animals you like.",
    says:["I like cats because they are soft.","My favourite animal is the horse."],
    words:"cat, dog, horse, bird, fish, rabbit, pet, feed, sleep, play, favourite, because, soft"},
-  // الموقف السابع: الموضوع من عنده. الستّة قبله لكلٍّ أسلوبه المقصود، وهذا أسلوبه
+  // مشهدان يفرضان تركيباً لا ينتظرانه: الشرط والمبني للمجهول لا يظهران من تلقاء
+  // أنفسهما في حوارٍ حرّ (خلطٌ في الشرط ومبنيٌّ للمجهول مشوَّه ظهرا عند محمد، ١٧
+  // أغسطس). والبحث يؤكّد أن الجمع بين مهمّةٍ تواصلية تفرض التركيب وشرحٍ صريح
+  // (focus-on-form) أفعل من انتظاره عرضاً في حوارٍ عام — فالمشهد نفسه يستدعي
+  // التركيب لا التعليمة النصّية وحدها. تظهر للثلاثة سواءً كبقية المشاهد.
+  {id:"ifonly",ar:"لو صار كذا... 🤔",en:"You are a friend asking the student hypothetical 'what if' questions about everyday situations.",
+   focus:"Model CONDITIONAL SENTENCES. Ask 'What would you do if...?' questions, and answer your own with a full if-clause: 'If I were you, I would...'. Encourage complete if-clauses, not just 'will' alone.",
+   opener:"Here's a fun one — what would you do if you found some money on the street?",
+   says:["If I found some money, I would tell someone.","I would try to find who lost it first."],
+   words:"if, would, find, lose, keep, decide, imagine, situation, choice, probably, honest"},
+  {id:"howmade",ar:"كيف يُصنَع؟ 🏭",en:"You are a curious friend asking the student to explain how everyday things are made or done.",
+   focus:"Model PASSIVE VOICE for describing processes. Ask 'How is it made?' or 'How is it done?', and answer using passive forms yourself: 'It is grown, then it is dried, then it is packed.'",
+   opener:"I was just wondering — do you know how chocolate is made?",
+   says:["First the beans are grown, then they are dried.","I think it is mixed with sugar and milk."],
+   words:"made, grown, dried, packed, mixed, produced, factory, process, steps, first, then, finally"},
+  // الموقف التاسع: الموضوع من عنده. الثمانية قبله لكلٍّ أسلوبه المقصود، وهذا أسلوبه
   // إدارة الحديث نفسه — سؤالٌ ورأيٌ بسبب — لأنّ الموضوع لا يُعرف قبل أن يُكتب.
   {id:"free",ar:"موضوع من عندك ✍️",free:true,en:"",focus:"",opener:""},
 ];
@@ -4614,7 +4629,7 @@ async function coachFinish(){
     // (١٧ أغسطس، إلياس ومحمد معاً) ولم أستطع معرفة السبب: الاسم الحقيقي للنموذج
     // المرفوض كان موجوداً في ردّ الخادم نفسه (d.detail/d.model/d.provider) ويُهمَل هنا.
     coachSetFail((d&&d.error)==="not_configured"?"nokey":"reply",
-      d&&(String(d.error||"")+(d.provider?" · "+d.provider+"/"+(d.model||""):"")+(d.detail?" · "+d.detail:"")));
+      d&&(String(d.error||"")+(d.provider?" · "+d.provider+"/"+(d.model||""):"")+(d.detail?" · "+d.detail:"")+(d.finishReason?" · finish:"+d.finishReason:"")));
   }catch(e){coachSetFail("reply",e)}
   coachBusy=false;render();
 }
@@ -6125,6 +6140,16 @@ const WRITE_BANK=[
   {id:"wr_b1_4",lv:"B1",min:70,prompt:"Write an email to a friend about a part-time job or hobby you have.\nInclude: what you do, why you like it, and one challenge.\nWrite about 80–100 words."},
   {id:"wr_b1_5",lv:"B1",min:70,prompt:"Write a short story that begins with this sentence:\n“The phone rang at midnight.”\nWrite about 80–100 words."},
   {id:"wr_b1_6",lv:"B1",min:70,prompt:"Write an email to a friend recommending a place to visit in your city.\nInclude: what it is, why you like it, and what to do there.\nWrite about 80–100 words."},
+  // دمج الجمل (sentence combining) — البحث يؤكّد أنه يرفع التعقيد النحوي والدقّة
+  // معاً في كتابة متعلّمي اللغة الثانية، ويستهدف بالضبط ما كشفه تحليل إنتاج محمد
+  // الحرّ (١٧ أغسطس): جملته تنهار عند أقصى تعقيدٍ يحاوله لا قبله. موصولٌ بنفس مسار
+  // الكتابة الحرّ بالكامل (type:"combine" وحدها الفارق) — نفس textarea، نفس مراجعة
+  // LanguageTool، نفس FSRS؛ فقط معيار النجاح يختلف: نظافة نحوية لا عدد كلمات فقط.
+  {id:"wr_b1_sc1",lv:"B1",min:8,type:"combine",prompt:"Combine these two sentences into ONE sentence using a joining word (when, because, so, although...):\n1) It started raining.\n2) We went home early."},
+  {id:"wr_b1_sc2",lv:"B1",min:10,type:"combine",prompt:"Combine these two sentences into ONE sentence using a joining word (so that, because...):\n1) She works every weekend.\n2) She can save money for university."},
+  {id:"wr_b1_sc3",lv:"B1",min:10,type:"combine",prompt:"Combine these two sentences into ONE sentence using a joining word (although, but...):\n1) The museum is very old.\n2) Thousands of people visit it every year."},
+  {id:"wr_b1_sc4",lv:"B1",min:8,type:"combine",prompt:"Combine these two sentences into ONE sentence using a joining word (after, before...):\n1) He finished his homework.\n2) He watched a movie."},
+  {id:"wr_b1_sc5",lv:"B1",min:10,type:"combine",prompt:"Combine these two sentences into ONE sentence using 'which' (a relative clause):\n1) The bridge was built in 1990.\n2) It connects the two islands."},
 ];
 // مثالٌ محلول واحد لكل مستوى — نفس مبدأ "السلّم المتلاشي" (worked examples) المعتمد
 // أصلاً في وضع التقوية (fadeStage===1)، لا ميزة جديدة. وعمداً لموضوعٍ آخر غير سؤالها
@@ -6254,9 +6279,7 @@ async function writeSubmit(){
   const txt=(el?el.value:"").trim();
   if(!txt)return;   // لا نحرق محاولة على حقلٍ فارغ — كنظيرتها في الأساسيات
   writeTyped=txt;writeCount=writeWordCount(txt);writeCopy=writeIsCopy(txt,it.prompt);
-  const ok=!writeCopy&&writeCount>=it.min;
-  writeSrsUpdate(it.id,ok);
-  if(ok)writeScore++;
+  const lenOk=writeCount>=it.min;
   writeFix=[];writeFixFail="";writeLtDropped=0;writeLtJudged=0;
   // نسخٌ محض لا يستحقّ مراجعة نحوية: نصّ السؤال نفسه سليمٌ نحوياً حتماً، فطلبٌ للشبكة بلا فائدة
   if(!writeCopy){
@@ -6273,6 +6296,12 @@ async function writeSubmit(){
     }catch(e){writeFixFail="network"}
     writeBusy=false;
   }
+  // دمج الجمل: النجاح نظافة نحوية لا عدد كلمات وحده — بلا فحصٍ نحوي (تعذّر الاتصال)
+  // يُحكم بالطول وحده، كبقية الكتابة، لا يُعاقَب على عطلٍ ليس منه. والنسخ يُسقط
+  // النجاح في الحالتين سواءً — نسخ جملةٍ مصدرٍ واحدة ليس دمجاً كما نسخ السؤال ليس إجابة
+  const ok=writeCopy?false:(it.type==="combine"?(lenOk&&(writeFixFail?true:!writeFix.length)):lenOk);
+  writeSrsUpdate(it.id,ok);
+  if(ok)writeScore++;
   // «تعذّرت المراجعة» و«جملك سليمة» كانتا تُسجَّلان بالشكل نفسه (lt:٠/٠) فيستحيل
   // التفريق بينهما من السجلّ وحده لاحقاً — نفس درس «ما لا يُسجَّل الآن لا يُشخَّص
   // لاحقاً». فيُسجَّل الآن حال المراجعة صراحةً بنفس عُرف coachReview تماماً
@@ -6297,11 +6326,23 @@ function writeNext(){
   writeShownAt=Date.now();window.scrollTo(0,0);render();
 }
 function renderWriteFeedback(it){
-  if(writeCopy)return `<div class="explain"><div class="explain-title" style="color:#B45309">هذا نسخٌ من نصّ السؤال، لا إجابة</div>
-    <div class="explain-body">اكتبي بكلماتك أنتِ — جملة عن نفسك تجيب عن السؤال، لا نصّ السؤال نفسه.</div></div>`;
-  const ok=writeCount>=it.min;
-  const head=`<div class="explain"><div class="explain-title" style="color:${ok?'#059669':'#B45309'}">${ok?"✓ بلغتِ عدد الكلمات":"عدد الكلمات أقلّ من الهدف"}</div>
-    <div class="explain-body">كتبتِ ${toAr(writeCount)} كلمة، والهدف ${toAr(it.min)}.</div></div>`;
+  if(writeCopy){
+    const copyMsg=it.type==="combine"
+      ?"ادمجي الجملتين بكلماتك — لا تنسخي إحداهما أو نصّ السؤال نفسه."
+      :"اكتبي بكلماتك أنتِ — جملة عن نفسك تجيب عن السؤال، لا نصّ السؤال نفسه.";
+    return `<div class="explain"><div class="explain-title" style="color:#B45309">هذا نسخٌ من نصّ السؤال، لا إجابة</div>
+      <div class="explain-body">${copyMsg}</div></div>`;
+  }
+  const isCombine=it.type==="combine";
+  const lenOk=writeCount>=it.min;
+  // دمج الجمل: لا نحكم «سليم» قبل عودة فحص القواعد — عكس الكتابة الحرّة حيث الطول وحده يكفي
+  const ok=isCombine?(lenOk&&!writeBusy&&(writeFixFail?true:!writeFix.length)):lenOk;
+  const title=isCombine
+    ?(writeBusy?"نراجع جملتك المدمَجة…":ok?"✓ جملة مدمَجة سليمة":lenOk?"الجملة تحتاج تصحيحاً":"ادمجي الجملتين في جملةٍ واحدة أطول")
+    :(ok?"✓ بلغتِ عدد الكلمات":"عدد الكلمات أقلّ من الهدف");
+  const body=isCombine?`دمجتِ الجملتين في ${toAr(writeCount)} كلمة.`:`كتبتِ ${toAr(writeCount)} كلمة، والهدف ${toAr(it.min)}.`;
+  const head=`<div class="explain"><div class="explain-title" style="color:${writeBusy&&isCombine?'#64748B':(ok?'#059669':'#B45309')}">${title}</div>
+    <div class="explain-body">${body}</div></div>`;
   if(writeBusy)return head+`<div style="text-align:center;padding:10px"><div class="spin" style="width:28px;height:28px"></div><div style="font-size:13px;color:#64748B;margin-top:8px">نراجع جملك…</div></div>`;
   if(writeFixFail)return head+`<div style="font-size:13px;color:#991B1B;margin-top:10px">تعذّرت مراجعة القواعد — ودرجة عدد الكلمات أعلاه سليمة.</div>`;
   if(!writeFix.length)return head+`<div style="font-size:13px;color:#059669;margin-top:10px">لا تصحيح — جملك سليمة نحوياً ✓</div>`;
@@ -6338,7 +6379,7 @@ function renderWrite(){
     <button type="button" onclick="writeToggleModel()" style="background:none;border:none;color:#1D4ED8;font-size:13px;cursor:pointer;padding:0 0 12px;font-family:inherit;display:block">${writeModelShown?"▲ إخفاء المثال":"📘 شاهدي مثالاً محلولاً قبل أن تبدئي"}</button>
     ${writeModelShown?renderWriteModel(it.lv):""}
     <textarea id="writeIn" rows="5" ${writeSubmitted?"disabled":""} style="width:100%;padding:14px;border-radius:12px;border:2px solid #E2E8F0;font-size:16px;direction:ltr;text-align:left;font-family:Georgia,serif;resize:vertical" placeholder="type your answer here" autocomplete="off" autocapitalize="sentences" spellcheck="true">${writeSubmitted?esc(writeTyped):""}</textarea>
-    <div style="font-size:12px;color:#94A3B8;margin-top:6px">الهدف: ${toAr(it.min)} كلمة على الأقلّ</div>
+    <div style="font-size:12px;color:#94A3B8;margin-top:6px">${it.type==="combine"?"اكتبي جملةً واحدة مدمَجة، لا نسخ الجملتين منفصلتين":"الهدف: "+toAr(it.min)+" كلمة على الأقلّ"}</div>
     ${writeSubmitted?renderWriteFeedback(it):""}
   </div>
   ${writeSubmitted?`<button class="btn" style="background:#0E7490" onclick="writeNext()">${writeIdx+1>=writeItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`
@@ -6446,10 +6487,44 @@ const GRAM_BANK=[
     {t:"I used to play football every weekend when I was young.",ok:true,why:"صحيحة — used to لعادةٍ ماضية"},
     {t:"I was used to play football every weekend when I was young.",ok:false,why:"used to (عادة ماضية) لا تحتاج was قبلها"},
     {t:"I used to played football every weekend when I was young.",ok:false,why:"بعد used to يأتي الفعل بصورته الأساسية (play) لا الماضي (played)"}]},
+  // B1+ — تمديدٌ لا مستوًى جديد: تراكيب English Profile المُميِّزة لـB2 تحديداً
+  // (الشرط المختلط، والمبني للمجهول بأنماط أعقد) — أُضيفت بعد تحليل إنتاج محمد الحرّ
+  // الفعلي (١٧ أغسطس): خلط نوعي الشرط («If I didn't help, I will» بدل would)، ومبنيٌّ
+  // للمجهول مشوَّه («…protects by strong shielding» بدل is protected by). لا بنكاً
+  // عاماً لـB2 — بل توسيعٌ يُضاف إلى بنك B1 عند من مستواه B1 تحديداً (gramBankFor)
+  {id:"gr_b1p_1",lv:"B1+",c:[
+    {t:"If I didn't help my family, I will feel bad.",ok:false,why:"خلطٌ بين نوعي الشرط: ماضٍ في الجملة الشرطية مع will في الجواب لا يصحّان معاً"},
+    {t:"If I don't help my family, I will feel bad.",ok:true,why:"صحيحة — شرطٌ أوّل: مضارعٌ بسيط + will، لموقفٍ حقيقيّ محتمل"},
+    {t:"If I don't helped my family, I would feel bad.",ok:false,why:"بعد if في الشرط الأوّل يأتي مضارعٌ بسيط (help) لا ماضٍ (helped)"},
+    {t:"If I wouldn't help my family, I will feel bad.",ok:false,why:"لا تدخل would في جملة if نفسها"}]},
+  {id:"gr_b1p_2",lv:"B1+",c:[
+    {t:"If I had more time, I will travel more.",ok:false,why:"شرطٌ ثانٍ (had) يحتاج would في الجواب لا will"},
+    {t:"If I had more time, I would travel more.",ok:true,why:"صحيحة — شرطٌ ثانٍ: ماضٍ + would، لموقفٍ افتراضي غير واقعي الآن"},
+    {t:"If I have more time, I would travel more.",ok:false,why:"جملة if هنا مضارعة (have) لكن الجواب افتراضي (would) — لا يتطابقان، فإمّا have+will أو had+would"},
+    {t:"If I would have more time, I would travel more.",ok:false,why:"لا تدخل would في جملة if نفسها"}]},
+  {id:"gr_b1p_3",lv:"B1+",c:[
+    {t:"The crew should protect by strong shielding.",ok:false,why:"بعد should في المبني للمجهول يلزم be: should be protected"},
+    {t:"The crew should be protected by strong shielding.",ok:true,why:"صحيحة — مبنيٌّ للمجهول بعد فعل ناقص: should be + التصريف الثالث"},
+    {t:"The crew should protected by strong shielding.",ok:false,why:"ينقص be بين should والتصريف الثالث protected"},
+    {t:"The crew should being protected by strong shielding.",ok:false,why:"بعد should نستعمل be لا being"}]},
+  {id:"gr_b1p_4",lv:"B1+",c:[
+    {t:"The reactor needs design carefully.",ok:false,why:"ينقص to be قبل التصريف الثالث design(ed)"},
+    {t:"The reactor needs to be designed carefully.",ok:true,why:"صحيحة — مبنيٌّ للمجهول بالمصدر: to be + التصريف الثالث"},
+    {t:"The reactor need to be design carefully.",ok:false,why:"الفاعل مفرد (reactor) فالفعل need يأخذ -s، والتصريف الثالث designed لا design"},
+    {t:"The reactor needs to designed carefully.",ok:false,why:"ينقص be بين to والتصريف الثالث designed"}]},
+  {id:"gr_b1p_5",lv:"B1+",c:[
+    {t:"A prize was given to he.",ok:false,why:"بعد حرف الجرّ to يأتي ضمير المفعول him لا he"},
+    {t:"He was given a prize.",ok:true,why:"صحيحة — مبنيٌّ للمجهول بمفعولين: الشخص فاعل المبني للمجهول مباشرة"},
+    {t:"He was gave a prize.",ok:false,why:"بعد was في المبني للمجهول نستعمل التصريف الثالث given لا الماضي gave"},
+    {t:"Him was given a prize.",ok:false,why:"فاعل الجملة يحتاج ضمير الفاعل he لا ضمير المفعول him"}]},
 ];
 function gramBankFor(level){
   const L=String(level||"A2");
-  const exact=GRAM_BANK.filter(function(x){return x.lv===L});
+  let exact=GRAM_BANK.filter(function(x){return x.lv===L});
+  // B1+ ليس مستوًى قائماً بذاته في التطبيق (لا بنك استماع/قراءة B2) — بل تمديدٌ
+  // يُضاف إلى بنك من مستواه B1 تحديداً، بعد تحليل إنتاجٍ حرّ أظهر تراكيب فوق B1
+  // بدأ يحاولها بنجاحٍ جزئي (٧٧٪ على تراكيب فوق الأساسي) — لا استبدال تصنيفه المقيس
+  if(L==="B1")exact=exact.concat(GRAM_BANK.filter(function(x){return x.lv==="B1+"}));
   return exact.length?exact:GRAM_BANK.filter(function(x){return x.lv==="A1"});
 }
 const GRAM_SRS_KEY="mawhiba_gram_srs";
@@ -6542,38 +6617,38 @@ function renderGramResult(){
 // والخيارات)، لا عن لحظة تعليم مفردة — والمشروع أصلاً يترجم المفردات في خطة الإنجليزية.
 const MINPAIR_BANK=[
   // A1 — أزواج حركات أساسية شائعة عند مبتدئ صغير
-  {id:"mp_a1_1",lv:"A1",w:["ship","sheep"],ph:["ʃɪp","ʃiːp"],tr:["سفينة","خروف"],s:["We travelled by ship.","The sheep is in the field."]},
-  {id:"mp_a1_2",lv:"A1",w:["bit","beat"],ph:["bɪt","biːt"],tr:["قطعة صغيرة","ينبض / يخفق"],s:["I ate a bit of cake.","My heart began to beat fast."]},
-  {id:"mp_a1_3",lv:"A1",w:["cat","cut"],ph:["kæt","kʌt"],tr:["قطة","يقطع"],s:["The cat is sleeping.","I cut the paper with scissors."]},
-  {id:"mp_a1_4",lv:"A1",w:["bed","bad"],ph:["bed","bæd"],tr:["سرير","سيّئ"],s:["I sleep in my bed.","That was a bad idea."]},
-  {id:"mp_a1_5",lv:"A1",w:["pin","pen"],ph:["pɪn","pen"],tr:["دبّوس","قلم"],s:["She used a pin to fix her scarf.","I write with a blue pen."]},
-  {id:"mp_a1_6",lv:"A1",w:["full","fool"],ph:["fʊl","fuːl"],tr:["ممتلئ","أحمق"],s:["The bottle is full of water.","Don't be a fool, listen carefully."]},
-  {id:"mp_a1_7",lv:"A1",w:["hat","hot"],ph:["hæt","hɒt"],tr:["قبّعة","حارّ"],s:["I wear a hat in the sun.","The soup is very hot."]},
-  {id:"mp_a1_8",lv:"A1",w:["cap","cup"],ph:["kæp","kʌp"],tr:["طاقية / غطاء","كوب"],s:["He wore a red cap to school.","I drink milk from a cup."]},
-  {id:"mp_a1_9",lv:"A1",w:["not","note"],ph:["nɒt","noʊt"],tr:["لا / ليس","ملاحظة / رسالة قصيرة"],s:["I do not like cold weather.","She wrote a short note to her friend."]},
-  {id:"mp_a1_10",lv:"A1",w:["boat","boot"],ph:["boʊt","buːt"],tr:["قارب","حذاء طويل"],s:["We sailed in a small boat.","She wore a black boot in winter."]},
+  {id:"mp_a1_1",lv:"A1",w:["ship","sheep"],ph:["ʃɪp","ʃiːp"],m:["سفينة","خروف"],s:["We travelled by ship.","The sheep is in the field."]},
+  {id:"mp_a1_2",lv:"A1",w:["bit","beat"],ph:["bɪt","biːt"],m:["قطعة صغيرة","ينبض / يخفق"],s:["I ate a bit of cake.","My heart began to beat fast."]},
+  {id:"mp_a1_3",lv:"A1",w:["cat","cut"],ph:["kæt","kʌt"],m:["قطة","يقطع"],s:["The cat is sleeping.","I cut the paper with scissors."]},
+  {id:"mp_a1_4",lv:"A1",w:["bed","bad"],ph:["bed","bæd"],m:["سرير","سيّئ"],s:["I sleep in my bed.","That was a bad idea."]},
+  {id:"mp_a1_5",lv:"A1",w:["pin","pen"],ph:["pɪn","pen"],m:["دبّوس","قلم"],s:["She used a pin to fix her scarf.","I write with a blue pen."]},
+  {id:"mp_a1_6",lv:"A1",w:["full","fool"],ph:["fʊl","fuːl"],m:["ممتلئ","أحمق"],s:["The bottle is full of water.","Don't be a fool, listen carefully."]},
+  {id:"mp_a1_7",lv:"A1",w:["hat","hot"],ph:["hæt","hɒt"],m:["قبّعة","حارّ"],s:["I wear a hat in the sun.","The soup is very hot."]},
+  {id:"mp_a1_8",lv:"A1",w:["cap","cup"],ph:["kæp","kʌp"],m:["طاقية / غطاء","كوب"],s:["He wore a red cap to school.","I drink milk from a cup."]},
+  {id:"mp_a1_9",lv:"A1",w:["not","note"],ph:["nɒt","noʊt"],m:["لا / ليس","ملاحظة / رسالة قصيرة"],s:["I do not like cold weather.","She wrote a short note to her friend."]},
+  {id:"mp_a1_10",lv:"A1",w:["boat","boot"],ph:["boʊt","buːt"],m:["قارب","حذاء طويل"],s:["We sailed in a small boat.","She wore a black boot in winter."]},
   // A2 — صوت النهاية (اختلاف الصوت لا الحرف) وحركات أطول قليلاً
-  {id:"mp_a2_1",lv:"A2",w:["live","leave"],ph:["lɪv","liːv"],tr:["يعيش","يغادر"],s:["I live in a small house.","We leave for school at seven."]},
-  {id:"mp_a2_2",lv:"A2",w:["work","walk"],ph:["wɜːrk","wɔːk"],tr:["يعمل","يمشي"],s:["My father goes to work every day.","We walk to the park after lunch."]},
-  {id:"mp_a2_3",lv:"A2",w:["price","prize"],ph:["praɪs","praɪz"],tr:["سعر","جائزة"],s:["The price of the shirt is twenty riyals.","She won the first prize in the race."]},
-  {id:"mp_a2_4",lv:"A2",w:["thirty","thirsty"],ph:["ˈθɜːrti","ˈθɜːrsti"],tr:["ثلاثون","عطشان"],s:["There are thirty students in our class.","I feel thirsty after running."]},
-  {id:"mp_a2_5",lv:"A2",w:["sit","seat"],ph:["sɪt","siːt"],tr:["يجلس","مقعد"],s:["Please sit down.","This is my seat on the bus."]},
-  {id:"mp_a2_6",lv:"A2",w:["fill","feel"],ph:["fɪl","fiːl"],tr:["يملأ","يشعر"],s:["Please fill the glass with water.","I feel very happy today."]},
-  {id:"mp_a2_7",lv:"A2",w:["pull","pool"],ph:["pʊl","puːl"],tr:["يسحب","بركة سباحة"],s:["Pull the door to open it.","We swim in the pool every summer."]},
-  {id:"mp_a2_8",lv:"A2",w:["sleep","slip"],ph:["sliːp","slɪp"],tr:["ينام","ينزلق"],s:["I need more sleep at night.","Be careful not to slip on the ice."]},
-  {id:"mp_a2_9",lv:"A2",w:["cost","coast"],ph:["kɒst","koʊst"],tr:["يكلّف","ساحل"],s:["The ticket did not cost much.","We drove along the coast yesterday."]},
-  {id:"mp_a2_10",lv:"A2",w:["wet","wait"],ph:["wet","weɪt"],tr:["مبلّل","ينتظر"],s:["My shoes are wet from the rain.","Please wait for me at the gate."]},
+  {id:"mp_a2_1",lv:"A2",w:["live","leave"],ph:["lɪv","liːv"],m:["يعيش","يغادر"],s:["I live in a small house.","We leave for school at seven."]},
+  {id:"mp_a2_2",lv:"A2",w:["work","walk"],ph:["wɜːrk","wɔːk"],m:["يعمل","يمشي"],s:["My father goes to work every day.","We walk to the park after lunch."]},
+  {id:"mp_a2_3",lv:"A2",w:["price","prize"],ph:["praɪs","praɪz"],m:["سعر","جائزة"],s:["The price of the shirt is twenty riyals.","She won the first prize in the race."]},
+  {id:"mp_a2_4",lv:"A2",w:["thirty","thirsty"],ph:["ˈθɜːrti","ˈθɜːrsti"],m:["ثلاثون","عطشان"],s:["There are thirty students in our class.","I feel thirsty after running."]},
+  {id:"mp_a2_5",lv:"A2",w:["sit","seat"],ph:["sɪt","siːt"],m:["يجلس","مقعد"],s:["Please sit down.","This is my seat on the bus."]},
+  {id:"mp_a2_6",lv:"A2",w:["fill","feel"],ph:["fɪl","fiːl"],m:["يملأ","يشعر"],s:["Please fill the glass with water.","I feel very happy today."]},
+  {id:"mp_a2_7",lv:"A2",w:["pull","pool"],ph:["pʊl","puːl"],m:["يسحب","بركة سباحة"],s:["Pull the door to open it.","We swim in the pool every summer."]},
+  {id:"mp_a2_8",lv:"A2",w:["sleep","slip"],ph:["sliːp","slɪp"],m:["ينام","ينزلق"],s:["I need more sleep at night.","Be careful not to slip on the ice."]},
+  {id:"mp_a2_9",lv:"A2",w:["cost","coast"],ph:["kɒst","koʊst"],m:["يكلّف","ساحل"],s:["The ticket did not cost much.","We drove along the coast yesterday."]},
+  {id:"mp_a2_10",lv:"A2",w:["wet","wait"],ph:["wet","weɪt"],m:["مبلّل","ينتظر"],s:["My shoes are wet from the rain.","Please wait for me at the gate."]},
   // B1 — نمط اسم/فعل ودقّة أعلى، كالمثال الذي طلبه صاحب المشروع (chose/choose)
-  {id:"mp_b1_1",lv:"B1",w:["chose","choose"],ph:["tʃoʊz","tʃuːz"],tr:["اختار (ماضٍ)","يختار"],s:["Yesterday I chose the blue shirt.","You can choose any book you like."]},
-  {id:"mp_b1_2",lv:"B1",w:["lose","loose"],ph:["luːz","luːs"],tr:["يخسر / يفقد","فضفاض"],s:["Don't lose your keys again.","These trousers are too loose for me."]},
-  {id:"mp_b1_3",lv:"B1",w:["advice","advise"],ph:["ədˈvaɪs","ədˈvaɪz"],tr:["نصيحة (اسم)","ينصح (فعل)"],s:["Can you give me some advice?","I advise you to study every day."]},
-  {id:"mp_b1_4",lv:"B1",w:["desert","dessert"],ph:["ˈdezərt","dɪˈzɜːrt"],tr:["صحراء","حلوى / تحلية"],s:["The camel walked across the desert.","We had ice cream for dessert."]},
-  {id:"mp_b1_5",lv:"B1",w:["accept","except"],ph:["əkˈsept","ɪkˈsept"],tr:["يقبل","ما عدا"],s:["I accept your apology.","Everyone came except Sara."]},
-  {id:"mp_b1_6",lv:"B1",w:["affect","effect"],ph:["əˈfekt","ɪˈfekt"],tr:["يؤثّر في (فعل)","تأثير / أثر (اسم)"],s:["Loud noise can affect your focus.","The medicine had a strong effect."]},
-  {id:"mp_b1_7",lv:"B1",w:["quiet","quite"],ph:["ˈkwaɪət","kwaɪt"],tr:["هادئ","تماماً / إلى حدٍّ ما"],s:["The library is very quiet.","I am quite tired after school."]},
-  {id:"mp_b1_8",lv:"B1",w:["collar","colour"],ph:["ˈkɒlər","ˈkʌlər"],tr:["ياقة","لون"],s:["His shirt collar was too tight.","What is your favourite colour?"]},
-  {id:"mp_b1_9",lv:"B1",w:["cloth","clothes"],ph:["klɒθ","kloʊðz"],tr:["قماش","ملابس"],s:["She cleaned the table with a cloth.","I need to buy new clothes."]},
-  {id:"mp_b1_10",lv:"B1",w:["bought","brought"],ph:["bɔːt","brɔːt"],tr:["اشترى","أحضر"],s:["I bought a new bag yesterday.","He brought his book to class."]},
+  {id:"mp_b1_1",lv:"B1",w:["chose","choose"],ph:["tʃoʊz","tʃuːz"],m:["اختار (ماضٍ)","يختار"],s:["Yesterday I chose the blue shirt.","You can choose any book you like."]},
+  {id:"mp_b1_2",lv:"B1",w:["lose","loose"],ph:["luːz","luːs"],m:["يخسر / يفقد","فضفاض"],s:["Don't lose your keys again.","These trousers are too loose for me."]},
+  {id:"mp_b1_3",lv:"B1",w:["advice","advise"],ph:["ədˈvaɪs","ədˈvaɪz"],m:["نصيحة (اسم)","ينصح (فعل)"],s:["Can you give me some advice?","I advise you to study every day."]},
+  {id:"mp_b1_4",lv:"B1",w:["desert","dessert"],ph:["ˈdezərt","dɪˈzɜːrt"],m:["صحراء","حلوى / تحلية"],s:["The camel walked across the desert.","We had ice cream for dessert."]},
+  {id:"mp_b1_5",lv:"B1",w:["accept","except"],ph:["əkˈsept","ɪkˈsept"],m:["يقبل","ما عدا"],s:["I accept your apology.","Everyone came except Sara."]},
+  {id:"mp_b1_6",lv:"B1",w:["affect","effect"],ph:["əˈfekt","ɪˈfekt"],m:["يؤثّر في (فعل)","تأثير / أثر (اسم)"],s:["Loud noise can affect your focus.","The medicine had a strong effect."]},
+  {id:"mp_b1_7",lv:"B1",w:["quiet","quite"],ph:["ˈkwaɪət","kwaɪt"],m:["هادئ","تماماً / إلى حدٍّ ما"],s:["The library is very quiet.","I am quite tired after school."]},
+  {id:"mp_b1_8",lv:"B1",w:["collar","colour"],ph:["ˈkɒlər","ˈkʌlər"],m:["ياقة","لون"],s:["His shirt collar was too tight.","What is your favourite colour?"]},
+  {id:"mp_b1_9",lv:"B1",w:["cloth","clothes"],ph:["klɒθ","kloʊðz"],m:["قماش","ملابس"],s:["She cleaned the table with a cloth.","I need to buy new clothes."]},
+  {id:"mp_b1_10",lv:"B1",w:["bought","brought"],ph:["bɔːt","brɔːt"],m:["اشترى","أحضر"],s:["I bought a new bag yesterday.","He brought his book to class."]},
 ];
 function minpairBankFor(level){
   const L=String(level||"A2");
@@ -6707,12 +6782,12 @@ function renderMinpair(){
     ${minpairLocked?`<div class="explain">
         <div class="explain-title" style="color:${minpairPicked===minpairTarget?'#059669':'#B45309'}">${minpairPicked===minpairTarget?"✓ سمعتِها صح":"الصحيحة بالأخضر"}</div>
         <div style="margin-top:10px;background:#F8FAFC;border-radius:12px;padding:12px">
-          <div style="font-size:12px;color:#64748B;margin-bottom:4px">وفي جملة، لتتعلّمي معناها:</div>
+          <div style="font-size:15px;font-weight:800;color:#0891B2;margin-bottom:8px">${esc(it.m[minpairTarget])} = <span style="direction:ltr;font-family:Georgia,serif">${esc(it.w[minpairTarget])}</span></div>
+          <div style="font-size:12px;color:#64748B;margin-bottom:4px">وفي جملة، لترسيخ المعنى والاستعمال:</div>
           <div style="direction:ltr;text-align:left;font-family:Georgia,serif;font-size:15px;color:#0F172A;display:flex;align-items:center;gap:6px;justify-content:center">
             <span>${esc(minpairShowSent||it.s[minpairTarget])}</span>
             <button type="button" onclick="speakEnglish(${JSON.stringify(minpairShowSent||it.s[minpairTarget])})" style="background:none;border:none;color:#0891B2;cursor:pointer;font-size:16px;padding:0">🔊</button>
           </div>
-          <div style="font-size:14px;color:#0891B2;font-weight:800;margin-top:8px">${esc(it.w[minpairTarget])} = ${esc(it.tr[minpairTarget])}</div>
         </div>
       </div>`:""}
   </div>
