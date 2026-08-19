@@ -143,6 +143,8 @@
   .copybtn{margin-top:10px;width:100%;padding:13px;border-radius:14px;border:2px solid #2563EB;background:#fff;color:#2563EB;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit}
 .spin{width:44px;height:44px;border:4px solid #E2E8F0;border-top-color:#0D9488;border-radius:50%;margin:0 auto;animation:sp 0.8s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
+.vscene{animation:vsc .5s ease}
+@keyframes vsc{from{opacity:0;transform:translateY(8px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
 </style>
 </head>
 <body>
@@ -3058,7 +3060,8 @@ const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEn
   "readBankFor","readSrsUpdate","buildReadPlan","startRead","readChoose","readNext","renderRead",
   "genBankLoad","genBankAdd","parseGenBlock","fetchTutorGen","genTopUp","genLogText","errCollect","errDraw","errCount","errQuizCount","startErrors","errCheck","errChoose","errNext","errReplay","renderErrors",
   "minpairBankFor","minpairSrsUpdate","buildMinpairPlan","startMinpair","minpairPlay","minpairChoose","minpairNext","renderMinpair",
-  "gramBankFor","gramSrsUpdate","buildGramPlan","startGram","gramChoose","gramNext","renderGram","stepBankFor","stepSrsUpdate","buildStepPlan","startStep","stepChoose","stepSeqPick","stepSeqUnpick","stepSeqSubmit","stepNext","renderStep"];
+  "gramBankFor","gramSrsUpdate","buildGramPlan","startGram","gramChoose","gramNext","renderGram","stepBankFor","stepSrsUpdate","buildStepPlan","startStep","stepChoose","stepSeqPick","stepSeqUnpick","stepSeqSubmit","stepNext","renderStep",
+  "videoBankFor","videoSrsUpdate","buildVideoPlan","startVideo","videoPlay","videoNextScene","videoChoose","videoNext","renderVideo"];
 function censusMissing(){return CENSUS.filter(function(n){return typeof window[n]!=="function"})}
 function censusHTML(){
   var miss=censusMissing();
@@ -7157,6 +7160,139 @@ function renderMinpairResult(){
   </div>`;
 }
 
+// ===== فيديو تعليمي: قصّة متحرّكة قصيرة (مشاهد + سرد صوتي)، ثم سؤال فهمٍ — ١٩ أغسطس =====
+// طلب صاحب المشروع فيديو للثلاثة كلٌ حسب مستواه. لا فيديو حقيقي هنا — نفس الجدار الذي
+// واجهناه مع LISTEN_BANK: لا بنك فيديو مفتوح الرخصة يصلح (يوتيوب/نتفلكس لا يُعاد توزيعهما)،
+// وأصعب من الصوت لا أسهل. فالحلّ نفس حلّ الصوت بالضبط: نؤلّف المحتوى بأنفسنا كما تؤلّف كل
+// جهةٍ معياريّة موادّها، ونعرضه كمشاهد متتابعة (رمزٌ كبير + جملة) بدل لقطات مصوَّرة —
+// أمانةٌ في العرض، لا فيديو مموَّه، تماماً كما حلّ النصّ محلّ الصورة في WRITE_BANK ("وصفٌ
+// نصّي يحلّ محلّها"). والسرد صوتٌ حقيقي عبر speakEnglish نفسها — لا اختراع جديد.
+// الصيغة نفسها معياريّاً: قصّةٌ قصيرة بعدّة جمل متتابعة ثم سؤال فهمٍ، كما LISTEN_BANK/
+// READ_BANK بالضبط — فرقها الوحيد أن السرد يتقدّم مشهداً مشهداً بدل جملةٍ واحدة أو نصٍّ
+// كامل دفعة واحدة، وهذا من طبيعة "الفيديو" (تتابع زمني) لا اجتهاداً.
+const VIDEO_BANK=[
+  // A1 (هيا) — ثلاثة مشاهد، جملة واحدة قصيرة لكلٍّ، حقيقة ملموسة كـLISTEN_BANK A1
+  {id:"vd_a1_1",lv:"A1",t:"My Morning",sc:[["🌅","I wake up at seven o'clock."],["🍳","I eat eggs for breakfast."],["🚌","I go to school by bus."]],q:"How does she go to school?",c:["By car","By bus","On foot"],a:1},
+  {id:"vd_a1_2",lv:"A1",t:"My Pet",sc:[["🐱","This is my cat. Her name is Mishmish."],["🥛","She drinks milk every morning."],["😴","She sleeps under my bed."]],q:"What is the cat's name?",c:["Mishmish","Simsim","Haboob"],a:0},
+  {id:"vd_a1_3",lv:"A1",t:"At the Park",sc:[["🌳","We go to the park on Friday."],["⚽","My brother plays football there."],["🍦","After that, we eat ice cream."]],q:"When do they go to the park?",c:["Friday","Saturday","Sunday"],a:0},
+  {id:"vd_a1_4",lv:"A1",t:"My Room",sc:[["🛏️","My room is small and blue."],["📚","I have five books on my shelf."],["🧸","My favourite toy is a brown bear."]],q:"How many books are on the shelf?",c:["Four","Five","Six"],a:1},
+  {id:"vd_a1_5",lv:"A1",t:"Shopping",sc:[["🛒","My mother and I go to the shop."],["🍎","We buy apples and bread."],["💰","It costs ten riyals."]],q:"What do they buy?",c:["Apples and bread","Milk and eggs","Rice and meat"],a:0},
+  {id:"vd_a1_6",lv:"A1",t:"The Weather",sc:[["☀️","It is sunny today."],["🧢","I wear a cap and go outside."],["🚲","I ride my bicycle in the street."]],q:"What is the weather like today?",c:["Rainy","Sunny","Cold"],a:1},
+  // A2 (إلياس) — ثلاثة مشاهد، حوارٌ أو موقفٌ قصير كـLISTEN_BANK A2
+  {id:"vd_a2_1",lv:"A2",t:"The Bus Trip",sc:[["🚌","Yesterday I took the bus to visit my uncle."],["🚦","The bus stopped for ten minutes because of traffic."],["🏠","I arrived a little late, but he was still waiting."]],q:"Why did the bus stop?",c:["Traffic","A flat tyre","The driver was tired"],a:0},
+  {id:"vd_a2_2",lv:"A2",t:"A New Phone",sc:[["📱","I want to buy a new phone this month."],["💵","The blue one costs six hundred riyals."],["🤔","But I only have four hundred, so I need to save more."]],q:"How much money does he need to save?",c:["Two hundred riyals","Four hundred riyals","Six hundred riyals"],a:0},
+  {id:"vd_a2_3",lv:"A2",t:"Cooking Dinner",sc:[["👨‍🍳","Tonight I am cooking dinner for my family."],["🍗","I am making chicken and rice."],["😅","I forgot to buy onions, so I will use garlic instead."]],q:"What did he forget to buy?",c:["Garlic","Onions","Rice"],a:1},
+  {id:"vd_a2_4",lv:"A2",t:"The Football Match",sc:[["⚽","My team played a match on Thursday."],["😢","We lost two goals to one."],["💪","But our coach said we played much better than last time."]],q:"What was the score?",c:["One to two","Two to one","Two to two"],a:1},
+  {id:"vd_a2_5",lv:"A2",t:"Studying for the Exam",sc:[["📖","I have a science exam next week."],["😴","I studied late last night and I am very tired."],["☕","My mother made me tea to help me stay awake."]],q:"When is the exam?",c:["This week","Next week","Next month"],a:1},
+  {id:"vd_a2_6",lv:"A2",t:"Visiting the Doctor",sc:[["🤒","I had a headache yesterday."],["🏥","My father took me to the doctor."],["💊","The doctor gave me some medicine and told me to rest."]],q:"Who took him to the doctor?",c:["His mother","His father","His brother"],a:1},
+  // B1 (محمد) — أربعة مشاهد، قصّةٌ فيها بداية ومنعطف ونتيجة كـLISTEN_BANK B1
+  {id:"vd_b1_1",lv:"B1",t:"A Difficult Decision",sc:[["🎓","After finishing school, I had to choose between two universities."],["🏙️","One was close to home, but the other had a much better program."],["😟","It was a difficult decision because I would miss my family."],["✅","In the end, I chose the better program, and I don't regret it."]],q:"Why was the decision difficult?",c:["He would miss his family","He couldn't afford it","His friends disagreed"],a:0},
+  {id:"vd_b1_2",lv:"B1",t:"Learning to Drive",sc:[["🚗","Last year, I started learning to drive with my older brother."],["😬","At first, I was nervous and made a lot of mistakes."],["📅","After three months of practice, I finally passed my test."],["🎉","Now I drive to college every day, and it saves me a lot of time."]],q:"What happened after three months?",c:["He passed his test","He gave up","He bought a car"],a:0},
+  {id:"vd_b1_3",lv:"B1",t:"A Trip That Went Wrong",sc:[["✈️","My family planned a trip to Jeddah for the holiday."],["⛈️","But on the day we were leaving, there was a big storm."],["😞","Our flight was cancelled, so we had to stay home instead."],["🎲","We spent the holiday playing games together, which was still fun."]],q:"Why was the trip cancelled?",c:["A storm","A car problem","Money issues"],a:0},
+  {id:"vd_b1_4",lv:"B1",t:"Starting a Small Business",sc:[["💡","My friend had an idea to sell homemade sweets online."],["📦","At the beginning, orders were slow and he almost gave up."],["📢","Then he started sharing videos on social media, and things changed."],["💰","Now he receives orders every day and even hired a helper."]],q:"What changed things for him?",c:["Sharing videos on social media","Lowering his prices","Opening a shop"],a:0},
+  {id:"vd_b1_5",lv:"B1",t:"A Lesson from Failure",sc:[["🏃","I trained for months to run in the school competition."],["😔","On the day of the race, I fell and finished last."],["🤝","My coach told me that trying again is more important than winning."],["🏆","The next year, I trained harder and came in second place."]],q:"What did the coach tell him?",c:["Trying again matters more than winning","He should quit running","He needed a new coach"],a:0},
+  {id:"vd_b1_6",lv:"B1",t:"Helping a Neighbour",sc:[["👴","Our elderly neighbour lives alone since his children moved abroad."],["🛒","Every week, I help him carry his shopping bags home."],["☕","Sometimes we sit and he tells me stories about his youth."],["😊","I always leave feeling like I learned something new."]],q:"Why does the neighbour live alone?",c:["His children moved abroad","He prefers being alone","He is new to the area"],a:0},
+];
+function videoBankFor(level){
+  const L=String(level||"A2");
+  const exact=VIDEO_BANK.filter(function(x){return x.lv===L});
+  return exact.length?exact:VIDEO_BANK.filter(function(x){return x.lv==="A1"});
+}
+const VIDEO_SRS_KEY="mawhiba_video_srs";
+function videoSrsLoad(){try{return JSON.parse(lsGet(VIDEO_SRS_KEY)||"{}")}catch(e){return{}}}
+function videoSrsSave(o){try{lsSet(VIDEO_SRS_KEY,JSON.stringify(o))}catch(e){}}
+function videoSrsUpdate(id,ok){
+  const st=videoSrsLoad(),r=st[id]||{box:0,seen:0};
+  const n=fsrsUpdate(r,ok,srsToday());
+  r.box=n.box;r.due=n.due;r.seen=n.seen;r.s=n.s;r.d=n.d;r.last=n.last;
+  st[id]=r;videoSrsSave(st);
+}
+const VIDEO_N=5;   // لا يقلّ عن خمسة (طلب صاحب المشروع ١٨ أغسطس) — بنكٌ ستّة/مستوى فلا يُستنفَد بجلسةٍ واحدة
+function buildVideoPlan(){
+  const st=videoSrsLoad(),today=srsToday(),POOL=videoBankFor(profileOf().level);
+  const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
+  const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
+  let out=due.concat(fresh).slice(0,VIDEO_N);
+  return topUpPlan(out,POOL,VIDEO_N);   // مراجعة حرّة عند استنفاد المستحقّ+الجديد — نفس درس بنك الاستماع (١٥ أغسطس)
+}
+let videoItems=[],videoIdx=0,videoScene=0,videoQOn=false,videoPicked=-1,videoLocked=false,videoScore=0,videoPlays=0,videoShownAt=0,videoDone=false;
+function startVideo(){
+  videoItems=buildVideoPlan();videoIdx=0;videoScene=0;videoQOn=false;videoPicked=-1;videoLocked=false;videoScore=0;videoDone=false;
+  mode="video";videoShownAt=Date.now();window.scrollTo(0,0);render();
+}
+function videoCur(){return videoItems[videoIdx]}
+function videoSceneCur(){const it=videoCur();return it?it.sc[videoScene]:null}
+function videoPlay(){const s=videoSceneCur();if(!s)return;videoPlays++;speakEnglish(s[1])}
+function videoNextScene(){
+  const it=videoCur();if(!it)return;
+  if(videoScene+1>=it.sc.length){videoQOn=true;render();return}
+  videoScene++;videoPlays=0;render();
+  setTimeout(function(){videoPlay()},300);
+}
+function videoChoose(i){
+  if(videoLocked)return;
+  const it=videoCur();videoLocked=true;videoPicked=i;
+  const ok=i===it.a;if(ok)videoScore++;
+  videoSrsUpdate(it.id,ok);
+  logAnswer("video",it.lv,ok,it.c[i],it.id,videoShownAt?Date.now()-videoShownAt:null,
+    {q_text:`${it.t} · ${it.q} · مشاهد:${it.sc.length}`.slice(0,1200)});
+  render();
+}
+function videoNext(){
+  if(videoIdx+1>=videoItems.length){videoDone=true;window.scrollTo(0,0);render();return}
+  videoIdx++;videoScene=0;videoQOn=false;videoPicked=-1;videoLocked=false;videoPlays=0;videoShownAt=Date.now();render();
+  setTimeout(function(){videoPlay()},300);
+}
+function renderVideo(){
+  if(!videoItems.length){app.innerHTML=`<div class="card" style="text-align:center">لا شيء مستحقّ اليوم — عودي غداً 🌱</div><button class="link-btn" onclick="home()">→ الرئيسية</button>`;return}
+  if(videoDone)return renderVideoResult();
+  const it=videoCur();
+  const prog=`<div class="bar">${videoItems.map(function(_,i){return `<div class="seg" style="background:${i<=videoIdx?'#DC2626':'#E2E8F0'};opacity:${i<=videoIdx?1:.5}"></div>`}).join("")}</div>`;
+  if(!videoQOn){
+    const s=videoSceneCur();
+    const dots=it.sc.map(function(_,i){return `<span style="width:7px;height:7px;border-radius:50%;display:inline-block;margin:0 2px;background:${i<=videoScene?'#DC2626':'#E2E8F0'}"></span>`}).join("");
+    app.innerHTML=`
+    <button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
+    ${prog}
+    <div class="meta"><span>${toAr(videoIdx+1)} من ${toAr(videoItems.length)}</span><span>🎬 فيديو تعليمي · ${it.lv}</span></div>
+    <div class="card" style="text-align:center">
+      <span class="tag" style="background:#FEE2E2;color:#B91C1C">🎬 ${esc(it.t)}</span>
+      <div class="vscene" style="margin:18px 0;font-size:64px">${s[0]}</div>
+      <div class="vscene" style="direction:ltr;text-align:center;font-family:Georgia,serif;font-size:17px;color:#0F172A;min-height:44px">${esc(s[1])}</div>
+      <div style="margin:10px 0">${dots}</div>
+      <div style="margin:14px 0"><button type="button" onclick="videoPlay()" style="background:#DC2626;color:#fff;border:none;border-radius:50%;width:56px;height:56px;font-size:22px;cursor:pointer">🔊</button></div>
+      <button class="btn" style="background:#DC2626;margin:0" onclick="videoNextScene()">${videoScene+1>=it.sc.length?"إلى السؤال ←":"المشهد التالي ←"}</button>
+    </div>`;
+    if(videoPlays===0)setTimeout(function(){videoPlay()},300);
+    return;
+  }
+  const choices=it.c.map(function(c,i){
+    let bg="#fff",bd="#E2E8F0",col="#334155";
+    if(videoLocked){if(i===it.a){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(i===videoPicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}
+    return `<button class="choice" style="background:${bg};border-color:${bd};color:${col};direction:ltr;text-align:left;font-family:Georgia,serif" onclick="videoChoose(${i})" ${videoLocked?"disabled":""}><span class="letter">${L[i]}</span>${c}</button>`}).join("");
+  app.innerHTML=`
+  <button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
+  ${prog}
+  <div class="meta"><span>${toAr(videoIdx+1)} من ${toAr(videoItems.length)}</span><span>🎬 فيديو تعليمي · ${it.lv}</span></div>
+  <div class="card" style="text-align:center">
+    <span class="tag" style="background:#FEE2E2;color:#B91C1C">❓ فهمتِ القصّة؟</span>
+    <div class="q" style="margin-top:10px;direction:ltr;text-align:center;font-family:Georgia,serif">${esc(it.q)}</div>
+    <div class="choices" style="margin-top:14px">${choices}</div>
+    ${videoLocked?`<div class="explain"><div class="explain-title" style="color:${videoPicked===it.a?'#059669':'#B45309'}">${videoPicked===it.a?"✓ فهمتَ صحيحاً":"الصحيحة بالأخضر"}</div></div>`:""}
+  </div>
+  ${videoLocked?`<button class="btn" style="background:#DC2626" onclick="videoNext()">${videoIdx+1>=videoItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`:""}`;
+}
+function renderVideoResult(){
+  const pct=videoItems.length?Math.round(videoScore/videoItems.length*100):0;
+  app.innerHTML=`
+  <div class="card">
+    <div class="score-row"><span class="score-big" style="color:${pct>=70?'#059669':pct>=50?'#D97706':'#DC2626'}">${toAr(videoScore)}</span><span class="score-total">/ ${toAr(videoItems.length)}</span><span class="score-pct">${toAr(pct)}%</span></div>
+    <div style="color:#64748B;font-size:15px;margin-bottom:14px">${pct>=85?"فهمٌ ممتاز! 🌟":pct>=60?"جيّد جداً، واصل 💪":"لا بأس — هذه القصص تعود للمراجعة 🌱"}</div>
+    <button class="btn" style="background:#DC2626" onclick="startVideo()">🔁 جلسة أخرى</button>
+    <button class="link-btn" onclick="home()">→ الرئيسية</button>
+  </div>`;
+}
+
 // ===== النطق: تحقّق أساسي عبر تسجيل الصوت + Groq Whisper (يعمل على كل الأجهزة، بما فيها آيفون؛ تحقّق كلمة لا تقييم دقّة اللهجة) =====
 function micSupported(){return !!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia&&window.MediaRecorder)}
 const PRON_GROQ_FN_URL=SB_URL+"/functions/v1/assess-pronunciation-groq";
@@ -8312,7 +8448,7 @@ function bumpStreak(){const st=getStreak();const t=todayStr();if(st.last===t)ret
 function growthMsg(modeKey,pct){try{const key="mawhiba_best_"+modeKey;const prev=parseInt(lsGet(key)||"-1");let msg="";if(prev<0){msg="أول محاولة في هذا القسم — انطلاقة موفّقة! 🌱"}else if(pct>prev){msg=`تحسّنتِ عن أفضل نتيجة سابقة (${toAr(prev)}%)! تقدّم رائع 📈`}else if(pct===prev){msg="ثبات على أفضل مستوى سابق 💪"}else{msg="واصلي، كل محاولة تبني مهارتك 🌟"}if(pct>prev)lsSet(key,String(pct));return msg}catch(e){return""}}
 
 // ===== العرض =====
-function render(){if(mode==="home")return renderHome();if(mode==="listen")return renderListen();if(mode==="read")return renderRead();if(mode==="write")return renderWrite();if(mode==="gram")return renderGram();if(mode==="step")return renderStep();if(mode==="minpair")return renderMinpair();if(mode==="errors")return renderErrors();if(mode==="engplan")return renderEngPlan();if(mode==="factplan")return renderFactPlan();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="speak")return renderSpeak();if(mode==="coach")return renderCoach();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
+function render(){if(mode==="home")return renderHome();if(mode==="listen")return renderListen();if(mode==="read")return renderRead();if(mode==="write")return renderWrite();if(mode==="gram")return renderGram();if(mode==="step")return renderStep();if(mode==="minpair")return renderMinpair();if(mode==="video")return renderVideo();if(mode==="errors")return renderErrors();if(mode==="engplan")return renderEngPlan();if(mode==="factplan")return renderFactPlan();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="speak")return renderSpeak();if(mode==="coach")return renderCoach();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
 
 // صفحة الأخوين قسمٌ واحد: المحادثة. بقيّة الأقسام بُنيت على أخطائها هي — بنك
 // أسئلتها، وتباعدها، ومنهج صفّها السادس — فوضعها أمام ولدٍ آخر يُشغله بما ليس له.
@@ -8334,6 +8470,7 @@ function renderHomeCoachOnly(){
     <button class="mode full" style="background:#9333EA;border-color:#9333EA" onclick="startGram()"><span class="m-name">✍️ دقّة القواعد</span><div class="m-sub">أربع جملٍ، صحيحةٌ واحدة — اختر ثم اقرأ لماذا كل خيار صحيح أو خاطئ</div></button>
     <button class="mode full" style="background:#B45309;border-color:#B45309" onclick="startStep()"><span class="m-name">📋 نمط اختبار STEP</span><div class="m-sub">أسئلة الاختبار نفسها: ترتيب الكلمات، الفراغات، الترقيم والكبتلة، وترتيب فقرة — مع شرح كل خيار بعد الإجابة</div></button>
     <button class="mode full" style="background:#0891B2;border-color:#0891B2" onclick="startMinpair()"><span class="m-name">👂 لعبة الاستماع</span><div class="m-sub">كلمتان متشابهتا النطق (chose/choose) — أيّهما سمعت؟ ثم مثالٌ يشرح معناها</div></button>
+    <button class="mode full" style="background:#DC2626;border-color:#DC2626" onclick="startVideo()"><span class="m-name">🎬 فيديو تعليمي</span><div class="m-sub">قصّة قصيرة مشهداً مشهداً، بصوتٍ إنجليزي، ثم سؤال فهم — مستوى ${p.level||"A2"}</div></button>
     ${errCount()?`<button class="mode full" style="background:#DB2777;border-color:#DB2777" onclick="startErrors()"><span class="m-name">🎯 أخطائي · ${toAr(errCount())} مستحقّة</span><div class="m-sub">تصحيحات محادثتك السابقة — تُبنى كلمةً كلمة، وتعود عند حافّة النسيان</div></button>`:""}
   </div>
   <button class="link-btn" onclick="startAudioDiag()">🔊 الصوت ما يشتغل؟ اضغط هنا لتشخيص السبب</button>
@@ -8378,6 +8515,7 @@ function renderHome(){
     <button class="mode full" style="background:#9333EA;border-color:#9333EA" onclick="startGram()"><span class="m-name">✍️ دقّة القواعد</span><div class="m-sub">أربع جملٍ، صحيحةٌ واحدة — اختاري ثم اقرئي لماذا كل خيار صحيح أو خاطئ</div></button>
     <button class="mode full" style="background:#B45309;border-color:#B45309" onclick="startStep()"><span class="m-name">📋 نمط اختبار STEP</span><div class="m-sub">أسئلة الاختبار نفسها: ترتيب الكلمات، الفراغات، الترقيم والكبتلة، وترتيب فقرة — مع شرح كل خيار بعد الإجابة</div></button>
     <button class="mode full" style="background:#0891B2;border-color:#0891B2" onclick="startMinpair()"><span class="m-name">👂 لعبة الاستماع</span><div class="m-sub">كلمتان متشابهتا النطق (chose/choose) — أيّتهما سمعتِ؟ ثم مثالٌ يشرح معناها</div></button>
+    <button class="mode full" style="background:#DC2626;border-color:#DC2626" onclick="startVideo()"><span class="m-name">🎬 فيديو تعليمي</span><div class="m-sub">قصّة قصيرة مشهداً مشهداً، بصوتٍ إنجليزي، ثم سؤال فهم — مستوى ${profileOf().level||"A2"}</div></button>
     <button class="mode full" style="background:#7C3AED;border-color:#7C3AED" onclick="startPronunciation()"><span class="m-name">🎤 تمرين النطق</span><div class="m-sub">تحقّق أساسي هل نطقتِ الكلمة صح (يحتاج ميكروفون) — وليس تصحيح لهجة دقيق</div></button>
     <button class="mode full" style="background:#0E7490;border-color:#0E7490" onclick="startCoach()"><span class="m-name">🗣️ تكلّمي بالإنجليزية</span><div class="m-sub">محادثة حرّة مع شريك يردّ عليكِ بالإنجليزية — ونقيس وضوح أصواتك في كل جملة</div></button>
     <button class="mode full" style="background:#DB2777;border-color:#DB2777" onclick="startSpeaking()"><span class="m-name">🗣️ التحدّث · جمل من كتابك</span><div class="m-sub">جمل قصيرة جاهزة من وحدة Welcome: تسمعينها ثم تقولينها كاملة — تبدأ بالنص أمامك وتنتهي بالسمع فقط</div></button>
