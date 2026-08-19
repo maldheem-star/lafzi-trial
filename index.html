@@ -3606,6 +3606,31 @@ function lessonSeedOnce(){
 try{lessonSeedOnce()}catch(e){appError('lessonSeedOnce',e)}
 // يبني خطة اليوم: المستحق أولاً (الأهم علمياً)، ثم جديد بحد أقصى، مع بطاقة شرح قبل أول تدريب على أي قاعدة
 // المخزون = عناصر المنهج (تشمل عناصر إملاء حقيقية أصلاً)، بمعرّفات ثابتة.
+// كل مستوًى يبدأ قواعد مستواه ودرجةً واحدة أعلى (i+1، Krashen) لا الكتاب كلّه دفعة واحدة —
+// طلب صاحب المشروع (١٩ أغسطس) بعد أن ظهر المبني للمجهول والكلام المنقول (B1) لهيا (A1) في
+// «أخطائي» و«خطتي»، رغم أن كل بنكٍ آخر بُني لاحقاً (الاستماع/المقروء/دقّة القواعد) مُقيَّدٌ
+// بمستواها فعلاً. وهذا البنك تحديداً منسوخٌ من كتاب الصف السادس بترتيب وحداته لا بترتيب
+// CEFR — المبني للمجهول في الوحدة الأولى! فموضع الدرس في الكتاب لا يدلّ على صعوبته إطلاقاً،
+// والتصنيف هنا بمعيار English Profile نفسه المُعتمَد أصلاً في GRAM_BANK، وبنفس تبويبها حيث
+// يشترك الدرسان (المبني للمجهول B1 في الاثنين معاً) — لا معياراً ثانياً يتعارض مع الأوّل.
+//
+// والقيد على "الجديد" (fresh) وحده لا على المخزون كلّه عمداً: عناصر ITEM_SEED (u1_g1،
+// u1_g2...) بذرة قياسٍ حقيقي وقع فعلاً — أخطأتها ثلاثاً كما سُجّل — وبوّابة السؤال العالق
+// (itemStuck/fixNeeded) مبنيّةٌ عليها خصّيصاً لتُعلّمها ما تعثّرت فيه فعلاً، لا لتمنعه. إخفاء
+// هذه العناصر كان سيُعطّل علاجاً قائماً يعمل لأجل مشكلةٍ بعينها اسمها. القيد هنا يمنع فقط
+// أن يُضاف إلى خطتها من الغد عنصرٌ جديدٌ لم تَرَه قط فوق مستواها بدرجتين — لا يمحو ماضياً.
+const ENG_LV_RANK={A1:0,A2:1,B1:2};
+const ENG_LESSON_LV={
+  l_where:"A2",l_cond:"B1",l_few:"A2",l_pp_q:"B1",l_pp_vs:"B1",l_pastprog:"A2",
+  l_rel:"B1",l_compadv:"A2",l_asas:"A2",l_future:"A2",l_maymight:"A2",
+  l_reported:"B1",l_repq:"B1",l_pp_adv:"B1",l_modals:"A2",
+};
+// المفردات والبناء بلا تصنيف نحوي فلا تُقاس بهذا المعيار — القاعدة هي ما يحمل مستوًى حقيقياً
+function engLevelOk(item,studentLv){
+  if(item.t!=="grammar"||!item.lesson)return true;
+  const lessonLv=ENG_LESSON_LV[item.lesson];if(!lessonLv)return true;
+  return ENG_LV_RANK[lessonLv]<=ENG_LV_RANK[studentLv||"A1"]+1;
+}
 let _engPool=null;
 function engPool(){
   if(_engPool)return _engPool;
@@ -3644,7 +3669,13 @@ function buildDailyPlan(){
   weakRank.forEach(L=>{
     POOL.filter(i=>i.lesson===L&&!chosen.some(c=>c.id===i.id)).slice(0,RETEACH_ITEMS).forEach(add);
   });
-  for(const it of fresh){if(newCount>=NEW_CAP)break;if(chosen.some(c=>c.id===it.id))continue;if(add(it))newCount++}
+  // جديدٌ لم تَرَه قط فوق مستواها بدرجتين لا يُضاف — أمّا ما رأته فعلاً (مستحقّ، أو عالقٌ بسجلّ
+  // خطأٍ حقيقي حتى بلا سجلّ SRS بعد، كعناصر ITEM_SEED الستّة B1 قبل أوّل إجابةٍ لها على هذا
+  // الجهاز) فيبقى كما هو — engPool()/itemErrOf لا SRS وحده هو معيار "رأته فعلاً"، وإلا
+  // كانت البوّابة تُخفي بالضبط العناصر التي بُنيت البوّابة العالقة لأجلها (اكتُشف بالاختبار
+  // لا بالحدس: قسم ١١ في test_gram.js وجد أربعة من الستّة B1 المبذورة تختفي من خطةٍ كاملة).
+  const lv=profileOf().level;
+  for(const it of fresh){if(newCount>=NEW_CAP)break;if(chosen.some(c=>c.id===it.id))continue;if(!engLevelOk(it,lv)&&!itemErrOf(it.id))continue;if(add(it))newCount++}
   // تشبيك: توزيع الأنواع بالتناوب بدل تجميع كل نوع معاً
   const byType={};chosen.forEach(i=>(byType[i.t]=byType[i.t]||[]).push(i));
   const order=["vocab","grammar","dict","reading"],woven=[];

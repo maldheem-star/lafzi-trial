@@ -209,6 +209,41 @@ for(const [fn,md] of [["startBasics('percent')",'basics'],["startFade('circle')"
 ok((await page.evaluate(()=>censusMissing())).length===0,'وكل الدوال معرَّفة');
 ok((await page.evaluate(()=>window.__ERRS.length))===0,'ولا خطأ');
 
+console.log('\n١١) البوّابة الجديدة: قواعد فوق مستواها بدرجتين لا تدخل الخطة "جديدة" (١٩ أغسطس)');
+page=await mk();
+const gate=await page.evaluate(()=>{
+  const lv=profileOf().level; // A1 لهيا
+  const cases=[["u1_g3","l_where","A2",true],["u2_g1","l_cond","B1",false],
+    ["u3_g1","l_pp_q","B1",false],["u4_g4","l_rel","B1",false],["u7_g1","l_reported","B1",false]];
+  return{lv,r:cases.map(([id,lesson,exp,want])=>{
+    const it=engPool().find(i=>i.id===id);
+    return{id,lesson,got:engLevelOk(it,lv),want};
+  })};
+});
+ok(gate.lv==='A1','مستوى هيا A1 كما في PROFILES');
+gate.r.forEach(c=>ok(c.got===c.want,`${c.id} (${c.lesson}): engLevelOk=${c.got} متوقَّع ${c.want}`));
+// ومموّهاً حقيقياً: عناصر seed المخزونة (B1) تبقى تصل رغم أنها فوق المستوى بدرجتين — لأنها ليست "جديدة"
+await page.evaluate(()=>{itemErrSave({});localStorage.removeItem('mawhiba_eng_item_seed_v1');itemSeedOnce();srsLoad()});
+await put(page,'u1_g2'); // l_passive B1، مبذورة أصلاً فمستحقّة لا جديدة
+ok(await page.evaluate(()=>mode)==='engplan','u1_g2 (B1، مبذورة) تُفتح عبر put مباشرة — البوّابة الجديدة لا تمسّ مساراً غير fresh');
+// وخطة يوم كاملة فعلية: قواعد B1 التي لا أثر حقيقي لها إطلاقاً (لا ITEM_SEED ولا LESSON_SEED —
+// عرضٌ أوّل بلا أي سجلّ سابق) يجب ألّا تدخل كـ"جديدة" أبداً. أمّا l_cond/l_pp_q/l_pp_vs/l_rel/
+// l_passive فمعفاةٌ عمداً حتى بلا سجلّ عنصرٍ فردي: LESSON_SEED يُثبت ضعفاً حقيقياً على مستوى
+// الدرس كلّه (جلسة ٥ أغسطس)، وإعادة التدريس تُخرج كل عناصر الدرس الضعيف لا العنصر المبذور وحده
+// — وهذا تصميمٌ قائمٌ سابقٌ لهذا الإصلاح، لا ثغرة: مراجعة درسٍ أخطأته فعلاً غير عرض محتوًى بكرٍ.
+const NEVER_SEEN_B1_LESSONS=['l_reported','l_repq','l_pp_adv']; // لا في أيّ بذرة — أعلى مستواها بدرجتين وبلا أي دليل مسبق
+page=await mk();
+const plan=await page.evaluate(()=>{
+  localStorage.removeItem('mawhiba_eng_srs');
+  const p=buildDailyPlan();
+  return p.items.map(i=>({id:i.id,lesson:i.lesson,isNew:i._isNew}));
+});
+const badFresh=plan.filter(i=>i.isNew&&i.lesson&&NEVER_SEEN_B1_LESSONS.includes(i.lesson));
+ok(badFresh.length===0,badFresh.length?`محتوًى B1 بكرٌ دخل كجديد: ${badFresh.map(i=>i.id).join(',')}`:'ولا عنصر B1 بكرٌ (بلا أي بذرة) دخل الخطة كجديد (خطة كاملة، لا حالة معزولة)');
+// وتأكيدٌ أن المسار الآخر (إعادة تدريس اللدرس الضعيف) ما زال يعمل كما صُمّم أصلاً — لم يُعطَّل بالخطأ
+const passiveInPlan=plan.some(i=>i.lesson==='l_passive');
+ok(passiveInPlan,'ودرسٌ ضعيفٌ فعلاً (المبني للمجهول، من LESSON_SEED) ما زال يصل عبر إعادة التدريس — لم تُعطَّل الآلية القائمة');
+
 await b.close();
 console.log(fails?`\n=== ${fails} فشل ===`:'\n=== كل الاختبارات نجحت ===');
 process.exit(fails?1:0);
