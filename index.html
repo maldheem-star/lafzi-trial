@@ -3058,9 +3058,10 @@ const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEn
   "logQueueLoad","logQueuePush","logQueueFlush","logSend",
   "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","piPickBand","piBandBoxHTML","piArm","piOk","piVals","piGateOn","piGated","piSig1","fsrsUpdate","fsrsIvl","fsrsR","fsrsInitS","fsrsInitD","fsrsNextD","fsrsClampD","fsrsRecallS","fsrsForgetS","tmplKey","spreadTemplates","drawSpread","qzErrRecord","qzDueKeys","qzInjectDue","qzErrOf","qzCardDone","fadeQText","fadeAnsText","fadeGateStart","fadeGateStop","fadeGateNeeded","copyAzRaw","esc","weakPhonemeStr","num0","profileBarHTML","renderHomeCoachOnly","learnerInfo","coachLevel","toMasc","genderizeText","genderizeNode","genderizeInit","lsGet","lsSet","lsDel","pkey","cxShuffleOrder","cxPreStart","cxPreChoose","cxPreNext","cxPreQuit","cxPreCur","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary","coachMode","coachAskHelp","coachEnd","coachReview","coachFixParse","weakClean","coachSaysNow","snapToSuggestion","editDist","coachShowSays","coachParse","coachTopicGo","coachTopicBack","coachTopicClean","coachFreeScene","wbStart","wbPick","wbUnpick","wbCheck","wbHTML","wbReady","wbSay","wbReset","wbNorm","wbDistract","wbStageGet","wbGrade","engBuildFor","dictErrRecord","dictIsBuild","dictCur","renderDictationBuild","planCheckBuild","echoRecord","echoArmed","coachBankOn","coachBankSync","coachBankCheck","fixCardSave","fixCardGrade","bugOf","basicsOpNow","basicsOperands","basicsBugNow","digitsOf","factDcpm","factDcpmBand","coachLeave","coachAutoReview","coachSetFail","coachHintNow","basicsErrDelta","shapeRecord","shapeArmed","ob1Arm","ob1Jump","ob1Back","ob1Complete","ob1BoxHTML","btArm","btBorrow","btComplete","btBoxHTML","basicsOb1Gated","basicsBtGated","basicsShapeLogRemedy","shapeLogRemedy","quotArm","quotGated","quotReset","listenBankFor","listenSrsUpdate","buildListenPlan","listenPlaysHint","startListen","listenPlay","listenChoose","listenNext","renderListen",
   "readBankFor","readSrsUpdate","buildReadPlan","startRead","readChoose","readNext","renderRead",
-  "genBankLoad","genBankAdd","parseGenBlock","fetchTutorGen","genTopUp","genLogText","errCollect","errDraw","errCount","errQuizCount","startErrors","errCheck","errChoose","errNext","errReplay","renderErrors",
+  "genBankLoad","genBankAdd","parseGenBlock","fetchTutorGen","genTopUp","genCallsFor","genLogText","parseGenPickBlock","parseGenVideoBlock","errCollect","errDraw","errCount","errQuizCount","startErrors","errCheck","errChoose","errNext","errReplay","renderErrors",
   "minpairBankFor","minpairSrsUpdate","buildMinpairPlan","startMinpair","minpairPlay","minpairChoose","minpairNext","renderMinpair",
-  "gramBankFor","gramSrsUpdate","buildGramPlan","startGram","gramChoose","gramNext","renderGram","stepBankFor","stepSrsUpdate","buildStepPlan","startStep","stepChoose","stepSeqPick","stepSeqUnpick","stepSeqSubmit","stepNext","renderStep",
+  "gramBankFor","gramSrsUpdate","buildGramPlan","startGram","gramChoose","gramNext","renderGram","fetchTutorGenGram","gramGenTopUp",
+  "stepBankFor","stepSrsUpdate","buildStepPlan","startStep","stepChoose","stepSeqPick","stepSeqUnpick","stepSeqSubmit","stepNext","renderStep","fetchTutorGenStep","stepGenTopUp","fetchTutorGenVideo","videoGenTopUp",
   "videoBankFor","videoSrsUpdate","buildVideoPlan","startVideo","videoPlay","videoNextScene","videoChoose","videoNext","renderVideo"];
 function censusMissing(){return CENSUS.filter(function(n){return typeof window[n]!=="function"})}
 function censusHTML(){
@@ -5883,14 +5884,26 @@ async function fetchTutorGen(domain,level){
     return item;
   }catch(e){return null}
 }
+// كم نداء توليدٍ صامت بعد جلسة؟ لا واحدٌ ثابت للجميع — درس ٢٠ أغسطس (شكوى إلياس
+// عن تكرار gram/read/minpair): بنكٌ تستهلك منه الجلسة أكثر من نصفه يحتاج نموّاً أسرع
+// من نداءٍ واحد، وإلا استُنفد أسرع مما ينمو. سقفٌ ٣ يمنع إغراق الطلبات في كل جلسة.
+function genCallsFor(poolLen,N){
+  if(poolLen>=GEN_BANK_MAX)return 0;
+  const room=GEN_BANK_MAX-poolLen;
+  if(!poolLen)return Math.min(3,room);
+  if(N>=poolLen*0.5)return Math.min(3,room);
+  return Math.min(1,room);
+}
 // تُستدعى بلا انتظار (fire-and-forget) بعد بدء الجلسة — لا تُبطئ العرض الحالي أبداً
 function genTopUp(domain,key,level){
   const pool=(domain==="listen"?listenBankFor(level):readBankFor(level));
-  if(pool.length>=GEN_BANK_MAX)return;   // بلغ سقفه — لا حاجة لطلبٍ إضافي
-  fetchTutorGen(domain,level).then(function(item){
-    if(!item)return;
-    genBankAdd(key,item);
-  });
+  const calls=genCallsFor(pool.length,domain==="listen"?LISTEN_N:READ_N);
+  for(let i=0;i<calls;i++){
+    fetchTutorGen(domain,level).then(function(item){
+      if(!item)return;
+      genBankAdd(key,item);
+    });
+  }
 }
 // الخيارات كلّها مع موضع الصواب — نفس عُرف تسجيل أسئلة الذكاء الاصطناعي في اللفظي/العلمي
 // (`«١) … | ٢) … ✓»`)، فبلا هذا لا يُعرف ماذا وُلِّد أصلاً ولا أين وقع الخيار الصحيح.
@@ -5899,6 +5912,61 @@ function genLogText(it){
   const opts=it.c.map(function(c,i){return (i+1)+") "+c+(i===it.a?" ✓":"")}).join(" | ");
   const src=it.audio||it.passage||"";
   return `[مولَّد] ${it.q} — النصّ: ${src} — الخيارات: ${opts}`;
+}
+// يفكّك ردّ "قواعد GJT" (S1..S4/OK/WHY، وTAG اختياري لِSTEP) إلى شكل GRAM_BANK/
+// STEP_BANK(type:"pick") الثابت تماماً: {c:[{t,ok,why}×٤]}. لا صيغة جديدة، والتحقّق
+// بنفس انضباط parseGenBlock: تلوّثٌ عربي في أيّ جملة (S1..S4) يُسقط العنصر كلّه —
+// لكن حقل الشرح (WHY) عربيٌّ أصلاً في البنك الثابت فلا يُفحَص هنا لغةً، بل حضوراً فقط.
+// وصحّة السؤال نفسه محكومة بنيوياً لا بالثقة: صواب واحد بالضبط بين الأربعة، وأربع
+// جملٍ متمايزة — عنصرٌ يخالف هذا (صفر صواب أو أكثر من واحد) يُسقَط قبل أن يُخزَّن.
+const STEP_TAGS=["ترتيب الكلمات","الحروف الكبيرة","علامات الترقيم"];
+function parseGenPickBlock(text,domain,wantTag){
+  const lines=String(text||"").split(/\r?\n/);
+  const s={},ok={},why={};let tag="";
+  lines.forEach(function(l){
+    let m;
+    if(m=/^S([1-4]):\s*(.+)$/i.exec(l))s[m[1]]=m[2].trim();
+    else if(m=/^S([1-4])_OK:\s*(yes|no)/i.exec(l))ok[m[1]]=/yes/i.test(m[2]);
+    else if(m=/^S([1-4])_WHY:\s*(.+)$/i.exec(l))why[m[1]]=m[2].trim();
+    else if(m=/^TAG:\s*(.+)$/i.exec(l))tag=m[1].trim();
+  });
+  const idx=["1","2","3","4"];
+  if(idx.some(function(i){return !s[i]||!why[i]||typeof ok[i]!=="boolean"}))return null;
+  const texts=idx.map(function(i){return s[i]});
+  if(texts.some(function(t){return AR_CHARS.test(t)}))return null;
+  if(new Set(texts).size!==4)return null;
+  if(idx.filter(function(i){return ok[i]}).length!==1)return null;
+  const c=idx.map(function(i){return{t:s[i],ok:ok[i],why:why[i]}});
+  const item={id:"ai_"+domain+"_"+Date.now().toString(36)+"_"+Math.random().toString(36).slice(2,7),c:c,ai:true};
+  if(wantTag){item.type="pick";item.tag=STEP_TAGS.indexOf(tag)>=0?tag:STEP_TAGS[0]}
+  return item;
+}
+// يفكّك ردّ الفيديو المولَّد (TITLE/SCENEn_EMOJI/SCENEn_TEXT×٣-٤/Q/A/B/C/CORRECT) إلى
+// شكل VIDEO_BANK نفسه بالضبط: {t,sc:[[رمز,جملة]],q,c,a}. مشاهد أقلّ من ثلاثة أو
+// مرقّمة بفجوة (SCENE1 ثم SCENE3 بلا SCENE2) تُسقط العنصر — نفس انضباط parseGenBlock.
+function parseGenVideoBlock(text){
+  const lines=String(text||"").split(/\r?\n/);
+  let title="",q="",a1="",a2="",a3="",correct="";const scenes={};
+  lines.forEach(function(l){
+    let m;
+    if(m=/^TITLE:\s*(.+)$/i.exec(l))title=m[1].trim();
+    else if(m=/^SCENE(\d)_EMOJI:\s*(.+)$/i.exec(l)){scenes[m[1]]=scenes[m[1]]||{};scenes[m[1]].e=m[2].trim()}
+    else if(m=/^SCENE(\d)_TEXT:\s*(.+)$/i.exec(l)){scenes[m[1]]=scenes[m[1]]||{};scenes[m[1]].t=m[2].trim()}
+    else if(m=/^Q:\s*(.+)$/i.exec(l))q=m[1].trim();
+    else if(m=/^A:\s*(.+)$/i.exec(l))a1=m[1].trim();
+    else if(m=/^B:\s*(.+)$/i.exec(l))a2=m[1].trim();
+    else if(m=/^C:\s*(.+)$/i.exec(l))a3=m[1].trim();
+    else if(m=/^CORRECT:\s*([ABC])/i.exec(l))correct=m[1].toUpperCase();
+  });
+  const idx=Object.keys(scenes).map(Number).sort(function(a,b){return a-b});
+  if(idx.length<3)return null;
+  for(let i=0;i<idx.length;i++)if(idx[i]!==i+1)return null;   // متتابعة بلا فجوة من ١
+  const sc=idx.map(function(i){return scenes[i]});
+  if(sc.some(function(x){return !x.e||!x.t||x.e.length>8}))return null;
+  if(!title||!q||!a1||!a2||!a3||!correct)return null;
+  if([title,q,a1,a2,a3].concat(sc.map(function(x){return x.t})).some(function(t){return AR_CHARS.test(t)}))return null;
+  return{id:"ai_video_"+Date.now().toString(36)+"_"+Math.random().toString(36).slice(2,7),
+    t:title,sc:sc.map(function(x){return[x.e,x.t]}),q:q,c:[a1,a2,a3],a:{A:0,B:1,C:2}[correct],ai:true};
 }
 
 // ===== الاستماع: فهم مسموع، لا إملاء =====
@@ -6277,11 +6345,13 @@ async function fetchTutorGenWrite(level){
 }
 function writeGenTopUp(level){
   const pool=writeBankFor(level);
-  if(pool.length>=GEN_BANK_MAX)return;   // بلغ سقفه — لا حاجة لطلبٍ إضافي
-  fetchTutorGenWrite(level).then(function(item){
-    if(!item)return;
-    genBankAdd(GEN_BANK_KEY_WRITE,item);
-  });
+  const calls=genCallsFor(pool.length,WRITE_N);
+  for(let i=0;i<calls;i++){
+    fetchTutorGenWrite(level).then(function(item){
+      if(!item)return;
+      genBankAdd(GEN_BANK_KEY_WRITE,item);
+    });
+  }
 }
 const WRITE_SRS_KEY="mawhiba_write_srs";
 function writeSrsLoad(){try{return JSON.parse(lsGet(WRITE_SRS_KEY)||"{}")}catch(e){return{}}}
@@ -6589,6 +6659,9 @@ const GRAM_BANK=[
     {t:"He was gave a prize.",ok:false,why:"بعد was في المبني للمجهول نستعمل التصريف الثالث given لا الماضي gave"},
     {t:"Him was given a prize.",ok:false,why:"فاعل الجملة يحتاج ضمير الفاعل he لا ضمير المفعول him"}]},
 ];
+// مولَّد GRAM ينضمّ لبنك المستوى المؤلَّف — ١٥٪ تمايز فقط عند إلياس (٢٠ أغسطس، ٣٣
+// إجابة على ٥ جملٍ ثابتة) لأن هذا القسم وحده بلا توليدٍ إطلاقاً خلافاً لبقية الأقسام
+const GEN_BANK_KEY_GRAM="mawhiba_gram_aibank_v1";
 function gramBankFor(level){
   const L=String(level||"A2");
   let exact=GRAM_BANK.filter(function(x){return x.lv===L});
@@ -6596,6 +6669,8 @@ function gramBankFor(level){
   // يُضاف إلى بنك من مستواه B1 تحديداً، بعد تحليل إنتاجٍ حرّ أظهر تراكيب فوق B1
   // بدأ يحاولها بنجاحٍ جزئي (٧٧٪ على تراكيب فوق الأساسي) — لا استبدال تصنيفه المقيس
   if(L==="B1")exact=exact.concat(GRAM_BANK.filter(function(x){return x.lv==="B1+"}));
+  const ai=genBankLoad(GEN_BANK_KEY_GRAM).filter(function(x){return x.lv===L});
+  exact=exact.concat(ai);
   return exact.length?exact:GRAM_BANK.filter(function(x){return x.lv==="A1"});
 }
 const GRAM_SRS_KEY="mawhiba_gram_srs";
@@ -6606,6 +6681,25 @@ function gramSrsUpdate(id,ok){
   const n=fsrsUpdate(r,ok,srsToday());
   r.box=n.box;r.due=n.due;r.seen=n.seen;r.s=n.s;r.d=n.d;r.last=n.last;
   st[id]=r;gramSrsSave(st);
+}
+async function fetchTutorGenGram(level){
+  try{
+    const res=await fetchTimeout(TUTOR_FN_URL,{method:"POST",
+      headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},
+      body:JSON.stringify({mode:"gen",domain:"gram",level})},15000);
+    if(!res||!res.ok)return null;
+    const data=await res.json();
+    if(!data||!data.ok||!data.reply)return null;
+    const item=parseGenPickBlock(data.reply,"gram",false);
+    if(item)item.lv=level;
+    return item;
+  }catch(e){return null}
+}
+function gramGenTopUp(level){
+  const pool=gramBankFor(level),calls=genCallsFor(pool.length,GRAM_N);
+  for(let i=0;i<calls;i++){
+    fetchTutorGenGram(level).then(function(item){if(item)genBankAdd(GEN_BANK_KEY_GRAM,item)});
+  }
 }
 const GRAM_N=5;
 function buildGramPlan(){
@@ -6619,6 +6713,7 @@ let gramItems=[],gramIdx=0,gramOrder=[0,1,2,3],gramPicked=-1,gramLocked=false,gr
 function startGram(){
   gramItems=buildGramPlan();gramIdx=0;gramScore=0;gramDone=false;
   mode="gram";gramSetupRound();window.scrollTo(0,0);render();
+  gramGenTopUp(profileOf().level||"A2");
 }
 function gramSetupRound(){gramOrder=shuffle([0,1,2,3]);gramPicked=-1;gramLocked=false;gramShownAt=Date.now()}
 function gramCur(){return gramItems[gramIdx]}
@@ -6813,9 +6908,13 @@ const STEP_BANK=[
        "Eventually, she was able to write a full essay without any help."],
     why:"ابحث أوّلاً عن الجملة التي لا تشير إلى ما قبلها ولا تحمل كلمة تسلسل — وهي رأس الفقرة (أرادت أن تُحسّن). ثم رتّب بكلمات الإشارة: To begin with ثم then ثم After a few months ثم Eventually."},
 ];
+// مولَّد STEP يقتصر على نوع pick وحده — مطابقٌ عمداً لشكل GRAM (الرقابة الآلية على
+// gap/order أصعب من التحقّق من GJT بسيطة، نفس مبدأ "الرقابة بحسب الخطر")
+const GEN_BANK_KEY_STEP="mawhiba_step_aibank_v1";
 function stepBankFor(level){
   const L=String(level||"A2");
-  const exact=STEP_BANK.filter(function(x){return x.lv===L});
+  const ai=genBankLoad(GEN_BANK_KEY_STEP).filter(function(x){return x.lv===L});
+  const exact=STEP_BANK.filter(function(x){return x.lv===L}).concat(ai);
   return exact.length?exact:STEP_BANK.filter(function(x){return x.lv==="A1"});
 }
 const STEP_SRS_KEY="mawhiba_step_srs";
@@ -6826,6 +6925,25 @@ function stepSrsUpdate(id,ok){
   const n=fsrsUpdate(r,ok,srsToday());
   r.box=n.box;r.due=n.due;r.seen=n.seen;r.s=n.s;r.d=n.d;r.last=n.last;
   st[id]=r;stepSrsSave(st);
+}
+async function fetchTutorGenStep(level){
+  try{
+    const res=await fetchTimeout(TUTOR_FN_URL,{method:"POST",
+      headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},
+      body:JSON.stringify({mode:"gen",domain:"step",level})},15000);
+    if(!res||!res.ok)return null;
+    const data=await res.json();
+    if(!data||!data.ok||!data.reply)return null;
+    const item=parseGenPickBlock(data.reply,"step",true);
+    if(item)item.lv=level;
+    return item;
+  }catch(e){return null}
+}
+function stepGenTopUp(level){
+  const pool=stepBankFor(level),calls=genCallsFor(pool.length,STEP_N);
+  for(let i=0;i<calls;i++){
+    fetchTutorGenStep(level).then(function(item){if(item)genBankAdd(GEN_BANK_KEY_STEP,item)});
+  }
 }
 const STEP_N=6;
 // الجلسة تخلط الأنواع كما يخلطها الاختبار نفسه، ولا تُبقي الترتيب فتُحفَظ المواضع.
@@ -6851,6 +6969,7 @@ let stepItems=[],stepIdx=0,stepOrder=[0,1,2,3],stepPicked=-1,stepLocked=false,st
 function startStep(){
   stepItems=buildStepPlan();stepIdx=0;stepScore=0;stepDone=false;
   mode="step";stepSetupRound();window.scrollTo(0,0);render();
+  stepGenTopUp(profileOf().level||"A2");
 }
 function stepSetupRound(){
   const it=stepCur();
@@ -7062,16 +7181,20 @@ async function fetchTutorGenMinpair(level,word){
     return parseMinpairSentBlock(data.reply,word);
   }catch(e){return null}
 }
-// نداءٌ واحدٌ صامت بعد بدء الجلسة — يختار كلمة عشوائية من بنك المستوى ويُخصّب جملها
+// نداءان صامتان بعد بدء الجلسة (كانا واحداً — درس ٢٠ أغسطس، ٥١٪ تكرار عند إلياس رغم
+// وجود توليد: معدّله أبطأ من استهلاكه). كلٌّ يختار كلمة عشوائية من بنك المستوى ويُخصّب
+// جملها — minpairExtraAdd نفسها تمنع تجاوز MINPAIR_EXTRA_MAX لكل كلمة، فلا إغراق
 function minpairGenTopUp(level){
   const POOL=minpairBankFor(level);
   if(!POOL.length)return;
-  const it=pick(POOL),wordIdx=Math.random()<0.5?0:1;
-  const m=minpairExtraLoad();
-  if((m[minpairExtraKey(it.id,wordIdx)]||[]).length>=MINPAIR_EXTRA_MAX)return;
-  fetchTutorGenMinpair(level,it.w[wordIdx]).then(function(sent){
-    if(sent)minpairExtraAdd(it.id,wordIdx,sent);
-  });
+  for(let i=0;i<2;i++){
+    const it=pick(POOL),wordIdx=Math.random()<0.5?0:1;
+    const m=minpairExtraLoad();
+    if((m[minpairExtraKey(it.id,wordIdx)]||[]).length>=MINPAIR_EXTRA_MAX)continue;
+    fetchTutorGenMinpair(level,it.w[wordIdx]).then(function(sent){
+      if(sent)minpairExtraAdd(it.id,wordIdx,sent);
+    });
+  }
 }
 const MINPAIR_N=8;
 function buildMinpairPlan(){
@@ -7193,9 +7316,13 @@ const VIDEO_BANK=[
   {id:"vd_b1_5",lv:"B1",t:"A Lesson from Failure",sc:[["🏃","I trained for months to run in the school competition."],["😔","On the day of the race, I fell and finished last."],["🤝","My coach told me that trying again is more important than winning."],["🏆","The next year, I trained harder and came in second place."]],q:"What did the coach tell him?",c:["Trying again matters more than winning","He should quit running","He needed a new coach"],a:0},
   {id:"vd_b1_6",lv:"B1",t:"Helping a Neighbour",sc:[["👴","Our elderly neighbour lives alone since his children moved abroad."],["🛒","Every week, I help him carry his shopping bags home."],["☕","Sometimes we sit and he tells me stories about his youth."],["😊","I always leave feeling like I learned something new."]],q:"Why does the neighbour live alone?",c:["His children moved abroad","He prefers being alone","He is new to the area"],a:0},
 ];
+// مولَّدٌ الآن (٢٠ أغسطس) — كان بلا توليدٍ يوم شُحن (١٩ أغسطس)، وبنيته (N=٥ من بنك ٦)
+// كانت مطابقةً لشكل gram المتكرّر تماماً، فوُصل بنفس الآلية قبل أن تتكرّر الشكوى فعلاً
+const GEN_BANK_KEY_VIDEO="mawhiba_video_aibank_v1";
 function videoBankFor(level){
   const L=String(level||"A2");
-  const exact=VIDEO_BANK.filter(function(x){return x.lv===L});
+  const ai=genBankLoad(GEN_BANK_KEY_VIDEO).filter(function(x){return x.lv===L});
+  const exact=VIDEO_BANK.filter(function(x){return x.lv===L}).concat(ai);
   return exact.length?exact:VIDEO_BANK.filter(function(x){return x.lv==="A1"});
 }
 const VIDEO_SRS_KEY="mawhiba_video_srs";
@@ -7206,6 +7333,25 @@ function videoSrsUpdate(id,ok){
   const n=fsrsUpdate(r,ok,srsToday());
   r.box=n.box;r.due=n.due;r.seen=n.seen;r.s=n.s;r.d=n.d;r.last=n.last;
   st[id]=r;videoSrsSave(st);
+}
+async function fetchTutorGenVideo(level){
+  try{
+    const res=await fetchTimeout(TUTOR_FN_URL,{method:"POST",
+      headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},
+      body:JSON.stringify({mode:"gen",domain:"video",level})},15000);
+    if(!res||!res.ok)return null;
+    const data=await res.json();
+    if(!data||!data.ok||!data.reply)return null;
+    const item=parseGenVideoBlock(data.reply);
+    if(item)item.lv=level;
+    return item;
+  }catch(e){return null}
+}
+function videoGenTopUp(level){
+  const pool=videoBankFor(level),calls=genCallsFor(pool.length,VIDEO_N);
+  for(let i=0;i<calls;i++){
+    fetchTutorGenVideo(level).then(function(item){if(item)genBankAdd(GEN_BANK_KEY_VIDEO,item)});
+  }
 }
 const VIDEO_N=5;   // لا يقلّ عن خمسة (طلب صاحب المشروع ١٨ أغسطس) — بنكٌ ستّة/مستوى فلا يُستنفَد بجلسةٍ واحدة
 function buildVideoPlan(){
@@ -7219,6 +7365,7 @@ let videoItems=[],videoIdx=0,videoScene=0,videoQOn=false,videoPicked=-1,videoLoc
 function startVideo(){
   videoItems=buildVideoPlan();videoIdx=0;videoScene=0;videoQOn=false;videoPicked=-1;videoLocked=false;videoScore=0;videoDone=false;
   mode="video";videoShownAt=Date.now();window.scrollTo(0,0);render();
+  videoGenTopUp(profileOf().level||"A2");
 }
 function videoCur(){return videoItems[videoIdx]}
 function videoSceneCur(){const it=videoCur();return it?it.sc[videoScene]:null}

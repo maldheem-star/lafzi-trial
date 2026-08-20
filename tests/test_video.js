@@ -6,13 +6,24 @@ const {chromium}=require('/opt/node22/lib/node_modules/playwright');
 let fails=0;const ok=(c,m)=>{console.log((c?'  ✓ ':'  ✗ FAIL ')+m);if(!c)fails++};
 (async()=>{
 const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium'});
-let logs=[];
+let logs=[],genCalls=[],genReply="";
+const GOOD_VIDEO_GEN=[
+  "TITLE: Rainy Day",
+  "SCENE1_EMOJI: 🌧️","SCENE1_TEXT: It is raining outside today.",
+  "SCENE2_EMOJI: 📖","SCENE2_TEXT: I stay home and read a book.",
+  "SCENE3_EMOJI: ☕","SCENE3_TEXT: My mother makes hot tea for us.",
+  "Q: What is the weather like?","A: Sunny","B: Rainy","C: Snowy","CORRECT: B"].join("\n");
 const mk=async(f)=>{
   const page=await b.newPage({viewport:{width:420,height:900}});
   page.on('pageerror',e=>{console.log('  ✗ PAGEERROR '+e.message);fails++});
   await page.route('**/rest/v1/**',async r=>{
     let x={};try{x=JSON.parse(r.request().postData()||'{}')}catch(e){}
     logs.push(x);r.fulfill({status:201,contentType:'application/json',body:'[]'});
+  });
+  await page.route('**/functions/v1/tutor',async r=>{
+    let x={};try{x=JSON.parse(r.request().postData()||'{}')}catch(e){}
+    genCalls.push(x);
+    r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,reply:genReply||GOOD_VIDEO_GEN})});
   });
   await page.addInitScript(()=>{
     Object.defineProperty(window,'speechSynthesis',{configurable:true,value:{speak(){},cancel(){},resume(){},pause(){},
@@ -119,7 +130,42 @@ const h=await mk('index.html');
 const hBtn=await h.evaluate(()=>document.body.innerText.indexOf('فيديو تعليمي')>=0);
 ok(hBtn,'وهيا كذلك — الزرّ ظاهر على صفحتها');
 
-console.log('\n٩) لا انحدار');
+console.log('\n٩) التوليد الآلي (٢٠ أغسطس) — شُحن الفيديو بلا توليد، وبنيته مطابقةٌ لشكل gram المتكرّر');
+page=await mk('index.html');
+const vp=await page.evaluate(x=>({
+  good:parseGenVideoBlock(x.good),
+  fewScenes:parseGenVideoBlock(x.good.split("\n").filter(l=>!l.startsWith("SCENE3")).join("\n")),
+  gapScene:parseGenVideoBlock(x.good.replace(/SCENE2/g,"SCENE4")), // ١ ثم ٤ ثم ٣: فجوة
+  arContam:parseGenVideoBlock(x.good.replace('It is raining outside today.','السماء تمطر اليوم')),
+  missing:parseGenVideoBlock('just some text'),
+}),{good:GOOD_VIDEO_GEN});
+ok(!!vp.good&&vp.good.sc.length===3&&vp.good.t==='Rainy Day'&&vp.good.ai===true,'نصٌّ سليمٌ يُقبل: ثلاثة مشاهد، عنوانٌ، ai:true');
+ok(vp.good.sc[0][0]==='🌧️'&&vp.good.sc[0][1]==='It is raining outside today.','وكل مشهدٍ برمزه وجملته بالترتيب');
+ok(vp.good.c.length===3&&vp.good.a===1,'والسؤال بخياراته وموضع الصواب');
+ok(vp.fewScenes===null,'وأقلّ من ثلاثة مشاهد يُرفض');
+ok(vp.gapScene===null,'ومشاهد بفجوة رقمية (١،٣،٤ بلا ٢) تُرفض');
+ok(vp.arContam===null,'وتلوّثٌ عربي في جملة مشهدٍ يُرفض');
+ok(vp.missing===null,'ونصٌّ بلا وسم TITLE/SCENE يُرفض');
+await page.evaluate(()=>{try{lsDel('mawhiba_video_aibank_v1')}catch(e){}});
+genCalls=[];genReply=GOOD_VIDEO_GEN;
+await page.evaluate(level=>videoGenTopUp(level),'A1');
+await page.waitForTimeout(300);
+ok(genCalls.some(c=>c.mode==='gen'&&c.domain==='video'&&c.level==='A1'),'videoGenTopUp يطلب توليداً بمستواها');
+const videoAiBank=await page.evaluate(()=>genBankLoad('mawhiba_video_aibank_v1'));
+ok(videoAiBank.length>=1&&videoAiBank[0].lv==='A1'&&videoAiBank[0].ai===true,'والعنصر المقبول يدخل بنك التوليد المحلّي');
+const videoMerged=await page.evaluate(()=>videoBankFor('A1'));
+ok(videoMerged.some(x=>x.ai===true)&&videoMerged.some(x=>!x.ai),'ويظهر ضمن videoBankFor مع البنك المؤلَّف — لا بديلاً عنه');
+// وبما أن VIDEO_N=5 من بنك ٦/مستوى، نصف البنك فأكثر يُستهلك بجلسةٍ واحدة — فمعدّل التوليد مرفوع
+const vCalls=await page.evaluate(()=>genCallsFor(6,5));
+ok(vCalls>1,`ونداءاتٌ متعدّدة لبنكٍ صغيرٍ كبنك الفيديو (${vCalls})`);
+
+console.log('\n٩ب) لا انحدار بعد وصل التوليد بالفيديو');
+page=await mk('index.html');
+await page.evaluate(()=>startVideo());
+await page.waitForTimeout(300);
+ok((await page.evaluate(()=>window.__ERRS.length))===0,'ولا خطأ عند بدء الجلسة رغم نداء التوليد الصامت');
+
+console.log('\n١٠) لا انحدار');
 for(const [pg,fn,md] of [['index.html',"startVideo()",'video'],['index.html',"startListen()",'listen'],
   ['index.html',"home()",'home'],['mohammed.html',"startVideo()",'video'],['mohammed.html',"startCoach()",'coach']]){
   const pp=await mk(pg);

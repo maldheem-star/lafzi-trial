@@ -124,15 +124,21 @@ ok(b1Bank.some(x=>x.id==='ai_listen_x'),'B1 يرى العنصر المولَّد
 ok(!a1Bank.some(x=>x.id==='ai_listen_x'),'وA1 لا يراه — لا اختلاط مستويات');
 await page.evaluate(()=>{try{lsDel(GEN_BANK_KEY_LISTEN)}catch(e){}});
 
-console.log('\n٨) genTopUp: يطلب فقط إن كان البنك دون السقف، ويُخزَّن ما وصل');
+console.log('\n٨) genTopUp: يطلب حسب genCallsFor لا نداءً واحداً ثابتاً — درس ٢٠ أغسطس');
+// معدّل التوليد رُفع (شكوى إلياس عن التكرار، ٢٠ أغسطس): بنكٌ يُستهلك أكثر من نصفه في
+// جلسةٍ واحدة يحتاج أكثر من نداءٍ صامتٍ واحد، وإلا استُنفد أسرع مما ينمو — genCallsFor
+// تحسب العدد فعلياً بدل رقمٍ مكتوب هنا يفلت من الاختبار عند تغييره (نفس درس ١٨ أغسطس:
+// "الأعداد المكتوبة في الاختبارات فخّ صامت")
 await page.evaluate(()=>{try{lsDel(GEN_BANK_KEY_READ)}catch(e){}});
 tutorReply=['TEXT: A short test passage for read top-up.','Q: A question?','A: a','B: b','C: c','CORRECT: C'].join('\n');
 tutorCalls=[];
+const expectCalls=await page.evaluate(()=>genCallsFor(readBankFor('A1').length,READ_N));
+ok(expectCalls>=1,`البنك دون السقف فيحتاج توليداً (متوقَّعٌ ${expectCalls} نداء)`);
 await page.evaluate(()=>genTopUp('read',GEN_BANK_KEY_READ,'A1'));
 await page.waitForTimeout(400);
-ok(tutorCalls.length===1,'طلبٌ واحدٌ صدر — البنك دون السقف');
+ok(tutorCalls.length===expectCalls,`عدد النداءات يطابق genCallsFor (${tutorCalls.length} من ${expectCalls})`);
 const afterTopUp=await page.evaluate(()=>genBankLoad(GEN_BANK_KEY_READ));
-ok(afterTopUp.length===1,'وعنصرٌ جديد خُزِّن فعلاً');
+ok(afterTopUp.length===expectCalls,'وكل عنصرٍ مقبولٍ خُزِّن فعلاً — بعددٍ يطابق النداءات');
 
 console.log('\n٩) وحين يبلغ البنك السقف: لا طلب إضافي — لا استنزاف بلا داعٍ');
 await page.evaluate(max=>{

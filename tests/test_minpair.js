@@ -149,18 +149,22 @@ calls=[];
 await page.evaluate(()=>{try{lsDel('mawhiba_minpair_extra_v1')}catch(e){}});
 await page.evaluate(()=>minpairGenTopUp('A1'));
 await page.waitForTimeout(300);
-const gc=calls.find(c=>c.mode==='gen'&&c.domain==='minpair');
-ok(!!gc&&gc.level==='A1'&&!!gc.word,`minpairGenTopUp يطلب جملةً لكلمةٍ من زوجٍ موجود لا زوجاً جديداً (${gc&&gc.word})`);
+// نداءان لا واحد (٢٠ أغسطس، رفع معدّل التوليد — ٥١٪ تكرار عند إلياس رغم وجود التوليد):
+// كلٌّ يختار كلمةً عشوائية، فقد يقعان على الكلمة نفسها (تُدمَج بالتكرار) أو مختلفتين
+const gcAll=calls.filter(c=>c.mode==='gen'&&c.domain==='minpair');
+ok(gcAll.length===2&&gcAll.every(c=>c.level==='A1'&&!!c.word),`minpairGenTopUp يطلب نداءين لا واحداً (${gcAll.length})`);
 const extraAfter=await page.evaluate(()=>minpairExtraLoad());
 const extraCount=Object.values(extraAfter).reduce((n,a)=>n+a.length,0);
-ok(extraCount===1,'والجملة المقبولة تُخزَّن محلّياً — لا يتغيّر بنك الأزواج نفسه (MINPAIR_BANK يبقى بشرياً بالكامل)');
-const cands=await page.evaluate(word=>{
+ok(extraCount>=1&&extraCount<=2,`والجملة/الجملتان المقبولتان تُخزَّنان محلّياً (${extraCount}) — لا يتغيّر بنك الأزواج نفسه (MINPAIR_BANK يبقى بشرياً بالكامل)`);
+// الكلمة تُشتقّ من المفتاح المخزَّن فعلاً لا من نداءٍ بعينه — نداءان الآن لا واحد،
+// وأيّهما دخل البنك أوّلاً (أو دُمج تكراره) لا يُفترَض
+const cands=await page.evaluate(()=>{
   const k=Object.keys(minpairExtraLoad())[0];
   const [pairId,wordIdx]=[k.slice(0,k.lastIndexOf('_')),k.slice(k.lastIndexOf('_')+1)];
   const it=MINPAIR_BANK.find(x=>x.id===pairId);
-  return{list:minpairSentencesFor(it,+wordIdx),fixed:it.s[+wordIdx]};
-},gc&&gc.word);
-ok(cands.list.length===2&&cands.list[0]===cands.fixed&&cands.list[1]===`Today the word ${gc.word} appears right here.`,
+  return{list:minpairSentencesFor(it,+wordIdx),fixed:it.s[+wordIdx],word:it.w[+wordIdx]};
+});
+ok(cands.list.length===2&&cands.list[0]===cands.fixed&&cands.list[1]===`Today the word ${cands.word} appears right here.`,
   'وminpairSentencesFor تضيف المولَّدة إلى الثابتة بدل استبدالها — الثابتة أولاً دائماً');
 
 console.log('\n١٠) يظهر على الصفحات الثلاث');

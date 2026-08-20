@@ -304,9 +304,150 @@ function systemGenMinpair(level: string, word: string) {
   ].join("\n");
 }
 
+// ===== قواعد GJT (Grammaticality Judgment Task): أربع جملٍ، صحيحةٌ واحدة =====
+// نفس صيغة GRAM_BANK/STEP_BANK(type:"pick") الثابتة تماماً — لا صيغة جديدة، ونفس
+// انضباط مموّهاتها: كل جملةٍ خاطئة تعزل آليةً واحدة محدَّدة لا تشويشاً عشوائياً
+// (`GRAM_FOCUS` أدناه). والفرق عن listen/read في التحقّق لا في الصيغة: حقل الشرح
+// (WHY) عربيٌّ أصلاً في البنك الثابت («نسيتِ -s: الفعل مع he/she/it يأخذ -s»)، فالتحقّق
+// من التلوّث في العميل يُطبَّق على الجمل الإنجليزية (S1..S4) وحدها لا على الشرح —
+// موثَّقٌ في `parseGenPickBlock` كي لا يُظنّ نسياناً.
+const GRAM_FOCUS: Record<string, string> = {
+  A1: "basic verb agreement (he/she/it + -s), the verb 'be', plural nouns after numbers, adjective order, possessive 's",
+  A2: "irregular past tense, comparatives (-er/more), time prepositions (on/at/in), much/many, question formation with Do/Does",
+  B1: "present perfect vs past simple, passive voice, first conditional (if+present, will), relative clauses (who/which), used to",
+};
+function systemGenGram(level: string): string {
+  const focus = GRAM_FOCUS[level] || GRAM_FOCUS.A2;
+  const topic = GEN_TOPICS[Math.floor(Math.random() * GEN_TOPICS.length)];
+  return [
+    `Write ONE Grammaticality Judgment Task item for a CEFR ${level} English learner.`,
+    `GRAMMAR FOCUS for this item: pick ONE specific point from this list: ${focus}.`,
+    `CONTEXT/TOPIC for the sentence: ${topic}. Invent your own names/details. Do NOT reuse a`,
+    "stock textbook example you have seen before.",
+    "",
+    "Produce FOUR versions of THE SAME underlying sentence: exactly ONE grammatically correct,",
+    "and THREE incorrect. Each incorrect version must isolate a DIFFERENT, SPECIFIC error",
+    "mechanism related to the grammar focus above — not random noise, and not three variations",
+    "of the same mistake.",
+    "",
+    "OUTPUT EXACTLY in this shape, nothing else, no markdown, no extra commentary:",
+    "S1: <sentence 1, in ENGLISH>",
+    "S1_OK: <yes or no>",
+    "S1_WHY: <one short reason IN ARABIC — why this version is right or wrong>",
+    "S2: <sentence 2, in ENGLISH>",
+    "S2_OK: <yes or no>",
+    "S2_WHY: <one short reason IN ARABIC>",
+    "S3: <sentence 3, in ENGLISH>",
+    "S3_OK: <yes or no>",
+    "S3_WHY: <one short reason IN ARABIC>",
+    "S4: <sentence 4, in ENGLISH>",
+    "S4_OK: <yes or no>",
+    "S4_WHY: <one short reason IN ARABIC>",
+    "",
+    "RULES:",
+    "1. The S1..S4 sentence lines must be entirely in English — ZERO Arabic characters anywhere in them.",
+    "2. The S#_WHY lines must be written IN ARABIC, naming the specific rule, in the style of:",
+    "   «people قابلة للعدّ، فتأخذ many لا much» — short, direct, no filler.",
+    "3. Exactly ONE of S1_OK..S4_OK is 'yes'; the other three must be 'no'.",
+    "4. The four sentences must all be different from each other, not just punctuation changes.",
+    "5. Keep content appropriate for a school-age learner: no violence, romance, politics or unsafe topics.",
+  ].join("\n");
+}
+// ===== STEP، نوع pick وحده: مطابقٌ عمداً لشكل GRAM_BANK لكن بمهارات STEP — ترتيب
+// الكلمات/الحروف الكبيرة/الترقيم لا قواعد نحوية. نوعا gap وorder يبقيان بلا توليد
+// عمداً: الرقابة الآلية على فراغٍ صحيح أو ترتيب فقرة أصعب من التحقّق من GJT بسيطة —
+// نفس مبدأ "الرقابة بحسب الخطر" المطبَّق أصلاً بين الكتابة (بعدية) والأزواج (قبلية).
+const STEP_TAGS: Record<string, string[]> = {
+  A1: ["ترتيب الكلمات", "الحروف الكبيرة"],
+  A2: ["ترتيب الكلمات", "الحروف الكبيرة", "علامات الترقيم"],
+  B1: ["ترتيب الكلمات", "علامات الترقيم"],
+};
+function systemGenStep(level: string): string {
+  const tags = STEP_TAGS[level] || STEP_TAGS.A2;
+  const tag = tags[Math.floor(Math.random() * tags.length)];
+  const focusByTag: Record<string, string> = {
+    "ترتيب الكلمات": "correct English word order (subject-verb-object, adverb placement, or clause order) for this level",
+    "الحروف الكبيرة": "correct capitalization: sentence start, 'I', days/months, proper nouns, vs. common nouns that should NOT be capitalized",
+    "علامات الترقيم": "correct punctuation: commas in a list, comma splices vs. semicolons, or sentence-ending punctuation",
+  };
+  const topic = GEN_TOPICS[Math.floor(Math.random() * GEN_TOPICS.length)];
+  return [
+    `Write ONE Grammaticality Judgment Task item for a CEFR ${level} English learner, testing`,
+    `${focusByTag[tag]}.`,
+    `CONTEXT/TOPIC: ${topic}. Invent your own names/details. Do NOT reuse a stock example.`,
+    "",
+    "Produce FOUR versions of THE SAME underlying sentence: exactly ONE fully correct, and THREE",
+    "incorrect, each isolating a DIFFERENT specific mistake of the kind described above — not",
+    "random noise, and not three variations of the same mistake.",
+    "",
+    "OUTPUT EXACTLY in this shape, nothing else, no markdown, no extra commentary:",
+    `TAG: ${tag}`,
+    "S1: <sentence 1, in ENGLISH>",
+    "S1_OK: <yes or no>",
+    "S1_WHY: <one short reason IN ARABIC>",
+    "S2: <sentence 2, in ENGLISH>",
+    "S2_OK: <yes or no>",
+    "S2_WHY: <one short reason IN ARABIC>",
+    "S3: <sentence 3, in ENGLISH>",
+    "S3_OK: <yes or no>",
+    "S3_WHY: <one short reason IN ARABIC>",
+    "S4: <sentence 4, in ENGLISH>",
+    "S4_OK: <yes or no>",
+    "S4_WHY: <one short reason IN ARABIC>",
+    "",
+    "RULES:",
+    "1. The S1..S4 sentence lines must be entirely in English — ZERO Arabic characters anywhere in them.",
+    "2. The S#_WHY lines must be written IN ARABIC, naming the specific rule, short and direct.",
+    "3. Exactly ONE of S1_OK..S4_OK is 'yes'; the other three must be 'no'.",
+    "4. The four sentences must all be different from each other, not just punctuation changes.",
+    "5. Keep content appropriate for a school-age learner: no violence, romance, politics or unsafe topics.",
+  ].join("\n");
+}
+// ===== فيديو تعليمي: قصّة قصيرة بعدّة مشاهد، ثم سؤال فهمٍ — نفس صيغة listen/read
+// (نصٌّ ثم فهم) لكن مقسَّمة مشاهد بدل فقرةٍ واحدة، لأن هذا فرقها الوحيد عن الفيديو
+// الحقيقي (تتابعٌ زمني) لا اجتهاداً، كما وثّق CLAUDE.md عند شحن القسم نفسه =====
+function systemGenVideo(level: string): string {
+  const styleByLevel: Record<string, string> = {
+    A1: "an everyday routine or one concrete fact, told as THREE short scenes, present tense, very simple words a young beginner already knows",
+    A2: "a short narrative with a clear before/after sequence, told as THREE scenes, past or present tense, one clear detail per scene",
+    B1: "a short story with a beginning, a turn or complication, and a resolution, told as FOUR scenes",
+  };
+  const nScenes = level === "B1" ? 4 : 3;
+  const lv = styleByLevel[level] || styleByLevel.A2;
+  const topic = GEN_TOPICS[Math.floor(Math.random() * GEN_TOPICS.length)];
+  const sceneLines: string[] = [];
+  for (let i = 1; i <= nScenes; i++) {
+    sceneLines.push(`SCENE${i}_EMOJI: <ONE single emoji that represents this scene, nothing else on the line>`);
+    sceneLines.push(`SCENE${i}_TEXT: <one short English sentence narrating this scene>`);
+  }
+  return [
+    `Write ONE short animated-story ("video") item for a CEFR ${level} English learner: ${lv}.`,
+    `TOPIC: ${topic}. Invent your own names/details. Do NOT reuse a stock textbook example.`,
+    "",
+    "OUTPUT EXACTLY in this shape, nothing else, no markdown, no extra commentary:",
+    "TITLE: <a short 2 to 4 word English title>",
+    ...sceneLines,
+    "Q: <a comprehension question about the whole story, in ENGLISH>",
+    "A: <choice 1, in ENGLISH>",
+    "B: <choice 2, in ENGLISH>",
+    "C: <choice 3, in ENGLISH>",
+    "CORRECT: <A or B or C>",
+    "",
+    "RULES:",
+    `1. Produce EXACTLY ${nScenes} scenes, numbered SCENE1 to SCENE${nScenes}, in that order, no gaps.`,
+    "2. TITLE, every SCENE#_TEXT, Q, A, B and C must be entirely in English — ZERO Arabic characters.",
+    "3. Q and all three choices must be answerable from the scenes alone, at the same CEFR level.",
+    "4. Exactly one of A/B/C is correct; the other two must be plausible but clearly wrong.",
+    "5. Keep content appropriate for a school-age learner: no violence, romance, politics or unsafe topics.",
+  ].join("\n");
+}
+
 function systemGen(domain: string, level: string, word: string) {
   if (domain === "write") return systemGenWrite(level);
   if (domain === "minpair") return systemGenMinpair(level, word);
+  if (domain === "gram") return systemGenGram(level);
+  if (domain === "step") return systemGenStep(level);
+  if (domain === "video") return systemGenVideo(level);
   const isListen = domain === "listen";
   const styleByLevel: Record<string, string> = {
     A1: "ONE or TWO very short sentences. One single concrete fact (a name, age, colour, number, or day of the week). Simple present tense only. Very common words a young beginner already knows.",

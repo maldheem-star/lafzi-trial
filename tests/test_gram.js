@@ -2,13 +2,23 @@ const {chromium}=require('/opt/node22/lib/node_modules/playwright');
 let fails=0;const ok=(c,m)=>{console.log((c?'  ✓ ':'  ✗ FAIL ')+m);if(!c)fails++};
 (async()=>{
 const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium'});
-const logs=[];
+const logs=[];let genCalls=[],genReply="";
+const GOOD_GRAM_GEN=[
+  "S1: My father go to work every day.","S1_OK: no","S1_WHY: الفاعل مفرد غائب فيحتاج -s",
+  "S2: My father goes to work every day.","S2_OK: yes","S2_WHY: صحيحة — goes مع he/she/it",
+  "S3: My father going to work every day.","S3_OK: no","S3_WHY: going تحتاج is قبلها",
+  "S4: My father gone to work every day.","S4_OK: no","S4_WHY: gone يحتاج has قبلها"].join("\n");
 const mk=async()=>{
   const page=await b.newPage({viewport:{width:420,height:900}});
   page.on('pageerror',e=>{console.log('  ✗ PAGEERROR '+e.message);fails++});
   await page.route('**/rest/v1/**',async r=>{
     let body={};try{body=JSON.parse(r.request().postData()||'{}')}catch(e){}
     logs.push(body);r.fulfill({status:201,contentType:'application/json',body:'[]'});
+  });
+  await page.route('**/functions/v1/tutor',async r=>{
+    let x={};try{x=JSON.parse(r.request().postData()||'{}')}catch(e){}
+    genCalls.push(x);
+    r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,reply:genReply||GOOD_GRAM_GEN})});
   });
   await page.addInitScript(()=>{
     Object.defineProperty(window,'speechSynthesis',{configurable:true,value:{speak(){},cancel(){},resume(){},pause(){},getVoices:()=>[{lang:'en-US',name:'X'}],speaking:false,pending:false}});
@@ -243,6 +253,43 @@ ok(badFresh.length===0,badFresh.length?`محتوًى B1 بكرٌ دخل كجدي
 // وتأكيدٌ أن المسار الآخر (إعادة تدريس اللدرس الضعيف) ما زال يعمل كما صُمّم أصلاً — لم يُعطَّل بالخطأ
 const passiveInPlan=plan.some(i=>i.lesson==='l_passive');
 ok(passiveInPlan,'ودرسٌ ضعيفٌ فعلاً (المبني للمجهول، من LESSON_SEED) ما زال يصل عبر إعادة التدريس — لم تُعطَّل الآلية القائمة');
+
+console.log('\n١٢) التوليد الآلي لـgram (٢٠ أغسطس) — علاج شكوى إلياس: ١٥٪ تمايز فقط بلا توليد');
+page=await mk();
+const gp=await page.evaluate(x=>({
+  good:parseGenPickBlock(x.good,'gram',false),
+  wrongCount:parseGenPickBlock(x.good.replace('S1_OK: no','S1_OK: yes'),'gram',false), // صارت صحيحتان
+  arContam:parseGenPickBlock(x.good.replace('My father goes to work every day.','ذهب أبي إلى العمل'),'gram',false),
+  dup:parseGenPickBlock(x.good.replace('My father going to work every day.','My father goes to work every day.'),'gram',false),
+  missing:parseGenPickBlock('just some text','gram',false),
+}),{good:GOOD_GRAM_GEN});
+ok(!!gp.good&&gp.good.c.length===4&&gp.good.c.filter(c=>c.ok).length===1&&gp.good.ai===true,'نصٌّ سليمٌ يُقبل: أربع جملٍ، صحيحةٌ واحدة، ai:true');
+ok(gp.good.c.every(c=>c.why&&c.why.length>0),'وكل خيارٍ ومعه سببه');
+ok(gp.wrongCount===null,'وصفر أو صواب مزدوج (هنا: صواب مزدوج) يُرفض');
+ok(gp.arContam===null,'وتلوّثٌ عربي في جملة يُرفض رغم شكلٍ سليم ظاهرياً');
+ok(gp.dup===null,'وجملتان متطابقتان تُرفضان — لا مموّهاً حقيقياً');
+ok(gp.missing===null,'ونصٌّ بلا وسم S1..S4 يُرفض');
+await page.evaluate(()=>{try{lsDel('mawhiba_gram_aibank_v1')}catch(e){}});
+genCalls=[];genReply=GOOD_GRAM_GEN;
+await page.evaluate(level=>gramGenTopUp(level),'A1');
+await page.waitForTimeout(300);
+ok(genCalls.some(c=>c.mode==='gen'&&c.domain==='gram'&&c.level==='A1'),'gramGenTopUp يطلب توليداً بمستواها');
+const gramAiBank=await page.evaluate(()=>genBankLoad('mawhiba_gram_aibank_v1'));
+ok(gramAiBank.length>=1&&gramAiBank[0].lv==='A1'&&gramAiBank[0].ai===true,'والعنصر المقبول يدخل بنك التوليد المحلّي');
+const gramMerged=await page.evaluate(()=>gramBankFor('A1'));
+ok(gramMerged.some(x=>x.ai===true)&&gramMerged.some(x=>!x.ai),'ويظهر ضمن gramBankFor مع البنك المؤلَّف — لا بديلاً عنه');
+// ومعدّل التوليد رُفع لا نداءٌ واحد — بنكٌ صغيرٌ (٥) يُستهلك جلسةً واحدة كاملةً (GRAM_N=5)
+const calls3=await page.evaluate(()=>genCallsFor(5,5));
+ok(calls3>1,`ونداءاتٌ متعدّدة حين تستهلك الجلسة نصف البنك فأكثر (${calls3})`);
+const calls0=await page.evaluate(()=>genCallsFor(15,5));
+ok(calls0===0,'ولا نداء إضافي عند بلوغ السقف (GEN_BANK_MAX=15)');
+
+console.log('\n١٣) لا انحدار بعد وصل التوليد بـgram');
+page=await mk();
+await page.evaluate(()=>startGram());
+await page.waitForTimeout(300);
+ok((await page.evaluate(()=>window.__ERRS.length))===0,'ولا خطأ عند بدء الجلسة رغم نداء التوليد الصامت');
+ok((await page.evaluate(()=>censusMissing())).length===0,'وكل الدوال معرَّفة');
 
 await b.close();
 console.log(fails?`\n=== ${fails} فشل ===`:'\n=== كل الاختبارات نجحت ===');

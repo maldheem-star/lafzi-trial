@@ -6,13 +6,24 @@ const {chromium}=require('/opt/node22/lib/node_modules/playwright');
 let fails=0;const ok=(c,m)=>{console.log((c?'  ✓ ':'  ✗ FAIL ')+m);if(!c)fails++};
 (async()=>{
 const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium'});
-let logs=[];
+let logs=[],genCalls=[],genReply="";
+const GOOD_STEP_GEN=[
+  "TAG: ترتيب الكلمات",
+  "S1: Always my brother reads at night.","S1_OK: no","S1_WHY: always يقع قبل الفعل الأساسي لا في أوّل الجملة",
+  "S2: My brother always reads at night.","S2_OK: yes","S2_WHY: صحيحة — الظرف قبل الفعل الأساسي",
+  "S3: My brother reads always at night.","S3_OK: no","S3_WHY: always لا تقع بعد الفعل مباشرةً",
+  "S4: Reads my brother always at night.","S4_OK: no","S4_WHY: الفعل لا يسبق الفاعل هكذا"].join("\n");
 const mk=async(f)=>{
   const page=await b.newPage({viewport:{width:420,height:900}});
   page.on('pageerror',e=>{console.log('  ✗ PAGEERROR '+e.message);fails++});
   await page.route('**/rest/v1/**',async r=>{
     let x={};try{x=JSON.parse(r.request().postData()||'{}')}catch(e){}
     logs.push(x);r.fulfill({status:201,contentType:'application/json',body:'[]'});
+  });
+  await page.route('**/functions/v1/tutor',async r=>{
+    let x={};try{x=JSON.parse(r.request().postData()||'{}')}catch(e){}
+    genCalls.push(x);
+    r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,reply:genReply||GOOD_STEP_GEN})});
   });
   await page.goto('http://127.0.0.1:8931/'+(f||'index.html'));
   await page.waitForFunction(()=>typeof startStep==='function');
@@ -201,7 +212,37 @@ for(const [f,lv] of [['index.html','A1'],['mohammed.html','B1'],['elias.html','A
   ok(same,`${f}: وجلسته من بنك مستواه وحده`);
 }
 
-console.log('\n١٤) لا انحدار');
+console.log('\n١٤) التوليد الآلي لنوع pick وحده (٢٠ أغسطس) — gap/order يبقيان بلا توليد عمداً');
+page=await mk();
+const sp=await page.evaluate(x=>({
+  good:parseGenPickBlock(x.good,'step',true),
+  badTag:parseGenPickBlock(x.good.replace('TAG: ترتيب الكلمات','TAG: شيءٌ غير معروف'),'step',true),
+  arContam:parseGenPickBlock(x.good.replace('My brother always reads at night.','أخي يقرأ دائماً في الليل'),'step',true),
+  missing:parseGenPickBlock('just some text','step',true),
+}),{good:GOOD_STEP_GEN});
+ok(!!sp.good&&sp.good.type==='pick'&&sp.good.tag==='ترتيب الكلمات'&&sp.good.c.length===4,'نصٌّ سليمٌ يُقبل بنوعه ووسمه (tag) الصحيحين');
+ok(sp.good.c.filter(c=>c.ok).length===1,'وصحيحةٌ واحدة بالضبط');
+ok(!!sp.badTag&&sp.badTag.tag==='ترتيب الكلمات','ووسمٌ غير معروف يُستبدَل بأوّل وسمٍ صالح لا يُرفَض العنصر كلّه');
+ok(sp.arContam===null,'وتلوّثٌ عربي في جملة يُرفض');
+ok(sp.missing===null,'ونصٌّ بلا وسم S1..S4 يُرفض');
+await page.evaluate(()=>{try{lsDel('mawhiba_step_aibank_v1')}catch(e){}});
+genCalls=[];genReply=GOOD_STEP_GEN;
+await page.evaluate(level=>stepGenTopUp(level),'A1');
+await page.waitForTimeout(300);
+ok(genCalls.some(c=>c.mode==='gen'&&c.domain==='step'&&c.level==='A1'),'stepGenTopUp يطلب توليداً بمستواها');
+const stepAiBank=await page.evaluate(()=>genBankLoad('mawhiba_step_aibank_v1'));
+ok(stepAiBank.length>=1&&stepAiBank[0].type==='pick'&&stepAiBank[0].ai===true,'والعنصر المقبول (pick) يدخل بنك التوليد المحلّي');
+const stepMerged=await page.evaluate(()=>stepBankFor('A1'));
+ok(stepMerged.some(x=>x.ai===true)&&stepMerged.some(x=>!x.ai),'ويظهر ضمن stepBankFor مع البنك المؤلَّف');
+ok(stepMerged.every(x=>x.ai!==true||x.type==='pick'),'وكل عنصرٍ مولَّد نوعه pick — لا gap ولا order مولَّدين');
+
+console.log('\n١٤ب) لا انحدار بعد وصل التوليد بـstep');
+page=await mk();
+await page.evaluate(()=>startStep());
+await page.waitForTimeout(300);
+ok((await page.evaluate(()=>window.__ERRS.length))===0,'ولا خطأ عند بدء الجلسة رغم نداء التوليد الصامت');
+
+console.log('\n١٥) لا انحدار');
 for(const [pg,fn,md] of [['index.html',"startStep()",'step'],['index.html',"startGram()",'gram'],
   ['index.html',"startWrite()",'write'],['index.html',"home()",'home'],
   ['mohammed.html',"startStep()",'step'],['elias.html',"startStep()",'step']]){
