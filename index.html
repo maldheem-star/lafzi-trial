@@ -2681,6 +2681,7 @@ function logAnswer(domain,qtype,isCorrect,response,itemId,elapsedMs,extra){
     elapsed_ms:elapsedMs==null?null:Math.round(elapsedMs)};
   const full=Object.assign({},base,extra||{});
   try{accRecord(domain,isCorrect)}catch(e){}   // بوّابة التمدّد: وصلٌ واحد يخدم كل قسم
+  try{bktRecord(domain,qtype,isCorrect)}catch(e){}   // احتمال الإتقان — نفس نقطة الوصل
   try{logSend(full,base)}catch(e){}
 }
 // ===== بوّابة التمدّد: قاعدة الـ٨٥٪ — ٢١ أغسطس =====
@@ -2725,6 +2726,64 @@ function bankStretched(domain,level,bankFor){
   if(!up||!stretchOn(domain))return base;
   const extra=bankFor(up).filter(function(x){return String(x.lv||"")===up});
   return extra.length?base.concat(extra):base;
+}
+
+// ===== BKT: احتمال الإتقان بدل عتبةٍ أخترعها — ٢١ أغسطس =====
+// CLAUDE.md يسمّي هذا صراحةً منذ ١٤ أغسطس بديلاً معياريّاً لـ«سلّم الإتقان بأرقام
+// اخترتُها (BASICS_REQ=2…)»، ويصنّفه «لم يُنفَّذ». والفحص النقدي للخطة (٢١ أغسطس)
+// أعاد كشف الأثر نفسه: معايير العبور غير مرقّمة («رفع دقّة تراكيب A1» إلى كم؟)،
+// وبوّابةٌ بلا رقم لا تُشعَل أبداً. فهذا تنفيذه.
+//
+// Bayesian Knowledge Tracing — Corbett & Anderson 1994، أساس الـCognitive Tutors:
+// تُتتبَّع لكل مهارة احتماليّةُ أن المتعلّم يُتقنها p(L)، وتُحدَّث بعد كل إجابة بقاعدة
+// بايز بأربعة معاملات: p(L0) معرفةٌ مبدئية، p(T) احتمال التعلّم بين محاولتين،
+// p(G) التخمين (إجابةٌ صحيحة بلا معرفة)، p(S) الزلّة (خطأٌ مع المعرفة).
+// وعتبة الإتقان ٠٫٩٥ هي معيار Corbett & Anderson الأصلي نفسه، لا رقمٌ اخترتُه.
+//
+// **وp(G) يُشتقّ من عدد الخيارات لا يُخمَّن**: زوجان في minpair يعنيان تخميناً ٥٠٪،
+// وأربعةٌ في gram تعني ٢٥٪ — فإصابةٌ في minpair تُرجّح الإتقان أقلّ بكثير من إصابةٍ
+// في gram، وهذا فرقٌ حقيقي كان يضيع لو وُحِّد المعامل. والكتابة إنتاجٌ حرّ بلا خيارات
+// فتخمينها ≈٠ (٠٫٠٥ احتياطاً لا صفراً، فصفرٌ يجعل القسمة حادّةً بلا داعٍ).
+const BKT_T=0.08,BKT_S=0.10,BKT_L0=0.20,BKT_MASTERY=0.95,BKT_MIN_N=6,BKT_KEY="mawhiba_bkt_v1";
+const BKT_GUESS={listen:1/3,read:1/3,video:1/3,gram:0.25,step:0.25,minpair:0.5,write:0.05};
+function bktLoad(){try{return JSON.parse(lsGet(BKT_KEY)||"{}")}catch(e){return{}}}
+function bktSave(o){try{lsSet(BKT_KEY,JSON.stringify(o))}catch(e){}}
+// قاعدة بايز ثم الانتقال — الصيغة المنشورة حرفياً، لا تقريبٌ لها
+function bktStep(p,correct,G,S,T){
+  const s=(typeof S==="number")?S:BKT_S,g=(typeof G==="number")?G:0.25,t=(typeof T==="number")?T:BKT_T;
+  const num=correct?p*(1-s):p*s;
+  const den=correct?(p*(1-s)+(1-p)*g):(p*s+(1-p)*(1-g));
+  const post=den>0?num/den:p;                       // احتمالٌ حديّ لا يُقسَم على صفر
+  return post+(1-post)*t;
+}
+// المهارة (Knowledge Component) = القسم ونوعه: متاحان في logAnswer بلا تمديد أيّ نداء
+function bktKey(domain,qtype){return String(domain||"")+":"+String(qtype||"—")}
+function bktRecord(domain,qtype,ok){
+  if(typeof ok!=="boolean")return;
+  if(!(domain in BKT_GUESS))return;                 // أقسامٌ بلا تدرّج مهارةٍ مُعرَّف
+  const st=bktLoad(),k=bktKey(domain,qtype),r=st[k]||{p:BKT_L0,n:0};
+  r.p=bktStep(r.p,ok,BKT_GUESS[domain],BKT_S,BKT_T);
+  r.n=(r.n|0)+1;st[k]=r;bktSave(st);
+}
+function bktOf(domain,qtype){return bktLoad()[bktKey(domain,qtype)]||null}
+// **حدٌّ أدنى من الأدلّة قبل إعلان الإتقان** — كشفه الاختبار لا الحدس: بمعاملات BKT
+// الافتراضية بلغ الاحتمالُ ٠٫٩٥ بعد **ثلاث** إجابات صحيحة، فيُعلَن «مُتقَن» على كل
+// قواعد A2 بثلاث إصابات. والرياضيات سليمة (ثلاث إصاباتٍ بتخمين ٢٥٪ دليلٌ بايزيّ قويّ
+// فعلاً)، والعيب في غيرها: **المهارة المُتتبَّعة أخشن مما ينبغي** (قسم:نوع، لا تركيبٌ
+// بعينه)، فالإتقان المُعلَن أوسع من المُقاس. وحتى تدقّ المهارة، حدٌّ أدنى للأدلّة —
+// وهو ممارسةٌ قائمة في نشر BKT لتفادي الإتقان المبكّر، لا التفافٌ على الصيغة نفسها.
+// وخُفِّض معدّل التعلّم إلى ٠٫٠٨ (داخل المدى المنشور ٠٫٠٥-٠٫٢) فلا يقفز الاحتمال.
+function bktMastered(domain,qtype){
+  const r=bktOf(domain,qtype);
+  return !!(r&&r.p>=BKT_MASTERY&&(r.n|0)>=BKT_MIN_N);
+}
+// كم إجابةً صحيحة متتالية تفصله عن الإتقان — المعيار مرقَّمٌ ومعروضٌ لا مبهم
+function bktToMastery(domain,qtype){
+  const r=bktOf(domain,qtype);if(!r)return null;
+  let p=r.p,n=0;
+  while(p<BKT_MASTERY&&n<50){p=bktStep(p,true,BKT_GUESS[domain],BKT_S,BKT_T);n++}
+  if(p<BKT_MASTERY)return null;
+  return Math.max(n,BKT_MIN_N-(r.n|0));   // حدّ الأدلّة قد يكون هو المتبقّي لا الاحتمال
 }
 function basicsChoose(i){
   if(basicsLocked||pctGated()||piGated())return;basicsLocked=true;basicsPicked=i;
@@ -3110,7 +3169,10 @@ const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEn
   "writeTokens","writeTtr","writeSim","writePrevLoad","writePrevAdd","writeSelfSim",
   "accLoad","accSave","accRecord","accRate","stretchOn","bankStretched",
   "seqStart","seqReset","seqPlanFor","seqWeek","seqCur","startSeq","seqCardHTML","renderSeq",
-  "loadKpi","kpiAgg","renderKpi"];
+  "loadKpi","kpiAgg","renderKpi",
+  "bktLoad","bktSave","bktStep","bktKey","bktRecord","bktOf","bktMastered","bktToMastery",
+  "writeLfp","mockBand","mockLogLoad","mockLogAdd","mockSeenRecently","mockPickFrom",
+  "buildMockPaper","startMock","mockCur","mockQuestion","mockChoose","mockFinish","renderMock","renderMockResult"];
 function censusMissing(){return CENSUS.filter(function(n){return typeof window[n]!=="function"})}
 function censusHTML(){
   var miss=censusMissing();
@@ -6469,6 +6531,60 @@ function writeSelfSim(txt){
   writePrevLoad().forEach(function(p){const s=writeSim(txt,p);if(s>best)best=s});
   return best;
 }
+// ===== ثراء المفردات: Lexical Frequency Profile — ٢١ أغسطس =====
+// الفحص النقدي (٢١ أغسطس): «لا هدف مفردات لأيّ مستوى، وNGSL مذكورٌ بلا استعمال».
+// والمقياس المعياري لثراء المفردات المنتَجة هو LFP (Laufer & Nation 1995): كم نسبة
+// ما يكتبه من الألف كلمة الأكثر شيوعاً (K1)، وكم منه فوقها. المبتدئ ينتج K1 كلَّه
+// تقريباً، والتقدّم يظهر بارتفاع ما فوق K1 — وهذا **يقيس النموّ** بخلاف حجم المفردات
+// المستقبِلة الذي يحتاج اختباراً منفصلاً (Vocabulary Size Test) لا نملكه.
+// وأحجام المفردات المرجعية لكل درجة (≈١٠٠٠ لِA1، ≈٢٠٠٠ لِA2، ≈٣٢٥٠ لِB1) تبقى
+// **مرجعاً معروضاً لا مقياساً نحسبه**، فحسابها يتطلّب ذلك الاختبار لا عيّنة كتابة.
+//
+// **حدُّ القائمة يُقال صراحةً**: NGSL الرسمية (Browne/Culligan/Phillips، CC BY-SA 4.0)
+// ٢٨٠٠ كلمة لا تُضمَّن هنا كاملةً، والمضمَّن قائمةٌ عالية التواتر تقارب K1 منها. وهي
+// **بيانات لا منطق**: استبدالها بـNGSL الرسمية كاملةً تغييرُ مصفوفةٍ واحدة لا شيفرة.
+const K1_WORDS=("the be to of and a in that have i it for not on with he as you do at this but his by from "+
+"they we say her she or an will my one all would there their what so up out if about who get which go me "+
+"when make can like time no just him know take people into year your good some could them see other than "+
+"then now look only come its over think also back after use two how our work first well way even new want "+
+"because any these give day most us is are was were been being had has did does done said made went got "+
+"came saw took gave found told became left felt put brought began kept held wrote stood heard let mean set "+
+"met run move live believe hold bring happen write provide sit stand lose pay meet include continue learn "+
+"change lead understand watch follow stop create speak read allow add spend grow open walk win offer "+
+"remember love consider appear buy wait serve die send expect build stay fall cut reach kill remain "+
+"man woman child boy girl father mother friend name home house school room door car city country world "+
+"place part number group problem fact hand eye head face life water food money book story family week "+
+"month night morning day today tomorrow yesterday hour minute thing something anything everything nothing "+
+"person people student teacher class lesson word question answer test paper pen table chair bed kitchen "+
+"street road park shop store market bus train plane bike phone computer game ball team match play "+
+"big small large little long short high low old young new good bad best better worse happy sad "+
+"hot cold warm cool fast slow easy hard early late right wrong same different next last few many much "+
+"more less very really quite too enough always never often sometimes usually again still yet already "+
+"here where there why how what who when which whose "+
+"red blue green black white yellow brown color "+
+"one two three four five six seven eight nine ten hundred thousand first second third "+
+"monday tuesday wednesday thursday friday saturday sunday january june july august "+
+"morning afternoon evening today weekend holiday summer winter spring rain sun snow wind "+
+"eat drink sleep walk run swim sing dance draw paint cook clean wash help study teach ask tell talk "+
+"listen hear watch look show wear buy sell cost price shop pay "+
+"happy angry tired hungry thirsty sick well fine nice kind clever busy free ready sure "+
+"please thank sorry hello goodbye yes not never nothing "+
+"in on under near behind between front back inside outside up down left right "+
+"and but or so because if when while before after until since than that which who "+
+"be am is are was were will would can could should must may might have has had do does did "+
+"my your his her its our their me him us them mine yours "+
+"a an the some any every each both all no none one another other "+
+"there here this that these those it what who how why where when").split(/\s+/);
+const K1_SET=(function(){const s={};K1_WORDS.forEach(function(w){if(w)s[w]=1});return s})();
+// أحجام المفردات المرجعية لكل درجة CEFR — مرجعٌ يُعرض لا رقمٌ يُحسب هنا
+const VOCAB_TARGET={A1:1000,A2:2000,B1:3250};
+function writeLfp(t){
+  const w=writeTokens(t);
+  if(!w.length)return{n:0,k1:0,beyond:0,pct:0};
+  let k1=0;w.forEach(function(x){if(K1_SET[x])k1++});
+  return{n:w.length,k1:k1,beyond:w.length-k1,
+    pct:Math.round(100*(w.length-k1)/w.length)};   // نسبة ما فوق K1 — هي مؤشّر النموّ
+}
 // تُقسَّم الفقرة إلى جملٍ مرقّمة — نفس شكل رسائل المحادثة إلى المراجعة (coachReview)،
 // فالنموذج مُدرَّب على "You will receive their sentences, numbered" لا فقرةً واحدة خام
 function writeSentences(t){
@@ -6533,10 +6649,10 @@ async function writeSubmit(){
   // (fail:السبب / fixes:العدد / none) — لا صيغة جديدة، توصيلٌ بما هو قائم أصلاً.
   const reviewState=writeCopy?"skip:copy":(writeFixFail?("fail:"+writeFixFail):(writeFix.length?("fixes:"+writeFix.length):"none"));
   // مقياسا الإنتاج يُحسبان قبل إضافة النصّ للسجلّ المحلّي، وإلا قايس النصُّ نفسَه فأعطى ١
-  const ttr=writeTtr(txt),selfSim=writeSelfSim(txt);
+  const ttr=writeTtr(txt),selfSim=writeSelfSim(txt),lfp=writeLfp(txt);
   // q_text وresponse كاملان — بلا هذين لا تشخيص، ونفس عُرف تسجيل الفرق/الشكل في بقية التطبيق
   logAnswer("write",it.lv,ok,txt,it.id,writeShownAt?Date.now()-writeShownAt:null,
-    {q_text:((it.ai?"[مولَّد] ":"")+it.prompt+" · الهدف "+it.min+" كلمة · كتبت "+writeCount+" · review:"+reviewState+" · lt:"+writeLtJudged+"/"+writeLtDropped+" · مثال:"+writeModelViews+" · نسخ:"+(writeCopy?1:0)+" · تنوّع:"+ttr+" · شبه سابق:"+selfSim).slice(0,1200)});
+    {q_text:((it.ai?"[مولَّد] ":"")+it.prompt+" · الهدف "+it.min+" كلمة · كتبت "+writeCount+" · review:"+reviewState+" · lt:"+writeLtJudged+"/"+writeLtDropped+" · مثال:"+writeModelViews+" · نسخ:"+(writeCopy?1:0)+" · تنوّع:"+ttr+" · شبه سابق:"+selfSim+" · فوق K1:"+lfp.pct+"%").slice(0,1200)});
   // يُحفظ بعد التسجيل لا قبله — والنسخ المحض لا يدخل السجلّ فلا يصير أساساً يُقاس عليه
   if(!writeCopy)writePrevAdd(txt);
   // نفس مسار بطاقات تصحيح المحادثة بالضبط: بطاقةٌ مجدولة تعود عند حافّة النسيان،
@@ -8789,6 +8905,176 @@ function renderSeq(){
   </div>`;
 }
 
+// ===== المحاكاة الأسبوعية: ورقةٌ كاملة بصيغة كامبردج — ٢١ أغسطس =====
+// طلبها صاحب المشروع أسبوعيةً، والفحص النقدي حذّر من عطلها المتوقَّع: «محاكاةٌ أسبوعية
+// ببنكٍ ثابت تقيس ألفة الاختبار لا القدرة» — نفس عطل التكرار المُصلَح في gram/step.
+// فبُنيت على ثلاثة احترازاتٍ صريحة، كلٌّ منها يعالج تلوّثاً معروفاً في القياس:
+//   ١) **استبعاد ما رآه مؤخراً** (MOCK_COOLDOWN يوماً): عنصرٌ أُجيب عنه أمس يقيس
+//      تذكّره لا قدرته — وهو تلوّث إعادة الاختبار (test-retest contamination) المعروف.
+//      والاستبعاد يُرخّى تلقائياً إن لم يبقَ ما يكفي، فلا تنهار الورقة إلى صفر عنصر.
+//   ٢) **توليدٌ قبل الورقة**: تُستدعى مولّدات الأقسام نفسها قبل التجميع، فالبنك ينمو
+//      بين أسبوع وأسبوع بدل أن يُعاد كما هو (نفس genTopUp القائم، لا مولّد جديد).
+//   ٣) **بلا تغذية راجعة حتى النهاية**: الامتحان يقيس ولا يُدرّس — عرض الصواب بعد كل
+//      سؤال يجعل الورقة تمريناً لا قياساً، ويُفسد استقلال الأسئلة.
+// والبنية من الورقة الحقيقية: أقسامٌ متتابعة (استماع ⇐ قراءة ⇐ قواعد ⇐ تحليل كتابي)
+// كما تُرتَّب أوراق YLE/A2 Key/B1 Preliminary، لا خلطٌ عشوائي.
+// وحدُّه المعلن: **لا كتابةَ حرّة في الورقة** — تصحيحها يحتاج نداءَ شبكةٍ لكل نصّ فيكسر
+// التوقيت، وتقديرها آليّاً بعدد الكلمات وحده كان سيُدخل في الدرجة مقياساً كذّبته
+// بياناتنا نفسها (محمد ١٠٠٪ على نصٍّ مُعاد). فالورقة تقيس الفهم والدقّة، وتُقال حدودها.
+const MOCK_COOLDOWN=3,MOCK_KEY="mawhiba_mock_v1";
+const MOCK_SECTIONS=[
+  {k:"listen",n:5,t:"فهم الاستماع",bank:function(l){return bankStretched("listen",l,listenBankFor)}},
+  {k:"read",  n:5,t:"فهم المقروء", bank:function(l){return bankStretched("read",l,readBankFor)}},
+  {k:"gram",  n:5,t:"دقّة القواعد",bank:function(l){return bankStretched("gram",l,gramBankFor)}},
+  {k:"step",  n:5,t:"التحليل الكتابي",bank:function(l){return bankStretched("step",l,stepBankFor).filter(function(x){return x.type!=="order"})}},
+];
+// درجات كامبردج التقريبية — مواءمةٌ معلنة لا تحويلٌ رسمي إلى مقياس كامبردج الرقمي
+const MOCK_BANDS=[
+  {min:90,g:"A",d:"ممتاز — أداءٌ فوق مستوى الورقة"},
+  {min:82,g:"B",d:"جيّد جداً — المستوى مُتقَن"},
+  {min:70,g:"C",d:"ناجح — المستوى مُبلَغ"},
+  {min:60,g:"—",d:"قريب — دون عتبة النجاح المعتادة"},
+  {min:0, g:"—",d:"يحتاج بناءً أوسع قبل الإعادة"},
+];
+function mockBand(pct){for(const b of MOCK_BANDS)if(pct>=b.min)return b;return MOCK_BANDS[MOCK_BANDS.length-1]}
+function mockLogLoad(){try{return JSON.parse(lsGet(MOCK_KEY)||"[]")}catch(e){return[]}}
+function mockLogAdd(rec){
+  const a=mockLogLoad();a.unshift(rec);
+  try{lsSet(MOCK_KEY,JSON.stringify(a.slice(0,20)))}catch(e){}
+}
+// آخر ظهورٍ لكل عنصر — يُقرأ من مخزون FSRS نفسه (last) فلا سجلّ ثانٍ يُبنى
+function mockSeenRecently(srsStore,id){
+  const r=srsStore&&srsStore[id];
+  if(!r||!r.last)return false;
+  return (srsToday()-r.last)<MOCK_COOLDOWN;
+}
+function mockPickFrom(POOL,srsStore,n){
+  const fresh=shuffle(POOL.filter(function(i){return !mockSeenRecently(srsStore,i.id)}));
+  if(fresh.length>=n)return fresh.slice(0,n);
+  // الاستبعاد يُرخّى بدل أن تنهار الورقة — ويُسجَّل كم عنصراً لم يُتجنَّب
+  const rest=shuffle(POOL.filter(function(i){return mockSeenRecently(srsStore,i.id)}));
+  return fresh.concat(rest).slice(0,n);
+}
+const MOCK_SRS={listen:function(){return listenSrsLoad()},read:function(){return readSrsLoad()},
+  gram:function(){return gramSrsLoad()},step:function(){return stepSrsLoad()}};
+function buildMockPaper(){
+  const lv=profileOf().level||"A2",out=[];let reused=0;
+  MOCK_SECTIONS.forEach(function(sec){
+    const POOL=sec.bank(lv),st=(MOCK_SRS[sec.k]||function(){return{}})();
+    const picked=mockPickFrom(POOL,st,sec.n);
+    picked.forEach(function(it){
+      if(mockSeenRecently(st,it.id))reused++;
+      out.push({sec:sec.k,secT:sec.t,it:it});
+    });
+  });
+  return{items:out,reused:reused,lv:lv};
+}
+let mockPaper=null,mockIdx=0,mockAns=[],mockDone=false,mockStart=0,mockOrder=[];
+function startMock(){
+  const p=buildMockPaper();
+  mockPaper=p;mockIdx=0;mockAns=[];mockDone=false;mockStart=Date.now();
+  // ترتيب الخيارات يُخلَط مرّةً للورقة كلّها — لا انحياز موضع، وثباتٌ داخل السؤال
+  mockOrder=p.items.map(function(x){
+    const n=(x.it.c||x.it.choices||[]).length||3;
+    return shuffle(Array.from({length:n},function(_,i){return i}));
+  });
+  mode="mock";window.scrollTo(0,0);render();
+  // البنوك تنمو للورقة القادمة لا الحالية — نفس نداءات التوليد الصامتة القائمة
+  try{const lv=p.lv;genTopUp("listen",GEN_BANK_KEY_LISTEN,lv);genTopUp("read",GEN_BANK_KEY_READ,lv);
+      gramGenTopUp(lv);stepGenTopUp(lv)}catch(e){}
+}
+function mockCur(){return mockPaper&&mockPaper.items[mockIdx]}
+// نصّ السؤال وخياراته يختلفان بحسب القسم — تُقرأ من العنصر نفسه بلا تحويله
+function mockQuestion(x){
+  const it=x.it;
+  if(x.sec==="gram"||(x.sec==="step"&&it.type==="pick"))return{q:"أيّ الجمل صحيحة؟",c:it.c.map(function(o){return o.t}),a:it.c.findIndex(function(o){return o.ok})};
+  if(x.sec==="step")return{q:it.q||"أكملي الفراغ",c:it.c,a:it.a};
+  return{q:it.q,c:it.c,a:it.a};
+}
+function mockChoose(i){
+  if(mockDone)return;
+  const x=mockCur();if(!x)return;
+  const Q=mockQuestion(x),ord=mockOrder[mockIdx],real=ord[i];
+  mockAns.push({sec:x.sec,id:x.it.id,pick:real,ok:real===Q.a,pos:i+1});
+  if(mockIdx+1>=mockPaper.items.length)mockFinish();
+  else{mockIdx++;render()}
+}
+function mockFinish(){
+  mockDone=true;
+  const total=mockAns.length,right=mockAns.filter(function(a){return a.ok}).length;
+  const pct=total?Math.round(100*right/total):0,secs=Math.round((Date.now()-mockStart)/1000);
+  const per={};mockAns.forEach(function(a){const o=per[a.sec]||(per[a.sec]={n:0,ok:0});o.n++;if(a.ok)o.ok++});
+  const band=mockBand(pct);
+  mockLogAdd({d:todayStr(),pct:pct,band:band.g,lv:mockPaper.lv,secs:secs});
+  // كل عنصر يُسجَّل على حدة بقسمه وموضع اختياره — نفس أعراف التسجيل، ودرجةٌ جامعة معه
+  mockAns.forEach(function(a){
+    logAnswer("mock",a.sec,a.ok,"موضع "+a.pos,a.id,null,
+      {q_text:("محاكاة "+mockPaper.lv+" · "+a.sec).slice(0,200)});
+  });
+  logAnswer("mock","paper",pct>=70,pct+"% · درجة "+band.g,null,secs*1000,
+    {score_pct:pct,q_text:("محاكاة "+mockPaper.lv+" · "+Object.keys(per).map(function(k){
+      return k+" "+per[k].ok+"/"+per[k].n}).join(" · ")+" · مُعاد:"+mockPaper.reused).slice(0,400)});
+  window.scrollTo(0,0);render();
+}
+function renderMock(){
+  if(!mockPaper){app.innerHTML=`${profileBarHTML()}<div class="card"><p class="sub">لا ورقة.</p>
+    <button class="btn" onclick="home()">رجوع</button></div>`;return}
+  if(mockDone)return renderMockResult();
+  const x=mockCur(),Q=mockQuestion(x),ord=mockOrder[mockIdx];
+  const n=mockPaper.items.length;
+  const audio=x.sec==="listen"
+    ? `<button class="btn" style="background:#7C3AED" onclick="speakEnglish(${JSON.stringify(x.it.audio||"")})">🔊 استمع</button>`
+    : "";
+  const passage=x.sec==="read"&&x.it.passage
+    ? `<div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:.9rem;
+        direction:ltr;text-align:left;font-family:Georgia,serif;margin-bottom:.8rem">${esc(x.it.passage)}</div>`:"";
+  app.innerHTML=`${profileBarHTML()}
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:.5rem">
+      <b>📝 محاكاة الاختبار — ${esc(x.secT)}</b>
+      <span style="color:#64748B;font-size:.9em">${toAr(mockIdx+1)} من ${toAr(n)}</span>
+    </div>
+    <div style="height:6px;background:#E2E8F0;border-radius:3px;margin:.6rem 0 1rem">
+      <div style="height:100%;width:${Math.round(100*mockIdx/n)}%;background:#0F766E;border-radius:3px"></div></div>
+    <p class="sub">ورقةٌ كاملة بلا تصحيحٍ حتى النهاية — كالاختبار الحقيقي.</p>
+    ${audio}${passage}
+    <div class="q" style="direction:ltr;text-align:left;font-family:Georgia,serif">${esc(Q.q)}</div>
+    ${ord.map(function(real,i){
+      return `<button class="opt" style="direction:ltr;text-align:left;font-family:Georgia,serif"
+        onclick="mockChoose(${i})">${esc(Q.c[real])}</button>`}).join("")}
+    <button class="btn ghost" style="margin-top:1rem" onclick="home()">إنهاء وخروج</button>
+  </div>`;
+}
+function renderMockResult(){
+  const total=mockAns.length,right=mockAns.filter(function(a){return a.ok}).length;
+  const pct=total?Math.round(100*right/total):0,band=mockBand(pct);
+  const per={};mockAns.forEach(function(a){const o=per[a.sec]||(per[a.sec]={n:0,ok:0});o.n++;if(a.ok)o.ok++});
+  const secs=Math.round((Date.now()-mockStart)/1000);
+  const hist=mockLogLoad().slice(1,6);
+  const names={listen:"فهم الاستماع",read:"فهم المقروء",gram:"دقّة القواعد",step:"التحليل الكتابي"};
+  app.innerHTML=`${profileBarHTML()}
+  <div class="card">
+    <h2>📝 نتيجة المحاكاة — مستوى ${esc(mockPaper.lv)}</h2>
+    <div style="font-size:2.2rem;font-weight:800;color:${pct>=70?"#0F766E":"#B45309"}">${toAr(pct)}%</div>
+    <div style="color:#475569;margin-bottom:.8rem">${band.g!=="—"?"درجة "+esc(band.g)+" · ":""}${esc(band.d)}
+      · ${toAr(Math.round(secs/60))} دقيقة</div>
+    ${Object.keys(per).map(function(k){
+      const o=per[k],p=Math.round(100*o.ok/o.n);
+      return `<div style="display:flex;justify-content:space-between;padding:.5rem .8rem;border-bottom:1px solid #E2E8F0">
+        <span>${esc(names[k]||k)}</span><b style="color:${p>=70?"#0F766E":"#B45309"}">${toAr(o.ok)}/${toAr(o.n)}</b></div>`}).join("")}
+    ${mockPaper.reused?`<p class="sub" style="margin-top:.7rem">⚑ ${toAr(mockPaper.reused)} عنصراً تكرّر من جلسةٍ قريبة —
+      البنك لم يكفِ لورقةٍ بكرٍ تماماً، فالدرجة أعلى ممّا تستحقّه القدرة وحدها.</p>`:""}
+    ${hist.length?`<div style="margin-top:1rem"><b style="font-size:.9em;color:#475569">أوراق سابقة</b>
+      ${hist.map(function(h){return `<div style="color:#64748B;font-size:.88em">${esc(h.d)} · ${toAr(h.pct)}%</div>`}).join("")}</div>`:""}
+    <p class="sub" style="margin-top:.8rem">تقيس هذه الورقة الفهم والدقّة. الكتابة الحرّة والنطق يُقاسان في قسميهما،
+    ولا يدخلان هذه الدرجة.</p>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.8rem">
+      <button class="btn" onclick="home()">رجوع</button>
+      <button class="btn ghost" onclick="startMock()">ورقة أخرى</button>
+    </div>
+  </div>`;
+}
+
 // ===== لوحة القياس: تجميعٌ تلقائي لا انتظارَ سؤال — ٢١ أغسطس =====
 // كل مؤشّر في خطة «سلّم الإنجليزية» كان مكتوباً كاستعلام SQL لا يشغّله أحد تلقائياً:
 // كل رقمٍ يتطلّب أن يُسأل صاحب المشروع ثم أستعلم أنا. وهذا حرفياً صنف العطل الموثَّق
@@ -8856,12 +9142,32 @@ function renderKpi(){
           ${a.flags.map(function(f){return `<div style="margin-top:.4rem;font-size:.85em;color:${f.c}">⚑ ${esc(f.t)}</div>`}).join("")}
         </div>`;
       }).join("");
+  // احتمال الإتقان (BKT) محلّيٌّ لا يحتاج الشبكة — معيارٌ مرقَّم يُعرض لا عتبةٌ مبهمة
+  const bkt=bktLoad(),keys=Object.keys(bkt).filter(function(k){return (bkt[k].n|0)>=3})
+    .sort(function(a,b){return bkt[b].p-bkt[a].p});
+  const bktHTML=!keys.length?"":`<div style="margin-top:1.2rem">
+    <b style="font-size:.92rem;color:#0F172A">احتمال الإتقان (BKT)</b>
+    <p class="sub" style="margin:.2rem 0 .6rem">معيار Corbett &amp; Anderson: مهارةٌ تُعدّ مُتقَنة عند
+    ${toAr(Math.round(BKT_MASTERY*100))}٪ — رقمٌ منشور لا عتبةٌ اخترناها — وبـ${toAr(BKT_MIN_N)} محاولاتٍ
+    على الأقلّ، فلا يُعلَن إتقانٌ على دليلٍ أقلّ ممّا يحتمله.</p>
+    ${keys.map(function(k){
+      const r=bkt[k],p=Math.round(100*r.p),parts=k.split(":");
+      const nm=(KPI_NAMES[parts[0]]||parts[0])+(parts[1]&&parts[1]!=="—"?" · "+parts[1]:"");
+      const done=bktMastered(parts[0],parts[1]),left=done?null:bktToMastery(parts[0],parts[1]);
+      return `<div style="padding:.5rem .8rem;border-bottom:1px solid #E2E8F0">
+        <div style="display:flex;justify-content:space-between;gap:.6rem;flex-wrap:wrap">
+          <span style="color:#334155">${esc(nm)}</span>
+          <b style="color:${done?"#0F766E":"#B45309"}">${toAr(p)}٪ ${done?"· مُتقَن ✓":""}</b></div>
+        <div style="height:5px;background:#E2E8F0;border-radius:3px;margin-top:.3rem">
+          <div style="height:100%;width:${p}%;background:${done?"#0F766E":"#B45309"};border-radius:3px"></div></div>
+        ${left!==null?`<div style="color:#64748B;font-size:.8em;margin-top:.2rem">تبقى ${toAr(left)} إجابة صحيحة متتالية للإتقان</div>`:""}
+      </div>`}).join("")}</div>`;
   app.innerHTML=`${profileBarHTML()}
   <div class="card">
     <h2>📊 لوحة القياس — آخر ${toAr(KPI_DAYS)} أيام</h2>
     <p class="sub">تُجمَّع تلقائياً من سجلّ الإجابات نفسه، بلا انتظار أن يسأل أحد.
     الرايات تنبيهٌ لا حكم: دقّةٌ فوق ٨٥٪ تعني أن المادّة دون المستوى، لا أن التعلّم اكتمل.</p>
-    ${body}
+    ${body}${bktHTML}
     <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1rem">
       <button class="btn" onclick="home()">رجوع</button>
       <button class="btn ghost" onclick="loadKpi()">تحديث</button>
@@ -8870,7 +9176,7 @@ function renderKpi(){
 }
 
 // ===== العرض =====
-function render(){if(mode==="seq")return renderSeq();if(mode==="kpi")return renderKpi();if(mode==="home")return renderHome();if(mode==="listen")return renderListen();if(mode==="read")return renderRead();if(mode==="write")return renderWrite();if(mode==="gram")return renderGram();if(mode==="step")return renderStep();if(mode==="minpair")return renderMinpair();if(mode==="video")return renderVideo();if(mode==="errors")return renderErrors();if(mode==="engplan")return renderEngPlan();if(mode==="factplan")return renderFactPlan();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="speak")return renderSpeak();if(mode==="coach")return renderCoach();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
+function render(){if(mode==="mock")return renderMock();if(mode==="seq")return renderSeq();if(mode==="kpi")return renderKpi();if(mode==="home")return renderHome();if(mode==="listen")return renderListen();if(mode==="read")return renderRead();if(mode==="write")return renderWrite();if(mode==="gram")return renderGram();if(mode==="step")return renderStep();if(mode==="minpair")return renderMinpair();if(mode==="video")return renderVideo();if(mode==="errors")return renderErrors();if(mode==="engplan")return renderEngPlan();if(mode==="factplan")return renderFactPlan();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="speak")return renderSpeak();if(mode==="coach")return renderCoach();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
 
 // صفحة الأخوين قسمٌ واحد: المحادثة. بقيّة الأقسام بُنيت على أخطائها هي — بنك
 // أسئلتها، وتباعدها، ومنهج صفّها السادس — فوضعها أمام ولدٍ آخر يُشغله بما ليس له.
@@ -8895,6 +9201,7 @@ function renderHomeCoachOnly(){
     ${seqCardHTML()}
     <button class="mode full" style="background:#DC2626;border-color:#DC2626" onclick="startVideo()"><span class="m-name">🎬 فيديو تعليمي</span><div class="m-sub">قصّة قصيرة مشهداً مشهداً، بصوتٍ إنجليزي، ثم سؤال فهم — مستوى ${p.level||"A2"}</div></button>
     <button class="mode full" style="background:#0F172A;border-color:#0F172A" onclick="loadKpi()"><span class="m-name">📊 لوحة القياس</span><div class="m-sub">دقّة كل قسم آخر سبعة أيام، وتنبيهٌ حين تكون المادّة أسهل من اللازم أو تتكرّر</div></button>
+    <button class="mode full" style="background:#7C2D12;border-color:#7C2D12" onclick="startMock()"><span class="m-name">📝 محاكاة الاختبار</span><div class="m-sub">ورقة كاملة بصيغة كامبردج: استماع وقراءة وقواعد وتحليل كتابي — بلا تصحيحٍ حتى النهاية</div></button>
     ${errCount()?`<button class="mode full" style="background:#DB2777;border-color:#DB2777" onclick="startErrors()"><span class="m-name">🎯 أخطائي · ${toAr(errCount())} مستحقّة</span><div class="m-sub">تصحيحات محادثتك السابقة — تُبنى كلمةً كلمة، وتعود عند حافّة النسيان</div></button>`:""}
   </div>
   <button class="link-btn" onclick="startAudioDiag()">🔊 الصوت ما يشتغل؟ اضغط هنا لتشخيص السبب</button>
@@ -8942,6 +9249,7 @@ function renderHome(){
     ${seqCardHTML()}
     <button class="mode full" style="background:#DC2626;border-color:#DC2626" onclick="startVideo()"><span class="m-name">🎬 فيديو تعليمي</span><div class="m-sub">قصّة قصيرة مشهداً مشهداً، بصوتٍ إنجليزي، ثم سؤال فهم — مستوى ${profileOf().level||"A2"}</div></button>
     <button class="mode full" style="background:#0F172A;border-color:#0F172A" onclick="loadKpi()"><span class="m-name">📊 لوحة القياس</span><div class="m-sub">دقّة كل قسم آخر سبعة أيام، وتنبيهٌ حين تكون المادّة أسهل من اللازم أو تتكرّر</div></button>
+    <button class="mode full" style="background:#7C2D12;border-color:#7C2D12" onclick="startMock()"><span class="m-name">📝 محاكاة الاختبار</span><div class="m-sub">ورقة كاملة بصيغة كامبردج: استماع وقراءة وقواعد وتحليل كتابي — بلا تصحيحٍ حتى النهاية</div></button>
     <button class="mode full" style="background:#7C3AED;border-color:#7C3AED" onclick="startPronunciation()"><span class="m-name">🎤 تمرين النطق</span><div class="m-sub">تحقّق أساسي هل نطقتِ الكلمة صح (يحتاج ميكروفون) — وليس تصحيح لهجة دقيق</div></button>
     <button class="mode full" style="background:#0E7490;border-color:#0E7490" onclick="startCoach()"><span class="m-name">🗣️ تكلّمي بالإنجليزية</span><div class="m-sub">محادثة حرّة مع شريك يردّ عليكِ بالإنجليزية — ونقيس وضوح أصواتك في كل جملة</div></button>
     <button class="mode full" style="background:#DB2777;border-color:#DB2777" onclick="startSpeaking()"><span class="m-name">🗣️ التحدّث · جمل من كتابك</span><div class="m-sub">جمل قصيرة جاهزة من وحدة Welcome: تسمعينها ثم تقولينها كاملة — تبدأ بالنص أمامك وتنتهي بالسمع فقط</div></button>
