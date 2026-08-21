@@ -42,8 +42,8 @@ gone.forEach(g=>ok(!t.includes(g),`«${g}» اختفى`));
 // عشرة أزرار: الثمانية السابقة + تركيز الأسبوع (تسلسل التدريس) + لوحة القياس — ٢١ أغسطس.
 // والعدد يبقى مكتوباً عمداً رغم كونه «فخّاً صامتاً» (درس ١٨ أغسطس): هو الحارس الوحيد
 // الذي يمنع تسرّب قسمٍ من أقسام هيا إلى صفحة الأخوين، فيُحدَّث مع كل زرٍّ مقصود.
-ok(await m.evaluate(()=>document.querySelectorAll('.mode').length)===10,
-  `عشرة أزرار لا أكثر — الثمانية + تركيز الأسبوع + لوحة القياس (${await m.evaluate(()=>document.querySelectorAll('.mode').length)})`);
+ok(await m.evaluate(()=>document.querySelectorAll('.mode').length)===11,
+  `أحد عشر زرّاً لا أكثر — الثمانية + تركيز الأسبوع + لوحة القياس + المحاكاة (${await m.evaluate(()=>document.querySelectorAll('.mode').length)})`);
 ok(t.includes('الصوت ما يشتغل؟'),'ورابط تشخيص الصوت باقٍ — بلا ميكروفون لا محادثة');
 ok(!/اختاري|ابدئي|تكلّمي|اضغطي/.test(t),'وبلا خطاب مؤنّث');
 
@@ -70,7 +70,7 @@ const e=await mk('elias.html');
 t=await e.textContent('#app');
 ok(t.includes('صفحة إلياس')&&t.includes('ابدأ المحادثة')&&t.includes('فهم الاستماع')&&t.includes('فهم المقروء')&&t.includes('الكتابة')&&t.includes('دقّة القواعد')&&t.includes('لعبة الاستماع')&&t.includes('فيديو تعليمي'),'المحادثة والاستماع والقراءة والكتابة ودقّة القواعد ولعبة الأزواج والفيديو');
 ok(!t.includes('محاكاة شاملة')&&!t.includes('إملاء'),'وبقيّة الأقسام مخفيّة');
-ok(await e.evaluate(()=>document.querySelectorAll('.mode').length)===10,'عشرة أزرار لا أكثر');
+ok(await e.evaluate(()=>document.querySelectorAll('.mode').length)===11,'أحد عشر زرّاً لا أكثر');
 
 console.log('\n٥) صفحة هيا لم تُمسّ — والاستماع والقراءة صارا عندها كذلك');
 const h=await mk('index.html');
