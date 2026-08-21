@@ -2680,7 +2680,51 @@ function logAnswer(domain,qtype,isCorrect,response,itemId,elapsedMs,extra){
     response:response==null?null:String(response),item_id:itemId||null,
     elapsed_ms:elapsedMs==null?null:Math.round(elapsedMs)};
   const full=Object.assign({},base,extra||{});
+  try{accRecord(domain,isCorrect)}catch(e){}   // بوّابة التمدّد: وصلٌ واحد يخدم كل قسم
   try{logSend(full,base)}catch(e){}
+}
+// ===== بوّابة التمدّد: قاعدة الـ٨٥٪ — ٢١ أغسطس =====
+// بوّابة i+1 (١٩ أغسطس) تمنع ما هو أصعب من اللازم، ولا شيء كان يرفع الصعوبة حين تكون
+// أسهل من اللازم — نصفُ حلقةٍ مبنيّ ونصفها مفقود. والدليل حيّ: إلياس (A2) سجّل يوم
+// ٢١ أغسطس ١٠٠٪ في listen وread وgram، و٩٠٪ في video — أداءٌ ثابتٌ عند السقف يعني أن
+// المادّة دون مستواه، فهو يؤكّد ما يعرفه ولا يتعلّم جديداً.
+// والمعيار مسمّى لا مخترَع: نسبة النجاح المثلى للتعلّم ≈٨٥٪ (Wilson et al. 2019، «قاعدة
+// الـ85%»؛ ومبدأ الصعوبات المرغوبة عند Bjork) — لا رقمٌ اخترتُه كما حُذِّرت في CLAUDE.md.
+// وبعتبتين لا واحدة (٨٥٪ تُسلِّح، ٧٠٪ تحلّ) فلا تتذبذب البوّابة حول عتبةٍ واحدة —
+// ونفس مبدأ «مشروطة: تُسلَّح عند العَرَض وتنحلّ عند زواله» المعتمَد أصلاً في المشروع.
+// والتمدّد إضافةٌ لا استبدال: بنك مستواه يبقى كاملاً ويُضاف إليه الأعلى، بنفس ما يفعله
+// gramBankFor أصلاً حين يُلحق B1+ ببنك B1 — لا آلية جديدة، توسيعُ سابقةٍ قائمة.
+const LV_NEXT={A1:"A2",A2:"B1"};
+const ACC_KEY="mawhiba_acc_v1",ACC_WINDOW=12,ACC_MIN=8,ACC_ON=0.85,ACC_OFF=0.70;
+// الأقسام المبنيّة بمستويات CEFR وحدها — البقيّة (الأساسيات، موهبة…) بلا تدرّج مستوى
+const ACC_DOMAINS=["listen","read","gram","step","minpair","video","write"];
+function accLoad(){try{return JSON.parse(lsGet(ACC_KEY)||"{}")}catch(e){return{}}}
+function accSave(o){try{lsSet(ACC_KEY,JSON.stringify(o))}catch(e){}}
+function accRecord(domain,ok){
+  if(typeof ok!=="boolean")return;                       // سطور الشرح/التصحيح تُسجَّل بلا صواب
+  if(ACC_DOMAINS.indexOf(domain)<0)return;
+  const st=accLoad(),a=(st[domain]||[]).slice(0,ACC_WINDOW-1);
+  a.unshift(ok?1:0);st[domain]=a;accSave(st);
+}
+function accRate(domain){
+  const a=accLoad()[domain]||[];
+  if(a.length<ACC_MIN)return null;                       // عيّنة أصغر من أن يُحكم بها
+  return a.reduce(function(s,x){return s+x},0)/a.length;
+}
+// الحالة تُحفَظ لا تُحسب كل مرّة: العتبتان تعنيان أن القرار يعتمد على قرارٍ سابق
+function stretchOn(domain){
+  const st=accLoad(),cur=!!(st["_on_"+domain]),r=accRate(domain);
+  if(r===null)return cur;
+  const next=cur?(r>=ACC_OFF):(r>=ACC_ON);
+  if(next!==cur){st["_on_"+domain]=next;accSave(st)}
+  return next;
+}
+// تُلفّ حول أيّ بانية بنك: المستوى الحالي دائماً، والأعلى متى انفتحت البوّابة
+function bankStretched(domain,level,bankFor){
+  const L=String(level||"A2"),base=bankFor(L),up=LV_NEXT[L];
+  if(!up||!stretchOn(domain))return base;
+  const extra=bankFor(up).filter(function(x){return String(x.lv||"")===up});
+  return extra.length?base.concat(extra):base;
 }
 function basicsChoose(i){
   if(basicsLocked||pctGated()||piGated())return;basicsLocked=true;basicsPicked=i;
@@ -3062,7 +3106,11 @@ const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEn
   "minpairBankFor","minpairSrsUpdate","buildMinpairPlan","startMinpair","minpairPlay","minpairChoose","minpairNext","renderMinpair",
   "gramBankFor","gramSrsUpdate","buildGramPlan","startGram","gramChoose","gramNext","renderGram","fetchTutorGenGram","gramGenTopUp",
   "stepBankFor","stepSrsUpdate","buildStepPlan","startStep","stepChoose","stepSeqPick","stepSeqUnpick","stepSeqSubmit","stepNext","renderStep","fetchTutorGenStep","stepGenTopUp","fetchTutorGenVideo","videoGenTopUp",
-  "videoBankFor","videoSrsUpdate","buildVideoPlan","startVideo","videoPlay","videoNextScene","videoChoose","videoNext","renderVideo"];
+  "videoBankFor","videoSrsUpdate","buildVideoPlan","startVideo","videoPlay","videoNextScene","videoChoose","videoNext","renderVideo",
+  "writeTokens","writeTtr","writeSim","writePrevLoad","writePrevAdd","writeSelfSim",
+  "accLoad","accSave","accRecord","accRate","stretchOn","bankStretched",
+  "seqStart","seqReset","seqPlanFor","seqWeek","seqCur","startSeq","seqCardHTML","renderSeq",
+  "loadKpi","kpiAgg","renderKpi"];
 function censusMissing(){return CENSUS.filter(function(n){return typeof window[n]!=="function"})}
 function censusHTML(){
   var miss=censusMissing();
@@ -6050,7 +6098,7 @@ function listenSrsUpdate(id,ok){
 }
 const LISTEN_N=8;   // جلسة قصيرة — بنك المستوى الواحد عشرة عناصر، فلا تُستنفَد كل جلسة
 function buildListenPlan(){
-  const st=listenSrsLoad(),today=srsToday(),POOL=listenBankFor(profileOf().level);
+  const st=listenSrsLoad(),today=srsToday(),POOL=bankStretched("listen",profileOf().level,listenBankFor);
   const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
   const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
   let out=due.concat(fresh).slice(0,LISTEN_N);
@@ -6180,7 +6228,7 @@ function readSrsUpdate(id,ok){
 }
 const READ_N=8;
 function buildReadPlan(){
-  const st=readSrsLoad(),today=srsToday(),POOL=readBankFor(profileOf().level);
+  const st=readSrsLoad(),today=srsToday(),POOL=bankStretched("read",profileOf().level,readBankFor);
   const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
   const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
   let out=due.concat(fresh).slice(0,READ_N);
@@ -6365,7 +6413,7 @@ function writeSrsUpdate(id,ok){
 // جلسة أقصر من الاستماع/المقروء عمداً: كتابة نصٍّ كاملٍ أثقل من اختيار إجابة
 const WRITE_N=3;
 function buildWritePlan(){
-  const st=writeSrsLoad(),today=srsToday(),POOL=writeBankFor(profileOf().level);
+  const st=writeSrsLoad(),today=srsToday(),POOL=bankStretched("write",profileOf().level,writeBankFor);
   const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
   const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
   let out=due.concat(fresh).slice(0,WRITE_N);
@@ -6384,6 +6432,42 @@ function writeNorm(t){return String(t||"").toLowerCase().replace(/[^a-z\s]/g,"")
 function writeIsCopy(txt,prompt){
   const a=writeNorm(txt),b=writeNorm(prompt);
   return a.length>=6 && b.indexOf(a)>=0;
+}
+// ===== قياس الإنتاج لا الكمّ وحده — ٢١ أغسطس =====
+// «كتبت ٩٣ كلمة · الهدف ٧٠» رقمٌ يمرّ حتى لو كان النصّ استرجاعاً لمحاولةٍ سابقة: محمد
+// أعاد رسالة «مكان أنصح بزيارته» يومَي ١٩ و٢١ أغسطس متطابقةً تقريباً حرفياً (بيانات حيّة،
+// تحقّقٌ من السجلّ)، ودرجته ١٠٠٪ في المرّتين لأن المقياس الوحيد كان عدد الكلمات. ودرجات
+// CEFR تُعرَّف بالإنتاج لا بالكمّ، فبُعدان إضافيان يُقاسان الآن:
+//   • التنوّع المعجمي (Type-Token Ratio) — مقياس معياري في أبحاث اكتساب اللغة الثانية
+//   • تشابه النصّ مع محاولاته السابقة هو (معامل جاكار على مجموعتَي الكلمات)
+// وكلاهما «قياسٌ لا علاج» عمداً في هذه الشحنة، بنفس نهج quizErrDelta المعتمَد أصلاً:
+// لا يُسقِط نجاحاً ولا يُشعل بوّابة قبل أن تُسمّي البياناتُ العتبةَ الصحيحة بدل تخمينها.
+// وتشابهٌ عالٍ على السؤال نفسه قد يكون مشروعاً (نفس الموضوع يستدعي نفس المفردات) —
+// فالحكم عليه يحتاج توزيعاً حقيقياً عبر جلسات، لا عتبةً تُخترع اليوم.
+// والتجزئة نفسها المستعملة في writeWordCount حرفياً — لا تعريف ثانٍ لما هي «كلمة».
+function writeTokens(t){const m=String(t||"").toLowerCase().match(/[a-z']+/g);return m||[]}
+function writeTtr(t){
+  const w=writeTokens(t);if(!w.length)return 0;
+  return Math.round(100*new Set(w).size/w.length)/100;
+}
+function writeSim(a,b){
+  const A=new Set(writeTokens(a)),B=new Set(writeTokens(b));
+  if(!A.size||!B.size)return 0;
+  let inter=0;A.forEach(function(w){if(B.has(w))inter++});
+  const uni=A.size+B.size-inter;
+  return uni?Math.round(100*inter/uni)/100:0;
+}
+// سجلٌّ محلّي قصير لنصوصه السابقة — بـlsGet/lsSet فيُفصَل بين المتعلّمين تلقائياً (pkey)
+const WRITE_PREV_KEY="mawhiba_write_prev_v1",WRITE_PREV_MAX=12;
+function writePrevLoad(){try{return JSON.parse(lsGet(WRITE_PREV_KEY)||"[]")}catch(e){return[]}}
+function writePrevAdd(txt){
+  const a=writePrevLoad();a.unshift(String(txt||"").slice(0,1200));
+  try{lsSet(WRITE_PREV_KEY,JSON.stringify(a.slice(0,WRITE_PREV_MAX)))}catch(e){}
+}
+function writeSelfSim(txt){
+  let best=0;
+  writePrevLoad().forEach(function(p){const s=writeSim(txt,p);if(s>best)best=s});
+  return best;
 }
 // تُقسَّم الفقرة إلى جملٍ مرقّمة — نفس شكل رسائل المحادثة إلى المراجعة (coachReview)،
 // فالنموذج مُدرَّب على "You will receive their sentences, numbered" لا فقرةً واحدة خام
@@ -6448,9 +6532,13 @@ async function writeSubmit(){
   // لاحقاً». فيُسجَّل الآن حال المراجعة صراحةً بنفس عُرف coachReview تماماً
   // (fail:السبب / fixes:العدد / none) — لا صيغة جديدة، توصيلٌ بما هو قائم أصلاً.
   const reviewState=writeCopy?"skip:copy":(writeFixFail?("fail:"+writeFixFail):(writeFix.length?("fixes:"+writeFix.length):"none"));
+  // مقياسا الإنتاج يُحسبان قبل إضافة النصّ للسجلّ المحلّي، وإلا قايس النصُّ نفسَه فأعطى ١
+  const ttr=writeTtr(txt),selfSim=writeSelfSim(txt);
   // q_text وresponse كاملان — بلا هذين لا تشخيص، ونفس عُرف تسجيل الفرق/الشكل في بقية التطبيق
   logAnswer("write",it.lv,ok,txt,it.id,writeShownAt?Date.now()-writeShownAt:null,
-    {q_text:((it.ai?"[مولَّد] ":"")+it.prompt+" · الهدف "+it.min+" كلمة · كتبت "+writeCount+" · review:"+reviewState+" · lt:"+writeLtJudged+"/"+writeLtDropped+" · مثال:"+writeModelViews+" · نسخ:"+(writeCopy?1:0)).slice(0,1200)});
+    {q_text:((it.ai?"[مولَّد] ":"")+it.prompt+" · الهدف "+it.min+" كلمة · كتبت "+writeCount+" · review:"+reviewState+" · lt:"+writeLtJudged+"/"+writeLtDropped+" · مثال:"+writeModelViews+" · نسخ:"+(writeCopy?1:0)+" · تنوّع:"+ttr+" · شبه سابق:"+selfSim).slice(0,1200)});
+  // يُحفظ بعد التسجيل لا قبله — والنسخ المحض لا يدخل السجلّ فلا يصير أساساً يُقاس عليه
+  if(!writeCopy)writePrevAdd(txt);
   // نفس مسار بطاقات تصحيح المحادثة بالضبط: بطاقةٌ مجدولة تعود عند حافّة النسيان،
   // ووضع «أخطائي» يُدرّبها بنائياً — لا مسار ثانٍ
   writeFix.forEach(function(f){fixCardSave(f)});
@@ -6703,7 +6791,7 @@ function gramGenTopUp(level){
 }
 const GRAM_N=5;
 function buildGramPlan(){
-  const st=gramSrsLoad(),today=srsToday(),POOL=gramBankFor(profileOf().level);
+  const st=gramSrsLoad(),today=srsToday(),POOL=bankStretched("gram",profileOf().level,gramBankFor);
   const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
   const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
   let out=due.concat(fresh).slice(0,GRAM_N);
@@ -6953,7 +7041,7 @@ const STEP_N=6;
 // (listen/read/write/gram/minpair)، فوُصلت بمساعدها المشترك topUpPlan حين وصل —
 // دليلٌ ميداني أثبت العيب نفسه فيها (جلسة قواعد لمحمد ٠٩:٠٩ أعطت عنصرين لا خمسة).
 function buildStepPlan(){
-  const st=stepSrsLoad(),today=srsToday(),POOL=stepBankFor(profileOf().level);
+  const st=stepSrsLoad(),today=srsToday(),POOL=bankStretched("step",profileOf().level,stepBankFor);
   const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
   const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
   let out=due.concat(fresh).slice(0,STEP_N);
@@ -7198,7 +7286,7 @@ function minpairGenTopUp(level){
 }
 const MINPAIR_N=8;
 function buildMinpairPlan(){
-  const st=minpairSrsLoad(),today=srsToday(),POOL=minpairBankFor(profileOf().level);
+  const st=minpairSrsLoad(),today=srsToday(),POOL=bankStretched("minpair",profileOf().level,minpairBankFor);
   const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
   const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
   let out=due.concat(fresh).slice(0,MINPAIR_N);
@@ -7355,7 +7443,7 @@ function videoGenTopUp(level){
 }
 const VIDEO_N=5;   // لا يقلّ عن خمسة (طلب صاحب المشروع ١٨ أغسطس) — بنكٌ ستّة/مستوى فلا يُستنفَد بجلسةٍ واحدة
 function buildVideoPlan(){
-  const st=videoSrsLoad(),today=srsToday(),POOL=videoBankFor(profileOf().level);
+  const st=videoSrsLoad(),today=srsToday(),POOL=bankStretched("video",profileOf().level,videoBankFor);
   const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
   const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
   let out=due.concat(fresh).slice(0,VIDEO_N);
@@ -8594,8 +8682,195 @@ function bumpStreak(){const st=getStreak();const t=todayStr();if(st.last===t)ret
 // رسالة نمو: تقارن بأفضل نتيجة سابقة لنفس الوضع
 function growthMsg(modeKey,pct){try{const key="mawhiba_best_"+modeKey;const prev=parseInt(lsGet(key)||"-1");let msg="";if(prev<0){msg="أول محاولة في هذا القسم — انطلاقة موفّقة! 🌱"}else if(pct>prev){msg=`تحسّنتِ عن أفضل نتيجة سابقة (${toAr(prev)}%)! تقدّم رائع 📈`}else if(pct===prev){msg="ثبات على أفضل مستوى سابق 💪"}else{msg="واصلي، كل محاولة تبني مهارتك 🌟"}if(pct>prev)lsSet(key,String(pct));return msg}catch(e){return""}}
 
+// ===== تسلسل التدريس الأسبوعي: منهجٌ لا تقويمٌ وحده — ٢١ أغسطس =====
+// الفحص النهائي للخطة (٢١ أغسطس) كشف أن التطبيق كلّه تقويمٌ بلا تسلسل تدريس: FSRS
+// خوارزمية **مراجعة** تُحسِن جدولة ما دخل النظام، ولا تقرّر ماذا يدخل ومتى — فهيا (A1،
+// تحتاج أساساً مرتَّباً) كانت تتلقّى العناصر بترتيب الجدولة لا بترتيب البناء المعرفي.
+// وEnglish Profile يعطي **قائمة** تراكيب كل درجة (وهو مصدر GRAM_FOCUS وENG_LESSON_LV
+// أصلاً) ولا يرتّبها، فالترتيب هنا من تدرّج مناهج كامبردج المعياري لكل درجة.
+// وكل أسبوع بعبارة «يستطيع أن…» (can-do statement) — الصيغة المعيارية في CEFR لوصف
+// الهدف، لا وصفاً حرّاً اخترتُه.
+//
+// وحدُّه المعلن صراحةً: هذا **إرشادٌ يُعرض** لا قيدٌ يُبرمَج — لا يُصفّي ما تعرضه الأقسام
+// ولا يتقدّم على FSRS. إخضاع الجدولة له كان سيُفسد التباعد المُعايَر (نفس درس «لا تهدم
+// ما هو أصلاً أفضل ممارسة»)، فالتسلسل يقول «ركّز هذا الأسبوع على كذا» ويبقى القرار
+// للمتعلّم وأهله. وأثره يُقاس لاحقاً بدقّة التراكيب المستهدفة في أسبوعها، لا يُدَّعى الآن.
+const SEQ_PLAN={
+  A1:[
+    {w:1,f:"الفعل be والتعريف بالنفس",g:"am / is / are",can:"أعرّف بنفسي: اسمي وعمري ومن أين أنا."},
+    {w:2,f:"الجمع وأدوات التنكير",g:"a / an / plural -s",can:"أسمّي الأشياء حولي مفردةً وجمعاً."},
+    {w:3,f:"الملكية",g:"my / your / possessive 's",can:"أقول لمن يعود الشيء."},
+    {w:4,f:"المضارع البسيط — المثبت",g:"present simple + he/she/it -s",can:"أصف عادةً يومية لي ولغيري."},
+    {w:5,f:"المضارع البسيط — النفي والسؤال",g:"don't / doesn't · Do / Does",can:"أسأل عن عادات غيري وأنفي عن نفسي."},
+    {w:6,f:"حروف المكان",g:"in / on / under / next to",can:"أقول أين يقع الشيء."},
+    {w:7,f:"there is / there are",g:"there is · there are",can:"أصف ما في الغرفة أو الصورة."},
+    {w:8,f:"القدرة",g:"can / can't",can:"أقول ما أستطيع فعله وما لا أستطيع."},
+    {w:9,f:"المضارع المستمرّ",g:"present continuous",can:"أصف ما يحدث الآن."},
+    {w:10,f:"الميل والرغبة",g:"like / don't like + -ing",can:"أعبّر عمّا أحبّه وما لا أحبّه."},
+    {w:11,f:"ماضي الفعل be",g:"was / were",can:"أقول أين كنتُ ومتى."},
+    {w:12,f:"الماضي البسيط المنتظم",g:"past simple regular -ed",can:"أحكي ما فعلتُه أمس بجملٍ قصيرة."},
+  ],
+  A2:[
+    {w:1,f:"الماضي الشاذّ",g:"irregular past (went / ate / saw)",can:"أحكي رحلةً أو حدثاً ماضياً بأفعالٍ شاذّة صحيحة."},
+    {w:2,f:"المقارنة",g:"comparatives -er / more",can:"أقارن بين شيئين."},
+    {w:3,f:"التفضيل",g:"superlatives -est / most",can:"أقول أيّها الأفضل أو الأكبر."},
+    {w:4,f:"المستقبل المخطَّط",g:"be going to",can:"أتحدّث عن خططي القادمة."},
+    {w:5,f:"ظروف التكرار",g:"always / usually / never + word order",can:"أقول كم مرّة أفعل شيئاً، وأضع الظرف في موضعه."},
+    {w:6,f:"المعدود وغير المعدود",g:"much / many / some / any",can:"أطلب كمّياتٍ وأسأل عنها."},
+    {w:7,f:"الوجوب",g:"must / have to",can:"أقول ما يجب فعله وما لا يجوز."},
+    {w:8,f:"حروف الزمن",g:"in / on / at (time)",can:"أحدّد وقت الموعد بدقّة."},
+    {w:9,f:"صياغة السؤال",g:"question forms · Wh- questions",can:"أسأل أسئلةً كاملةً صحيحة لا شظايا."},
+    {w:10,f:"أدوات الربط",g:"because / so / but / although",can:"أربط جملتين بسببٍ أو تضادّ."},
+    {w:11,f:"المضارع التامّ — تعرّف",g:"present perfect (experience)",can:"أقول إنّي جرّبتُ شيئاً من قبل."},
+    {w:12,f:"مراجعة وإنتاج",g:"مزجٌ لما سبق",can:"أكتب رسالةً قصيرة (٢٥-٣٥ كلمة) بثلاث نقاط."},
+  ],
+  B1:[
+    {w:1,f:"المضارع التامّ مقابل الماضي البسيط",g:"present perfect vs past simple",can:"أفرّق بين حدثٍ منتهٍ وحدثٍ ممتدّ أثره."},
+    {w:2,f:"since / for",g:"since · for",can:"أقول منذ متى أو كم مدّة."},
+    {w:3,f:"المضارع التامّ المستمرّ",g:"present perfect continuous",can:"أتحدّث عن فعلٍ بدأ واستمرّ."},
+    {w:4,f:"المبني للمجهول",g:"passive voice",can:"أصف عمليةً دون ذكر فاعلها."},
+    {w:5,f:"الشرط الأول",g:"first conditional",can:"أتحدّث عن نتيجةٍ محتملة."},
+    {w:6,f:"الشرط الثاني",g:"second conditional",can:"أتحدّث عن فرضٍ غير واقع."},
+    {w:7,f:"الجمل الموصولة",g:"who / which / that",can:"أعرّف شخصاً أو شيئاً بجملةٍ واصفة."},
+    {w:8,f:"used to",g:"used to",can:"أقارن عادةً قديمة بحاضري."},
+    {w:9,f:"الكلام المنقول",g:"reported speech",can:"أنقل ما قاله غيري."},
+    {w:10,f:"أفعال الاستنتاج",g:"must be / might be / can't be",can:"أُرجّح تفسيراً بدرجة يقين."},
+    {w:11,f:"روابط الخطاب",g:"however / therefore / in addition",can:"أنظّم فقرةً بروابط تُظهر العلاقة."},
+    {w:12,f:"مراجعة وإنتاج",g:"مزجٌ لما سبق",can:"أكتب قصّةً أو رسالة (٨٠-١٠٠ كلمة) متماسكة."},
+  ],
+};
+const SEQ_START_KEY="mawhiba_seq_start_v1",SEQ_WEEKS=12;
+function seqStart(){
+  let v=lsGet(SEQ_START_KEY);
+  if(!v){v=todayStr();lsSet(SEQ_START_KEY,v)}
+  return v;
+}
+function seqReset(){lsSet(SEQ_START_KEY,todayStr());render()}
+function seqPlanFor(level){return SEQ_PLAN[String(level||"A2")]||SEQ_PLAN.A2}
+// الأسبوع يدور ولا يقف: بلوغ الثانية عشرة يعيد إلى الأولى بمراجعةٍ لا بفراغ
+function seqWeek(){
+  const st=seqStart(),d=Math.floor((Date.parse(todayStr())-Date.parse(st))/86400000);
+  if(!Number.isFinite(d)||d<0)return 1;
+  return (Math.floor(d/7)%SEQ_WEEKS)+1;
+}
+function seqCur(){const P=seqPlanFor(profileOf().level);return P[seqWeek()-1]||P[0]}
+function startSeq(){mode="seq";window.scrollTo(0,0);render()}
+function seqCardHTML(){
+  const u=seqCur(),p=profileOf();
+  return `<button class="mode full" style="background:#0F766E;border-color:#0F766E;text-align:right" onclick="startSeq()">
+    <span class="m-name">🗺️ تركيز هذا الأسبوع · الأسبوع ${toAr(seqWeek())} من ${toAr(SEQ_WEEKS)}</span>
+    <div class="m-sub">${esc(u.f)} — <span style="direction:ltr;display:inline-block">${esc(u.g)}</span> · مستوى ${esc(p.level||"A2")}</div>
+  </button>`;
+}
+function renderSeq(){
+  const P=seqPlanFor(profileOf().level),cur=seqWeek(),p=profileOf();
+  const rows=P.map(function(u){
+    const on=u.w===cur;
+    return `<div style="display:flex;gap:.7rem;padding:.7rem .9rem;border-radius:10px;margin-bottom:.4rem;
+      background:${on?"#ECFDF5":"#F8FAFC"};border:1px solid ${on?"#0F766E":"#E2E8F0"}">
+      <div style="flex:none;width:2.1rem;height:2.1rem;border-radius:50%;display:flex;align-items:center;justify-content:center;
+        font-weight:700;background:${on?"#0F766E":"#E2E8F0"};color:${on?"#fff":"#475569"}">${toAr(u.w)}</div>
+      <div style="flex:1">
+        <div style="font-weight:600;color:#0F172A">${esc(u.f)}${on?' <span style="color:#0F766E;font-size:.8em">· هذا الأسبوع</span>':''}</div>
+        <div style="direction:ltr;text-align:left;font-family:Georgia,serif;color:#475569;font-size:.9em">${esc(u.g)}</div>
+        <div style="color:#64748B;font-size:.88em;margin-top:.2rem">يستطيع أن: ${esc(u.can)}</div>
+      </div></div>`;
+  }).join("");
+  app.innerHTML=`${profileBarHTML()}
+  <div class="card">
+    <h2>🗺️ تسلسل التدريس — مستوى ${esc(p.level||"A2")}</h2>
+    <p class="sub">اثنا عشر أسبوعاً مرتّبة بتدرّج كامبردج لهذه الدرجة. هذا <b>إرشاد لا قيد</b>:
+    الأقسام تبقى مفتوحة كلّها، والتسلسل يقول أين يكون التركيز هذا الأسبوع.</p>
+    ${rows}
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1rem">
+      <button class="btn" onclick="home()">رجوع</button>
+      <button class="btn ghost" onclick="seqReset()">ابدأ التسلسل من هذا الأسبوع</button>
+    </div>
+  </div>`;
+}
+
+// ===== لوحة القياس: تجميعٌ تلقائي لا انتظارَ سؤال — ٢١ أغسطس =====
+// كل مؤشّر في خطة «سلّم الإنجليزية» كان مكتوباً كاستعلام SQL لا يشغّله أحد تلقائياً:
+// كل رقمٍ يتطلّب أن يُسأل صاحب المشروع ثم أستعلم أنا. وهذا حرفياً صنف العطل الموثَّق
+// في CLAUDE.md (١٨ أغسطس): «آليةٌ تعتمد على أن يتذكّر أحدٌ خطوةً يدوية ستفشل» — وقد
+// كلّف ذلك ست عشرة ساعة من تدريبات لم تصل محمداً أصلاً. فالتجميع ينتقل إلى التطبيق.
+// وممكنٌ بلا أداة جديدة: سياسة anon_select_answerlog تسمح بالقراءة فعلاً، ونفس نمط
+// loadProgress القائم أصلاً لجدول المحاولات — استعلامٌ واحد، لا خادمٌ ولا مفتاحٌ جديد.
+const KPI_DAYS=7,KPI_HI=0.85,KPI_LO=0.60,KPI_REPEAT=0.50;
+let kpiRows=null,kpiBusy=false,kpiErr="";
+async function loadKpi(){
+  mode="kpi";kpiRows=null;kpiErr="";kpiBusy=true;window.scrollTo(0,0);render();
+  try{
+    const since=new Date(Date.now()-KPI_DAYS*86400000).toISOString();
+    const url=`${SB_URL}/rest/v1/${TBL_LOG}?student_alias=eq.${encodeURIComponent(alias())}`+
+      `&created_at=gte.${encodeURIComponent(since)}`+
+      `&select=domain,qtype,is_correct,q_text,item_id&order=created_at.desc&limit=2000`;
+    const res=await fetch(url,{headers:{"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`}});
+    kpiRows=res.ok?await res.json():[];
+    if(!res.ok)kpiErr="http:"+res.status;
+  }catch(e){kpiRows=[];kpiErr="network"}
+  kpiBusy=false;render();
+}
+// التجميع منفصلٌ عن العرض ليُختبَر وحده بلا شبكة ولا DOM
+function kpiAgg(rows){
+  const by={};
+  (rows||[]).forEach(function(r){
+    if(typeof r.is_correct!=="boolean")return;      // سطور الشرح/التصحيح لا تُحتسب دقّةً
+    const d=r.domain||"—";
+    const o=by[d]||(by[d]={n:0,ok:0,texts:{},ai:0});
+    o.n++;if(r.is_correct)o.ok++;
+    if(r.q_text)o.texts[r.q_text]=1;
+    if(String(r.item_id||"").indexOf("ai_")===0)o.ai++;
+  });
+  return Object.keys(by).map(function(d){
+    const o=by[d],pct=o.n?o.ok/o.n:0,distinct=Object.keys(o.texts).length;
+    const varied=o.n?distinct/o.n:0;
+    const flags=[];
+    if(o.n>=ACC_MIN&&pct>=KPI_HI)flags.push({t:"أسهل من اللازم — بوّابة التمدّد تفتح",c:"#B45309"});
+    if(o.n>=4&&pct<KPI_LO)flags.push({t:"دقّة منخفضة — يحتاج دعماً",c:"#B91C1C"});
+    if(o.n>=6&&varied<KPI_REPEAT)flags.push({t:"تكرار: نصوصٌ متمايزة أقلّ من نصف الإجابات",c:"#B45309"});
+    return{d:d,n:o.n,ok:o.ok,pct:Math.round(100*pct),distinct:distinct,
+      varied:Math.round(100*varied),ai:o.ai,flags:flags};
+  }).sort(function(a,b){return b.n-a.n});
+}
+const KPI_NAMES={listen:"فهم الاستماع",read:"فهم المقروء",write:"الكتابة",gram:"دقّة القواعد",
+  step:"نمط STEP",minpair:"لعبة الاستماع",video:"فيديو تعليمي",coach:"المحادثة",
+  eng_plan:"خطّتي",engplan:"خطّتي",errors:"أخطائي",dictation_a1:"الإملاء",
+  pronunciation_a1:"النطق",fact_fluency:"الطلاقة الحسابية",basics:"الأساسيات"};
+function renderKpi(){
+  if(kpiBusy){app.innerHTML=`${profileBarHTML()}<div class="card"><h2>📊 لوحة القياس</h2><p class="sub">يُجمَع…</p></div>`;return}
+  const agg=kpiAgg(kpiRows);
+  const body=!agg.length
+    ? `<p class="sub">لا إجابات مسجَّلة في آخر ${toAr(KPI_DAYS)} أيام${kpiErr?" · تعذّر الوصول ("+esc(kpiErr)+")":""}.</p>`
+    : agg.map(function(a){
+        const nm=KPI_NAMES[a.d]||a.d;
+        const col=a.pct>=85?"#0F766E":(a.pct<60?"#B91C1C":"#B45309");
+        return `<div style="border:1px solid #E2E8F0;border-radius:12px;padding:.9rem 1rem;margin-bottom:.55rem;background:#fff">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:.6rem;flex-wrap:wrap">
+            <b style="color:#0F172A">${esc(nm)}</b>
+            <span style="font-weight:700;color:${col}">${toAr(a.pct)}% <span style="font-weight:400;color:#64748B;font-size:.85em">(${toAr(a.ok)}/${toAr(a.n)})</span></span>
+          </div>
+          <div style="color:#64748B;font-size:.86em;margin-top:.25rem">
+            نصوصٌ متمايزة ${toAr(a.distinct)} (${toAr(a.varied)}%) · مولَّد ${toAr(a.ai)}
+          </div>
+          ${a.flags.map(function(f){return `<div style="margin-top:.4rem;font-size:.85em;color:${f.c}">⚑ ${esc(f.t)}</div>`}).join("")}
+        </div>`;
+      }).join("");
+  app.innerHTML=`${profileBarHTML()}
+  <div class="card">
+    <h2>📊 لوحة القياس — آخر ${toAr(KPI_DAYS)} أيام</h2>
+    <p class="sub">تُجمَّع تلقائياً من سجلّ الإجابات نفسه، بلا انتظار أن يسأل أحد.
+    الرايات تنبيهٌ لا حكم: دقّةٌ فوق ٨٥٪ تعني أن المادّة دون المستوى، لا أن التعلّم اكتمل.</p>
+    ${body}
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1rem">
+      <button class="btn" onclick="home()">رجوع</button>
+      <button class="btn ghost" onclick="loadKpi()">تحديث</button>
+    </div>
+  </div>`;
+}
+
 // ===== العرض =====
-function render(){if(mode==="home")return renderHome();if(mode==="listen")return renderListen();if(mode==="read")return renderRead();if(mode==="write")return renderWrite();if(mode==="gram")return renderGram();if(mode==="step")return renderStep();if(mode==="minpair")return renderMinpair();if(mode==="video")return renderVideo();if(mode==="errors")return renderErrors();if(mode==="engplan")return renderEngPlan();if(mode==="factplan")return renderFactPlan();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="speak")return renderSpeak();if(mode==="coach")return renderCoach();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
+function render(){if(mode==="seq")return renderSeq();if(mode==="kpi")return renderKpi();if(mode==="home")return renderHome();if(mode==="listen")return renderListen();if(mode==="read")return renderRead();if(mode==="write")return renderWrite();if(mode==="gram")return renderGram();if(mode==="step")return renderStep();if(mode==="minpair")return renderMinpair();if(mode==="video")return renderVideo();if(mode==="errors")return renderErrors();if(mode==="engplan")return renderEngPlan();if(mode==="factplan")return renderFactPlan();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="speak")return renderSpeak();if(mode==="coach")return renderCoach();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
 
 // صفحة الأخوين قسمٌ واحد: المحادثة. بقيّة الأقسام بُنيت على أخطائها هي — بنك
 // أسئلتها، وتباعدها، ومنهج صفّها السادس — فوضعها أمام ولدٍ آخر يُشغله بما ليس له.
@@ -8617,7 +8892,9 @@ function renderHomeCoachOnly(){
     <button class="mode full" style="background:#9333EA;border-color:#9333EA" onclick="startGram()"><span class="m-name">✍️ دقّة القواعد</span><div class="m-sub">أربع جملٍ، صحيحةٌ واحدة — اختر ثم اقرأ لماذا كل خيار صحيح أو خاطئ</div></button>
     <button class="mode full" style="background:#B45309;border-color:#B45309" onclick="startStep()"><span class="m-name">📋 نمط اختبار STEP</span><div class="m-sub">أسئلة الاختبار نفسها: ترتيب الكلمات، الفراغات، الترقيم والكبتلة، وترتيب فقرة — مع شرح كل خيار بعد الإجابة</div></button>
     <button class="mode full" style="background:#0891B2;border-color:#0891B2" onclick="startMinpair()"><span class="m-name">👂 لعبة الاستماع</span><div class="m-sub">كلمتان متشابهتا النطق (chose/choose) — أيّهما سمعت؟ ثم مثالٌ يشرح معناها</div></button>
+    ${seqCardHTML()}
     <button class="mode full" style="background:#DC2626;border-color:#DC2626" onclick="startVideo()"><span class="m-name">🎬 فيديو تعليمي</span><div class="m-sub">قصّة قصيرة مشهداً مشهداً، بصوتٍ إنجليزي، ثم سؤال فهم — مستوى ${p.level||"A2"}</div></button>
+    <button class="mode full" style="background:#0F172A;border-color:#0F172A" onclick="loadKpi()"><span class="m-name">📊 لوحة القياس</span><div class="m-sub">دقّة كل قسم آخر سبعة أيام، وتنبيهٌ حين تكون المادّة أسهل من اللازم أو تتكرّر</div></button>
     ${errCount()?`<button class="mode full" style="background:#DB2777;border-color:#DB2777" onclick="startErrors()"><span class="m-name">🎯 أخطائي · ${toAr(errCount())} مستحقّة</span><div class="m-sub">تصحيحات محادثتك السابقة — تُبنى كلمةً كلمة، وتعود عند حافّة النسيان</div></button>`:""}
   </div>
   <button class="link-btn" onclick="startAudioDiag()">🔊 الصوت ما يشتغل؟ اضغط هنا لتشخيص السبب</button>
@@ -8662,7 +8939,9 @@ function renderHome(){
     <button class="mode full" style="background:#9333EA;border-color:#9333EA" onclick="startGram()"><span class="m-name">✍️ دقّة القواعد</span><div class="m-sub">أربع جملٍ، صحيحةٌ واحدة — اختاري ثم اقرئي لماذا كل خيار صحيح أو خاطئ</div></button>
     <button class="mode full" style="background:#B45309;border-color:#B45309" onclick="startStep()"><span class="m-name">📋 نمط اختبار STEP</span><div class="m-sub">أسئلة الاختبار نفسها: ترتيب الكلمات، الفراغات، الترقيم والكبتلة، وترتيب فقرة — مع شرح كل خيار بعد الإجابة</div></button>
     <button class="mode full" style="background:#0891B2;border-color:#0891B2" onclick="startMinpair()"><span class="m-name">👂 لعبة الاستماع</span><div class="m-sub">كلمتان متشابهتا النطق (chose/choose) — أيّتهما سمعتِ؟ ثم مثالٌ يشرح معناها</div></button>
+    ${seqCardHTML()}
     <button class="mode full" style="background:#DC2626;border-color:#DC2626" onclick="startVideo()"><span class="m-name">🎬 فيديو تعليمي</span><div class="m-sub">قصّة قصيرة مشهداً مشهداً، بصوتٍ إنجليزي، ثم سؤال فهم — مستوى ${profileOf().level||"A2"}</div></button>
+    <button class="mode full" style="background:#0F172A;border-color:#0F172A" onclick="loadKpi()"><span class="m-name">📊 لوحة القياس</span><div class="m-sub">دقّة كل قسم آخر سبعة أيام، وتنبيهٌ حين تكون المادّة أسهل من اللازم أو تتكرّر</div></button>
     <button class="mode full" style="background:#7C3AED;border-color:#7C3AED" onclick="startPronunciation()"><span class="m-name">🎤 تمرين النطق</span><div class="m-sub">تحقّق أساسي هل نطقتِ الكلمة صح (يحتاج ميكروفون) — وليس تصحيح لهجة دقيق</div></button>
     <button class="mode full" style="background:#0E7490;border-color:#0E7490" onclick="startCoach()"><span class="m-name">🗣️ تكلّمي بالإنجليزية</span><div class="m-sub">محادثة حرّة مع شريك يردّ عليكِ بالإنجليزية — ونقيس وضوح أصواتك في كل جملة</div></button>
     <button class="mode full" style="background:#DB2777;border-color:#DB2777" onclick="startSpeaking()"><span class="m-name">🗣️ التحدّث · جمل من كتابك</span><div class="m-sub">جمل قصيرة جاهزة من وحدة Welcome: تسمعينها ثم تقولينها كاملة — تبدأ بالنص أمامك وتنتهي بالسمع فقط</div></button>
