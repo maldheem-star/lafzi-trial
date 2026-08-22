@@ -255,6 +255,70 @@ function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor
 // تماماً (out.length===0) لا عند نقصه (١-٤ عناصر): طالبٌ له عنصرٌ مستحقٌّ واحد فقط كان
 // يحصل على «جلسة» من سؤالٍ واحد. مشتركة بين الاستماع/المقروء/القواعد/الأزواج/الكتابة
 // بدل تكرار المنطق نفسه خمس مرّات.
+// ===== لا توأمان في جلسةٍ واحدة — ٢٢ أغسطس =====
+// بياناتٌ حيّة (محمد): أربعةٌ من أحد عشر عنصراً في جلسته كانت عن «مسابقة طبخ»، وفقرتا
+// استماعٍ منها متشابهتان بوضوح. والقياس على ١١٧ عنصراً مولَّداً في ١٢ ساعة أظهر أن
+// **التوزيع العامّ سليم** (الطبخ ٦٪) — فالتكتّل داخل الجلسة لا انحيازٌ في المولّد،
+// لأن نداءات التوليد تنطلق متوازيةً فتقع نتائجها في جلسةٍ واحدة.
+//
+// والمقياس مأخوذٌ من الموجود لا مبنيٌّ من جديد: نفس تشابه جاكار الذي يقيس تكرار كتابة
+// محمد (`writeSim`)، لكن على **الكلمات الحاملة للمعنى وحدها** — كلمات الوظيفة مشتركة
+// في كل نصٍّ إنجليزي فترفع الأرضية وتُخفي الفرق.
+//
+// والعتبة مقاسةٌ على نصوصه هو لا مختارة: فقرتا الطبخ ٠٫١٢، وكل زوجٍ مختلف الموضوع
+// ٠٫٠١-٠٫٠٣. فـ٠٫٠٧ تقع بينهما. **والعيّنة أربعة أزواج فقط** — تُراجَع بالقياس.
+const GEN_TWIN=0.07;
+const TWIN_STOP=new Set(("the a an and or but so if then than that this these those i you he she it we they "+
+  "my your his her its our their me him them us was were is are am be been being do does did have has had "+
+  "will would can could should may might must to of in on at for with from by as not no there here when "+
+  "while during before after up out about into over again very just also only more most some any all each other new").split(" "));
+function twinTokens(t){
+  return writeTokens(t).filter(function(w){return w.length>2&&!TWIN_STOP.has(w)});
+}
+// **حدُّ التطبيق يُقال لا يُخفى**: العتبة مقاسةٌ على فقراتٍ سرديّة (٢٣ كلمةً حاملة
+// للمعنى فأكثر). والنصوص القصيرة تُعطي بلاغاتٍ كاذبة لأن المشترك بينها **هيكل
+// السؤال** لا موضوعه: «Write about today's weather» و«Write about a pet» تشابههما
+// ٠٫٢٧ وهما موضوعان مختلفان تماماً، وعنصرا قواعدٍ يتقاسمان كلمة «book» يبلغان ٠٫١٣.
+// فلا يُحكَم إلا حيث عُويِر: أقلّ من TWIN_MIN كلمةً حاملة ⇒ لا حكم (صفر) لا إسقاط.
+const TWIN_MIN=18;
+function twinSim(a,b){
+  const A=new Set(twinTokens(a)),B=new Set(twinTokens(b));
+  if(A.size<TWIN_MIN||B.size<TWIN_MIN)return 0;   // نصٌّ قصير: لا يُحكَم عليه
+  let inter=0;A.forEach(function(w){if(B.has(w))inter++});
+  const uni=A.size+B.size-inter;
+  return uni?inter/uni:0;
+}
+// نصّ العنصر أيّاً كان قسمه — البنوك تختلف حقولها والمقارنة واحدة
+function itemText(it){
+  if(!it)return "";
+  if(it.audio)return it.audio;
+  if(it.passage)return it.passage;
+  if(it.prompt)return it.prompt;
+  if(it.sc)return (it.sc.map(function(s){return s[1]}).join(" ")+" "+(it.t||""));
+  if(it.c&&it.c.length&&typeof it.c[0]==="object")return it.c.map(function(x){return x.t||""}).join(" ");
+  return String(it.q||it.s||"");
+}
+// يُسقَط اللاحق المشابه لسابقٍ مُبقًى، ثم يُكمَل النقص من المخزون — الجلسة لا تنقص
+// عن حدّها (قاعدة ١٨ أغسطس)، فإن لم يوجد بديلٌ متمايز عاد المشابه ولا تخوى الجلسة.
+function planNoTwins(out,POOL,N,domain){
+  const kept=[],dropped=[];
+  out.forEach(function(it){
+    const twin=kept.some(function(k){return twinSim(itemText(k),itemText(it))>=GEN_TWIN});
+    (twin?dropped:kept).push(it);
+  });
+  if(!dropped.length)return out;
+  const have=new Set(kept.map(function(i){return i.id}));
+  shuffle(POOL).forEach(function(c){
+    if(kept.length>=N||have.has(c.id))return;
+    if(kept.some(function(k){return twinSim(itemText(k),itemText(c))>=GEN_TWIN}))return;
+    kept.push(c);have.add(c.id);
+  });
+  // ولا تُترك الجلسة ناقصةً: يعود المُسقَط إن لم يوجد بديل
+  dropped.forEach(function(d){if(kept.length<N&&!have.has(d.id)){kept.push(d);have.add(d.id)}});
+  try{logAnswer(domain,"twin",null,dropped.map(function(d){return d.id}).join(","),null,null,
+    {q_text:"أُسقط لتشابهه في الجلسة: "+dropped.map(function(d){return itemText(d).slice(0,60)}).join(" | ")})}catch(e){}
+  return kept.slice(0,N);
+}
 function topUpPlan(out,POOL,N){
   if(out.length>=N)return out;
   const have=new Set(out.map(function(i){return i.id}));
@@ -6257,6 +6321,19 @@ function gjtDefect(c){
   }
   return "";
 }
+// راية LanguageTool على المموّهات المولَّدة: تُسجَّل ولا تُسقِط شيئاً — ٢٢ أغسطس
+// الخادم يعرض كل جملةٍ موسومةٍ خاطئة على LanguageTool، فإن عادت نظيفةً فهي مشكوكٌ فيها
+// (مثل «was bought **from** my brother yesterday» — جملةٌ صحيحة صارت مموّهاً).
+// **رايةٌ لا رفض**: المدقّق بقواعد لا يكشف كل خطأ، فقد يرفع عَلَماً على عنصرٍ سليم.
+// يُقاس معدّل إصابتها من السجلّ أوّلاً (domain='gen', qtype='lt_suspect')، ثم يُقرَّر.
+function genLogLtFlag(domain,level,data,item){
+  try{
+    if(!data||!Array.isArray(data.ltSuspect)||!data.ltSuspect.length)return;
+    logAnswer("gen","lt_suspect",null,domain+"/"+level+" · "+data.ltSuspect.length+" من "+(data.ltJudged|0),
+      item?item.id:null,null,
+      {q_text:"مموّهٌ نظيفٌ لغوياً (مشكوكٌ فيه): "+data.ltSuspect.join(" | ").slice(0,500)});
+  }catch(e){}
+}
 function parseGenPickBlock(text,domain,wantTag){
   const lines=String(text||"").split(/\r?\n/);
   const s={},ok={},why={};let tag="";
@@ -6404,7 +6481,7 @@ function buildListenPlan(){
   // بنكٌ ثابتٌ صغير (١٠/مستوى) يُستنفَد بجلسةٍ أو جلستين فتُقفَل «الاستماع» بلا سبب —
   // نفس ما تحلّه buildSpeakSession أصلاً: مراجعة حرّة من البنك كلّه بدل شاشة فارغة.
   // ونقصٌ لا خواءٌ تامّ (سؤالٌ واحد مستحقّ) يُكمَّل كذلك — topUpPlan لا حالة خاصّة.
-  return topUpPlan(out,POOL,LISTEN_N);
+  return planNoTwins(topUpPlan(out,POOL,LISTEN_N),POOL,LISTEN_N,"listen");
 }
 // مرّتان معياريٌّ للمستويات الثلاثة سواءً — YLE وA2 Key وB1 Preliminary كلّها تنصّ
 // حرفياً «You hear each recording twice» (دليل كل مستوى). كانت هذه الدالّة تُفرّق B1
@@ -6534,7 +6611,7 @@ function buildReadPlan(){
   const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
   const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
   let out=due.concat(fresh).slice(0,READ_N);
-  return topUpPlan(out,POOL,READ_N);   // مراجعة حرّة إن استُنفد المستحقّ+الجديد — كما الاستماع، ونقصٌ يُكمَّل كذلك
+  return planNoTwins(topUpPlan(out,POOL,READ_N),POOL,READ_N,"read");   // مراجعة حرّة إن استُنفد المستحقّ+الجديد، ثم لا توأمان في الجلسة
 }
 let readItems=[],readIdx=0,readPicked=-1,readLocked=false,readScore=0,readShownAt=0,readDone=false;
 function startRead(){
@@ -6723,7 +6800,7 @@ function buildWritePlan(){
   const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
   const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
   let out=due.concat(fresh).slice(0,WRITE_N);
-  return topUpPlan(out,POOL,WRITE_N);   // مراجعة حرّة إن استُنفد المستحقّ+الجديد — كدرس الاستماع، ونقصٌ يُكمَّل كذلك
+  return planNoTwins(topUpPlan(out,POOL,WRITE_N),POOL,WRITE_N,"write");   // مراجعة حرّة إن استُنفد المستحقّ+الجديد، ثم لا توأمان
 }
 function writeWordCount(t){const m=String(t||"").trim().match(/[A-Za-z']+/g);return m?m.length:0}
 // ١٧ أغسطس: أوّل ثلاث محاولات كتابة على الإطلاق (بيانات حيّة) كانت الثلاث نسخاً لنصّ
@@ -7142,6 +7219,7 @@ async function fetchTutorGenGram(level){
     if(!data||!data.ok||!data.reply)return null;
     const item=parseGenPickBlock(data.reply,"gram",false);
     if(item)item.lv=level;
+    genLogLtFlag("gram",level,data,item);
     return item;
   }catch(e){return null}
 }
@@ -7158,7 +7236,7 @@ function buildGramPlan(){
   const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
   const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
   let out=due.concat(fresh).slice(0,GRAM_N);
-  return topUpPlan(out,POOL,GRAM_N);
+  return planNoTwins(topUpPlan(out,POOL,GRAM_N),POOL,GRAM_N,"gram");
 }
 let gramItems=[],gramIdx=0,gramOrder=[0,1,2,3],gramPicked=-1,gramLocked=false,gramScore=0,gramShownAt=0,gramDone=false;
 function startGram(){
@@ -8320,6 +8398,7 @@ async function fetchTutorGenStep(level){
     if(!data||!data.ok||!data.reply)return null;
     const item=parseGenPickBlock(data.reply,"step",true);
     if(item)item.lv=level;
+    genLogLtFlag("step",level,data,item);
     return item;
   }catch(e){return null}
 }
@@ -8343,6 +8422,9 @@ function buildStepPlan(){
   const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
   let out=due.concat(fresh).slice(0,STEP_N);
   out=topUpPlan(out,POOL,STEP_N);   // البنك مستنفَد أو ناقصٌ: مراجعة حرّة لا جلسةٌ منقوصة
+  // إسقاطُ التوائم **قبل** ضمان عنصر الترتيب لا بعده: عكسُه قد يُسقط العنصر المضمون
+  // نفسه، وهو أثقل الأنواع وأقلّها عدداً فلولا الضمان لغاب بحكم الاحتمال وحده.
+  out=planNoTwins(out,POOL,STEP_N,"step");
   if(out.length>1&&!out.some(function(i){return i.type==="order"})){
     const ord=shuffle(POOL.filter(function(i){return i.type==="order"}))[0];
     if(ord)out[out.length-1]=ord;
@@ -8782,7 +8864,7 @@ function buildVideoPlan(){
   const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
   const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
   let out=due.concat(fresh).slice(0,VIDEO_N);
-  return topUpPlan(out,POOL,VIDEO_N);   // مراجعة حرّة عند استنفاد المستحقّ+الجديد — نفس درس بنك الاستماع (١٥ أغسطس)
+  return planNoTwins(topUpPlan(out,POOL,VIDEO_N),POOL,VIDEO_N,"video");   // مراجعة حرّة عند الاستنفاد، ثم لا توأمان
 }
 let videoItems=[],videoIdx=0,videoScene=0,videoQOn=false,videoPicked=-1,videoLocked=false,videoScore=0,videoPlays=0,videoShownAt=0,videoDone=false;
 function startVideo(){

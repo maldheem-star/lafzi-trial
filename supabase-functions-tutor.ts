@@ -604,6 +604,41 @@ async function ltJudge(reply: string): Promise<{ text: string; dropped: number; 
   return { text: out.join("\n"), dropped, judged };
 }
 
+
+// ===== حَكَمٌ على مموّهات GJT المولَّدة: مموّهٌ نظيفٌ لغوياً مشكوكٌ فيه — ٢٢ أغسطس =====
+// بياناتٌ حيّة (محمد): عنصرُ قواعدٍ مولَّد عرض مموّهاً «The new phone was bought **from**
+// my brother yesterday.» — وهي جملةٌ إنجليزية صحيحة تماماً (معناها مختلف لا خطؤها)،
+// فصار للسؤال جوابان. وgjtDefect عند العميل يكشف فاصلة أكسفورد وتقديم الجملة الفرعية
+// وازدواج الصواب المعلَن — لا «تبديل حرف جرٍّ يُنتج جملةً صحيحة أخرى».
+//
+// وLanguageTool موجودٌ في هذا الملفّ أصلاً حَكَماً على تصحيحات المراجعة، فيُستعمل هنا
+// للغرض نفسه: كل جملةٍ **موسومةٍ خاطئة** تُعرض عليه، فإن عادت **نظيفة** فهي مشكوكٌ فيها.
+//
+// **وحدُّه يُقال لا يُخفى**: مدقّقٌ بقواعد لا يكشف كل خطأ — «is bought … yesterday» خطأُ
+// زمنٍ قد يمرّ عنده نظيفاً، فيُرفع عَلَمٌ على عنصرٍ سليم. ولهذا **رايةٌ تُسجَّل لا رفضٌ
+// تلقائي**: يُقاس معدّل إصابتها أوّلاً، ثم يُقرَّر هل تصير رفضاً. وتعذّرُ الوصول إليه
+// لا يرفع رايةً ولا يُسقط شيئاً — كما هو حاله في المراجعة تماماً.
+async function ltFlagDistractors(reply: string): Promise<{ suspect: string[]; judged: number }> {
+  const lines = String(reply || "").split(/\n/);
+  const sent: Record<string, string> = {}, isWrong: Record<string, boolean> = {};
+  for (const ln of lines) {
+    let m = /^\s*S([1-4])\s*:\s*(.+)$/.exec(ln);
+    if (m) { sent[m[1]] = m[2].trim(); continue; }
+    m = /^\s*S([1-4])_OK\s*:\s*(.+)$/i.exec(ln);
+    if (m) isWrong[m[1]] = !/^\s*yes/i.test(m[2]);
+  }
+  const suspect: string[] = [];
+  let judged = 0;
+  for (const k of Object.keys(sent)) {
+    if (!isWrong[k]) continue;
+    const n = await ltErrors(sent[k]);
+    if (n === null) continue;          // تعذّر الحكم ⇒ لا راية
+    judged++;
+    if (n === 0) suspect.push(k + ":" + sent[k].slice(0, 80));
+  }
+  return { suspect, judged };
+}
+
 // ===== تجريد تفكير النموذج قبل أن يصل إليها =====
 // ١٨ أغسطس، بيانات حيّة من جهاز صاحب المشروع: بعد ضبط GROQ_MODEL على qwen/qwen3.6-27b
 // ظهرت على شاشة التشخيص كتلةُ تفكيرٍ خام داخل <think> بدل الردّ، وفيها «Correct Answer:
@@ -834,6 +869,13 @@ Deno.serve(async (req) => {
         const j2 = await ltJudge(text);
         return jsonOut({ ok: true, engine: provider, model, keyName, reply: j2.text,
           ltDropped: j2.dropped, ltJudged: j2.judged, turns: 1 });
+      }
+      // القواعد وSTEP وحدهما: أربع جملٍ إحداها صحيحة، فالمموّه النظيف مشكوكٌ فيه.
+      // ولا يُغيَّر الردّ ولا يُحجب — رايةٌ تُضاف ليقيسها العميل ويُسجّلها.
+      if (gen && (clip(b.domain, 20) === "gram" || clip(b.domain, 20) === "step")) {
+        const fl = await ltFlagDistractors(text);
+        return jsonOut({ ok: true, engine: provider, model, keyName, reply: text,
+          ltSuspect: fl.suspect, ltJudged: fl.judged, turns: 1 });
       }
       return jsonOut({ ok: true, engine: provider, model, keyName, reply: text,
         turns: history.length ? Math.floor(history.length / 2) + 1 : 1 });
