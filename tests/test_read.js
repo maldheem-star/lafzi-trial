@@ -2,6 +2,9 @@
 // للثلاثة (١٦ أغسطس). لا شيء كان يقيس فهم نصٍّ مكتوب بلا نسخه حرفياً أو إنتاجه.
 // نفس الصيغة المعياريّة (Cambridge YLE/KET/PET، TOEFL Junior)، ونفس التباعد (fsrsUpdate)،
 // ونفس مراجعة البنك الحرّة عند الاستنفاد — مبنيّة من أوّل يوم لا بعد شكوى كما الاستماع.
+// بوّابة التسرّع (٢٢ أغسطس) تمنع النقر قبل زمنٍ أدنى، وهذه الاختبارات تنقر فوراً.
+// فتُنهي العدّ أوّلاً — كما ينتظر المتعلّم — ثم تختار: gateLeft=0;gateStop().
+// وهذا لا يُعطّل البوّابة ولا يُخفي انحدارها؛ فحصها نفسه في tests/test_rapidgate.js.
 const {chromium}=require('/opt/node22/lib/node_modules/playwright');
 let fails=0;const ok=(c,m)=>{console.log((c?'  ✓ ':'  ✗ FAIL ')+m);if(!c)fails++};
 (async()=>{
@@ -37,7 +40,7 @@ await page.evaluate(()=>startRead());
 let t=await page.textContent('#app');
 const it0=await page.evaluate(()=>readCur());
 ok(t.includes(it0.passage.slice(0,20)),'النصّ ظاهرٌ على الشاشة');
-await page.evaluate(()=>{const it=readCur();readChoose(it.a)});
+await page.evaluate(()=>{const it=readCur();gateLeft=0;gateStop();readChoose(it.a)});
 t=await page.textContent('#app');
 ok(t.includes(it0.passage.slice(0,20)),'وما زال ظاهراً بعد الإجابة — يمكن مراجعته');
 ok(!t.includes('🔊'),'ولا زرّ استماع هنا — نصٌّ لا صوت');
@@ -45,7 +48,7 @@ ok(!t.includes('🔊'),'ولا زرّ استماع هنا — نصٌّ لا صو
 console.log('\n٣) الإجابة تُحتسب وتُسجَّل');
 logs=[];
 page=await mk();
-const r=await page.evaluate(()=>{startRead();const it=readCur();readChoose(it.a);return {picked:readPicked,ok:readPicked===it.a,score:readScore}});
+const r=await page.evaluate(()=>{startRead();const it=readCur();gateLeft=0;gateStop();readChoose(it.a);return {picked:readPicked,ok:readPicked===it.a,score:readScore}});
 ok(r.ok&&r.score===1,'الإجابة الصحيحة تُحتسب');
 await page.waitForTimeout(300);
 const row=logs.find(l=>l.domain==='read');
@@ -89,7 +92,7 @@ console.log('\n٦) جلسة كاملة، ثم النتيجة');
 async function step(){
   const it=await page.evaluate(()=>readCur());
   if(!it)return;
-  await page.evaluate(a=>{readChoose(a)},it.a);
+  await page.evaluate(a=>{gateLeft=0;gateStop();readChoose(a)},it.a);
   await page.evaluate(()=>readNext());
 }
 await page.evaluate(()=>startRead());

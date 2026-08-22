@@ -2,6 +2,9 @@
 // صاحب المشروع تدريباً داخل قسم الكتابة، مع شرح كل خيار لا الصحيحة وحدها (توصيةٌ
 // اعتُمدت بعد عرض بدائل). نفس بنية الاستماع/القراءة/لعبة الاستماع بالضبط — بنكٌ
 // بمستويات + fsrsUpdate للتباعد، لا آلية جديدة.
+// بوّابة التسرّع (٢٢ أغسطس) تمنع النقر قبل زمنٍ أدنى، وهذه الاختبارات تنقر فوراً.
+// فتُنهي العدّ أوّلاً — كما ينتظر المتعلّم — ثم تختار: gateLeft=0;gateStop().
+// وهذا لا يُعطّل البوّابة ولا يُخفي انحدارها؛ فحصها نفسه في tests/test_rapidgate.js.
 const {chromium}=require('/opt/node22/lib/node_modules/playwright');
 let fails=0;const ok=(c,m)=>{console.log((c?'  ✓ ':'  ✗ FAIL ')+m);if(!c)fails++};
 (async()=>{
@@ -65,7 +68,7 @@ ok(await page.evaluate(()=>document.querySelectorAll('.choices .choice').length)
 
 console.log('\n٤) اختيار الصحيحة يُحتسب، وتظهر شروح الأربعة كلّها بعد القفل');
 const okIdx=await page.evaluate(()=>gramCur().c.findIndex(o=>o.ok));
-const r=await page.evaluate(i=>{gramChoose(i);return{score:gramScore,locked:gramLocked}},okIdx);
+const r=await page.evaluate(i=>{gateLeft=0;gateStop();gramChoose(i);return{score:gramScore,locked:gramLocked}},okIdx);
 ok(r.locked&&r.score===1,'الإجابة الصحيحة تُحتسب ويُقفل الاختيار');
 t=await page.textContent('#app');
 ok(it0.c.every(o=>t.includes(o.why)),'شرح كل خيارٍ من الأربعة ظاهر — لا الصحيحة وحدها');
@@ -73,17 +76,17 @@ ok(it0.c.every(o=>t.includes(o.why)),'شرح كل خيارٍ من الأربعة
 console.log('\n٥) اختيار خاطئ لا يُحتسب');
 await page.evaluate(()=>startGram());
 const wrongIdx=await page.evaluate(()=>gramCur().c.findIndex(o=>!o.ok));
-const r2=await page.evaluate(i=>{gramChoose(i);return{score:gramScore,ok:gramCur().c[i].ok}},wrongIdx);
+const r2=await page.evaluate(i=>{gateLeft=0;gateStop();gramChoose(i);return{score:gramScore,ok:gramCur().c[i].ok}},wrongIdx);
 ok(r2.score===0&&!r2.ok,'الإجابة الخاطئة لا تُحتسب');
 
 console.log('\n٦) القفل يمنع تغيير الاختيار');
 const before=await page.evaluate(()=>gramPicked);
-await page.evaluate(i=>gramChoose(i),okIdx);
+await page.evaluate(i=>{gateLeft=0;gateStop();gramChoose(i)},okIdx);
 ok(await page.evaluate(()=>gramPicked)===before,'لا تغيير بعد القفل');
 
 console.log('\n٧) التسجيل: نصّ السؤال بكل الخيارات وموضع الصواب، والإجابة النصّية المختارة');
 logs=[];
-await page.evaluate(()=>{startGram();const i=gramCur().c.findIndex(o=>o.ok);gramChoose(i)});
+await page.evaluate(()=>{startGram();const i=gramCur().c.findIndex(o=>o.ok);gateLeft=0;gateStop();gramChoose(i)});
 await page.waitForTimeout(300);
 const row=logs.find(l=>l.domain==='gram');
 ok(!!row,'سطرٌ وصل الخادم');
@@ -117,7 +120,7 @@ async function step(){
   const it=await page.evaluate(()=>gramCur());
   if(!it)return;
   const i=await page.evaluate(()=>gramCur().c.findIndex(o=>o.ok));
-  await page.evaluate(i=>gramChoose(i),i);
+  await page.evaluate(i=>{gateLeft=0;gateStop();gramChoose(i)},i);
   await page.evaluate(()=>gramNext());
 }
 await page.evaluate(()=>startGram());

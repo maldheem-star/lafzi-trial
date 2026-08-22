@@ -5,6 +5,9 @@
 //
 // ومستوى هيا نزل A2⇐A1 (١٥ أغسطس): إنتاجها المنطوق شظايا، ودقّة قواعدها على تراكيب
 // فوق الأساسي ٣٥٪. فهذا الاختبار يتحقّق من أن كلّ متعلّم يرى مستواه هو، لا موحّداً.
+// بوّابة التسرّع (٢٢ أغسطس) تمنع النقر قبل زمنٍ أدنى، وهذه الاختبارات تنقر فوراً.
+// فتُنهي العدّ أوّلاً — كما ينتظر المتعلّم — ثم تختار: gateLeft=0;gateStop().
+// وهذا لا يُعطّل البوّابة ولا يُخفي انحدارها؛ فحصها نفسه في tests/test_rapidgate.js.
 const {chromium}=require('/opt/node22/lib/node_modules/playwright');
 let fails=0;const ok=(c,m)=>{console.log((c?'  ✓ ':'  ✗ FAIL ')+m);if(!c)fails++};
 (async()=>{
@@ -63,7 +66,7 @@ ok(plays3>=3,'والزرّ لا يُقفَل تقنياً — لا فائدة ت
 console.log('\n٥) الإجابة تُحتسب وتُسجَّل بعدد مرّات الاستماع');
 logs=[];
 const r=await page.evaluate(()=>{
-  const it=listenCur();listenChoose(it.a);
+  const it=listenCur();gateLeft=0;gateStop();listenChoose(it.a);
   return {picked:listenPicked,ok:listenPicked===it.a,score:listenScore};
 });
 ok(r.ok&&r.score===1,'الإجابة الصحيحة تُحتسب');
@@ -101,7 +104,7 @@ console.log('\n٧) جلسة كاملة، ثم النتيجة');
 async function step(){
   const it=await page.evaluate(()=>listenCur());
   if(!it)return;
-  await page.evaluate(a=>{listenChoose(a)},it.a);
+  await page.evaluate(a=>{gateLeft=0;gateStop();listenChoose(a)},it.a);
   await page.evaluate(()=>listenNext());
 }
 while(!(await page.evaluate(()=>listenDone)))await step();
