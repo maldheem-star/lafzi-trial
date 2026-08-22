@@ -1594,6 +1594,18 @@ function fadeMakePrismVol(){
     caption:`ل = الطول، ع = العرض، ن = الارتفاع`,
     q:`منشور رباعي طوله ${toAr(l)} سم وعرضه ${toAr(w)} سم وارتفاعه ${toAr(h)} سم. ما حجمه؟`};
 }
+// ===== surf_no_double: آليةُ خطأٍ هندسية مسمّاة — ٢٢ أغسطس =====
+// بياناتٌ حيّة (هيا): ثلاثةٌ من خمسة أخطاءٍ في جلسةٍ واحدة كانت **النصفَ بالضبط** —
+// ٣×٢×٣ ⇐ ٢١ (والصواب ٤٢) · ٦×٦×٥ ⇐ ٩٦ (١٩٢) · ٤×٣×٣ ⇐ ٣٣ (٦٦).
+// أي أنها تجمع الأوجه الثلاثة المختلفة وتنسى ضربها في ٢. آليةٌ واحدة لا ضعفٌ عامّ.
+//
+// وbugOf مبنيّةٌ للحساب (جمع/طرح/ضرب/قسمة) لا للهندسة، فلا تُحشر هذه فيها. لكن العُرف
+// نفسه يُتّبع: اسمٌ يُسجَّل، وتكرارٌ يُسلّح (SHAPE_ARM=2)، وبوّابةٌ في BUG_GATES.
+const SURF_BUG="surf_no_double";
+function surfBugOf(cur,given){
+  if(!cur||cur.kind!=="prismsurf")return null;
+  return (given===cur.ans/2)?SURF_BUG:null;
+}
 function fadeMakePrismSurf(){
   const l=rand(2,8),w=rand(2,7),h=rand(2,6);
   const a1=l*w,a2=l*h,a3=w*h,sum=a1+a2+a3,ans=2*sum;
@@ -1643,7 +1655,10 @@ function fadePrep(){
 const FADE_RUSH_MS=2000, FADE_RUSH_N=2, FADE_GATE_SEC=6, FADE_GATE_SVG_SEC=8;
 let fadeRush=0,fadeGateOn=false,fadeGateLeft=0,fadeGateTimer=null;
 function fadeGateTopics(){return ["reading","logic"].indexOf(fadeTopic)<0}
-function fadeGateNeeded(){return fadeStage===4&&fadeGateTopics()&&fadeRush>=FADE_RUSH_N}
+// كانت مشروطةً بالمرحلة ٤ وحدها، فمرّت هيا في المرحلة ٢ بإجاباتٍ ١٫١ث و١٫٣ث بلا مانع
+// (٢٢ أغسطس). والمرحلة ٢ فيها دعمٌ باقٍ لا استقلالٌ تامّ — لكن التسرّع تسرّعٌ في الاثنتين.
+// وتبقى **مشروطة** كما كانت: تُسلَّح بتكرار السرعة (fadeRush) لا دائماً.
+function fadeGateNeeded(){return fadeStage>=2&&fadeGateTopics()&&fadeRush>=FADE_RUSH_N}
 function fadeGateStop(){if(fadeGateTimer){clearInterval(fadeGateTimer);fadeGateTimer=null}fadeGateOn=false;fadeGateLeft=0}
 function fadeGateStart(){
   fadeGateStop();
@@ -1657,7 +1672,7 @@ function fadeGateStart(){
 }
 function fadeNew(){
   fadeCur=fadeMakeQuestion();fadeLocked=false;fadePicked=-1;fadePrep();fadeShownAt=Date.now();
-  fadeGateStart();
+  surfClear();fadeGateStart();
   // المختبر يبدأ من أرقام المسألة التي أمامها، فلا ينفصل التجريب عن السؤال
   if(fadeCur.kind==="circle")labArm("circle",fadeCur.lab||12);
   else if(fadeCur.kind==="triangle"||fadeCur.kind==="parallelogram")labArm(fadeCur.kind,fadeCur.labB||8,fadeCur.labH||6);
@@ -1685,8 +1700,12 @@ function fadeAnsText(c,i){
   return f(mine)+" · الصواب "+f(right);
 }
 function fadeChoose(i){
-  if(fadeLocked)return;fadeLocked=true;fadePicked=i;
+  if(fadeLocked||surfGated())return;fadeLocked=true;fadePicked=i;
   const ok=i===fadeCur.ai;
+  // آليةُ «نسيت المضاعفة»: تُسمّى وتُسلَّح بتكرارها لا بأوّل زلّة (SHAPE_ARM=2)
+  const sbug=ok?null:surfBugOf(fadeCur,(fadeCur.opts||[])[i]);
+  if(sbug){shapeRecord(sbug,true);if(shapeArmed(sbug))BUG_GATES[sbug]()}
+  else if(ok&&fadeCur&&fadeCur.kind==="prismsurf")shapeRecord(SURF_BUG,false);
   if(ok){fadeStreak++;fadeWrongStreak=0}else{fadeStreak=0;fadeWrongStreak++}
   if(fadeStage===4){
     // الخطأ في مرحلة الاستقلال يُسقط الإتقان المحفوظ: النوع يرجع لأول القائمة بلا شارة حتى تتقنه من جديد
@@ -1697,11 +1716,18 @@ function fadeChoose(i){
     fadeStage4Count++;
   }
   const elapsed=fadeShownAt?Date.now()-fadeShownAt:null;
-  logAnswer("fade_"+fadeTopic,"stage"+fadeStage,ok,fadeAnsText(fadeCur,i),null,elapsed,
+  logAnswer("fade_"+fadeTopic,"stage"+fadeStage,ok,
+    fadeAnsText(fadeCur,i)+(sbug?" · "+sbug:""),null,elapsed,
     {q_text:fadeQText(fadeCur)});
   // التسرّع يُقاس من ظهور الخيارات لا من ظهور السؤال، فبوّابةٌ تُبطئها لا تُخفيه
-  if(elapsed!=null&&fadeStage===4){
-    if(elapsed<FADE_RUSH_MS)fadeRush++; else fadeRush=0;
+  if(elapsed!=null&&fadeStage>=2){
+    // المرحلة ٤ استقلالٌ تامّ، فالسرعة وحدها تكفي دليلاً على التسرّع.
+    // والمرحلتان ٢-٣ تعرضان **القاعدة** لا الجواب (سطر hint في renderFade)، فمن يحفظها
+    // قد يُجيب بسرعةٍ صادقة — فلا تُحسب تسرّعاً إلا إذا اقترنت السرعة بخطأ.
+    // وهذا يُجيب اعتراض test_fadelog القديم («الدعم فيها معروض أصلاً») بدل تجاهله:
+    // السريعة المصيبة لا تُعاقَب، والسريعة المخطئة تُمنَع — وهي حال هيا (١٫١ث و١٫٣ث خطأً).
+    const rushed=(elapsed<FADE_RUSH_MS)&&(fadeStage===4||!ok);
+    if(rushed)fadeRush++; else fadeRush=0;
   }
   // نفس كاشف التسرّع المستعمل في الاختبار — لم يكن يعمل في التقوية لأنها لا تسجّل الزمن
   if(elapsed!=null){
@@ -1784,7 +1810,7 @@ function fadeStage4Next(){
   if(fadeStage4Count>=MASTERY_MAX_Q){fadeNotYet=true;fadeGateStop();mode="fadeDone";window.scrollTo(0,0);render();return}
   fadeNew();
 }
-function startFade(topic){fadeGateStop();fadeRush=0;mode="fade";fadeTopic=topic||fadeTopic||"seq";fadeStage=1;fadeStreak=0;fadeWrongStreak=0;fadeDroppedBack=false;fadeMasteryStreak=0;fadeStage4Support=false;fadeRecoveryStreak=0;fadeStage4Count=0;fadeNotYet=false;fadeBestStreak=0;recentAnswerTimes=[];rapidNudge=false;window.scrollTo(0,0);fadeNew()}
+function startFade(topic){fadeGateStop();surfClear();fadeRush=0;mode="fade";fadeTopic=topic||fadeTopic||"seq";fadeStage=1;fadeStreak=0;fadeWrongStreak=0;fadeDroppedBack=false;fadeMasteryStreak=0;fadeStage4Support=false;fadeRecoveryStreak=0;fadeStage4Count=0;fadeNotYet=false;fadeBestStreak=0;recentAnswerTimes=[];rapidNudge=false;window.scrollTo(0,0);fadeNew()}
 function goFadeMenu(){fadeGateStop();mode="fadeMenu";window.scrollTo(0,0);render()}
 function renderFadeMenu(){
   // نرتّب: غير المتقن أولاً، ثم المتقن المستحقّ للمراجعة، ثم المتقن الذي لم يحن موعده — فتتوجّه تلقائياً للأضعف
@@ -1883,7 +1909,20 @@ function renderFade(){
     <div style="font-size:13px;color:#64748B;text-align:center;margin-top:10px">شاهدي مثالين للانتقال (${toAr(fadeStreak)}/${toAr(FADE_REQ)})</div>`;
   } else {
     const isText=c.choiceKind==="text"; // خيارات نصية طويلة: خط أصغر ومحاذاة طبيعية بدل التوسيط المكبّر
-    const ch=c.opts.map((o,i)=>{let bg="#fff",bd="#E2E8F0",col="#334155";if(fadeLocked){if(i===c.ai){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(i===fadePicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}return `<button class="choice" style="background:${bg};border-color:${bd};color:${col};${isText?'font-size:15px;font-weight:700;line-height:1.7;text-align:start':'font-size:18px;font-weight:800'}" onclick="fadeChoose(${i})" ${fadeLocked?'disabled':''}>${c.choiceKind?o:(Number.isInteger(o)?toAr(o):arDec(o))}</button>`}).join("");
+    const ch=c.opts.map((o,i)=>{let bg="#fff",bd="#E2E8F0",col="#334155";if(fadeLocked){if(i===c.ai){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(i===fadePicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}return `<button class="choice" style="background:${bg};border-color:${bd};color:${col};${isText?'font-size:15px;font-weight:700;line-height:1.7;text-align:start':'font-size:18px;font-weight:800'}" onclick="fadeChoose(${i})" ${(fadeLocked||surfGated())?'disabled':''}>${c.choiceKind?o:(Number.isInteger(o)?toAr(o):arDec(o))}</button>`}).join("");
+    // بوّابة «نسيت المضاعفة»: الخطوة الثالثة تُقرّ بيدها قبل أن تُفتح الخيارات
+    const surfBox=surfGated()?`
+      <div style="background:#FEF3C7;border:1.5px solid #FCD34D;border-radius:14px;padding:16px;margin:12px 0">
+        <div style="font-weight:800;color:#92400E;font-size:15px;margin-bottom:8px">✋ خطوةٌ ناقصة تتكرّر</div>
+        <div style="color:#78350F;font-size:14px;line-height:1.9;margin-bottom:10px">
+          أجبتِ بمجموع الأوجه الثلاثة المختلفة، وهذا نصف الجواب. للمنشور <b>ستّة</b> أوجه —
+          كل وجهٍ له وجهٌ مقابلٌ يساويه، فالمجموع يُضرب في ٢.
+          <div style="margin-top:8px;background:#fff;border-radius:10px;padding:10px;font-weight:700">
+            (ل×ع + ل×ن + ع×ن) <span style="color:#B45309">× ٢</span>
+          </div>
+        </div>
+        <button class="btn" style="background:#D97706;margin:0" onclick="surfClear();render()">فهمتُ — أضرب في ٢</button>
+      </div>`:"";
     const rapidBanner=fadeLocked&&rapidNudge?`<div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:12px;padding:12px 14px;margin-top:10px;font-size:13px;color:#92400E;line-height:1.7">⏱️ إجاباتك جاءت سريعة جداً — هذي أسئلة تحتاج قراءة وتفكير. خذي وقتك، فالتخمين السريع لا يعلّم القاعدة.</div>`:"";
     let hint="";
     if(fadeStage===2)hint=`<div style="background:#F0FDF4;border-inline-start:4px solid #10B981;border-radius:12px;padding:14px;margin-bottom:14px;font-size:15px">القاعدة معطاة: <b>${c.ruleTxt}</b>. طبّقيها لإيجاد الإجابة.</div>`;
@@ -1893,7 +1932,7 @@ function renderFade(){
     const mtr=fadeStage<4?`<div style="font-size:13px;color:#64748B;text-align:center;margin-top:10px">جاوبي صح مرتين متتاليتين للانتقال (${toAr(fadeStreak)}/${toAr(FADE_REQ)})</div>`
       :fadeStage4Support?`<div style="font-size:13px;color:#854D0E;text-align:center;margin-top:10px">🌱 مراجعة: (${toAr(fadeRecoveryStreak)}/${toAr(RECOVERY_REQ)}) لإخفاء التذكير مرة أخرى</div>`
       :`<div style="font-size:13px;color:#64748B;text-align:center;margin-top:10px">🎓 حل مستقل — (${toAr(fadeMasteryStreak)}/${toAr(MASTERY_REQ)}) متتالية لإتقان هذا النوع<br><span style="font-size:12px;color:#94A3B8">سؤال ${toAr(fadeStage4Count)} من ${toAr(MASTERY_MAX_Q)} كحدّ أقصى لهذه الجلسة</span></div>`;
-    body=`${hint}${seqBox}<div class="q">${c.kind==="seq"?"ما العدد الناقص؟":c.prompt}</div><div class="choices">${ch}</div>${rapidBanner}${why}${mtr}`;
+    body=`${hint}${seqBox}<div class="q">${c.kind==="seq"?"ما العدد الناقص؟":c.prompt}</div>${surfBox}${surfGated()?"":`<div class="choices">${ch}</div>`}${rapidBanner}${why}${mtr}`;
     // البوّابة: السؤال ظاهر والخيارات محجوبة. الغرض أن تنظر في المسألة لا أن تنتظر عقاباً
     if(fadeGateOn){
       body=`${hint}${seqBox}<div class="q">${c.kind==="seq"?"ما العدد الناقص؟":c.prompt}</div>
@@ -2597,7 +2636,14 @@ const BUG_GATES={
   borrow_no_decrement:function(a,b){btArm(a,b)},
   quot_off_one:function(a,b){quotArm(a,b)},
   quot_off_one_up:function(a,b){quotArm(a,b)},
+  surf_no_double:function(){surfArm()},
 };
+// بوّابة «نسيت المضاعفة»: الخيارات لا تُعرض حتى تُقرّ الخطوة الثالثة بيدها.
+// والمنع أنفع من التنبيه — وهو المبدأ الذي رفع الفهم المقروء ١/٣ ⇒ ٣/٣.
+let surfOn=false;
+function surfArm(){surfOn=true}
+function surfGated(){return surfOn}
+function surfClear(){surfOn=false}
 // البوّابات تُقفل الانتقال كبوّابة المصفوفة تماماً — والمنع أنفع من التنبيه
 function basicsOb1Gated(){return ob1On&&!ob1Complete()}
 function basicsBtGated(){return btOn&&!btComplete()}
@@ -9871,14 +9917,18 @@ function factCheck(){
   factSrsUpdate(it.id,ok);
   // اسم الخطأ من الفهرس هنا أيضاً: القسمة أضعف عملياتها، والفهرس يقول لماذا
   const fbug=ok?null:bugOf(it.op,it.a,it.b,parseInt(val,10));
-  // بوّابتا الطرح (ob1/bt) موصولتان هنا: نفس شكل الخطأ الذي عولج في الأساسيات كان
-  // يتكرّر هنا بلا علاج (count_all_not_gaps: ٤ مرّات). القسمة لا تحتاج وصلاً مماثلاً —
-  // لها علاجها العامّ أعلاه أصلاً على كل خطأ، بلا شرط تكرار.
-  if(!ok&&it.op==="sub"&&fbug&&BUG_GATES[fbug.id]){
+  // بوّابتا الطرح (ob1/bt) وُصلتا هنا في ١٥ أغسطس، وتُرك وصلُ القسمة يومها بتعليقٍ
+  // يقول إن «لها علاجها العامّ أعلاه على كل خطأ، بلا شرط تكرار».
+  // **والبيانات كذّبت ذلك (٢٢ أغسطس)**: quot_off_one تكرّر **سبع مرّات في جلسةٍ واحدة**
+  // عند هيا (٤٩÷٧⇐٦ · ٢٨÷٧⇐٣ · ٦٣÷٧⇐٨ · ٤٢÷٧⇐٥ · ٤٨÷٦⇐٧ · ٢٤÷٦⇐٣)، ومعه
+  // quot_off_one_up. فالعلاج العامّ لا يوقف الآلية المسمّاة، والبوّابة المشروطة توقفها.
+  // وit.a/it.b هما طرفا السؤال المعروض (يُثبته سطر التسجيل أدناه) لا طرفا عائلة الضرب —
+  // وهو الخطأ الكامن الذي كُشف في الأساسيات في ١٥ أغسطس، فلا يتكرّر هنا.
+  if(!ok&&fbug&&BUG_GATES[fbug.id]){
     shapeRecord(fbug.id,true);
     if(shapeArmed(fbug.id))BUG_GATES[fbug.id](it.a,it.b);
   }else if(ok){
-    shapeRecord("count_all_not_gaps",false);shapeRecord("borrow_no_decrement",false);
+    Object.keys(BUG_GATES).forEach(function(k){shapeRecord(k,false)});
   }
   logAnswer("fact_fluency",it.op,ok,val+(fbug?" · "+fbug.id:""),it.id,ms,
     {q_text:`${it.a} ${FACT_OP_SYM[it.op]} ${it.b}`});
