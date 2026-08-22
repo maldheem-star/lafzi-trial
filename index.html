@@ -318,9 +318,17 @@ function planNoTwins(out,POOL,N,domain){
   });
   // ولا تُترك الجلسة ناقصةً: يعود المُسقَط إن لم يوجد بديل
   dropped.forEach(function(d){if(kept.length<N&&!have.has(d.id)){kept.push(d);have.add(d.id)}});
-  try{logAnswer(domain,"twin",null,dropped.map(function(d){return d.id}).join(","),null,null,
-    {q_text:"أُسقط لتشابهه في الجلسة: "+dropped.map(function(d){return itemText(d).slice(0,60)}).join(" | ")})}catch(e){}
-  return kept.slice(0,N);
+  const out2=kept.slice(0,N),ids=new Set(out2.map(function(i){return i.id}));
+  // ما عاد فعلاً لا يُسجَّل مُسقَطاً: السجلّ يقول ما وقع لا ما نُوِيَ.
+  const gone=dropped.filter(function(d){return !ids.has(d.id)});
+  // وتحت domain='gen' لا تحت domain القسم — كشفه test_step: صفُّ الإسقاط بلا صواب ولا
+  // خطأ (is_correct=null)، ووضعُه في سجلّ القسم يجعله أوّل صفٍّ يجده كل من يستعلم
+  // `domain='step'`، ويُلوّث كل حساب دقّةٍ عليه بمقامٍ بلا نتيجة. وهذا نفس عُرف
+  // gjtDefect وراية LanguageTool القائم أصلاً: ما يفعله النظامُ بالعنصر يُسجَّل في
+  // `domain='gen'`، وما تفعله هي بالسؤال يُسجَّل في سجلّ القسم.
+  if(gone.length){try{logAnswer("gen","twin",null,domain+" · "+gone.map(function(d){return d.id}).join(","),null,null,
+    {q_text:"أُسقط لتشابهه في الجلسة: "+gone.map(function(d){return itemText(d).slice(0,60)}).join(" | ")})}catch(e){}}
+  return out2;
 }
 function topUpPlan(out,POOL,N){
   if(out.length>=N)return out;
