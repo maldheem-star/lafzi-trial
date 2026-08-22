@@ -117,6 +117,9 @@ async function mk(browser,q){
     });
     await page.evaluate(()=>startGram());
     for(let i=0;i<5;i++){
+      // بوّابة التسرّع تحجب الخيارات ثوانيَ — تُفتح صراحةً هنا لأن هذا الاختبار يفحص
+      // تتبّع المهارة لا البوّابة (وللبوّابة اختبارها: test_rapidgate.js)
+      await page.evaluate(()=>{gateLeft=0;gateStop();render()});
       await page.evaluate(()=>{const b=document.querySelectorAll('.choice');if(b.length)b[0].click()});
       await page.waitForTimeout(40);
       await page.evaluate(()=>{if(typeof gramNext==='function'&&!gramDone)gramNext()});

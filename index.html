@@ -6251,13 +6251,13 @@ function listenPlaysHint(lv){return "استمعي مرّتين، ثم اختار
 let listenItems=[],listenIdx=0,listenPicked=-1,listenLocked=false,listenScore=0,listenPlays=0,listenShownAt=0,listenDone=false;
 function startListen(){
   listenItems=buildListenPlan();listenIdx=0;listenPicked=-1;listenLocked=false;listenScore=0;listenPlays=0;listenDone=false;
-  mode="listen";listenShownAt=Date.now();window.scrollTo(0,0);render();
+  mode="listen";listenShownAt=Date.now();secGateStart("listen",listenCur()&&listenCur().audio);window.scrollTo(0,0);render();
   genTopUp("listen",GEN_BANK_KEY_LISTEN,profileOf().level||"A2");
 }
 function listenCur(){return listenItems[listenIdx]}
 function listenPlay(){const it=listenCur();if(!it)return;listenPlays++;speakEnglish(it.audio)}
 function listenChoose(i){
-  if(listenLocked)return;
+  if(listenLocked||!gateOpen())return;   // بوّابة بنيوية: لا اختيار قبل زمن السماع
   const it=listenCur();listenLocked=true;listenPicked=i;
   const ok=i===it.a;if(ok)listenScore++;
   listenSrsUpdate(it.id,ok);
@@ -6269,7 +6269,8 @@ function listenNext(){
   genPulseFor("listen",profileOf().level||"A2",listenIdx);   // نبضةُ توليد أثناء الجلسة
 
   if(listenIdx+1>=listenItems.length){listenDone=true;window.scrollTo(0,0);render();return}
-  listenIdx++;listenPicked=-1;listenLocked=false;listenPlays=0;listenShownAt=Date.now();render();
+  listenIdx++;listenPicked=-1;listenLocked=false;listenPlays=0;listenShownAt=Date.now();
+  secGateStart("listen",listenCur()&&listenCur().audio);render();
   setTimeout(function(){listenPlay()},300);
 }
 function renderListen(){
@@ -6280,7 +6281,7 @@ function renderListen(){
   const choices=it.c.map(function(c,i){
     let bg="#fff",bd="#E2E8F0",col="#334155";
     if(listenLocked){if(i===it.a){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(i===listenPicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}
-    return `<button class="choice" style="background:${bg};border-color:${bd};color:${col};direction:ltr;text-align:left;font-family:Georgia,serif" onclick="listenChoose(${i})" ${listenLocked?"disabled":""}><span class="letter">${L[i]}</span>${c}</button>`}).join("");
+    return `<button class="choice" style="background:${bg};border-color:${bd};color:${col};direction:ltr;text-align:left;font-family:Georgia,serif" onclick="listenChoose(${i})" ${gateOpen()?"":"disabled style=\"opacity:.45;pointer-events:none\""} ${listenLocked?"disabled":""}><span class="letter">${L[i]}</span>${c}</button>`}).join("");
   app.innerHTML=`
   <button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
   ${prog}
@@ -6290,7 +6291,7 @@ function renderListen(){
     <div class="q" style="margin-top:10px;direction:ltr;text-align:center;font-family:Georgia,serif">${it.q}</div>
     <div style="margin:16px 0"><button type="button" onclick="listenPlay()" style="background:#0284C7;color:#fff;border:none;border-radius:50%;width:64px;height:64px;font-size:26px;cursor:pointer">🔊</button></div>
     <div style="font-size:12px;color:#64748B;margin-bottom:14px">${listenPlaysHint(it.lv)}${listenPlays?` · استمعتَ ${toAr(listenPlays)} ${listenPlays===1?"مرّة":"مرّات"}`:""}</div>
-    <div class="choices">${choices}</div>
+    <div class="choices">${secGateHTML()}${choices}</div>
     ${listenLocked?`<div class="explain"><div class="explain-title" style="color:${listenPicked===it.a?'#059669':'#B45309'}">${listenPicked===it.a?"✓ فهمتَ صحيحاً":"الصحيحة بالأخضر"}</div></div>`:""}
   </div>
   ${listenLocked?`<button class="btn" style="background:#0284C7" onclick="listenNext()">${listenIdx+1>=listenItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`:""}`;
@@ -6375,12 +6376,13 @@ function buildReadPlan(){
 let readItems=[],readIdx=0,readPicked=-1,readLocked=false,readScore=0,readShownAt=0,readDone=false;
 function startRead(){
   readItems=buildReadPlan();readIdx=0;readPicked=-1;readLocked=false;readScore=0;readDone=false;
-  mode="read";readShownAt=Date.now();window.scrollTo(0,0);render();
+  mode="read";readShownAt=Date.now();
+  {const it=readCur();secGateStart("read",it&&it.passage);}window.scrollTo(0,0);render();
   genTopUp("read",GEN_BANK_KEY_READ,profileOf().level||"A2");
 }
 function readCur(){return readItems[readIdx]}
 function readChoose(i){
-  if(readLocked)return;
+  if(readLocked||!gateOpen())return;   // بوّابة بنيوية: لا اختيار قبل زمن القراءة
   const it=readCur();readLocked=true;readPicked=i;
   const ok=i===it.a;if(ok)readScore++;
   readSrsUpdate(it.id,ok);
@@ -6392,7 +6394,8 @@ function readNext(){
   genPulseFor("read",profileOf().level||"A2",readIdx);   // نبضةُ توليد أثناء الجلسة
 
   if(readIdx+1>=readItems.length){readDone=true;window.scrollTo(0,0);render();return}
-  readIdx++;readPicked=-1;readLocked=false;readShownAt=Date.now();window.scrollTo(0,0);render();
+  readIdx++;readPicked=-1;readLocked=false;readShownAt=Date.now();
+  {const it=readCur();secGateStart("read",it&&it.passage);}window.scrollTo(0,0);render();
 }
 function renderRead(){
   if(!readItems.length){app.innerHTML=`<div class="card" style="text-align:center">لا شيء مستحقّ اليوم — عودي غداً 🌱</div><button class="link-btn" onclick="home()">→ الرئيسية</button>`;return}
@@ -6402,7 +6405,7 @@ function renderRead(){
   const choices=it.c.map(function(c,i){
     let bg="#fff",bd="#E2E8F0",col="#334155";
     if(readLocked){if(i===it.a){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(i===readPicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}
-    return `<button class="choice" style="background:${bg};border-color:${bd};color:${col};direction:ltr;text-align:left;font-family:Georgia,serif" onclick="readChoose(${i})" ${readLocked?"disabled":""}><span class="letter">${L[i]}</span>${c}</button>`}).join("");
+    return `<button class="choice" style="background:${bg};border-color:${bd};color:${col};direction:ltr;text-align:left;font-family:Georgia,serif" onclick="readChoose(${i})" ${gateOpen()?"":"disabled style=\"opacity:.45;pointer-events:none\""} ${readLocked?"disabled":""}><span class="letter">${L[i]}</span>${c}</button>`}).join("");
   app.innerHTML=`
   <button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
   ${prog}
@@ -6411,7 +6414,7 @@ function renderRead(){
     <span class="tag" style="background:#F5F3FF;color:#6D28D9">📖 اقرئي</span>
     <div style="background:#FAF5FF;border:1px solid #E9D5FF;border-radius:12px;padding:14px;margin:14px 0;font-size:16px;line-height:1.8;direction:ltr;text-align:left;color:#4C1D95;font-family:Georgia,serif">${it.passage}</div>
     <div class="q" style="direction:ltr;text-align:left;font-family:Georgia,serif;margin-top:12px">${it.q}</div>
-    <div class="choices">${choices}</div>
+    <div class="choices">${secGateHTML()}${choices}</div>
     ${readLocked?`<div class="explain"><div class="explain-title" style="color:${readPicked===it.a?'#059669':'#B45309'}">${readPicked===it.a?"✓ فهمتِ صحيحاً":"الصحيحة بالأخضر"}</div></div>`:""}
   </div>
   ${readLocked?`<button class="btn" style="background:#7C3AED" onclick="readNext()">${readIdx+1>=readItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`:""}`;
@@ -7000,10 +7003,11 @@ function startGram(){
   mode="gram";gramSetupRound();window.scrollTo(0,0);render();
   gramGenTopUp(profileOf().level||"A2");
 }
-function gramSetupRound(){gramOrder=shuffle([0,1,2,3]);gramPicked=-1;gramLocked=false;gramShownAt=Date.now()}
+function gramSetupRound(){gramOrder=shuffle([0,1,2,3]);gramPicked=-1;gramLocked=false;gramShownAt=Date.now();
+  const it=gramItems[gramIdx];secGateStart("gram",it&&it.c?it.c.map(function(x){return x.t}).join(" "):"")}
 function gramCur(){return gramItems[gramIdx]}
 function gramChoose(i){
-  if(gramLocked)return;
+  if(gramLocked||!gateOpen())return;   // بوّابة بنيوية: لا اختيار قبل مقارنة الجمل
   gramPicked=i;gramLocked=true;
   const it=gramCur(),ok=!!it.c[i].ok;
   if(ok)gramScore++;
@@ -7029,7 +7033,7 @@ function renderGram(){
     let bg="#fff",bd="#E2E8F0",col="#0F172A";
     if(gramLocked){if(opt.ok){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(wi===gramPicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}
     const why=gramLocked?`<div style="margin-top:5px;font-size:12px;color:${opt.ok?'#059669':'#B45309'}">${opt.ok?"✓ ":"✗ "}${esc(opt.why)}</div>`:"";
-    return `<button class="choice" style="background:${bg};border-color:${bd};color:${col};direction:ltr;text-align:left;font-family:Georgia,serif;display:block" onclick="gramChoose(${wi})" ${gramLocked?"disabled":""}>${esc(opt.t)}${why}</button>`;
+    return `<button class="choice" style="background:${bg};border-color:${bd};color:${col};direction:ltr;text-align:left;font-family:Georgia,serif;display:block" onclick="gramChoose(${wi})" ${gateOpen()?"":"disabled style=\"opacity:.45;pointer-events:none\""} ${gramLocked?"disabled":""}>${esc(opt.t)}${why}</button>`;
   }).join("");
   app.innerHTML=`
   <button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
@@ -7037,7 +7041,7 @@ function renderGram(){
   <div class="meta"><span>${toAr(gramIdx+1)} من ${toAr(gramItems.length)}</span><span>دقّة القواعد · ${it.lv}</span></div>
   <div class="card">
     <span class="tag" style="background:#CFFAFE;color:#0E7490">✍️ أيّ جملةٍ صحيحة؟</span>
-    <div class="choices" style="margin-top:12px">${choices}</div>
+    <div class="choices" style="margin-top:12px">${secGateHTML()}${choices}</div>
   </div>
   ${gramLocked?`<button class="btn" style="background:#0E7490" onclick="gramNext()">${gramIdx+1>=gramItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`:""}`;
 }
@@ -7539,11 +7543,12 @@ function startMinpair(){
 function minpairSetupRound(){
   minpairTarget=Math.random()<0.5?0:1;minpairOrder=shuffle([0,1]);
   minpairPicked=-1;minpairLocked=false;minpairPlays=0;minpairShownAt=Date.now();minpairShowSent="";
+  secGateStart("minpair","");
 }
 function minpairCur(){return minpairItems[minpairIdx]}
 function minpairPlay(){const it=minpairCur();if(!it)return;minpairPlays++;speakEnglish(it.w[minpairTarget])}
 function minpairChoose(i){
-  if(minpairLocked)return;
+  if(minpairLocked||!gateOpen())return;   // بوّابة بنيوية: لا اختيار قبل السماع
   minpairPicked=i;minpairLocked=true;
   const it=minpairCur(),ok=i===minpairTarget;
   if(ok)minpairScore++;
@@ -7568,7 +7573,7 @@ function renderMinpair(){
   const choices=minpairOrder.map(function(wi){
     let bg="#fff",bd="#E2E8F0",col="#0F172A";
     if(minpairLocked){if(wi===minpairTarget){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(wi===minpairPicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}
-    return `<button class="choice" style="background:${bg};border-color:${bd};color:${col};direction:ltr;text-align:center;font-family:Georgia,serif;display:flex;flex-direction:column;gap:3px;padding:16px 10px;flex:1" onclick="minpairChoose(${wi})" ${minpairLocked?"disabled":""}>
+    return `<button class="choice" style="background:${bg};border-color:${bd};color:${col};direction:ltr;text-align:center;font-family:Georgia,serif;display:flex;flex-direction:column;gap:3px;padding:16px 10px;flex:1" onclick="minpairChoose(${wi})" ${gateOpen()?"":"disabled style=\"opacity:.45;pointer-events:none\""} ${minpairLocked?"disabled":""}>
       <span style="font-size:19px;font-weight:800">${it.w[wi]}</span>
       <span style="font-size:13px;color:#64748B">/${it.ph[wi]}/</span>
     </button>`}).join("");
@@ -7580,7 +7585,7 @@ function renderMinpair(){
     <span class="tag" style="background:#CFFAFE;color:#0E7490">🎧 أيّ كلمة سمعتِ؟</span>
     <div style="margin:16px 0"><button type="button" onclick="minpairPlay()" style="background:#0891B2;color:#fff;border:none;border-radius:50%;width:64px;height:64px;font-size:26px;cursor:pointer">🔊</button></div>
     <div style="font-size:12px;color:#64748B;margin-bottom:14px">استمعي، ثم اختاري الكلمة${minpairPlays?` · استمعتِ ${toAr(minpairPlays)} ${minpairPlays===1?"مرّة":"مرّات"}`:""}</div>
-    <div style="display:flex;gap:10px;justify-content:center">${choices}</div>
+    <div style="display:flex;gap:10px;justify-content:center">${secGateHTML()}${choices}</div>
     ${minpairLocked?`<div class="explain">
         <div class="explain-title" style="color:${minpairPicked===minpairTarget?'#059669':'#B45309'}">${minpairPicked===minpairTarget?"✓ سمعتِها صح":"الصحيحة بالأخضر"}</div>
         <div style="margin-top:10px;background:#F8FAFC;border-radius:12px;padding:12px">
@@ -7697,12 +7702,12 @@ function videoSceneCur(){const it=videoCur();return it?it.sc[videoScene]:null}
 function videoPlay(){const s=videoSceneCur();if(!s)return;videoPlays++;speakEnglish(s[1])}
 function videoNextScene(){
   const it=videoCur();if(!it)return;
-  if(videoScene+1>=it.sc.length){videoQOn=true;render();return}
+  if(videoScene+1>=it.sc.length){videoQOn=true;secGateStart("video",it.sc.map(function(x){return x[1]}).join(" "));render();return}
   videoScene++;videoPlays=0;render();
   setTimeout(function(){videoPlay()},300);
 }
 function videoChoose(i){
-  if(videoLocked)return;
+  if(videoLocked||!gateOpen())return;   // بوّابة بنيوية: لا اختيار قبل انقضاء المشاهد
   const it=videoCur();videoLocked=true;videoPicked=i;
   const ok=i===it.a;if(ok)videoScore++;
   videoSrsUpdate(it.id,ok);
@@ -7743,7 +7748,7 @@ function renderVideo(){
   const choices=it.c.map(function(c,i){
     let bg="#fff",bd="#E2E8F0",col="#334155";
     if(videoLocked){if(i===it.a){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(i===videoPicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}
-    return `<button class="choice" style="background:${bg};border-color:${bd};color:${col};direction:ltr;text-align:left;font-family:Georgia,serif" onclick="videoChoose(${i})" ${videoLocked?"disabled":""}><span class="letter">${L[i]}</span>${c}</button>`}).join("");
+    return `<button class="choice" style="background:${bg};border-color:${bd};color:${col};direction:ltr;text-align:left;font-family:Georgia,serif" onclick="videoChoose(${i})" ${gateOpen()?"":"disabled style=\"opacity:.45;pointer-events:none\""} ${videoLocked?"disabled":""}><span class="letter">${L[i]}</span>${c}</button>`}).join("");
   app.innerHTML=`
   <button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
   ${prog}
@@ -7751,7 +7756,7 @@ function renderVideo(){
   <div class="card" style="text-align:center">
     <span class="tag" style="background:#FEE2E2;color:#B91C1C">❓ فهمتِ القصّة؟</span>
     <div class="q" style="margin-top:10px;direction:ltr;text-align:center;font-family:Georgia,serif">${esc(it.q)}</div>
-    <div class="choices" style="margin-top:14px">${choices}</div>
+    <div class="choices" style="margin-top:14px">${secGateHTML()}${choices}</div>
     ${videoLocked?`<div class="explain"><div class="explain-title" style="color:${videoPicked===it.a?'#059669':'#B45309'}">${videoPicked===it.a?"✓ فهمتَ صحيحاً":"الصحيحة بالأخضر"}</div></div>`:""}
   </div>
   ${videoLocked?`<button class="btn" style="background:#DC2626" onclick="videoNext()">${videoIdx+1>=videoItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`:""}`;
@@ -8496,6 +8501,43 @@ function gateStart(it,qtypeArg){
   gateTimer=setInterval(()=>{gateLeft--;if(gateLeft<=0){gateLeft=0;gateStop()}render()},1000);
 }
 function gateOpen(){return gateSecs===0||gateLeft<=0}
+// ===== وصل البوّابة البنيوية بأقسام الإنجليزية الخمسة — ٢٢ أغسطس =====
+// بيانات هيا اليوم قاطعة: قراءة ٨ عناصر بمتوسّط **٠٫٨ ثانية** ودقّة ٢٥٪، وقواعد ٠٫٩ث
+// ودقّة ٢٠٪، واستماع ١٫٧ث ودقّة ٣٨٪ — وهذه النسب الثلاث هي **التخمين العشوائي بالضبط**
+// (٣٣٪ بثلاثة خيارات، ٢٥٪ بأربعة). وأسرع إجابة ٤٦٥ ملّي ثانية: فقرةٌ إنجليزية كاملة
+// لا تُقرأ في نصف ثانية. فالمقيس نقرٌ لا قدرة.
+// والعلاج ليس تنبيهاً بعد الإجابة (جُرِّب في وضع التقوية فلم ينفع، وهو موثَّق)، بل نفس
+// البوّابة البنيوية التي رفعت الفهم المقروء ١/٣ ⇒ ٣/٣: **لا خيارات قبل مرور زمنٍ أدنى**.
+// وآلية البوّابة نفسها تُعاد كما هي (gateStart/gateOpen/gateLeft) — لا نظير يُبنى لها.
+//
+// والأرضيّات مشتقّةٌ من زمنها المقاس حين تنخرط فعلاً لا مخترَعة: نصف الزمن الوسيط
+// التاريخي لكل قسم (استماع ٤٫٨ث، قراءة ٨٫٧ث، قواعد ٧٫٨ث، أزواج ٢٫٢ث، فيديو ١٠٫٥ث) —
+// فتمنع النقر ولا تُعاقب إجابةً سريعةً صادقة. والطول يُحسب فوقها بنفس GATE_WPM.
+const SEC_GATE_FLOOR={listen:3,read:5,gram:4,minpair:2,video:4};
+// **وسقفٌ لكل قسم عند زمنها المقاس حين تنخرط فعلاً** — تصحيحٌ لعيبٍ في أوّل تصميمٍ لي:
+// حساب الطول وحده أعطى ١٨-٢٥ ثانية لعنصر قواعد (أربع جملٍ متشابهة تُجمَع كلماتها)،
+// وزمنها الوسيط المنخرط ٧٫٨ ثانية. فبوّابةٌ فوق ذلك تحبسها وهي تعمل بجدّ — والبوّابة
+// بُنيت لتمنع النقر لا لتُعاقب الاجتهاد. ومقارنة أربع جملٍ متقاربة ليست قراءة اثنتين
+// وثلاثين كلمة جديدة: تُمسح الفروق لا تُقرأ الجمل كاملةً.
+const SEC_GATE_MAX={listen:5,read:9,gram:8,minpair:3,video:11};
+function secGateStart(domain,text){
+  const floor=SEC_GATE_FLOOR[domain]||0;
+  if(!floor){gateStop();gateSecs=0;gateLeft=0;return}
+  const w=String(text||"").trim().split(/\s+/).filter(Boolean).length;
+  const byLen=Math.round(w/GATE_WPM*60);
+  gateStop();gateKind=domain;
+  const cap=SEC_GATE_MAX[domain]||GATE_MAX_S;
+  gateSecs=Math.min(cap,Math.max(floor,byLen));gateLeft=gateSecs;
+  gateTimer=setInterval(function(){gateLeft--;if(gateLeft<=0){gateLeft=0;gateStop()}render()},1000);
+}
+// شريطُ العدّ يُعرض فوق الخيارات — نفس نصّ بوّابة القراءة القائمة ونفس ألوانها
+function secGateHTML(){
+  if(gateOpen())return "";
+  return `<div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:12px;padding:.8rem 1rem;margin:.6rem 0;text-align:center">
+    <div style="font-size:30px;font-weight:800;color:#1D4ED8;line-height:1.2">${toAr(gateLeft)}</div>
+    <div style="font-size:12px;color:#3B82F6;margin-top:6px;line-height:1.7">الخيارات ستظهر بعد ${arSecs(gateLeft)} — خذي وقتك، فالتخمين السريع لا يُعلّم شيئاً.</div>
+  </div>`;
+}
 function gateReveal(){gateLeft=0;gateStop();gateSeen=true;render()} // لا تتخطّى الزمن، تُستعمل بعده فقط
 // أنواع تتطلّب قراءة/تفكيراً أطول من مجرّد الاسترجاع (نص، علاقة، استنتاج) — لها حدّ أدنى فوري خاص
 // بدل انتظار ٤ إجابات متتالية سريعة؛ إجابة واحدة أسرع من الحدّ كافية لتنبيه الاستعجال
