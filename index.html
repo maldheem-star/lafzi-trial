@@ -3767,6 +3767,22 @@ function engLevelOk(item,studentLv){
   const lessonLv=ENG_LESSON_LV[item.lesson];if(!lessonLv)return true;
   return ENG_LV_RANK[lessonLv]<=ENG_LV_RANK[studentLv||"A1"]+1;
 }
+// ===== التجميد: البوّابة تشمل المستحقّ لا الجديد وحده — ٢٢ أغسطس =====
+// كانت engLevelOk تُطبَّق على حلقة «الجديد» فقط، فما دخل مخزون التباعد مرّةً عاد إلى
+// الأبد بلا فحص مستوى. والنتيجة فخٌّ مغلق: تُخطئ ⇒ FSRS يُقرّب الموعد ⇒ يعود أسرع
+// ⇒ تُخطئ. والسجلّ يُثبته لا يُرجّحه: ثمانية عناصر B1 عُرضت على هيا (A1) **٩٣ مرّة**
+// منذ ٥ أغسطس بـ٢٤ صواباً (٢٦٪ — تحت التخمين من أربعة خيارات)، و`u3_g3` وحدها ١٦ مرّة
+// بثلاث إصابات. وهذا يفسّر السؤال المعلَّق منذ ٢٠ أغسطس عن ضعف eng_plan/grammar.
+//
+// **وهذا نقضٌ صريحٌ لقرارٍ سابق** (١٩ أغسطس): استُثني وقتها كلُّ عنصرٍ له سجلّ خطأٍ
+// حقيقي (itemErrOf) لئلّا تُخفي البوّابةُ العناصرَ التي بُنيت لأجلها بوّابةُ العالق.
+// والبيانات كذّبت ذلك الاستثناء: تلك العناصر بعينها هي الفخّ — ثمانيةَ عشرَ يوماً بلا
+// تعلّم، و`u3_g1` بدأت ✓✓✓ ثم انقلبت ✗✗✗✗. فبوّابةُ العالق لا تنفع في تركيبٍ فوق
+// المستوى بدرجتين، لأن المشكلة ليست نسياناً بل غيابَ أساسٍ لم يُدرَّس بعد.
+//
+// وتجميدٌ لا حذف: يبقى سجلّ التباعد كما هو، فمتى ارتفع مستواها المقاس عاد العنصر
+// بتاريخه لا من الصفر. والمفتاح `profileOf().level` نفسه لا معيارٌ ثانٍ.
+function engFrozen(item,studentLv){return !engLevelOk(item,studentLv)}
 let _engPool=null;
 function engPool(){
   if(_engPool)return _engPool;
@@ -3811,7 +3827,15 @@ function buildDailyPlan(){
   // كانت البوّابة تُخفي بالضبط العناصر التي بُنيت البوّابة العالقة لأجلها (اكتُشف بالاختبار
   // لا بالحدس: قسم ١١ في test_gram.js وجد أربعة من الستّة B1 المبذورة تختفي من خطةٍ كاملة).
   const lv=profileOf().level;
-  for(const it of fresh){if(newCount>=NEW_CAP)break;if(chosen.some(c=>c.id===it.id))continue;if(!engLevelOk(it,lv)&&!itemErrOf(it.id))continue;if(add(it))newCount++}
+  for(const it of fresh){if(newCount>=NEW_CAP)break;if(chosen.some(c=>c.id===it.id))continue;if(engFrozen(it,lv))continue;if(add(it))newCount++}
+  // ويُنقّى المختار كلّه — المستحقّ وإعادةُ التدريس والجديد معاً — لا الجديدُ وحده
+  // chosen معرَّفٌ بـconst، فيُنقّى في مكانه بـsplice لا بإسنادٍ جديد
+  const frozen=chosen.filter(function(i){return engFrozen(i,lv)});
+  if(frozen.length){
+    for(let k=chosen.length-1;k>=0;k--)if(engFrozen(chosen[k],lv))chosen.splice(k,1);
+    try{logAnswer("eng_plan","frozen",null,frozen.map(function(i){return i.id}).join(","),null,null,
+      {q_text:"جُمِّد فوق المستوى بدرجتين ("+(lv||"A1")+"): "+frozen.map(function(i){return i.id+"·"+(ENG_LESSON_LV[i.lesson]||"?")}).join(" | ")})}catch(e){}
+  }
   // تشبيك: توزيع الأنواع بالتناوب بدل تجميع كل نوع معاً
   const byType={};chosen.forEach(i=>(byType[i.t]=byType[i.t]||[]).push(i));
   const order=["vocab","grammar","dict","reading"],woven=[];
@@ -4208,13 +4232,32 @@ function cxFinish(){
 // وفي خطة الإنجليزي بقي بلا بوّابة وبقي ١/٣. نفس خطأ «الدواء غير موصول بمكان السقوط».
 // السرعة أبطأ من العربية عمداً: النصّ إنجليزي A1 وهي تقرؤه بلغة ثانية.
 const ENG_READ_WPM=70, ENG_READ_MIN_S=15, ENG_READ_MAX_S=30;
+// أثقل أقسامها (٥١ إجابة في يومٍ واحد) وكانت بلا بوّابة إطلاقاً: planGateSecondsFor
+// تُعيد صفراً لغير القراءة. فأسرع إجابةٍ لها ٠٫٨ث ومتوسّطها ١٫٤ث.
+// **وأقولها صراحةً: هذه الأرضيّة غير مُعايَرة عليها.** في الاستماع والقراءة أمكن
+// اشتقاقُها من جلساتها المنخرطة، وهنا لا جلسة منخرطة أصلاً — حتى إجاباتها **الصحيحة**
+// متوسّطها ١٫٤ث في ٢٤٥ سؤالاً. فالأرضيّة مشتقّةٌ من المهمّة (قراءة جملة وأربعة خيارات)
+// لا من سلوكها، وتُراجَع من أوّل بياناتٍ بعد الشحن كنطاقات DCPM تماماً.
+// والسقف مُختارٌ منخفضاً عمداً: بلا خطّ أساسٍ منخرطٍ يُعايَر عليه، الخطأ في الاتّجاه
+// الأقلّ أسلم — بوّابةٌ ٣ث تكفي لمنع النقر عند ٠٫٨ث، وبوّابةٌ ٨ث قد تُعاقب اجتهاداً
+// صادقاً كما كادت تفعل في قسم القواعد (درس ٢٢ أغسطس). تُرفَع لاحقاً إن أثبت القياس.
+const ENG_GATE={grammar:{min:3,max:6},vocab:{min:2,max:5}};
 let planGateSecs=0,planGateLeft=0,planGateTimer=null,planShownAt=0;
 function planGateSecondsFor(it){
-  if(!it||it.t!=="reading")return 0;
-  const text=String(it.passage||"")+" "+String(it.q||"");
-  const w=text.trim().split(/\s+/).filter(Boolean).length;
+  if(!it)return 0;
+  if(it.t==="reading"){
+    const text=String(it.passage||"")+" "+String(it.q||"");
+    const w=text.trim().split(/\s+/).filter(Boolean).length;
+    const byLen=w?Math.round(w/ENG_READ_WPM*60):0;
+    return Math.min(ENG_READ_MAX_S,Math.max(ENG_READ_MIN_S,byLen));
+  }
+  const g=ENG_GATE[it.t];if(!g)return 0;          // البناء والإملاء يكتبان لا يختاران
+  // يُحسب الطول بالكلمات الإنجليزية وحدها: تعليمة السؤال عربيةٌ ولغتُها الأمّ تُقرأ
+  // أسرع بكثير، فعدّها يُضخّم الزمن ويُسقّف كل عنصرٍ عند الحدّ الأعلى.
+  const text=String(it.q||"")+" "+(it.c||[]).join(" ");
+  const w=(text.match(/[A-Za-z][A-Za-z'-]*/g)||[]).length;
   const byLen=w?Math.round(w/ENG_READ_WPM*60):0;
-  return Math.min(ENG_READ_MAX_S,Math.max(ENG_READ_MIN_S,byLen));
+  return Math.min(g.max,Math.max(g.min,byLen));
 }
 function planGateStop(){if(planGateTimer){clearInterval(planGateTimer);planGateTimer=null}}
 function planGateStart(it){
@@ -5432,8 +5475,8 @@ function renderEngPlan(){
   const pGate=(!planLocked&&planGateSecs&&!planGateOpen())
     ? `<div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:12px;padding:16px;margin:14px 0;text-align:center">
          <div style="font-size:30px;font-weight:800;color:#1D4ED8;line-height:1.2">${toAr(planGateLeft)}</div>
-         <div style="font-size:14px;color:#1E40AF;font-weight:700;margin-top:6px">اقرئي النصّ الإنجليزي كاملاً أولاً</div>
-         <div style="font-size:12px;color:#3B82F6;margin-top:6px;line-height:1.7">الخيارات ستظهر بعد ${arSecs(planGateLeft)}. النصّ فيه الجواب — والقراءة بلغة ثانية تحتاج وقتاً أطول، وهذا طبيعي.</div>
+         <div style="font-size:14px;color:#1E40AF;font-weight:700;margin-top:6px">${it.t==="reading"?"اقرئي النصّ الإنجليزي كاملاً أولاً":"اقرئي الجملة بتمهّل أولاً"}</div>
+         <div style="font-size:12px;color:#3B82F6;margin-top:6px;line-height:1.7">الخيارات ستظهر بعد ${arSecs(planGateLeft)}. ${it.t==="reading"?"النصّ فيه الجواب — والقراءة بلغة ثانية تحتاج وقتاً أطول، وهذا طبيعي.":"اقرئي الجملة كاملةً وفكّري في الفراغ قبل أن تظهر الخيارات."}</div>
        </div>`
     : (!planLocked&&planGateSecs&&planGateOpen())
     ? `<div style="font-size:12px;color:#059669;font-weight:700;margin:10px 0">✓ خذي وقتك — راجعي النصّ قبل أن تختاري</div>`
