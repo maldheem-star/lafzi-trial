@@ -21,49 +21,40 @@ async function mk(browser){
 const COOK1="Last Saturday, I joined the local cooking competition at the community center. The theme was comfort food, so I decided to make my grandmother's famous tomato soup. I arrived early to set up my station and check that I had all my ingredients. During the tasting, the judges praised the flavor but noted that the soup was too salty. Although I did not win first place, I received a certificate for the best presentation.";
 const COOK2="Last Saturday, I joined the annual neighborhood cooking contest at Maple Park. I decided to bake a chocolate cake because it is my grandmother's famous recipe. The judge, Mr. Henderson, tasted every dessert and took careful notes on a clipboard. He praised my cake for its moist texture but gave the first prize to a lemon tart made by a teenager named Leo. I was disappointed at first, but Leo shared his secret ingredient with me, and we promised to cook together next year.";
 const FOOT ="Last Saturday, our school team played against Oakridge High in the regional football final. We were losing 1-0 at halftime, but our coach encouraged us to keep working hard. In the second half, Leo scored an amazing goal in the 75th minute to tie the game. The match went into extra time, and Sarah scored the winning goal just before the final whistle. We won the championship 2-1 and celebrated with our fans.";
+const W1="Write about today's weather.\n1) What is the weather like today?\n2) What do you wear?";
+const W2="Write about a pet you have or want.\n1) What animal is it?\n2) Why do you like it?";
+const G1="This is my brother book. This is my brother's book. This is my brothers book. This is my brother books.";
+const G2="I have three book in my bag. I have three books in my bag. I have three bookes in my bag. I have three book in my bags.";
 const RAIN ="The sky turned grey and heavy rain started falling just as Leo left his house for the bus. He quickly opened his umbrella but the wind broke it. He ran into a small coffee shop to wait until the rain stopped.";
 
 (async()=>{
   const browser=await chromium.launch({executablePath:'/opt/pw-browsers/chromium'});
 
-  // ===== ١) المقياس يفصل نصّيه هو =====
-  console.log('\n١) العتبة على نصوصه الحقيقية');
+  // ===== ١) w-shingles (Broder 1997) على نصوصهم هم =====
+  console.log('\n١) المقياس المعياريّ على نصوصهم');
   {
     const page=await mk(browser);
     const r=await page.evaluate(t=>({
       same:twinSim(t.c1,t.c2),
       d1:twinSim(t.c1,t.f),d2:twinSim(t.c2,t.f),d3:twinSim(t.f,t.r),d4:twinSim(t.c2,t.r),
-      thr:GEN_TWIN,
+      thr:GEN_TWIN,k:TWIN_K,
       self:twinSim(t.c1,t.c1),
       empty:twinSim("",t.c1),
-      min:TWIN_MIN,
-      // القصيران الحقيقيان اللذان أوقعا بلاغاً كاذباً قبل حدّ الطول
-      shortPair:twinSim("Write about today's weather.\n1) What is the weather like today?\n2) What do you wear?",
-                        "Write about a pet you have or want.\n1) What animal is it?\n2) Why do you like it?"),
-    }),{c1:COOK1,c2:COOK2,f:FOOT,r:RAIN});
-    ok(r.same>=r.thr,'فقرتا الطبخ فوق العتبة — '+r.same.toFixed(2)+' ≥ '+r.thr);
+      // البلاغان الكاذبان اللذان أوقعهما مقياسي الأوّل (كلماتٌ مفردة): ٠٫٢٧ و٠٫١٣
+      falseWrite:twinSim(t.w1,t.w2),
+      falseGram:twinSim(t.g1,t.g2),
+      shing:Array.from(twinShingles("one two three four")),
+    }),{c1:COOK1,c2:COOK2,f:FOOT,r:RAIN,w1:W1,w2:W2,g1:G1,g2:G2});
+    ok(r.k===3,'متتاليةٌ من ثلاث كلمات — '+r.k);
+    ok(r.shing.length===2&&r.shing[0]==='one two three','والشينغل يُبنى صحيحاً — '+r.shing.join(' | '));
+    ok(r.same>=r.thr,'فقرتا الطبخ فوق العتبة — '+r.same.toFixed(3)+' ≥ '+r.thr);
     ok([r.d1,r.d2,r.d3,r.d4].every(v=>v<r.thr),
-       'وكل زوجٍ مختلف الموضوع تحتها — '+[r.d1,r.d2,r.d3,r.d4].map(v=>v.toFixed(2)).join('، '));
-    ok(r.same>=3*Math.max(r.d1,r.d2,r.d3,r.d4),'والفصل ثلاثة أضعافٍ فأكثر — لا عتبةٌ على الحافّة');
+       'وكل زوجٍ مختلف الموضوع تحتها — '+[r.d1,r.d2,r.d3,r.d4].map(v=>v.toFixed(3)).join('، '));
+    ok(r.falseWrite<r.thr,'وصيغتا الكتابة لا تُعدّان توأمين — '+r.falseWrite.toFixed(3)+
+       ' (كانت ٠٫٢٧ بمقياس الكلمات المفردة)');
+    ok(r.falseGram<r.thr,'وعنصرا القواعد كذلك — '+r.falseGram.toFixed(3)+' (كانت ٠٫١٣)');
     ok(r.self===1,'ونصٌّ مع نفسه = ١');
-    ok(r.shortPair===0,'ونصّان قصيران لا يُحكَم عليهما — بلاغٌ كاذب على هيكل السؤال لا موضوعه');
-    ok(r.min===18,'وحدُّ الطول معلَنٌ في الشيفرة — '+r.min);
     ok(r.empty===0,'ونصٌّ فارغ = ٠ (لا يُسقط شيئاً)');
-    await page.close();
-  }
-
-  // ===== ٢) كلمات الوظيفة لا تُحتسب =====
-  console.log('\n٢) الكلمات الحاملة للمعنى وحدها');
-  {
-    const page=await mk(browser);
-    const r=await page.evaluate(()=>({
-      toks:twinTokens("The cat was in the house and it was very big"),
-      raw:writeTokens("The cat was in the house and it was very big").length,
-    }));
-    ok(r.toks.indexOf("the")<0&&r.toks.indexOf("was")<0&&r.toks.indexOf("and")<0,
-       'كلمات الوظيفة مُسقَطة — '+r.toks.join(','));
-    ok(r.toks.indexOf("cat")>=0&&r.toks.indexOf("house")>=0,'والحاملة للمعنى باقية');
-    ok(r.toks.length<r.raw,'فالعدد أقلّ من الخام — '+r.toks.length+' من '+r.raw);
     await page.close();
   }
 

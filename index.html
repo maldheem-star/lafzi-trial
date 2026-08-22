@@ -256,35 +256,38 @@ function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor
 // يحصل على «جلسة» من سؤالٍ واحد. مشتركة بين الاستماع/المقروء/القواعد/الأزواج/الكتابة
 // بدل تكرار المنطق نفسه خمس مرّات.
 // ===== لا توأمان في جلسةٍ واحدة — ٢٢ أغسطس =====
-// بياناتٌ حيّة (محمد): أربعةٌ من أحد عشر عنصراً في جلسته كانت عن «مسابقة طبخ»، وفقرتا
-// استماعٍ منها متشابهتان بوضوح. والقياس على ١١٧ عنصراً مولَّداً في ١٢ ساعة أظهر أن
-// **التوزيع العامّ سليم** (الطبخ ٦٪) — فالتكتّل داخل الجلسة لا انحيازٌ في المولّد،
-// لأن نداءات التوليد تنطلق متوازيةً فتقع نتائجها في جلسةٍ واحدة.
+// بياناتٌ حيّة (محمد): أربعةٌ من أحد عشر عنصراً عن «مسابقة طبخ»، وفقرتا استماعٍ منها
+// متشابهتان. والقياس على ١١٧ عنصراً مولَّداً في ١٢ ساعة أظهر أن التوزيع العامّ سليم
+// (الطبخ ٦٪) — فالتكتّل داخل الجلسة لا انحيازٌ في المولّد، لأن نداءات التوليد تنطلق
+// متوازيةً فتقع نتائجها في جلسةٍ واحدة.
 //
-// والمقياس مأخوذٌ من الموجود لا مبنيٌّ من جديد: نفس تشابه جاكار الذي يقيس تكرار كتابة
-// محمد (`writeSim`)، لكن على **الكلمات الحاملة للمعنى وحدها** — كلمات الوظيفة مشتركة
-// في كل نصٍّ إنجليزي فترفع الأرضية وتُخفي الفرق.
+// **والمقياس معياريٌّ مسمّى لا مصنوعٌ هنا**: w-shingles (Broder 1997) — جاكار على
+// متتاليات ثلاث كلمات لا على كلماتٍ مفردة. وهو الأساس نفسه الذي تقوم عليه MinHash
+// وLSH في كشف التكرار القريب.
 //
-// والعتبة مقاسةٌ على نصوصه هو لا مختارة: فقرتا الطبخ ٠٫١٢، وكل زوجٍ مختلف الموضوع
-// ٠٫٠١-٠٫٠٣. فـ٠٫٠٧ تقع بينهما. **والعيّنة أربعة أزواج فقط** — تُراجَع بالقياس.
-const GEN_TWIN=0.07;
-const TWIN_STOP=new Set(("the a an and or but so if then than that this these those i you he she it we they "+
-  "my your his her its our their me him them us was were is are am be been being do does did have has had "+
-  "will would can could should may might must to of in on at for with from by as not no there here when "+
-  "while during before after up out about into over again very just also only more most some any all each other new").split(" "));
-function twinTokens(t){
-  return writeTokens(t).filter(function(w){return w.length>2&&!TWIN_STOP.has(w)});
+// وأوّل ما كتبتُه كان جاكار على كلماتٍ **مفردة** مع قائمة توقّفٍ صنعتُها بيدي، فأعطى
+// بلاغين كاذبين على نصوصٍ قصيرة: «Write about today's weather» و«Write about a pet»
+// بلغا ٠٫٢٧ — لا لأنهما موضوعٌ واحد بل لأنهما يتقاسمان **هيكل السؤال**. والشينغل
+// يُلغي هذا من أصله: «write about todays» و«write about a» متتاليتان مختلفتان.
+// فسقطت معه قائمة التوقّف وحدُّ الطول اللذان كانا ترقيعاً لمقياسٍ رديء.
+//
+// وقُورن بـTF-IDF/جيب التمام على النصوص نفسها فكان أسوأ: البلاغ الكاذب ٠٫٣٧٧ **فوق**
+// التوأم الحقيقي ٠٫٣٦٤ — لا عتبة تفصلهما. (السبب معروف: IDF يحتاج متناً كبيراً ليتعلّم
+// أن «write/about/what» كلماتُ قالب، ومتننا عشرات لا آلاف.)
+//
+// **وحدُّه يُقال**: يكشف تكرار **النصّ** لا تشابه **الموضوع**. وفقرتا الطبخ كُشفتا لأنهما
+// تتقاسمان مطلع «Last Saturday, I joined the»؛ ولو اختلفت صياغتهما تماماً لمرّتا.
+// فهو يمسك التوأم القريب لا كلَّ تكرارٍ موضوعي، ولا يُدَّعى أكثر من ذلك.
+const GEN_TWIN=0.02, TWIN_K=3;
+function twinShingles(t){
+  const w=writeTokens(t),s=new Set();
+  for(let i=0;i+TWIN_K<=w.length;i++)s.add(w.slice(i,i+TWIN_K).join(" "));
+  return s;
 }
-// **حدُّ التطبيق يُقال لا يُخفى**: العتبة مقاسةٌ على فقراتٍ سرديّة (٢٣ كلمةً حاملة
-// للمعنى فأكثر). والنصوص القصيرة تُعطي بلاغاتٍ كاذبة لأن المشترك بينها **هيكل
-// السؤال** لا موضوعه: «Write about today's weather» و«Write about a pet» تشابههما
-// ٠٫٢٧ وهما موضوعان مختلفان تماماً، وعنصرا قواعدٍ يتقاسمان كلمة «book» يبلغان ٠٫١٣.
-// فلا يُحكَم إلا حيث عُويِر: أقلّ من TWIN_MIN كلمةً حاملة ⇒ لا حكم (صفر) لا إسقاط.
-const TWIN_MIN=18;
 function twinSim(a,b){
-  const A=new Set(twinTokens(a)),B=new Set(twinTokens(b));
-  if(A.size<TWIN_MIN||B.size<TWIN_MIN)return 0;   // نصٌّ قصير: لا يُحكَم عليه
-  let inter=0;A.forEach(function(w){if(B.has(w))inter++});
+  const A=twinShingles(a),B=twinShingles(b);
+  if(!A.size||!B.size)return 0;
+  let inter=0;A.forEach(function(x){if(B.has(x))inter++});
   const uni=A.size+B.size-inter;
   return uni?inter/uni:0;
 }
