@@ -154,6 +154,95 @@ const openGate=page=>page.evaluate(()=>{gateLeft=0;gateStop();render()});
     await page.close();
   }
 
+
+  // ===== ٧) أسئلة الكتاب من Supabase =====
+  console.log('\n٧) أسئلة الكتاب');
+  {
+    const page=await browser.newPage();
+    page.on('pageerror',e=>{console.log('  ! pageerror:',e.message);fails++});
+    const BOOK=[
+      {id:'t1',ch:1,lesson:'m1_1',page:15,src:'ص١٥ · مسألة ٣',sk:'خطة حل المسألة',
+       q:'٦٦٥٠ − ٣٦٩٠ = ؟',choices:['٢٩٦٠','١٠٣٤٠','٣٠٦٠','٢٨٦٠'],answer:0,why:'شرحٌ كافٍ للفحص'},
+      {id:'t2',ch:1,lesson:'m1_2',page:17,src:'ص١٧ · مثال',sk:'العوامل الأولية',
+       q:'حلّلي ١٢',choices:['٢×٢×٣','٢×٦','٣×٤','١×١٢'],answer:0,why:'شرحٌ كافٍ للفحص'},
+      // معطوبٌ عمداً: موضع صوابٍ خارج المدى — يجب أن يُسقَط قبل التخزين
+      {id:'bad1',ch:1,lesson:'m1_1',page:9,src:'س',sk:'س',q:'س',choices:['أ','ب'],answer:7,why:'س'},
+      {id:'bad2',ch:1,lesson:'m1_1',page:9,src:'س',sk:'س',q:'',choices:['أ','ب'],answer:0,why:'س'},
+    ];
+    // Playwright يُطابق المسارات بعكس ترتيب تسجيلها (الأحدث أوّلاً)، فالعامّ يُسجَّل
+    // أوّلاً والخاصّ بعده — وإلا ابتلع العامُّ الخاصَّ وعاد الجدول فارغاً.
+    await page.route('**/functions/v1/tutor',r=>r.fulfill({status:200,contentType:'application/json',body:'{}'}));
+    await page.route('**/rest/v1/**',r=>r.fulfill({status:201,contentType:'application/json',body:'[]'}));
+    await page.route('**/rest/v1/mawhiba_math6_items**',r=>r.fulfill({status:200,contentType:'application/json',body:JSON.stringify(BOOK)}));
+    await page.goto(BASE,{waitUntil:'domcontentloaded'});
+    await page.waitForFunction(()=>typeof window.render==='function',{timeout:15000});
+    await page.evaluate(()=>localStorage.clear());
+
+    const before=await page.evaluate(()=>math6Pool().length);
+    await page.evaluate(()=>math6BookFetch());
+    await page.waitForTimeout(300);
+    const r=await page.evaluate(()=>{
+      const cached=JSON.parse(localStorage.getItem("mawhiba_math6_book_v1")||"[]");
+      const pool=math6Pool();
+      const bk=pool.filter(function(x){return x.id.indexOf("bk:")===0});
+      const one=bk.filter(function(x){return x.id==="bk:t1"})[0];
+      const it=one?one.gen():null;
+      return{cached:cached.map(function(x){return x.id}),
+             poolBook:bk.map(function(x){return x.id}),
+             q:it?it.q:null,src:it?it._src:null,a:it?it.a:null,
+             lessonNo:one?one.no:null,sk:one?one.sk:null};
+    });
+    ok(r.cached.length===2&&r.cached.indexOf('bad1')<0&&r.cached.indexOf('bad2')<0,
+       'المعطوب يُسقَط قبل التخزين لا بعده — المخزَّن: '+r.cached.join(','));
+    ok(r.poolBook.length===2,'وأسئلة الكتاب تدخل المخزون — '+r.poolBook.join(','));
+    ok(r.q==='٦٦٥٠ − ٣٦٩٠ = ؟'&&r.a===0,'بنصّها وموضع صوابها كما في الجدول');
+    ok(r.src==='ص١٥ · مسألة ٣','ومعها موضعها في الكتاب — '+r.src);
+    ok(r.lessonNo==='١-١','وتُنسب لدرسها الصحيح — '+r.lessonNo);
+    ok(r.sk==='خطة حل المسألة','ومهارتها للتتبّع — '+r.sk);
+
+    // تُعرض فعلاً في جلسة، ومصدرها ظاهرٌ ومسجَّل
+    const posted=[];
+    await page.route('**/rest/v1/mawhiba_answer_log**',rt=>{
+      try{posted.push(JSON.parse(rt.request().postData()||'{}'))}catch(e){}
+      rt.fulfill({status:201,body:''});
+    });
+    const shown=await page.evaluate(()=>{
+      // نُجبر الجلسة على عنصر كتابٍ لنفحص العرض والتسجيل
+      math6Lessons_=math6Pool().filter(function(x){return x.id==="bk:t1"});
+      if(!math6Lessons_.length)return{badge:false,src:false,score:-1};
+      math6Items=math6Lessons_.map(function(l){const it=l.gen();it._l=l;return it});
+      math6Idx=0;math6Score=0;math6Done=false;mode="math6";math6Setup();render();
+      const html=app.innerHTML;
+      gateLeft=0;gateStop();render();
+      document.querySelectorAll('.choice')[math6Cur().a].click();
+      return{badge:html.indexOf('من الكتاب')>=0,src:html.indexOf('ص١٥ · مسألة ٣')>=0,score:math6Score};
+    });
+    await page.waitForTimeout(200);
+    ok(shown.badge&&shown.src,'وتُعرض بشارة «من الكتاب» وموضعه');
+    ok(shown.score===1,'والإجابة الصحيحة تُحتسب');
+    const log=posted.filter(x=>x.domain==='math6');
+    ok(log.length===1&&/\[ص١٥ · مسألة ٣\]/.test(log[0].q_text||''),
+       'والسجلّ يميّز المنقول من المولَّد بموضعه — '+(log[0]&&log[0].q_text||'').slice(0,40));
+    await page.close();
+  }
+  {
+    // غياب الشبكة ليس عطلاً: المولّدات تعمل وحدها
+    const page=await browser.newPage();
+    page.on('pageerror',e=>{console.log('  ! pageerror:',e.message);fails++});
+    await page.route('**/rest/v1/**',r=>r.fulfill({status:201,body:'[]'}));
+    await page.route('**/rest/v1/mawhiba_math6_items**',r=>r.abort());
+    await page.goto(BASE,{waitUntil:'domcontentloaded'});
+    await page.waitForFunction(()=>typeof window.render==='function',{timeout:15000});
+    await page.evaluate(()=>localStorage.clear());
+    const r=await page.evaluate(async()=>{
+      await math6BookFetch();
+      startMath6();
+      return{n:math6Items.length,ok:math6Items.every(function(i){return i&&i.c&&i.c.length===4})};
+    });
+    ok(r.n>=5&&r.ok,'تعذّرُ الشبكة لا يُعطّل القسم — '+r.n+' سؤالاً من المولّدات');
+    await page.close();
+  }
+
   // ===== ٦) لا انحدار، والقسم لهيا وحدها =====
   console.log('\n٦) لا انحدار');
   for(const q of ['','?p=mohammed','?p=elias']){

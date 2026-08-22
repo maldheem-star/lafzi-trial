@@ -7958,6 +7958,35 @@ function m_diffBig() {
 // لجدولة سؤالٍ بعينه — فيُجدوَل التباعد على **الدرس** (وهو وحدة المنهج أصلاً،
 // وهو ما تتبّعه BKT كمهارة). نفس fsrsUpdate بلا خوارزمية جديدة.
 const MATH6_SRS_KEY = "mawhiba_math6_srs_v1", MATH6_N = 6;
+// ===== أسئلة الكتاب: تُقرأ من Supabase ولا تُكتب في هذا الملفّ =====
+// السبب معلَنٌ ولا يُزيَّن: هذا الملفّ منشورٌ على الويب ومُفهرَسٌ ومثبَّتٌ في تاريخ git،
+// والجدول ليس كذلك. **وهذا إخفاءٌ عمليّ لا حمايةٌ تقنية** — المفتاح العامّ داخل الصفحة.
+// والتخزين المحلّي يجعلها تعمل بلا شبكة بعد أوّل جلسة، وغيابُ الشبكة ليس عطلاً:
+// المولّدات تعمل وحدها كما كانت (نفس فلسفة tutor المعلنة منذ بنائها).
+const MATH6_BOOK_KEY = "mawhiba_math6_book_v1";
+let math6Book = null;
+function math6BookLoad(){
+  if(math6Book)return math6Book;
+  try{math6Book=JSON.parse(lsGet(MATH6_BOOK_KEY)||"[]")}catch(e){math6Book=[]}
+  return math6Book;
+}
+async function math6BookFetch(){
+  try{
+    const res=await fetch(`${SB_URL}/rest/v1/mawhiba_math6_items?select=*&order=page.asc,id.asc`,
+      {headers:{"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`}});
+    if(!res.ok)return;
+    const rows=await res.json();
+    if(!Array.isArray(rows)||!rows.length)return;
+    // تحقّقٌ قبل التخزين لا بعده: عنصرٌ مكسور الشكل لا يدخل البنك أصلاً
+    const clean=rows.filter(function(r){
+      return r&&r.id&&r.q&&Array.isArray(r.choices)&&r.choices.length>=2&&
+             typeof r.answer==="number"&&r.answer>=0&&r.answer<r.choices.length&&r.why;
+    });
+    if(!clean.length)return;
+    math6Book=clean;
+    try{lsSet(MATH6_BOOK_KEY,JSON.stringify(clean))}catch(e){}
+  }catch(e){}
+}
 function math6SrsLoad(){try{return JSON.parse(lsGet(MATH6_SRS_KEY)||"{}")}catch(e){return{}}}
 function math6SrsSave(o){try{lsSet(MATH6_SRS_KEY,JSON.stringify(o))}catch(e){}}
 function math6SrsUpdate(id,ok){
@@ -7975,7 +8004,22 @@ function math6Pool(){
       out.push({id:"m"+ch+"_prep"+i,no:"تهيئة",t:MATH6_PREP[ch].name,ch:Number(ch),sk:"مهارة سابقة",gen:g});
     });
   });
+  // أسئلة الكتاب عناصرُ ثابتة، فتُجدوَل **لكل عنصرٍ** لا لكل درس: الثابت يُحفَظ فيُقاس
+  // بعينه، والمولَّد لا يتكرّر أصلاً فيُقاس درسُه. نفس التمييز بين LISTEN_BANK والتوليد.
+  const by=math6LessonById();
+  math6BookLoad().forEach(function(r){
+    const L=by[r.lesson]||{};
+    out.push({id:"bk:"+r.id,no:L.no||"تهيئة",t:L.t||"من الكتاب",ch:r.ch,
+      sk:r.sk||L.sk||null,book:r,
+      gen:function(){return{q:r.q,c:r.choices.slice(),a:r.answer,w:r.why,_src:r.src,_page:r.page}}});
+  });
   return out;
+}
+let _math6ById=null;
+function math6LessonById(){
+  if(_math6ById)return _math6ById;
+  _math6ById={};math6Lessons().forEach(function(l){_math6ById[l.id]=l});
+  return _math6ById;
 }
 function buildMath6Plan(){
   const st=math6SrsLoad(),today=srsToday(),POOL=math6Pool();
@@ -7993,6 +8037,7 @@ function startMath6(){
   math6Items=math6Lessons_.map(function(l){const it=l.gen();it._l=l;return it});
   math6Idx=0;math6Score=0;math6Done=false;
   mode="math6";math6Setup();window.scrollTo(0,0);render();
+  math6BookFetch();   // صامتٌ في الخلفية: يُخصِّب الجلسة القادمة لا الحالية
 }
 function math6Setup(){
   math6Picked=-1;math6Locked=false;math6ShownAt=Date.now();
@@ -8008,7 +8053,8 @@ function math6Choose(i){
   math6SrsUpdate(it._l.id,ok);
   logAnswer("math6",it._l.id,ok,it.c[i],it._l.id,Date.now()-math6ShownAt,
     {_sk:it._l.sk,
-     q_text:it.q+" · الخيارات: "+it.c.map(function(x,k){return (k+1)+") "+x+(k===it.a?" ✓":"")}).join(" | ")});
+     q_text:(it._src?"["+it._src+"] ":"[مولَّد] ")+it.q+" · الخيارات: "+
+       it.c.map(function(x,k){return (k+1)+") "+x+(k===it.a?" ✓":"")}).join(" | ")});
   render();
 }
 function math6Next(){
@@ -8033,6 +8079,7 @@ function renderMath6(){
   <div class="meta"><span>${toAr(math6Idx+1)} من ${toAr(math6Items.length)}</span><span>رياضيات السادس · الفصل ${toAr(L.ch)}</span></div>
   <div class="card">
     <span class="tag" style="background:#CCFBF1;color:#0F766E">🧮 ${esc(L.no)} · ${esc(L.t)}</span>
+    ${it._src?`<div style="margin-top:8px;font-size:12px;color:#0F766E;background:#F0FDFA;border-radius:8px;padding:5px 10px;display:inline-block">📖 من الكتاب · ${esc(it._src)}</div>`:""}
     <div style="margin:14px 0 4px;font-size:17px;line-height:1.9;font-weight:600;color:#0F172A">${esc(it.q)}</div>
     <div class="choices" style="margin-top:12px">${secGateHTML()}${choices}</div>
     ${why}
