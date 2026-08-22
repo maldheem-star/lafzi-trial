@@ -373,10 +373,39 @@ function systemGenStep(level: string): string {
     "الحروف الكبيرة": "correct capitalization: sentence start, 'I', days/months, proper nouns, vs. common nouns that should NOT be capitalized",
     "علامات الترقيم": "correct punctuation: commas in a list, comma splices vs. semicolons, or sentence-ending punctuation",
   };
+  // ===== آليةٌ فرعية تُفرَض داخل الوسم — ٢٢ أغسطس =====
+  // بياناتٌ حيّة (محمد، ٢٢ أغسطس): عنصران مولَّدان في الترقيم كلاهما «قائمةٌ بفواصل» —
+  // نفس الوسم يعني عملياً نفس السؤال. فالآلية تُختار وتُفرَض كما يُفرَض GEN_TOPICS
+  // أصلاً لتنويع الاستماع/القراءة — إجبارٌ بنيوي لا تعليمةٌ مرجوّة من نموذجٍ بلا ذاكرة.
+  const subByTag: Record<string, string[]> = {
+    "ترتيب الكلمات": [
+      "placement of a frequency adverb (always/usually/never) relative to the main verb",
+      "placement of an object directly after the verb, not separated from it",
+      "placement of a manner adverb (quickly/carefully) — not between verb and object",
+      "order inside a question (auxiliary + subject + main verb)",
+    ],
+    "الحروف الكبيرة": [
+      "days of the week and months capitalized, seasons not",
+      "the pronoun I always capitalized",
+      "proper nouns (names of people, cities, schools) vs. the same word as a common noun",
+      "sentence-initial capital after a full stop",
+    ],
+    "علامات الترقيم": [
+      "comma splice vs. semicolon joining two independent clauses",
+      "a conjunctive adverb (however/therefore) needs a semicolon or full stop before it, not a comma",
+      "no comma between the subject and its verb",
+      "comma after an introductory subordinate clause (Because .../ When ..., ...)",
+      "question mark vs. full stop at the end of a direct question",
+    ],
+  };
+  const subs = subByTag[tag] || subByTag["علامات الترقيم"];
+  const sub = subs[Math.floor(Math.random() * subs.length)];
   const topic = GEN_TOPICS[Math.floor(Math.random() * GEN_TOPICS.length)];
   return [
     `Write ONE Grammaticality Judgment Task item for a CEFR ${level} English learner, testing`,
     `${focusByTag[tag]}.`,
+    `THE ONE MECHANISM THIS ITEM MUST TEST: ${sub}. Build all three wrong versions around this`,
+    "mechanism — do NOT default to a list-with-commas item every time.",
     `CONTEXT/TOPIC: ${topic}. Invent your own names/details. Do NOT reuse a stock example.`,
     "",
     "Produce FOUR versions of THE SAME underlying sentence: exactly ONE fully correct, and THREE",
@@ -404,6 +433,17 @@ function systemGenStep(level: string): string {
     "3. Exactly ONE of S1_OK..S4_OK is 'yes'; the other three must be 'no'.",
     "4. The four sentences must all be different from each other, not just punctuation changes.",
     "5. Keep content appropriate for a school-age learner: no violence, romance, politics or unsafe topics.",
+    // البياناتُ الحيّة أوجبت هاتين: محمد اختار «Because the signal was broken the train
+    // arrived late.» فحُسب خطأً وهو ترتيبٌ سليم تماماً، واختار حذف فاصلة أكسفورد فحُسب خطأً وهو
+    // ترقيمٌ بريطانيّ صحيح. فالمولّد يُمنَع صراحةً من جعل ما يقبله الاستعمالُ خطأً.
+    "6. EVERY wrong version must be UNAMBIGUOUSLY wrong — a mistake no careful writer would defend.",
+    "   If a version is merely a different but ACCEPTABLE way of saying it, it is NOT a wrong answer:",
+    "   rewrite it until it is a real error. There must be exactly ONE defensible version.",
+    "7. NEVER build the item on a STYLE PREFERENCE that both British and American usage allow:",
+    "   • the serial (Oxford) comma — «a, b, and c» and «a, b and c» are BOTH correct, never contrast them;",
+    "   • fronting a subordinate clause — «Because X, Y.» and «Y because X.» are BOTH correct word orders;",
+    "   • single vs. double quotation marks; -ise vs. -ize spellings.",
+    "   Test only rules that are wrong in EVERY variety of English.",
   ].join("\n");
 }
 // ===== فيديو تعليمي: قصّة قصيرة بعدّة مشاهد، ثم سؤال فهمٍ — نفس صيغة listen/read

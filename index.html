@@ -3191,7 +3191,7 @@ const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEn
   "writeTokens","writeTtr","writeSim","writePrevLoad","writePrevAdd","writeSelfSim",
   "accLoad","accSave","accRecord","accRate","stretchOn","bankStretched",
   "seqStart","seqReset","seqPlanFor","seqWeek","seqCur","startSeq","seqCardHTML","renderSeq",
-  "loadKpi","kpiAgg","renderKpi",
+  "loadKpi","kpiAgg","renderKpi","gjtNorm","gjtNoOxford","gjtWordBag","gjtIsRotation","gjtDefect",
   "bktLoad","bktSave","bktStep","bktKey","skOf","bktRecord","bktOf","bktMastered","bktToMastery",
   "writeLfp","mockBand","mockLogLoad","mockLogAdd","mockSeenRecently","mockPickFrom",
   "buildMockPaper","startMock","mockCur","mockQuestion","mockChoose","mockFinish","renderMock","renderMockResult"];
@@ -6099,6 +6099,54 @@ function genLogText(it){
 // وصحّة السؤال نفسه محكومة بنيوياً لا بالثقة: صواب واحد بالضبط بين الأربعة، وأربع
 // جملٍ متمايزة — عنصرٌ يخالف هذا (صفر صواب أو أكثر من واحد) يُسقَط قبل أن يُخزَّن.
 const STEP_TAGS=["ترتيب الكلمات","الحروف الكبيرة","علامات الترقيم"];
+// ===== رقابةٌ بعدية على عناصر GJT المولَّدة: لا صوابَ مزدوج — ٢٢ أغسطس =====
+// بياناتٌ حيّة (محمد، ٢٢ أغسطس) كشفت عنصرين مولَّدين معيبين من ثلاثة: أحدهما مموّهه
+// «Because the signal was broken the train arrived late.» وهو ترتيبٌ سليم تماماً
+// (تقديم الجملة السببية)، والآخر مموّهه حذفُ فاصلة أكسفورد وهو ترقيمٌ بريطانيّ صحيح.
+// فحُسبت إجابتاه الصحيحتان خطأً — ٠/٤ ظاهرياً بينما الحقيقي ٣/٦.
+// وشُدِّدت التعليمة في الخادم، لكن التعليمة رجاءٌ من نموذج والتحقّق إلزام: فيُفحَص كل
+// عنصرٍ مولَّد هنا، ويُسقَط إن كان أحد «المموّهات» مقبولاً بمعيارٍ لغويٍّ معروف.
+// وهذا نفس نهج parseGenBlock القائم (تلوّثٌ لغوي ⇒ إسقاط العنصر كلّه) لا مسارٌ ثانٍ.
+const SUBORDINATORS=/^(because|when|if|although|though|since|after|before|while|unless|whereas)\b/i;
+function gjtNorm(t){return String(t||"").toLowerCase().replace(/[^a-z\s]/g," ").replace(/\s+/g," ").trim()}
+// فاصلة أكسفورد: «a, b, and c» و«a, b and c» كلاهما صحيح — تُزال الفاصلة السابقة
+// لـand/or وحدها، ويبقى كل ترقيمٍ آخر وحالةُ الأحرف كما هي. وهذا فرقٌ جوهري كشفه
+// الاختبار: المقارنة بعد محو كل الترقيم كانت تجعل «difficult; I passed» و«difficult,
+// I passed» متطابقتين فتُرفض فاصلةُ لصقٍ حقيقية، وتجعل «We study English» و«we study
+// english» متطابقتين فتُرفض الكبتلة — إيجابيّاتٌ كاذبة تُسقط عناصر سليمة.
+function gjtNoOxford(t){return String(t||"").replace(/,(\s*(?:and|or)\s)/gi,"$1").replace(/\s+/g," ").trim()}
+// نفس الكلمات بترتيبٍ مختلف: تقديم الجملة الظرفية ترتيبٌ سليم لا خطأ
+function gjtWordBag(t){return gjtNorm(t).split(" ").filter(Boolean).sort().join(" ")}
+// **والتقديم المشروع نقلُ كتلةٍ متّصلة إلى الطرف الآخر، لا إقحامها في الوسط.**
+// كشفه الاختبار على بنكنا المؤلَّف: st_b1_1 مموّهه يُقحم «because it was raining
+// heavily» داخل الجملة الموصولة فيُفسد المعنى — خطأٌ حقيقي كاد يُرفض بوصفه تقديماً
+// مشروعاً. فالفحص دورانٌ صريح: هل إحداهما = الأخرى بنقل صدرها إلى عجزها؟
+function gjtIsRotation(a,b){
+  const A=gjtNorm(a).split(" ").filter(Boolean),B=gjtNorm(b).split(" ").filter(Boolean);
+  if(A.length!==B.length||A.length<3)return false;
+  const bs=B.join(" ");
+  for(let k=1;k<A.length;k++){
+    const P=A.slice(0,k),Q=A.slice(k);
+    if(Q.concat(P).join(" ")===bs&&(SUBORDINATORS.test(P[0])||SUBORDINATORS.test(Q[0])))return true;
+  }
+  return false;
+}
+// يعود بسبب الرفض أو "" إن كان العنصر سليماً — سببٌ مسمّى لا رفضٌ غامض
+function gjtDefect(c){
+  if(!c||c.length<2)return "shape";
+  const right=c.filter(function(x){return x.ok});
+  if(right.length!==1)return "not_one_correct";
+  const R=right[0].t;
+  for(const x of c){
+    if(x.ok)continue;
+    // ١) الفرق فاصلةُ أكسفورد وحدها — مقارنةٌ حسّاسة للحالة وبقيّة الترقيم
+    if(gjtNoOxford(x.t)===gjtNoOxford(R))return "oxford_comma";
+    // ٢) تقديمٌ مشروع: نفس الكلمات، وإحداهما دورانُ الأخرى بكتلةٍ ظرفية متّصلة
+    if(gjtWordBag(x.t)===gjtWordBag(R)&&gjtNorm(x.t)!==gjtNorm(R)&&
+       gjtIsRotation(R,x.t))return "clause_fronting";
+  }
+  return "";
+}
 function parseGenPickBlock(text,domain,wantTag){
   const lines=String(text||"").split(/\r?\n/);
   const s={},ok={},why={};let tag="";
@@ -6116,6 +6164,11 @@ function parseGenPickBlock(text,domain,wantTag){
   if(new Set(texts).size!==4)return null;
   if(idx.filter(function(i){return ok[i]}).length!==1)return null;
   const c=idx.map(function(i){return{t:s[i],ok:ok[i],why:why[i]}});
+  // صوابٌ مزدوج أو محكٌّ أسلوبي ⇒ يُسقَط العنصر كلّه، ويُسجَّل السبب مسمّى لا مبهماً
+  const defect=gjtDefect(c);
+  if(defect){try{logAnswer("gen","reject",false,defect,null,null,
+    {q_text:("[رُفض:"+defect+"] "+c.map(function(x){return x.t+(x.ok?" ✓":"")}).join(" | ")).slice(0,600)})}catch(e){}
+    return null}
   const item={id:"ai_"+domain+"_"+Date.now().toString(36)+"_"+Math.random().toString(36).slice(2,7),c:c,ai:true};
   if(wantTag){item.type="pick";item.tag=STEP_TAGS.indexOf(tag)>=0?tag:STEP_TAGS[0]}
   // القواعد المولَّدة: الخادم يُعيد اسم التركيب المُختبَر، وهو مفتوحٌ لا قائمةٌ مغلقة
