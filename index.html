@@ -5963,7 +5963,16 @@ function renderErrors(){
 // جديداً في الخلفية بعد كل جلسة، يُخزَّن محلّياً وينضمّ للبنك القائم — ينمو حتى سقفٍ
 // معقول (GEN_BANK_MAX) ثم يتوقّف. لا تحميل ولا شاشة انتظار: الجلسة تُعرض فوراً من
 // المتاح كما كانت، والتوليد يُخصّب الجلسة القادمة لا الحالية.
-const GEN_BANK_MAX=15;
+// ===== سقفٌ ومعدّلٌ يكفيان استعمالاً كثيفاً — ٢١ أغسطس =====
+// سُئل: هل يولّد المحرّك ما يكفي لساعتين يومياً بلا تكرار؟ فحُسب من البيانات لا بالحدس:
+// زمن الإجابة الوسيط المقاس (١٠٤١ إجابة) يعني دورةً كاملة على الأقسام السبعة = ٤٣
+// عنصراً في ٧٫٣ دقيقة، فساعتان تستهلكان ٣٥٠-٧٠٠ عنصراً. والسقف القديم (١٥) كان يحدّ
+// المتاح عند ١٤٧ عنصراً لكل مستوى — أي إعادةُ كل عنصرٍ مرّتين إلى خمس في اليوم الواحد.
+// وثلاثة أعناق زجاجة كانت مسمّاة: السقف الصلب، ونداءٌ واحد عند بدء الجلسة (١-٣ عناصر
+// للجلسة القادمة لا الحالية)، ولعبة الاستماع بلا توليد أزواجٍ إطلاقاً.
+// فرُفع السقف، ووُسّعت الدفعة، وأُضيفت نبضةٌ أثناء الجلسة — والأزواج وُسّعت يدوياً
+// لأن صحّة التقابل الصوتي لا يمكن التحقّق منها آلياً بلا صوت (قرارٌ قائم لا يُنقض).
+const GEN_BANK_MAX=80;
 function genBankLoad(key){try{const a=JSON.parse(lsGet(key)||"[]");return Array.isArray(a)?a:[]}catch(e){return[]}}
 function genBankSave(key,arr){try{lsSet(key,JSON.stringify(arr))}catch(e){}}
 function genBankAdd(key,item){
@@ -6022,22 +6031,53 @@ async function fetchTutorGen(domain,level){
 // كم نداء توليدٍ صامت بعد جلسة؟ لا واحدٌ ثابت للجميع — درس ٢٠ أغسطس (شكوى إلياس
 // عن تكرار gram/read/minpair): بنكٌ تستهلك منه الجلسة أكثر من نصفه يحتاج نموّاً أسرع
 // من نداءٍ واحد، وإلا استُنفد أسرع مما ينمو. سقفٌ ٣ يمنع إغراق الطلبات في كل جلسة.
+// الدفعة بحسب نسبة البنك إلى حجم الجلسة لا برقمٍ ثابت: بنكٌ يكفي ثلاث جلسات فأكثر
+// ينمو ببطء، وبنكٌ على وشك النفاد يُدفَع دفعاً. والهدف أن يبقى المتاح ≥ خمسة أضعاف
+// الجلسة، فيبقى المستحقّ+الجديد كافياً بلا لجوءٍ إلى المراجعة الحرّة (topUpPlan).
 function genCallsFor(poolLen,N){
   if(poolLen>=GEN_BANK_MAX)return 0;
-  const room=GEN_BANK_MAX-poolLen;
-  if(!poolLen)return Math.min(3,room);
-  if(N>=poolLen*0.5)return Math.min(3,room);
-  return Math.min(1,room);
+  const room=GEN_BANK_MAX-poolLen,want=N*5;
+  if(!poolLen)return Math.min(8,room);
+  if(poolLen<N*2)return Math.min(8,room);      // على وشك النفاد
+  if(poolLen<want)return Math.min(5,room);     // دون الهدف
+  return Math.min(2,room);                     // صحّيّ: نموٌّ هادئ
+}
+// ===== حارس التزامن: دفعةٌ متوازية لا تنفجر على حصّة المزوّد =====
+// ثماني نداءات متوازية × ست عشرة جلسة يومياً = تجاوزٌ محتمل لحصّة الطبقة المجانية،
+// وقرار المشروع «الطبقات المجانية وحدها» يجعل تجاوزها عطلاً لا بطئاً. فالنداءات
+// تُطلق بسقفٍ للطائر منها، وما يفيض يُهمَل بهدوء — النبضة التالية تُكمله.
+let genInFlight=0;
+const GEN_MAX_INFLIGHT=4;
+function genFire(mk){
+  if(genInFlight>=GEN_MAX_INFLIGHT)return false;
+  genInFlight++;
+  const done=function(){genInFlight=Math.max(0,genInFlight-1)};
+  try{mk().then(done,done)}catch(e){done()}
+  return true;
+}
+// نبضةٌ أثناء الجلسة: البنك ينمو بينما يُستهلك بدل أن ينتظر بدء الجلسة القادمة.
+// وهي نفس genCallsFor فلا تتجاوز السقف، ولا تُعرَض عناصرها في الجلسة الجارية
+// (خطّتها مبنيّةٌ سلفاً) — أثرها في الجلسة التالية مباشرةً لا بعد أسبوع.
+const GEN_PULSE_EVERY=3;
+function genPulseFor(domain,level,idx){
+  if((idx|0)%GEN_PULSE_EVERY)return;
+  try{
+    if(domain==="listen")genTopUp("listen",GEN_BANK_KEY_LISTEN,level);
+    else if(domain==="read")genTopUp("read",GEN_BANK_KEY_READ,level);
+    else if(domain==="gram")gramGenTopUp(level);
+    else if(domain==="step")stepGenTopUp(level);
+    else if(domain==="video")videoGenTopUp(level);
+    else if(domain==="write")writeGenTopUp(level);
+  }catch(e){}
 }
 // تُستدعى بلا انتظار (fire-and-forget) بعد بدء الجلسة — لا تُبطئ العرض الحالي أبداً
 function genTopUp(domain,key,level){
   const pool=(domain==="listen"?listenBankFor(level):readBankFor(level));
   const calls=genCallsFor(pool.length,domain==="listen"?LISTEN_N:READ_N);
   for(let i=0;i<calls;i++){
-    fetchTutorGen(domain,level).then(function(item){
-      if(!item)return;
-      genBankAdd(key,item);
-    });
+    if(!genFire(function(){return fetchTutorGen(domain,level).then(function(item){
+      if(item)genBankAdd(key,item);
+    })}))break;
   }
 }
 // الخيارات كلّها مع موضع الصواب — نفس عُرف تسجيل أسئلة الذكاء الاصطناعي في اللفظي/العلمي
@@ -6222,6 +6262,8 @@ function listenChoose(i){
   render();
 }
 function listenNext(){
+  genPulseFor("listen",profileOf().level||"A2",listenIdx);   // نبضةُ توليد أثناء الجلسة
+
   if(listenIdx+1>=listenItems.length){listenDone=true;window.scrollTo(0,0);render();return}
   listenIdx++;listenPicked=-1;listenLocked=false;listenPlays=0;listenShownAt=Date.now();render();
   setTimeout(function(){listenPlay()},300);
@@ -6343,6 +6385,8 @@ function readChoose(i){
   render();
 }
 function readNext(){
+  genPulseFor("read",profileOf().level||"A2",readIdx);   // نبضةُ توليد أثناء الجلسة
+
   if(readIdx+1>=readItems.length){readDone=true;window.scrollTo(0,0);render();return}
   readIdx++;readPicked=-1;readLocked=false;readShownAt=Date.now();window.scrollTo(0,0);render();
 }
@@ -6488,10 +6532,9 @@ function writeGenTopUp(level){
   const pool=writeBankFor(level);
   const calls=genCallsFor(pool.length,WRITE_N);
   for(let i=0;i<calls;i++){
-    fetchTutorGenWrite(level).then(function(item){
-      if(!item)return;
-      genBankAdd(GEN_BANK_KEY_WRITE,item);
-    });
+    if(!genFire(function(){return fetchTutorGenWrite(level).then(function(item){
+      if(item)genBankAdd(GEN_BANK_KEY_WRITE,item);
+    })}))break;
   }
 }
 const WRITE_SRS_KEY="mawhiba_write_srs";
@@ -6696,6 +6739,8 @@ async function writeSubmit(){
   writeSubmitted=true;render();
 }
 function writeNext(){
+  genPulseFor("write",profileOf().level||"A2",writeIdx);   // نبضةُ توليد أثناء الجلسة
+
   if(writeIdx+1>=writeItems.length){writeDone=true;window.scrollTo(0,0);render();return}
   writeIdx++;writeSubmitted=false;writeBusy=false;writeFix=[];writeFixFail="";writeTyped="";writeCount=0;writeCopy=false;
   writeModelShown=false;writeModelViews=0;
@@ -6933,7 +6978,8 @@ async function fetchTutorGenGram(level){
 function gramGenTopUp(level){
   const pool=gramBankFor(level),calls=genCallsFor(pool.length,GRAM_N);
   for(let i=0;i<calls;i++){
-    fetchTutorGenGram(level).then(function(item){if(item)genBankAdd(GEN_BANK_KEY_GRAM,item)});
+    if(!genFire(function(){return fetchTutorGenGram(level).then(function(item){
+      if(item)genBankAdd(GEN_BANK_KEY_GRAM,item)})}))break;
   }
 }
 const GRAM_N=5;
@@ -6964,6 +7010,8 @@ function gramChoose(i){
   render();
 }
 function gramNext(){
+  genPulseFor("gram",profileOf().level||"A2",gramIdx);   // نبضةُ توليد أثناء الجلسة
+
   if(gramIdx+1>=gramItems.length){gramDone=true;render();return}
   gramIdx++;gramSetupRound();render();
 }
@@ -7177,7 +7225,8 @@ async function fetchTutorGenStep(level){
 function stepGenTopUp(level){
   const pool=stepBankFor(level),calls=genCallsFor(pool.length,STEP_N);
   for(let i=0;i<calls;i++){
-    fetchTutorGenStep(level).then(function(item){if(item)genBankAdd(GEN_BANK_KEY_STEP,item)});
+    if(!genFire(function(){return fetchTutorGenStep(level).then(function(item){
+      if(item)genBankAdd(GEN_BANK_KEY_STEP,item)})}))break;
   }
 }
 const STEP_N=6;
@@ -7243,6 +7292,8 @@ function stepSeqSubmit(){
   render();
 }
 function stepNext(){
+  genPulseFor("step",profileOf().level||"A2",stepIdx);   // نبضةُ توليد أثناء الجلسة
+
   if(stepIdx+1>=stepItems.length){stepDone=true;render();return}
   stepIdx++;stepSetupRound();render();
 }
@@ -7359,6 +7410,40 @@ const MINPAIR_BANK=[
   {id:"mp_b1_8",lv:"B1",sk:"جودة الحركة",w:["collar","colour"],ph:["ˈkɒlər","ˈkʌlər"],m:["ياقة","لون"],s:["His shirt collar was too tight.","What is your favourite colour?"]},
   {id:"mp_b1_9",lv:"B1",sk:"جهر النهاية",w:["cloth","clothes"],ph:["klɒθ","kloʊðz"],m:["قماش","ملابس"],s:["She cleaned the table with a cloth.","I need to buy new clothes."]},
   {id:"mp_b1_10",lv:"B1",sk:"صامتٌ أو مقطعٌ زائد",w:["bought","brought"],ph:["bɔːt","brɔːt"],m:["اشترى","أحضر"],s:["I bought a new bag yesterday.","He brought his book to class."]},
+  // ===== توسيعٌ يدويّ (٢١ أغسطس): عشرة أزواجٍ لكل مستوى ⇐ عشرون =====
+  // القسم الوحيد الذي لا يُولَّد: صحّة التقابل الصوتي لا يمكن التحقّق منها آلياً بلا
+  // صوت، فيبقى مؤلَّفاً بشرياً — قرارٌ قائم منذ ١٧ أغسطس لا يُنقض. وجلسةٌ واحدة
+  // (MINPAIR_N=٨) كانت تستنفد بنك العشرة، فضوعف بدل رفع سقف توليدٍ لا وجود له.
+  {id:"mp_a1_11",lv:"A1",sk:"جودة الحركة",w:["man","men"],ph:["mæn","men"],m:["رجل","رجال"],s:["That man is my uncle.","Three men are waiting outside."]},
+  {id:"mp_a1_12",lv:"A1",sk:"جودة الحركة",w:["pen","pan"],ph:["pen","pæn"],m:["قلم","مقلاة"],s:["I write with a blue pen.","Mum cooks eggs in a pan."]},
+  {id:"mp_a1_13",lv:"A1",sk:"جودة الحركة",w:["big","bag"],ph:["bɪɡ","bæɡ"],m:["كبير","حقيبة"],s:["Our house is very big.","My school bag is heavy."]},
+  {id:"mp_a1_14",lv:"A1",sk:"حركة طويلة/قصيرة",w:["sun","soon"],ph:["sʌn","suːn"],m:["شمس","قريباً"],s:["The sun is very hot today.","We will eat soon."]},
+  {id:"mp_a1_15",lv:"A1",sk:"جودة الحركة",w:["fan","fun"],ph:["fæn","fʌn"],m:["مروحة","متعة"],s:["Please turn on the fan.","We had a lot of fun."]},
+  {id:"mp_a1_16",lv:"A1",sk:"جودة الحركة",w:["ten","tin"],ph:["ten","tɪn"],m:["عشرة","علبة معدنية"],s:["I have ten books.","She opened a tin of beans."]},
+  {id:"mp_a1_17",lv:"A1",sk:"جودة الحركة",w:["black","block"],ph:["blæk","blɒk"],m:["أسود","مكعّب / مربّع سكني"],s:["My cat is black.","He lives in the next block."]},
+  {id:"mp_a1_18",lv:"A1",sk:"حركة طويلة/قصيرة",w:["hat","heart"],ph:["hæt","hɑːrt"],m:["قبّعة","قلب"],s:["Put on your hat.","My heart beats fast when I run."]},
+  {id:"mp_a1_19",lv:"A1",sk:"جودة الحركة",w:["long","lung"],ph:["lɒŋ","lʌŋ"],m:["طويل","رئة"],s:["Her hair is very long.","The doctor listened to my lung."]},
+  {id:"mp_a1_20",lv:"A1",sk:"حركة طويلة/قصيرة",w:["green","grin"],ph:["ɡriːn","ɡrɪn"],m:["أخضر","ابتسامة عريضة"],s:["The grass is green.","He had a big grin on his face."]},
+  {id:"mp_a2_11",lv:"A2",sk:"جودة الحركة",w:["bought","boat"],ph:["bɔːt","boʊt"],m:["اشترى","قارب"],s:["I bought a new jacket yesterday.","We went out on a small boat."]},
+  {id:"mp_a2_12",lv:"A2",sk:"جودة الحركة",w:["hear","hair"],ph:["hɪr","her"],m:["يسمع","شعر"],s:["I can hear the music from here.","She has long dark hair."]},
+  {id:"mp_a2_13",lv:"A2",sk:"جودة الحركة",w:["bear","beer"],ph:["ber","bɪr"],m:["دبّ","جِعة"],s:["We saw a brown bear at the zoo.","The shop does not sell beer."]},
+  {id:"mp_a2_14",lv:"A2",sk:"حركة طويلة/قصيرة",w:["cheap","chip"],ph:["tʃiːp","tʃɪp"],m:["رخيص","شريحة / رقاقة"],s:["This shirt was very cheap.","There is a chip in my cup."]},
+  {id:"mp_a2_15",lv:"A2",sk:"جهر النهاية",w:["rice","rise"],ph:["raɪs","raɪz"],m:["أرز","يرتفع"],s:["We eat rice with chicken.","Prices rise every year."]},
+  {id:"mp_a2_16",lv:"A2",sk:"جهر النهاية",w:["ice","eyes"],ph:["aɪs","aɪz"],m:["ثلج","عيون"],s:["Put some ice in the water.","Her eyes are light brown."]},
+  {id:"mp_a2_17",lv:"A2",sk:"جودة الحركة",w:["hard","heard"],ph:["hɑːrd","hɜːrd"],m:["صعب / صلب","سمع"],s:["The exam was very hard.","I heard a loud noise last night."]},
+  {id:"mp_a2_18",lv:"A2",sk:"جودة الحركة",w:["walk","woke"],ph:["wɔːk","woʊk"],m:["يمشي","استيقظ"],s:["We walk to school every day.","I woke up at six o'clock."]},
+  {id:"mp_a2_19",lv:"A2",sk:"صامت البداية",w:["sink","think"],ph:["sɪŋk","θɪŋk"],m:["حوض","يظنّ / يفكّر"],s:["The dishes are in the sink.","I think you are right."]},
+  {id:"mp_a2_20",lv:"A2",sk:"صامت البداية",w:["thin","tin"],ph:["θɪn","tɪn"],m:["نحيف / رفيع","علبة معدنية"],s:["The ice is very thin here.","He bought a tin of soup."]},
+  {id:"mp_b1_11",lv:"B1",sk:"جودة الحركة",w:["later","latter"],ph:["ˈleɪtər","ˈlætər"],m:["لاحقاً","الأخير من اثنين"],s:["I will call you later.","Of the two plans, I prefer the latter."]},
+  {id:"mp_b1_12",lv:"B1",sk:"صامتٌ أو مقطعٌ زائد",w:["through","thorough"],ph:["θruː","ˈθʌrə"],m:["عبر / خلال","دقيق / شامل"],s:["We drove through the tunnel.","She did a thorough check of the report."]},
+  {id:"mp_b1_13",lv:"B1",sk:"نبر الكلمة",w:["career","carrier"],ph:["kəˈrɪr","ˈkæriər"],m:["مسار مهني","ناقل / حامل"],s:["He wants a career in medicine.","The carrier delivered the parcel."]},
+  {id:"mp_b1_14",lv:"B1",sk:"نبر الكلمة",w:["personal","personnel"],ph:["ˈpɜːrsənəl","ˌpɜːrsəˈnel"],m:["شخصي","الموظّفون"],s:["This is a personal question.","All personnel must wear a badge."]},
+  {id:"mp_b1_15",lv:"B1",sk:"صامتٌ أو مقطعٌ زائد",w:["conscious","conscience"],ph:["ˈkɒnʃəs","ˈkɒnʃəns"],m:["واعٍ","ضمير"],s:["He was conscious after the accident.","My conscience would not let me lie."]},
+  {id:"mp_b1_16",lv:"B1",sk:"صامت البداية",w:["free","three"],ph:["friː","θriː"],m:["حرّ / مجاني","ثلاثة"],s:["Entry to the museum is free.","I have three brothers."]},
+  {id:"mp_b1_17",lv:"B1",sk:"صامت النهاية",w:["mouse","mouth"],ph:["maʊs","maʊθ"],m:["فأر","فم"],s:["A mouse ran under the table.","Open your mouth, please."]},
+  {id:"mp_b1_18",lv:"B1",sk:"جهر النهاية",w:["breath","breathe"],ph:["breθ","briːð"],m:["نَفَس","يتنفّس"],s:["Take a deep breath before you speak.","It is hard to breathe up here."]},
+  {id:"mp_b1_19",lv:"B1",sk:"صامت البداية",w:["thought","taught"],ph:["θɔːt","tɔːt"],m:["فكرة / ظنّ","درّس"],s:["That is an interesting thought.","She taught us maths last year."]},
+  {id:"mp_b1_20",lv:"B1",sk:"جودة الحركة",w:["formally","formerly"],ph:["ˈfɔːrməli","ˈfɔːrmərli"],m:["رسمياً","سابقاً"],s:["The agreement was formally signed.","He was formerly a teacher."]},
 ];
 function minpairBankFor(level){
   const L=String(level||"A2");
@@ -7585,7 +7670,8 @@ async function fetchTutorGenVideo(level){
 function videoGenTopUp(level){
   const pool=videoBankFor(level),calls=genCallsFor(pool.length,VIDEO_N);
   for(let i=0;i<calls;i++){
-    fetchTutorGenVideo(level).then(function(item){if(item)genBankAdd(GEN_BANK_KEY_VIDEO,item)});
+    if(!genFire(function(){return fetchTutorGenVideo(level).then(function(item){
+      if(item)genBankAdd(GEN_BANK_KEY_VIDEO,item)})}))break;
   }
 }
 const VIDEO_N=5;   // لا يقلّ عن خمسة (طلب صاحب المشروع ١٨ أغسطس) — بنكٌ ستّة/مستوى فلا يُستنفَد بجلسةٍ واحدة
@@ -7621,6 +7707,8 @@ function videoChoose(i){
   render();
 }
 function videoNext(){
+  genPulseFor("video",profileOf().level||"A2",videoIdx);   // نبضةُ توليد أثناء الجلسة
+
   if(videoIdx+1>=videoItems.length){videoDone=true;window.scrollTo(0,0);render();return}
   videoIdx++;videoScene=0;videoQOn=false;videoPicked=-1;videoLocked=false;videoPlays=0;videoShownAt=Date.now();render();
   setTimeout(function(){videoPlay()},300);
