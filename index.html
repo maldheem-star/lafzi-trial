@@ -3191,7 +3191,7 @@ const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEn
   "writeTokens","writeTtr","writeSim","writePrevLoad","writePrevAdd","writeSelfSim",
   "accLoad","accSave","accRecord","accRate","stretchOn","bankStretched",
   "seqStart","seqReset","seqPlanFor","seqWeek","seqCur","startSeq","seqCardHTML","renderSeq",
-  "loadKpi","kpiAgg","renderKpi","gjtNorm","gjtNoOxford","gjtWordBag","gjtIsRotation","gjtDefect",
+  "loadKpi","kpiAgg","renderKpi","gjtNorm","gjtNoOxford","gjtWordBag","gjtIsRotation","gjtDefect","wbNeed","wbLeft",
   "bktLoad","bktSave","bktStep","bktKey","skOf","bktRecord","bktOf","bktMastered","bktToMastery",
   "writeLfp","mockBand","mockLogLoad","mockLogAdd","mockSeenRecently","mockPickFrom",
   "buildMockPaper","startMock","mockCur","mockQuestion","mockChoose","mockFinish","renderMock","renderMockResult"];
@@ -5188,7 +5188,7 @@ function renderCoach(){
         ${wbLocked?"":wbHTML()}
         ${wbLocked
           ? `<div style="font-size:13px;font-weight:800;color:${wbOk?'#059669':'#B45309'};margin-bottom:8px">${wbOk?"✓ بنيتِها صحيحة":"الترتيب الصحيح:"}</div>${plainSays()}`
-          : `<button class="btn" style="background:${wbReady()?'#0E7490':'#94A3B8'};margin-top:10px" ${wbReady()?"":"disabled"} onclick="coachBankCheck()">تحقّقي ←</button>`}
+          : `<button class="btn" style="background:${wbReady()?'#0E7490':'#94A3B8'};margin-top:10px" ${wbReady()?"":"disabled"} onclick="coachBankCheck()">${wbReady()?"تحقّقي ←":("بقي "+toAr(wbLeft())+" كلمة")}</button>`}
       </div>`
     : "";
   const helpBox=bankBox?bankBox
@@ -5406,7 +5406,7 @@ function renderEngPlan(){
     </div>
     ${planLocked
       ?`<button class="btn" style="background:#4338CA" onclick="planNext()">${planIdx+1>=planItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`
-      :`<button class="btn" style="background:${wbReady()?'#0E7490':'#94A3B8'}" ${wbReady()?"":"disabled"} onclick="planCheckBuild()">تحقّقي ←</button>`}`;
+      :`<button class="btn" style="background:${wbReady()?'#0E7490':'#94A3B8'}" ${wbReady()?"":"disabled"} onclick="planCheckBuild()">${wbReady()?"تحقّقي ←":("بقي "+toAr(wbLeft())+" كلمة")}</button>`}`;
     if(!planLocked&&wbStage>=WB_STAGES.length){const el=document.getElementById('wbIn');if(el)el.focus()}
     return;
   }
@@ -5528,7 +5528,28 @@ function wbPick(i){if(wbLocked||wbPicked.indexOf(i)>=0)return;wbPicked.push(i);r
 function wbUnpick(k){if(wbLocked)return;wbPicked.splice(k,1);render()}
 function wbBuilt(){return wbPicked.map(function(i){return wbPool[i]}).join(" ")}
 function wbTypedNow(){const el=document.getElementById('wbIn');return el?el.value:wbTyped}
-function wbReady(){return wbStage>=WB_STAGES.length?!!wbTypedNow().trim():wbPicked.length>0}
+// ===== لا تُحرَق محاولة على جملةٍ ناقصة — ٢٢ أغسطس =====
+// بياناتٌ حيّة قاطعة: هيا ٣ من ٦٢ محاولة بناءٍ على تسعة أيام (٥٪)، وإلياس ٤/٥ ومحمد ٤/٤.
+// فالأداة تعمل، والعطل في شرط الإرسال: كان `wbPicked.length>0` — أي أن زرّ التحقّق
+// يُفعَّل بكلمةٍ واحدة مختارة. فترسل ثلاث كلماتٍ من ثمانٍ وتُحسَب محاولةً خاطئة.
+// والسجلّ يُثبته: «Thank you with helping» لهدفٍ من ثماني كلمات، و«There a books»
+// لهدفٍ من ثمانٍ — إجاباتٌ ناقصةٌ لا مبعثرة، أي إرسالٌ قبل الإكمال لا خطأ ترتيب.
+// والسابقة قائمةٌ في المشروع نفسه: basicsSubmit يرفض الحقل الفارغ صراحةً «لا نُحرق
+// عليها محاولة إتقان بضغطة غير مقصودة». فهذا تعميمها لا آليةٌ جديدة.
+// وفي مرحلة المموّهات لا يُشترط استعمال البنك كلّه (فيه كلماتٌ دخيلة عمداً)، بل بلوغُ
+// عدد كلمات الجملة الهدف — فالشرط يُشتقّ من المرحلة لا يُفرض واحداً على الجميع.
+function wbNeed(){
+  if(wbStage>=WB_STAGES.length)return 0;             // مرحلة الكتابة: لا بنك أصلاً
+  const st=WB_STAGES[wbStage-1]||WB_STAGES[0];
+  return (st.extra>0)?wbTok.length:wbPool.length;     // مموّهات ⇒ عدد الهدف، وإلا البنك كلّه
+}
+function wbReady(){
+  if(wbStage>=WB_STAGES.length)return !!wbTypedNow().trim();
+  const need=wbNeed();
+  return need?wbPicked.length>=need:wbPicked.length>0;
+}
+// كم بقي — يُعرض للمتعلّمة بدل زرٍّ معطَّلٍ بلا سبب
+function wbLeft(){const need=wbNeed();return need?Math.max(0,need-wbPicked.length):0}
 function wbGrade(ok){
   if(ok){wbMiss=0;wbStreak++;if(wbStreak>=WB_REQ&&wbStage<WB_STAGES.length){wbStage++;wbStreak=0;wbStageSet(wbStage)}}
   else{wbStreak=0;wbMiss++;if(wbMiss>=WB_BACK&&wbStage>1){wbStage--;wbMiss=0;wbStageSet(wbStage)}}
@@ -5715,7 +5736,7 @@ function renderDictationBuild(){
     :"";
   const btn=dictLocked
     ?`<button class="btn" style="background:#0E7490" onclick="dictNext()">${dictIdx+1>=dictSession.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`
-    :`<button class="btn" style="background:${wbReady()?'#0E7490':'#94A3B8'}" ${wbReady()?"":"disabled"} onclick="dictCheck()">تحقّقي ←</button>`;
+    :`<button class="btn" style="background:${wbReady()?'#0E7490':'#94A3B8'}" ${wbReady()?"":"disabled"} onclick="dictCheck()">${wbReady()?"تحقّقي ←":("بقي "+toAr(wbLeft())+" كلمة")}</button>`;
   app.innerHTML=`
   <button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
   <div class="bar">${prog}</div>
@@ -5916,7 +5937,7 @@ function renderErrors(){
       ${fb}
     </div>
     ${errLocked?`<button class="btn" style="background:#DB2777" onclick="errNext()">${errIdx+1>=errItems.length?"إنهاء":"التالي ←"}</button>`
-      :`<button class="btn" style="background:${wbReady()?'#0E7490':'#94A3B8'}" ${wbReady()?"":"disabled"} onclick="errCheck()">تحقّق ←</button>`}`;
+      :`<button class="btn" style="background:${wbReady()?'#0E7490':'#94A3B8'}" ${wbReady()?"":"disabled"} onclick="errCheck()">${wbReady()?"تحقّق ←":("بقي "+toAr(wbLeft())+" كلمة")}</button>`}`;
     if(!errLocked&&wbStage>=WB_STAGES.length){const el=document.getElementById('wbIn');if(el)el.focus()}
     return;
   }
