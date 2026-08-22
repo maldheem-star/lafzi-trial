@@ -418,7 +418,7 @@ function m_benchmark() {
 // محلول (لا سؤالٌ يُحسب)، أو لأنه يحتاج تمثيلاً بيانياً. ولا يُعرض ما لا مولّد له.
 const MATH6_PLAN = [
   { ch: 1, name: "الجبر: الأنماط العددية والدوال", p: 11, lessons: [
-    { id: "m1_1", no: "١-١", t: "الخطوات الأربع لحل المسألة", p: 12, sk: "خطة حل المسألة", gen: null },
+    { id: "m1_1", no: "١-١", t: "الخطوات الأربع لحل المسألة", p: 12, sk: "خطة حل المسألة", gen: m_fourSteps },
     { id: "m1_2", no: "٢-١", t: "العوامل الأولية", p: 17, sk: "العوامل الأولية", gen: m_primeFactors },
     { id: "m1_3", no: "٣-١", t: "القوى والأسس", p: 22, sk: "القوى والأسس", gen: m_powers },
     { id: "m1_4", no: "٤-١", t: "ترتيب العمليات", p: 27, sk: "ترتيب العمليات", gen: m_order },
@@ -469,3 +469,175 @@ function math6Lessons() {
   return out;
 }
 function math6Ready() { return math6Lessons().filter(function (l) { return !!l.gen; }); }
+
+// ===== التهيئة (ص ١١) والدرس ١-١ (ص ١٢-١٦) — من صفحات الكتاب نفسها =====
+
+// ---- التهيئة: «مهارة سابقة» — أربع عمليات بالمدى نفسه الذي في الكتاب ----
+// وهذه أقرب نقطةٍ في المنهج إلى ما هو مبنيٌّ أصلاً: مكتبة الأخطاء `MATH_BUGS`
+// و`bugOf` تُسمّي آلية الخطأ في الجمع والطرح والقسمة، فمموّهات التهيئة تُبنى على
+// الآليات نفسها لا على أرقامٍ عشوائية — فيُقرأ اختيارها الخاطئ تشخيصاً جاهزاً.
+// «أسقطت آحاد المطروح منه» و«استلفت ولم تُنقص العشرات» موثّقتان في بياناتها هي.
+function bugSmallerFromLarger(a, b) {
+  const A = String(a).split("").reverse(), B = String(b).split("").reverse();
+  let out = "";
+  for (let i = 0; i < A.length; i++) out = String(Math.abs((+A[i]) - (+(B[i] || 0)))) + out;
+  const v = parseInt(out, 10);
+  return Number.isFinite(v) ? v : a - b + 9;
+}
+function m_prepAdd() {
+  const a = pick([rand(60, 99), rand(101, 399)]), b = rand(56, 99);
+  const s = a + b;
+  return qz("math6", `أوجدي ناتج الجمع: ${toAr(a)} + ${toAr(b)}`, s,
+    [s - 10, s + 10, s - 1, a + b - 100],
+    `نرتّب الأرقام بحسب المنازل: نجمع الآحاد ثم العشرات (وما فوق العشرة يُحمل) ⇒ ${toAr(s)}.`);
+}
+function m_prepSub() {
+  // استلافٌ مضمون: آحاد المطروح أكبر من آحاد المطروح منه
+  let a, b, guard = 0;
+  do { a = rand(102, 899); b = rand(27, 99); } while (a % 10 >= b % 10 && guard++ < 60);
+  const d = a - b, sfl = bugSmallerFromLarger(a, b);
+  return qz("math6", `أوجدي ناتج الطرح: ${toAr(a)} − ${toAr(b)}`, d,
+    [sfl !== d ? sfl : d + 10, d + 10, d + 1, d - 1],
+    `آحاد ${toAr(b)} أكبر، فنستلف عشرةً **ونُنقص منزلة العشرات** ثم نطرح ⇒ ${toAr(d)}.`);
+}
+function m_prepMul() {
+  const a = rand(12, 50), b = rand(12, 47);
+  const p = a * b;
+  return qz("math6", `أوجدي ناتج الضرب: ${toAr(a)} × ${toAr(b)}`, p,
+    [a * (b % 10), a * Math.floor(b / 10) * 10, p + a, p - a],
+    `نضرب في الآحاد (${toAr(a)} × ${toAr(b % 10)} = ${toAr(a * (b % 10))}) ثم في العشرات ` +
+    `(${toAr(a)} × ${toAr(Math.floor(b / 10) * 10)} = ${toAr(a * Math.floor(b / 10) * 10)}) ثم نجمع ⇒ ${toAr(p)}.`);
+}
+function m_prepDiv() {
+  const q = rand(12, 84), b = rand(2, 9);
+  const a = q * b;
+  return qz("math6", `أوجدي ناتج القسمة: ${toAr(a)} ÷ ${toAr(b)}`, q,
+    [q + 1, q - 1, q * 10, a - b],
+    `نقسم بالترتيب من اليسار إلى اليمين: ${toAr(a)} ÷ ${toAr(b)} = ${toAr(q)} بلا باقٍ.`);
+}
+
+// ---- ١-١ الكلمات المفتاحية: الجدول في ص ١٢ حرفياً، لا اجتهاداً ----
+const KEY_WORDS = {
+  "الجمع": ["زائد", "مجموع", "أضف", "إجمالي", "مع"],
+  "الطرح": ["ناقص", "الفرق", "يزيد على", "يقلّ عن", "اطرح من", "كم بقي"],
+  "الضرب": ["عدد مرّات", "ناتج ضرب", "مضروباً في", "مضاعف"],
+  "القسمة": ["مقسوم على", "توزيع إلى"],
+};
+function m_keyword() {
+  const ops = Object.keys(KEY_WORDS);
+  const op = pick(ops), w = pick(KEY_WORDS[op]);
+  return qzT("math6", `أيّ عمليةٍ حسابية تدلّ عليها العبارة: «${w}»؟`, op,
+    ops.filter(function (o) { return o !== op; }),
+    `«${w}» من الكلمات المفتاحية الدالّة على ${op} — والكلمة المفتاحية تُرشد إلى العملية في خطوة «خطّط».`);
+}
+
+// ---- ١-١ الأنماط: العائلات الثلاث الواردة في الكتاب (ص ١٥-١٦) ----
+function m_pattern() {
+  const kind = pick(["add", "sub", "mulStep", "dec"]);
+  let seq = [], next, why;
+  if (kind === "add") {                      // ٥ ، ١١ ، ١٧ ، ٢٣ ، …
+    const a = rand(3, 12), d = rand(4, 9);
+    for (let i = 0; i < 4; i++) seq.push(a + i * d);
+    next = a + 4 * d;
+    why = `كل حدٍّ يزيد ${toAr(d)} عن سابقه ⇒ الحدّ التالي ${toAr(seq[3])} + ${toAr(d)} = ${toAr(next)}.`;
+  } else if (kind === "sub") {               // ٥٧ ، ٤٩ ، ٤١ ، ٣٣ ، …
+    const d = rand(4, 9), a = d * 4 + rand(20, 40);
+    for (let i = 0; i < 4; i++) seq.push(a - i * d);
+    next = a - 4 * d;
+    why = `كل حدٍّ يقلّ ${toAr(d)} عن سابقه ⇒ الحدّ التالي ${toAr(seq[3])} − ${toAr(d)} = ${toAr(next)}.`;
+  } else if (kind === "mulStep") {           // ٣ ، ٣ ، ٦ ، ١٨ ، ٧٢ ، … (×١ ثم ×٢ ثم ×٣)
+    const a = rand(2, 4);
+    seq = [a, a];
+    for (let i = 2; i <= 4; i++) seq.push(seq[i - 1] * i);
+    next = seq[4] * 5;
+    why = `المضروب فيه يكبر كل مرّة: ×٢ ثم ×٣ ثم ×٤ ⇒ الحدّ التالي ${toAr(seq[4])} × ٥ = ${toAr(next)}.`;
+  } else {                                   // ٣٫٢٥ ، ٤٫٠٠ ، ٤٫٧٥ ، ٥٫٥٠ ، … (مثال المواليد)
+    const a = round2(rand(200, 400) / 100), d = pick([0.25, 0.5, 0.75]);
+    for (let i = 0; i < 4; i++) seq.push(round2(a + i * d));
+    next = round2(a + 4 * d);
+    return qzT("math6", `أكملي النمط: ${seq.map(arDec).join(" ، ")} ، ▢`, arDec(next),
+      decCands([next + d, next - d, next + 1, round2(next + 0.1)]),
+      `كل حدٍّ يزيد ${arDec(d)} عن سابقه ⇒ ${arDec(seq[3])} + ${arDec(d)} = ${arDec(next)}.`);
+  }
+  return qz("math6", `أكملي النمط: ${seq.map(toAr).join(" ، ")} ، ▢`, next,
+    [next + 1, next - 1, seq[3] + seq[2], next * 2], why);
+}
+
+// ---- ١-١ الخطوات الأربع: مسألةُ فرقٍ بجدولٍ فيه معلوماتٌ زائدة (مثال ١ ومسألة ٤) ----
+// أسماءٌ مفصولةٌ بالجنس: «سميرة يمشي» خطأٌ لا يكشفه فاحصٌ حسابيّ ويكشفه أوّل قارئ.
+const NAMES_M = ["ناصر", "سلطان", "سعيد", "فهد", "خالد", "سليمان", "نواف", "بلال", "وليد"];
+const NAMES_F = ["سميرة", "منيرة", "لطيفة", "نورة", "ريم", "أمل"];
+// تمييز العدد بالعربية: ٣-١٠ جمعٌ مجرور («٩ أيام»)، وما فوقها مفردٌ منصوب («١٣ يوماً»).
+function arCount(n, few, many) {
+  const t = n % 100;
+  return toAr(n) + " " + (t >= 3 && t <= 10 ? few : many);
+}
+const TABLE_CTX = [
+  { t: "عدد الرميات الناجحة", g: "رميات" },
+  { t: "عدد الخطوات اليومية", g: "خطوات" },
+  { t: "عدد الصفحات المقروءة", g: "صفحات" },
+  { t: "عدد النقاط المُحرَزة", g: "نقاط" },
+];
+function m_fourStepsDiff() {
+  const ctx = pick(TABLE_CTX);
+  const who = shuffle(NAMES_M.concat(NAMES_F)).slice(0, 5);
+  const vals = [];
+  while (vals.length < 5) { const v = rand(18, 95); if (vals.indexOf(v) < 0) vals.push(v); }
+  vals.sort(function (x, y) { return y - x; });
+  const i = rand(0, 1), j = rand(3, 4);
+  const hi = vals[i], lo = vals[j], d = hi - lo;
+  const est = Math.round(hi / 10) * 10 - Math.round(lo / 10) * 10;
+  const rows = who.map(function (n, k) { return `${n}: ${toAr(vals[k])}`; }).join(" · ");
+  return qz("math6",
+    `${ctx.t} لخمسة أصدقاء — ${rows}. بكم تزيد ${ctx.g} ${who[i]} على ${who[j]}؟`,
+    d, [hi + lo, bugSmallerFromLarger(hi, lo), d + 10, d - 1],
+    `**افهم**: في الجدول معلوماتٌ زائدة، والمطلوب الفرق بين ${who[i]} و${who[j]} وحدهما. ` +
+    `**خطّط**: «بكم تزيد» تدلّ على الطرح، والتقدير ${toAr(Math.round(hi / 10) * 10)} − ${toAr(Math.round(lo / 10) * 10)} = ${toAr(est)}. ` +
+    `**حل**: ${toAr(hi)} − ${toAr(lo)} = ${toAr(d)}. ` +
+    `**تحقّق**: ${toAr(d)} + ${toAr(lo)} = ${toAr(hi)}، والناتج قريبٌ من التقدير ⇒ معقول.`);
+}
+
+// ---- ١-١ الخطوات الأربع: مسألةُ معدَّلٍ (نقود ص١٥ · مشي ص١٥ · سباحة ص١٦) ----
+// كل سياقٍ يحمل صيغته كاملةً بفعلٍ مُذكَّرٍ ومؤنَّث، ومداه الخاصّ به: قالبٌ واحدٌ
+// للجميع أنتج «ناصر قسطاً شهرياً قدره…» بلا فعل، و«١٧٣٤ صفحةً يومياً».
+const RATE_CTX = [
+  { lo: 450, hi: 990, yr: true, u: "ريالاً",
+    // الصيغة من مسألة ٧ في الكتاب (ص١٥) بلفظها، مع مطابقة الفعلين للجنس
+    tpl: function (w, m, r, lab) { return `${m ? "اشترى" : "اشترت"} ${w} سيارةً جديدةً، على أن ${m ? "يدفع" : "تدفع"} ثمنها على أقساطٍ شهرية مدّة ${lab}. فإذا كان القسط الشهري ${toAr(r)} ريالاً، فأوجدي ثمن السيارة.`; } },
+  { lo: 900, hi: 1900, yr: false, u: "خطوة",
+    tpl: function (w, m, r, lab) { return `${m ? "يمشي" : "تمشي"} ${w} ${toAr(r)} خطوةً يومياً، فكم خطوةً ${m ? "يمشي" : "تمشي"} في ${lab}؟`; } },
+  { lo: 6, hi: 35, yr: false, u: "صفحة",
+    tpl: function (w, m, r, lab) { return `${m ? "يقرأ" : "تقرأ"} ${w} ${toAr(r)} صفحةً يومياً، فكم صفحةً ${m ? "يقرأ" : "تقرأ"} في ${lab}؟`; } },
+  { lo: 5, hi: 25, yr: false, u: "كلمة",
+    tpl: function (w, m, r, lab) { return `${m ? "يحفظ" : "تحفظ"} ${w} ${toAr(r)} كلمةً يومياً، فكم كلمةً ${m ? "يحفظ" : "تحفظ"} في ${lab}؟`; } },
+];
+function m_fourStepsRate() {
+  const c = pick(RATE_CTX);
+  const male = pick([true, false]);
+  const who = male ? pick(NAMES_M) : pick(NAMES_F);
+  let per, label;
+  if (c.yr) { const y = rand(3, 5); per = y * 12; label = toAr(y) + " سنوات"; }
+  else { per = rand(5, 20); label = arCount(per, "أيام", "يوماً"); }
+  const rate = rand(c.lo, c.hi);
+  const total = rate * per;
+  const unit = rate >= 100 ? 100 : 10;
+  const est = Math.round(rate / unit) * unit * per;
+  return qz("math6", c.tpl(who, male, rate, label),
+    total, [rate + per, total - rate, rate * Math.floor(per / 2), total + rate],
+    `**افهم**: المعطى ${toAr(rate)} ${c.u} لكل وحدة، والمدّة ${label}` +
+    (c.yr ? ` أي ${toAr(per)} شهراً` : ``) + `. ` +
+    `**خطّط**: «لكل» تدلّ على الضرب، والتقدير ${toAr(Math.round(rate / unit) * unit)} × ${toAr(per)} = ${toAr(est)}. ` +
+    `**حل**: ${toAr(rate)} × ${toAr(per)} = ${toAr(total)}. ` +
+    `**تحقّق**: الناتج قريبٌ من التقدير ${toAr(est)} ⇒ معقول.`);
+}
+
+// ---- التهيئة كوحدةٍ مستقلّة: مهاراتٌ سابقة لا درسٌ في الفهرس ----
+const MATH6_PREP = {
+  1: { p: 11, name: "التهيئة — مهارات سابقة", gens: [m_prepAdd, m_prepSub, m_prepMul, m_prepDiv] },
+};
+
+// الدرس ١-١ يخلط أنواعه الأربعة كما يخلطها الكتاب نفسه: كلمةٌ مفتاحية، ونمط،
+// ومسألةُ فرقٍ بجدولٍ فيه زائد، ومسألةُ معدَّل — لا نوعٌ واحد يُعاد.
+function m_fourSteps() {
+  return pick([m_keyword, m_pattern, m_fourStepsDiff, m_fourStepsRate])();
+}

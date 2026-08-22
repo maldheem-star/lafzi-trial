@@ -15,10 +15,10 @@ function mcNum(correct,cands){const opts=[correct];(cands||[]).forEach(x=>{x=Mat
 function qz(d,q,correct,cands,w){const m=mcNum(correct,cands);return{d,q,c:m.choices,a:m.answer,w}}
 
 eval(fs.readFileSync(D + "math6.js", "utf8") +
-  ";globalThis.M_UNITS=M_UNITS;globalThis.M_BENCH=M_BENCH;globalThis.MATH6_PLAN=MATH6_PLAN;");
+  ";globalThis.M_UNITS=M_UNITS;globalThis.M_BENCH=M_BENCH;globalThis.MATH6_PLAN=MATH6_PLAN;globalThis.MATH6_PREP=MATH6_PREP;globalThis.KEY_WORDS=KEY_WORDS;globalThis.NAMES_F=NAMES_F;globalThis.NAMES_M=NAMES_M;");
 
 let fails = 0, checks = 0;
-function ok(c, m) { checks++; if (!c) { fails++; console.log("  ✗ " + m); } }
+function ok(c, m, n) { checks++; if (!c) { fails++; console.log("  ✗ " + m + (n !== undefined ? " — " + n : "")); } }
 const AR = "٠١٢٣٤٥٦٧٨٩";
 function arToNum(s) {
   const t = String(s).replace(/[٠-٩]/g, d => String(AR.indexOf(d))).replace("٫", ".").replace("،", "");
@@ -363,6 +363,126 @@ console.log("\n٢ب) سلامةُ السؤال لا سلامةُ الحساب و
     }
   });
   ok(dbl === 0, "لا خيارَ يساوي الصواب في أيّ مولّد — " + dbl);
+})();
+
+
+// ===== ٢ج) التهيئة والدرس ١-١ — من صفحات الكتاب (ص ١١-١٦) =====
+console.log("\n٢ج) التهيئة والدرس ١-١");
+(function () {
+  const ops = [[m_prepAdd, "+", (a, b) => a + b], [m_prepSub, "−", (a, b) => a - b],
+               [m_prepMul, "×", (a, b) => a * b], [m_prepDiv, "÷", (a, b) => a / b]];
+  ops.forEach(function (o) {
+    let bad = 0, trivial = 0;
+    for (let i = 0; i < 700; i++) {
+      const it = o[0](), v = nums(it.q);
+      if (o[2](v[0], v[1]) !== arToNum(chosen(it))) bad++;
+      if (o[1] === "÷" && v[0] % v[1] !== 0) trivial++;          // القسمة بلا باقٍ
+      if (o[1] === "−" && v[0] % 10 >= v[1] % 10) trivial++;     // استلافٌ مضمون
+    }
+    ok(bad === 0, "m_prep «" + o[1] + "»: الناتج صحيح — " + bad);
+    ok(trivial === 0, "m_prep «" + o[1] + "»: بالشرط الذي في الكتاب — " + trivial);
+  });
+})();
+(function () {
+  let bad = 0;
+  for (let i = 0; i < 600; i++) {
+    const it = m_keyword();
+    const w = (it.q.match(/«([^»]+)»/) || [])[1];
+    const right = chosen(it);
+    if (!w || (KEY_WORDS[right] || []).indexOf(w) < 0) bad++;
+    // ولا عمليةٌ أخرى تحوي الكلمة نفسها — وإلا صار للسؤال جوابان
+    Object.keys(KEY_WORDS).forEach(function (o) {
+      if (o !== right && KEY_WORDS[o].indexOf(w) >= 0) bad++;
+    });
+  }
+  ok(bad === 0, "m_keyword: الكلمة تخصّ عمليةً واحدة من جدول ص١٢ — " + bad);
+})();
+(function () {
+  let bad = 0;
+  for (let i = 0; i < 900; i++) {
+    const it = m_pattern();
+    const seq = (it.q.split(":")[1] || "").split("،").map(x => x.trim())
+      .filter(x => /[٠-٩]/.test(x)).map(arToNum);
+    const got = arToNum(chosen(it));
+    const d = round2(seq[1] - seq[0]), r = seq[0] ? seq[1] / seq[0] : 0;
+    const arith = Math.abs(round2(seq[3] + d) - got) < 1e-9 &&
+                  seq.every((v, k) => k === 0 || Math.abs(round2(v - seq[k - 1]) - d) < 1e-9);
+    const step = seq.length === 5 && seq[4] * 5 === got;   // ×٢ ثم ×٣ ثم ×٤
+    if (!arith && !step) bad++;
+  }
+  ok(bad === 0, "m_pattern: الحدّ التالي يتبع قاعدة النمط المعروض — " + bad);
+})();
+(function () {
+  let bad = 0;
+  for (let i = 0; i < 700; i++) {
+    const it = m_fourStepsDiff();
+    const pairs = {};
+    (it.q.match(/([\u0621-\u064A]+): ([٠-٩]+)/g) || []).forEach(function (m) {
+      const p = m.split(":"); pairs[p[0].trim()] = arToNum(p[1]);
+    });
+    const who = it.q.match(/بكم تزيد [\u0621-\u064A]+ ([\u0621-\u064A]+) على ([\u0621-\u064A]+)؟/);
+    if (!who || pairs[who[1]] === undefined || pairs[who[2]] === undefined) { bad++; continue; }
+    if (pairs[who[1]] - pairs[who[2]] !== arToNum(chosen(it))) bad++;
+    if (pairs[who[1]] <= pairs[who[2]]) bad++;      // «بكم تزيد» تقتضي أن يكون الأوّل أكبر
+    if (Object.keys(pairs).length < 4) bad++;       // معلوماتٌ زائدة كما في مثال الكتاب
+  }
+  ok(bad === 0, "m_fourStepsDiff: الفرق مطابقٌ للجدول، والأوّل أكبر، ومعه زائد — " + bad);
+})();
+(function () {
+  let bad = 0;
+  for (let i = 0; i < 700; i++) {
+    const it = m_fourStepsRate(), v = nums(it.q), got = arToNum(chosen(it));
+    const rate = v[0];
+    const per = /سنوات/.test(it.q) ? v[1] * 12 : v[1];
+    if (rate * per !== got) bad++;
+    if (/صفحة|كلمة/.test(it.q) && rate > 40) bad++;   // ١٧٣٤ صفحةً يومياً لا معنى له
+  }
+  ok(bad === 0, "m_fourStepsRate: الناتج = المعدَّل × المدّة (والسنوات تُحوَّل شهوراً) — " + bad);
+})();
+(function () {
+  // شرح الخطوات الأربع يجب أن يحوي الأربع فعلاً — هي فكرة الدرس لا زينة
+  let miss = 0;
+  for (let i = 0; i < 400; i++) {
+    const it = pick([m_fourStepsDiff, m_fourStepsRate])();
+    ["افهم", "خطّط", "حل", "تحقّق"].forEach(function (k) { if (it.w.indexOf(k) < 0) miss++; });
+    if (it.w.indexOf("التقدير") < 0) miss++;   // مقارنة الجواب بالتقدير — إرشاد ص١٢
+  }
+  ok(miss === 0, "الشرح يمرّ على الخطوات الأربع ومعها التقدير — " + miss);
+})();
+(function () {
+  ok(!!MATH6_PREP[1] && MATH6_PREP[1].gens.length === 4, "التهيئة: أربع مهاراتٍ سابقة كما في ص١١");
+  ok(MATH6_PREP[1].p === 11, "وصفحتها ١١");
+})();
+
+
+// ===== ٢د) عربيّةُ النصّ — أخطاءٌ لا يراها الحساب ويراها أوّل قارئ =====
+console.log("\n٢د) سلامة العربية");
+(function () {
+  let gender = 0, count = 0, noVerb = 0, tatweel = 0;
+  const M_VERBS = ["يمشي", "يقرأ", "يحفظ", "اشترى"];
+  const F_VERBS = ["تمشي", "تقرأ", "تحفظ", "اشترت"];
+  for (let i = 0; i < 1200; i++) {
+    const q = m_fourStepsRate().q;
+    const isF = NAMES_F.some(function (n) { return q.indexOf(n) >= 0; });
+    const isM = NAMES_M.some(function (n) { return q.indexOf(n) >= 0; });
+    // اسمٌ مؤنّث مع فعلٍ مذكّر (أو العكس) — «سميرة يمشي»
+    if (isF && M_VERBS.some(function (v) { return q.indexOf(v) >= 0; })) gender++;
+    if (isM && F_VERBS.some(function (v) { return q.indexOf(v) >= 0; })) gender++;
+    // كل صيغةٍ لا بدّ أن تحمل فعلاً — «ناصر قسطاً شهرياً قدره…» جملةٌ ناقصة
+    if (!M_VERBS.concat(F_VERBS).some(function (v) { return q.indexOf(v) >= 0; })) noVerb++;
+    // تمييز العدد: ٣-١٠ جمعٌ («٩ أيام») وما فوق مفردٌ منصوب («١٣ يوماً»)
+    if (q.indexOf("\u0640") >= 0) tatweel++;   // «يدفعـها» — لصقُ ضميرٍ بالفعل بدل تصريفه
+    const m = q.match(/([٠-٩]+) (أيام|يوماً)/);
+    if (m) {
+      const n = arToNum(m[1]), t = n % 100;
+      const want = (t >= 3 && t <= 10) ? "أيام" : "يوماً";
+      if (m[2] !== want) count++;
+    }
+  }
+  ok(gender === 0, "تطابق الفعل مع جنس الاسم — " + gender);
+  ok(noVerb === 0, "كل مسألةٍ جملةٌ تامّة فيها فعل — " + noVerb);
+  ok(tatweel === 0, "لا تطويل (ـ) داخل كلمة — أثرُ لصقِ لاحقةٍ بالفعل", tatweel);
+  ok(count === 0, "تمييز العدد صحيح (٣-١٠ جمع، وما فوق مفرد منصوب) — " + count);
 })();
 
 // ===== ٣) الفهرس مطابقٌ للكتاب =====
