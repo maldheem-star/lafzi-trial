@@ -281,8 +281,10 @@ ok(gramMerged.some(x=>x.ai===true)&&gramMerged.some(x=>!x.ai),'ويظهر ضمن
 // ومعدّل التوليد رُفع لا نداءٌ واحد — بنكٌ صغيرٌ (٥) يُستهلك جلسةً واحدة كاملةً (GRAM_N=5)
 const calls3=await page.evaluate(()=>genCallsFor(5,5));
 ok(calls3>1,`ونداءاتٌ متعدّدة حين تستهلك الجلسة نصف البنك فأكثر (${calls3})`);
-const calls0=await page.evaluate(()=>genCallsFor(15,5));
-ok(calls0===0,'ولا نداء إضافي عند بلوغ السقف (GEN_BANK_MAX=15)');
+// السقف يُقرأ من الشيفرة لا يُثبَّت رقماً — درس «الأعداد المكتوبة في الاختبارات فخّ صامت»
+const maxBank=await page.evaluate(()=>GEN_BANK_MAX);
+const calls0=await page.evaluate(m=>genCallsFor(m,5),maxBank);
+ok(calls0===0,'ولا نداء إضافي عند بلوغ السقف (GEN_BANK_MAX='+maxBank+')');
 
 console.log('\n١٣) لا انحدار بعد وصل التوليد بـgram');
 page=await mk();

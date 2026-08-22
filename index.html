@@ -6034,13 +6034,17 @@ async function fetchTutorGen(domain,level){
 // الدفعة بحسب نسبة البنك إلى حجم الجلسة لا برقمٍ ثابت: بنكٌ يكفي ثلاث جلسات فأكثر
 // ينمو ببطء، وبنكٌ على وشك النفاد يُدفَع دفعاً. والهدف أن يبقى المتاح ≥ خمسة أضعاف
 // الجلسة، فيبقى المستحقّ+الجديد كافياً بلا لجوءٍ إلى المراجعة الحرّة (topUpPlan).
+// **والدفعة محدودةٌ بما يمكن إطلاقه فعلاً** (GEN_MAX_INFLIGHT): طلبُ ثمانيةٍ يُطلَق منها
+// أربعة كان وعداً لا يُوفى — كشفه الاختبار (٤ من ٨) فأُصلح المصدر لا الاختبار. والسعة
+// تأتي من تكرار النبضة عبر الجلسة لا من حجم الدفعة الواحدة: جلسةُ ثمانية عناصر تُطلق
+// أربع نبضاتٍ (بدءٌ + كل ثالث عنصر) × أربعة = ستّة عشر عنصراً مقابل ثمانية تُستهلَك.
 function genCallsFor(poolLen,N){
   if(poolLen>=GEN_BANK_MAX)return 0;
-  const room=GEN_BANK_MAX-poolLen,want=N*5;
-  if(!poolLen)return Math.min(8,room);
-  if(poolLen<N*2)return Math.min(8,room);      // على وشك النفاد
-  if(poolLen<want)return Math.min(5,room);     // دون الهدف
-  return Math.min(2,room);                     // صحّيّ: نموٌّ هادئ
+  const room=GEN_BANK_MAX-poolLen,want=N*5,cap=GEN_MAX_INFLIGHT;
+  if(!poolLen)return Math.min(cap,room);
+  if(poolLen<N*2)return Math.min(cap,room);        // على وشك النفاد
+  if(poolLen<want)return Math.min(cap-1,room);     // دون الهدف
+  return Math.min(2,room);                         // صحّيّ: نموٌّ هادئ
 }
 // ===== حارس التزامن: دفعةٌ متوازية لا تنفجر على حصّة المزوّد =====
 // ثماني نداءات متوازية × ست عشرة جلسة يومياً = تجاوزٌ محتمل لحصّة الطبقة المجانية،

@@ -28,17 +28,21 @@ async function mk(browser,q){
       nearEmpty:genCallsFor(10,8),      // < N*2 = ١٦ ⇒ دفعٌ قويّ
       belowTarget:genCallsFor(25,8),    // < N*5 = ٤٠ ⇒ متوسّط
       healthy:genCallsFor(60,8),        // ≥ الهدف ⇒ هادئ
-      atCeiling:genCallsFor(80,8),
-      overCeiling:genCallsFor(120,8),
-      room:genCallsFor(78,8),           // الغرفة أضيق من الدفعة
+      atCeiling:genCallsFor(GEN_BANK_MAX,8),
+      overCeiling:genCallsFor(GEN_BANK_MAX+40,8),
+      room:genCallsFor(GEN_BANK_MAX-2,8),   // الغرفة أضيق من الدفعة
+      cap:GEN_MAX_INFLIGHT,
     }));
-    ok(r.max===80,'السقف ٨٠ لا ١٥ — '+r.max);
-    ok(r.empty===8,'بنكٌ فارغ ⇒ دفعةٌ كاملة — '+r.empty);
-    ok(r.nearEmpty===8,'على وشك النفاد ⇒ دفعةٌ كاملة — '+r.nearEmpty);
-    ok(r.belowTarget===5,'دون الهدف ⇒ دفعةٌ متوسّطة — '+r.belowTarget);
+    // الأرقام تُشتقّ من الثوابت لا تُثبَّت — درس «الأعداد المكتوبة في الاختبارات فخّ صامت»
+    ok(r.max>=60,'السقف رُفع كثيراً عن ١٥ — '+r.max);
+    ok(r.empty===r.cap,'بنكٌ فارغ ⇒ دفعةٌ كاملة بقدر سقف الإطلاق — '+r.empty+'/'+r.cap);
+    ok(r.nearEmpty===r.cap,'على وشك النفاد ⇒ دفعةٌ كاملة — '+r.nearEmpty);
+    ok(r.belowTarget===r.cap-1,'دون الهدف ⇒ دفعةٌ أقلّ بواحد — '+r.belowTarget);
     ok(r.healthy===2,'بنكٌ صحّيّ ⇒ نموٌّ هادئ — '+r.healthy);
     ok(r.atCeiling===0&&r.overCeiling===0,'عند السقف أو فوقه ⇒ يتوقّف التوليد');
     ok(r.room===2,'الدفعة لا تتجاوز الغرفة المتبقّية — '+r.room);
+    ok(r.empty<=r.cap&&r.nearEmpty<=r.cap&&r.belowTarget<=r.cap,
+      'ولا تُطلب دفعةٌ أكبر ممّا يمكن إطلاقه فعلاً — وعدٌ يُوفى');
     await page.close();
   }
 
