@@ -520,12 +520,82 @@ console.log("\n٢ج) التهيئة والدرس ١-١");
   ok(miss === 0, "شرحُ النمط يحمل التحقّق بالعمل عكسياً — " + miss);
 })();
 
+
+// ===== ٢هـ) ما أضافته ص ١٥-١٦ =====
+console.log("\n٢هـ) أنواع ص ١٥-١٦");
+(function () {
+  let bad = 0, wrap = 0;
+  const t2m = function (t) { const p = t.split(":").map(arToNum); return p[0] * 60 + p[1]; };
+  for (let i = 0; i < 800; i++) {
+    const it = m_patternTime();
+    const times = (it.q.match(/[٠-٩]+:[٠-٩]+/g) || []);
+    if (times.length !== 4) { bad++; continue; }
+    const mins = times.map(t2m), step = mins[1] - mins[0];
+    if (!mins.every((v, k) => k === 0 || v - mins[k - 1] === step)) bad++;
+    if (t2m(chosen(it)) !== mins[3] + step) bad++;
+    // الدقائق تدور عند الستّين: لا «٨:٧٠»
+    it.c.concat(times).forEach(function (t) { if (arToNum(t.split(":")[1]) > 59) wrap++; });
+  }
+  ok(bad === 0, "m_patternTime: الخطوة منتظمة والموعد التالي صحيح — " + bad);
+  ok(wrap === 0, "m_patternTime: لا دقيقةَ فوق ٥٩ — " + wrap);
+})();
+(function () {
+  let bad = 0;
+  for (let i = 0; i < 800; i++) {
+    const it = m_rateTwoStep(), v = nums(it.q);   // [a, b, target]
+    const a = v[0], b = v[1], target = v[2];
+    if (target % a !== 0) bad++;                  // المطلوب مضاعفٌ للمعدَّل وإلا كُسر الجواب
+    if (target / a * b !== arToNum(chosen(it))) bad++;
+    if (target <= a) bad++;                       // وإلا لم تكن مسألةَ معدَّلٍ أصلاً
+    // تمييز العدد في الشرح كما في السؤال: «١٠ أشواط» لا «١٠ شوطاً»
+    if (/لكل ٢ /.test(it.w) || /في ٢ /.test(it.q)) bad++;   // المثنّى: «دقيقتين» لا «٢ دقيقة»
+    const m = it.w.match(/المعدّل ([٠-٩]+) ([\u0621-\u064A]+)/);
+    if (m) {
+      const n = arToNum(m[1]) % 100, plural = /^(أشواط|أسطر|تمارين)$/.test(m[2]);
+      if ((n >= 3 && n <= 10) !== plural) bad++;
+    }
+  }
+  ok(bad === 0, "m_rateTwoStep: قسمةٌ ثم ضرب، والمطلوب مضاعفٌ للمعدَّل — " + bad);
+})();
+(function () {
+  let bad = 0;
+  for (let i = 0; i < 800; i++) {
+    const it = m_patternThree();
+    const seq = (it.q.split(":")[1] || "").split("،").map(x => x.trim())
+      .filter(x => /^[٠-٩]+$/.test(x)).map(arToNum);
+    const got = chosen(it).split("،").map(x => arToNum(x.trim()));
+    if (seq.length !== 4 || got.length !== 3) { bad++; continue; }
+    const d = seq[1] - seq[0];
+    if (!seq.every((v, k) => k === 0 || v - seq[k - 1] === d)) bad++;
+    if (got[0] !== seq[3] + d || got[1] !== seq[3] + 2 * d || got[2] !== seq[3] + 3 * d) bad++;
+    if (got.some(x => x < 0)) bad++;              // لا حدودَ سالبة في السادس الابتدائي
+  }
+  ok(bad === 0, "m_patternThree: الحدود الثلاثة تتبع النمط ولا سالب — " + bad);
+})();
+(function () {
+  let bad = 0;
+  for (let i = 0; i < 800; i++) {
+    const it = m_diffBig(), v = nums(it.q);
+    if (v[0] - v[1] !== arToNum(chosen(it))) bad++;
+    if (v[0] <= v[1]) bad++;                      // «فكم يزيد A على B» تقتضي A أكبر
+    if (v[0] < 1000) bad++;                       // أعدادٌ كبيرة كما في مسألة الأنهار
+    // لا تُنسَب قيمةٌ مولَّدة إلى معلَمٍ حقيقيّ معروف الطول — معلومةٌ كاذبة تُحفَظ
+    if (/النيل|الفولجا|الأمازون|الدانوب|اليانغتسي|الراين|إيفرست/.test(it.q)) bad++;
+    // تطابق الفعل مع المسنَد إليه: «عدد» مذكّر و«مسافة/قطع» مؤنّث
+    if (/فكم يزيد (مسافة|قطع)/.test(it.q)) bad++;
+    if (/فكم تزيد عدد/.test(it.q)) bad++;
+  }
+  ok(bad === 0, "m_diffBig: الفرق صحيح والأوّل أكبر والأعداد كبيرة — " + bad);
+})();
+
 // ===== ٢د) عربيّةُ النصّ — أخطاءٌ لا يراها الحساب ويراها أوّل قارئ =====
 console.log("\n٢د) سلامة العربية");
 (function () {
   let gender = 0, count = 0, noVerb = 0, tatweel = 0;
   const M_VERBS = ["يمشي", "يقرأ", "يحفظ", "اشترى"];
   const F_VERBS = ["تمشي", "تقرأ", "تحفظ", "اشترت"];
+  const M2 = ["يستطيع", "يسبح", "يطبع", "يحلّ", "استمرّ "];
+  const F2 = ["تستطيع", "تسبح", "تطبع", "تحلّ", "استمرّت"];
   for (let i = 0; i < 1200; i++) {
     const q = m_fourStepsRate().q;
     const isF = NAMES_F.some(function (n) { return q.indexOf(n) >= 0; });
@@ -544,6 +614,16 @@ console.log("\n٢د) سلامة العربية");
       if (m[2] !== want) count++;
     }
   }
+  // ومسألةُ المعدَّل بخطوتين لها أفعالها هي
+  let g2 = 0;
+  for (let i = 0; i < 900; i++) {
+    const q = m_rateTwoStep().q;
+    const isF = NAMES_F.some(function (n) { return q.indexOf(n) >= 0; });
+    const isM = NAMES_M.some(function (n) { return q.indexOf(n) >= 0; });
+    if (isF && M2.some(function (v) { return q.indexOf(v) >= 0; })) g2++;
+    if (isM && F2.some(function (v) { return q.indexOf(v) >= 0; })) g2++;
+  }
+  ok(g2 === 0, "تطابق الفعل في مسألة المعدَّل بخطوتين — " + g2);
   ok(gender === 0, "تطابق الفعل مع جنس الاسم — " + gender);
   ok(noVerb === 0, "كل مسألةٍ جملةٌ تامّة فيها فعل — " + noVerb);
   ok(tatweel === 0, "لا تطويل (ـ) داخل كلمة — أثرُ لصقِ لاحقةٍ بالفعل", tatweel);

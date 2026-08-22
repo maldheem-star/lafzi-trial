@@ -682,5 +682,96 @@ const MATH6_PREP = {
 // الدرس ١-١ يخلط أنواعه الأربعة كما يخلطها الكتاب نفسه: كلمةٌ مفتاحية، ونمط،
 // ومسألةُ فرقٍ بجدولٍ فيه زائد، ومسألةُ معدَّل — لا نوعٌ واحد يُعاد.
 function m_fourSteps() {
-  return pick([m_keyword, m_pattern, m_patternTable, m_fourStepsDiff, m_fourStepsRate])();
+  return pick([m_keyword, m_pattern, m_patternTable, m_patternTime, m_patternThree,
+    m_fourStepsDiff, m_diffBig, m_fourStepsRate, m_rateTwoStep])();
+}
+
+// ===== ما أضافته ص ١٥-١٦ من الدرس ١-١ =====
+
+// ---- نمطُ مواعيد بالوقت (مسألة «الصحة» ص١٥): ٧:٤٠ ، ٨:١٠ ، ٨:٤٠ … خطوةً ٣٠ دقيقة ----
+// الفرق عن النمط العددي حقيقيّ لا شكليّ: الدقائق تدور عند الستّين لا عند العشرة.
+function arTime(h, m) { return toAr(h) + ":" + toAr(String(m).padStart(2, "0")); }
+function m_patternTime() {
+  const step = pick([15, 20, 30, 45]);
+  let h = rand(7, 9), m = pick([0, 10, 15, 20, 30, 40, 45]);
+  const shown = [];
+  for (let i = 0; i < 4; i++) {
+    shown.push(arTime(h, m));
+    m += step; h += Math.floor(m / 60); m = m % 60;
+  }
+  const right = arTime(h, m);
+  const cands = [arTime(h, (m + 10) % 60), arTime(h + 1, m), arTime(h, (m + step) % 60),
+    arTime(h, (m + 100) % 60)].filter(function (x) { return x !== right; });
+  return qzT("math6",
+    `كانت مواعيد أوّل أربعة مراجعين لطبيب الأسنان هي: ${shown.join(" ، ")}. فإذا استمرّ هذا النمط، فما موعد المراجع التالي؟`,
+    right, cands,
+    `بين كل موعدٍ والذي يليه ${arCount(step, "دقائق", "دقيقة")} ⇒ ${shown[3]} + ${toAr(step)} = ${right}. ` +
+    `والدقائق تدور عند الستّين لا عند المئة.`);
+}
+
+// ---- معدَّلٌ بخطوتين: قسمةٌ ثم ضرب (تدريب على اختبار، ص١٦) ----
+// «٨ أشواط في ٤ دقائق ⇒ كم لِـ٤٠ شوطاً؟» — ضربٌ وحده لا يكفي، ولذلك هي مسألة اختبار.
+const TWOSTEP_CTX = [
+  { v: "يسبح", vf: "تسبح", unit: "شوطاً", units: "أشواط", per: "دقائق", per1: "دقيقة", ask: "فكم دقيقةً يحتاج", askF: "فكم دقيقةً تحتاج" },
+  { v: "يطبع", vf: "تطبع", unit: "سطراً", units: "أسطر", per: "دقائق", per1: "دقيقة", ask: "فكم دقيقةً يحتاج", askF: "فكم دقيقةً تحتاج" },
+  { v: "يحلّ", vf: "تحلّ", unit: "تمريناً", units: "تمارين", per: "دقائق", per1: "دقيقة", ask: "فكم دقيقةً يحتاج", askF: "فكم دقيقةً تحتاج" },
+];
+function m_rateTwoStep() {
+  const c = pick(TWOSTEP_CTX);
+  const male = pick([true, false]);
+  const who = male ? pick(NAMES_M) : pick(NAMES_F);
+  const a = pick([4, 5, 6, 8, 10]);        // المُنجَز
+  const b = pick([3, 4, 5, 6]);            // في كم دقيقة (والاثنان مستبعدان: المثنّى صيغةٌ ثالثة)
+  const k = rand(3, 9);                    // عدد المجموعات
+  const target = a * k, ans = b * k;
+  return qz("math6",
+    `${male ? "يستطيع" : "تستطيع"} ${who} أن ${male ? c.v : c.vf} ${arCount(a, c.units, c.unit)} في ${arCount(b, c.per, c.per1)}. ` +
+    `فإذا ${male ? "استمرّ" : "استمرّت"} بهذا المعدّل، ${male ? c.ask : c.askF} لـ${toAr(target)} ${c.unit}؟`,
+    ans, [target * b, target - a, ans + b, Math.round(target / b)],
+    `**افهم**: المعدّل ${arCount(a, c.units, c.unit)} لكل ${arCount(b, c.per, c.per1)}. ` +
+    `**خطّط**: خطوتان لا خطوة — كم مجموعةً في ${toAr(target)}؟ ثم اضربي في الزمن. ` +
+    `**حل**: ${toAr(target)} ÷ ${toAr(a)} = ${toAr(k)} مجموعات، و${toAr(k)} × ${toAr(b)} = ${toAr(ans)}. ` +
+    `**تحقّق**: ${toAr(ans)} ÷ ${toAr(b)} = ${toAr(k)}، و${toAr(k)} × ${toAr(a)} = ${toAr(target)} ⇒ معقول.`);
+}
+
+// ---- «أوجدي الأعداد الثلاثة التالية» (مسألة ١٢، ص١٦) — الجواب ثلاثةُ حدود لا حدّ ----
+function m_patternThree() {
+  const up = pick([true, false]);
+  const d = rand(4, 9);
+  const start = up ? rand(3, 15) : d * 7 + rand(10, 30);
+  const seq = [], nxt = [];
+  for (let i = 0; i < 4; i++) seq.push(up ? start + i * d : start - i * d);
+  for (let i = 4; i < 7; i++) nxt.push(up ? start + i * d : start - i * d);
+  const fmt = function (a) { return a.map(toAr).join(" ، "); };
+  const right = fmt(nxt);
+  const cands = [
+    fmt(nxt.map(function (x) { return x + 1; })),
+    fmt([nxt[0], nxt[1] + 1, nxt[2] + 2]),
+    fmt(nxt.map(function (x, i) { return up ? x + d : x - d; })),
+    fmt(nxt.slice().reverse()),
+  ].filter(function (x) { return x !== right; });
+  return qzT("math6", `أوجدي الأعداد الثلاثة التالية في النمط: ${fmt(seq)} ، …`, right, cands,
+    `كل حدٍّ ${up ? "يزيد" : "يقلّ"} ${toAr(d)} عن سابقه ⇒ ${fmt(nxt)}. ` +
+    `**تحقّق بالعمل عكسياً**: ${toAr(nxt[2])} ${up ? "−" : "+"} ${toAr(d)} ${up ? "−" : "+"} ${toAr(d)} ${up ? "−" : "+"} ${toAr(d)} = ${toAr(seq[3])}.`);
+}
+
+// ---- فرقُ أعدادٍ كبيرة (مسألة «أنهار» ص١٥ · وتمثيلات بيانية بالملايين) ----
+const BIG_PAIRS = [
+  { u: "زائراً", t: function (hi, lo) { return `بلغ عدد زوّار معرض الكتاب ${toAr(hi)} زائراً، وعدد زوّار معرض العلوم ${toAr(lo)} زائراً. فكم يزيد عدد زوّار معرض الكتاب على عدد زوّار معرض العلوم؟`; } },
+  { u: "قطعة", t: function (hi, lo) { return `أنتج مصنع الشمال ${toAr(hi)} قطعة، وأنتج مصنع الجنوب ${toAr(lo)} قطعة. فكم تزيد قطع مصنع الشمال على قطع مصنع الجنوب؟`; } },
+  { u: "كم", t: function (hi, lo) { return `قطعت سيارةٌ في الشهر الأوّل ${toAr(hi)} كم، وفي الشهر الثاني ${toAr(lo)} كم. فكم تزيد مسافة الشهر الأوّل على مسافة الشهر الثاني؟`; } },
+  { u: "مشاهداً", t: function (hi, lo) { return `بلغ عدد المشاهدين في المباراة الأولى ${toAr(hi)} مشاهداً، وفي المباراة الثانية ${toAr(lo)} مشاهداً. فكم يزيد عدد مشاهدي المباراة الأولى على عدد مشاهدي الثانية؟`; } },
+];
+function m_diffBig() {
+  const c = pick(BIG_PAIRS);
+  const hi = rand(41, 79) * 100 + rand(0, 99);
+  const lo = rand(15, 39) * 100 + rand(0, 99);
+  const d = hi - lo;
+  const est = Math.round(hi / 100) * 100 - Math.round(lo / 100) * 100;
+  return qz("math6", c.t(hi, lo),
+    d, [hi + lo, bugSmallerFromLarger(hi, lo), d + 100, d - 10],
+    `**افهم**: المطلوب الفرق بين العددين. ` +
+    `**خطّط**: «فكم يزيد … على» تدلّ على الطرح، والتقدير ${toAr(Math.round(hi / 100) * 100)} − ${toAr(Math.round(lo / 100) * 100)} = ${toAr(est)}. ` +
+    `**حل**: ${toAr(hi)} − ${toAr(lo)} = ${toAr(d)} ${c.u}. ` +
+    `**تحقّق**: ${toAr(d)} + ${toAr(lo)} = ${toAr(hi)}، والناتج قريبٌ من التقدير ⇒ معقول.`);
 }
