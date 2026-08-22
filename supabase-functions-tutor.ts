@@ -331,6 +331,7 @@ function systemGenGram(level: string): string {
     "of the same mistake.",
     "",
     "OUTPUT EXACTLY in this shape, nothing else, no markdown, no extra commentary:",
+    `TAG: <the ONE grammar point you chose, IN ARABIC, 1-3 words, e.g. «المضارع التامّ» or «حروف الزمن»>`,
     "S1: <sentence 1, in ENGLISH>",
     "S1_OK: <yes or no>",
     "S1_WHY: <one short reason IN ARABIC — why this version is right or wrong>",
@@ -351,6 +352,8 @@ function systemGenGram(level: string): string {
     "3. Exactly ONE of S1_OK..S4_OK is 'yes'; the other three must be 'no'.",
     "4. The four sentences must all be different from each other, not just punctuation changes.",
     "5. Keep content appropriate for a school-age learner: no violence, romance, politics or unsafe topics.",
+    "6. TAG names the single grammar point tested — it is how mastery is tracked per skill,",
+    "   so it must be the specific point, not the level and not a general word like «قواعد».",
   ].join("\n");
 }
 // ===== STEP، نوع pick وحده: مطابقٌ عمداً لشكل GRAM_BANK لكن بمهارات STEP — ترتيب
@@ -425,6 +428,8 @@ function systemGenVideo(level: string): string {
     `TOPIC: ${topic}. Invent your own names/details. Do NOT reuse a stock textbook example.`,
     "",
     "OUTPUT EXACTLY in this shape, nothing else, no markdown, no extra commentary:",
+    "TAG: <the comprehension sub-skill your question tests, IN ARABIC, EXACTLY one of:",
+    "      «تفصيل محدَّد» «الفكرة الرئيسية» «سببٌ وعلاقة» «استنتاج» «تسلسل الأحداث»>",
     "TITLE: <a short 2 to 4 word English title>",
     ...sceneLines,
     "Q: <a comprehension question about the whole story, in ENGLISH>",
@@ -464,6 +469,8 @@ function systemGen(domain: string, level: string, word: string) {
     "(for instance, do not default to a library-at-three-o'clock meeting dialogue).",
     "",
     "OUTPUT EXACTLY in this shape, nothing else, no numbering, no markdown, no extra commentary:",
+    "TAG: <the comprehension sub-skill your question tests, IN ARABIC, EXACTLY one of:",
+    "      «تفصيل محدَّد» «الفكرة الرئيسية» «سببٌ وعلاقة» «استنتاج» «تسلسل الأحداث»>",
     "TEXT: <the English passage, on one line>",
     "Q: <a comprehension question about it, written in ENGLISH>",
     "A: <choice 1, in ENGLISH>",

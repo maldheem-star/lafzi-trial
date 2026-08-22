@@ -2679,9 +2679,13 @@ function logAnswer(domain,qtype,isCorrect,response,itemId,elapsedMs,extra){
   const base={student_alias:alias(),domain,qtype,is_correct:isCorrect,
     response:response==null?null:String(response),item_id:itemId||null,
     elapsed_ms:elapsedMs==null?null:Math.round(elapsedMs)};
-  const full=Object.assign({},base,extra||{});
+  // مفاتيح تبدأ بـ«_» بيانات تتبّعٍ محلّية لا أعمدةٌ في الجدول: تُنزَع قبل الإرسال، وإلا
+  // رُفض الصفّ كلّه فسقط إلى الأساسي وضاعت كل الإضافيّات — عطلٌ صامت لا خطأ ظاهر.
+  const ex=extra||{},clean={};
+  Object.keys(ex).forEach(function(k){if(k.charAt(0)!=="_")clean[k]=ex[k]});
+  const full=Object.assign({},base,clean);
   try{accRecord(domain,isCorrect)}catch(e){}   // بوّابة التمدّد: وصلٌ واحد يخدم كل قسم
-  try{bktRecord(domain,qtype,isCorrect)}catch(e){}   // احتمال الإتقان — نفس نقطة الوصل
+  try{bktRecord(domain,ex._sk||qtype,isCorrect)}catch(e){}   // الإتقان بالمهارة لا بالنوع
   try{logSend(full,base)}catch(e){}
 }
 // ===== بوّابة التمدّد: قاعدة الـ٨٥٪ — ٢١ أغسطس =====
@@ -2758,6 +2762,24 @@ function bktStep(p,correct,G,S,T){
 }
 // المهارة (Knowledge Component) = القسم ونوعه: متاحان في logAnswer بلا تمديد أيّ نداء
 function bktKey(domain,qtype){return String(domain||"")+":"+String(qtype||"—")}
+// ===== الحلّ الجذري: المهارة من العنصر نفسه لا من نوعه — ٢١ أغسطس =====
+// العيب الذي كشفه اختبار BKT: «مُتقَن» تُعلَن على **كل قواعد A2** لأن المهارة المُتتبَّعة
+// كانت `gram:sentence` — قسمٌ ونوع لا تركيبٌ بعينه. فوُسم كل عنصرٍ في البنوك الستّة
+// بمهارته الحقيقية (`sk`، ١٤٠ عنصراً/٣٣ مهارة)، وSTEP كان موسوماً أصلاً بـ`tag` فأُعيد
+// استعماله كما هو لا وسمٌ ثانٍ له. والتصنيفات من معاييرها لا من حدسي: القواعد من
+// English Profile (نفس تبويب GRAM_FOCUS)، وأزواج النطق بتصنيفات تدريس النطق القياسية
+// (طول الحركة/جودتها/جهر النهاية/النبر/مقطعٌ زائد)، والفهم بمهارات كامبردج الفرعية
+// (تفصيل محدَّد، فكرة رئيسية، سببٌ وعلاقة، استنتاج، تسلسل الأحداث).
+// فصار «أتقن المضارع التامّ» لا «أتقن قواعد A2» — أضيق وأصدق.
+function skOf(it,lv){
+  if(!it)return null;
+  if(it.sk)return it.sk;
+  if(it.tag)return it.tag;
+  // عنصرٌ مولَّد بلا وسمٍ يُنسَب صراحةً إلى «مولَّد · المستوى» بدل خلطه بمهارةٍ مؤلَّفة —
+  // فلا يُنسَب إتقانٌ إلى مهارةٍ لم يقسها ذلك العنصر. ويسقط الاحتياط متى وسمها الخادم.
+  if(it.ai)return "مولَّد · "+String(it.lv||lv||"");
+  return null;
+}
 function bktRecord(domain,qtype,ok){
   if(typeof ok!=="boolean")return;
   if(!(domain in BKT_GUESS))return;                 // أقسامٌ بلا تدرّج مهارةٍ مُعرَّف
@@ -3170,7 +3192,7 @@ const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEn
   "accLoad","accSave","accRecord","accRate","stretchOn","bankStretched",
   "seqStart","seqReset","seqPlanFor","seqWeek","seqCur","startSeq","seqCardHTML","renderSeq",
   "loadKpi","kpiAgg","renderKpi",
-  "bktLoad","bktSave","bktStep","bktKey","bktRecord","bktOf","bktMastered","bktToMastery",
+  "bktLoad","bktSave","bktStep","bktKey","skOf","bktRecord","bktOf","bktMastered","bktToMastery",
   "writeLfp","mockBand","mockLogLoad","mockLogAdd","mockSeenRecently","mockPickFrom",
   "buildMockPaper","startMock","mockCur","mockQuestion","mockChoose","mockFinish","renderMock","renderMockResult"];
 function censusMissing(){return CENSUS.filter(function(n){return typeof window[n]!=="function"})}
@@ -5956,10 +5978,11 @@ function genBankAdd(key,item){
 // السطر نفسه) سُمع عربي وإنجليزي معاً، كما اشتكى إلياس فعلاً (١٦ أغسطس). فسطر الاستمرار
 // يرفض أي سطرٍ فيه عربي، والتحقّق النهائي يرفض العنصر كلّه إن تسرّب عربي رغم ذلك.
 const AR_CHARS=/[\u0600-\u06FF]/;
+const COMP_SKILLS=["تفصيل محدَّد","الفكرة الرئيسية","سببٌ وعلاقة","استنتاج","تسلسل الأحداث"];
 function parseGenBlock(text,domain){
   const lines=String(text||"").split(/\r?\n/).map(function(l){return l.trim()});
   let passage="",q="",a1="",a2="",a3="",correct="",inText=false;
-  lines.forEach(function(l){
+  let tag="";lines.forEach(function(l){
     let m;
     if(m=/^TEXT:\s*(.*)$/i.exec(l)){passage=m[1];inText=true}
     else if(m=/^Q:\s*(.+)$/i.exec(l)){q=m[1];inText=false}
@@ -5967,6 +5990,7 @@ function parseGenBlock(text,domain){
     else if(m=/^B:\s*(.+)$/i.exec(l)){a2=m[1];inText=false}
     else if(m=/^C:\s*(.+)$/i.exec(l)){a3=m[1];inText=false}
     else if(m=/^CORRECT:\s*([ABC])/i.exec(l)){correct=m[1].toUpperCase();inText=false}
+    else if(m=/^TAG:\s*(.+)$/i.exec(l)){tag=m[1].trim();inText=false}
     else if(inText&&l&&!AR_CHARS.test(l))passage+=(passage?" ":"")+l;   // TEXT قد يمتدّ سطرين
   });
   passage=passage.trim();
@@ -5974,8 +5998,9 @@ function parseGenBlock(text,domain){
   // العنصر كلّه إنجليزي الآن (١٦ أغسطس) — تلوّثٌ عربي في أيّ حقل يُرفض العنصر كلّه
   if(AR_CHARS.test(passage)||AR_CHARS.test(q)||AR_CHARS.test(a1)||AR_CHARS.test(a2)||AR_CHARS.test(a3))return null;
   const idx={A:0,B:1,C:2}[correct];
+  // المهارة تُقبل من تصنيف الفهم المعروف وحده — وسمٌ خارجه يُهمَل ولا يُخترَع بديلٌ له
   const item={id:"ai_"+domain+"_"+Date.now().toString(36)+"_"+Math.random().toString(36).slice(2,7),
-    q:q,c:[a1,a2,a3],a:idx,ai:true};
+    sk:COMP_SKILLS.indexOf(tag)>=0?tag:null,q:q,c:[a1,a2,a3],a:idx,ai:true};
   if(domain==="listen")item.audio=passage;else item.passage=passage;
   return item;
 }
@@ -6049,6 +6074,9 @@ function parseGenPickBlock(text,domain,wantTag){
   const c=idx.map(function(i){return{t:s[i],ok:ok[i],why:why[i]}});
   const item={id:"ai_"+domain+"_"+Date.now().toString(36)+"_"+Math.random().toString(36).slice(2,7),c:c,ai:true};
   if(wantTag){item.type="pick";item.tag=STEP_TAGS.indexOf(tag)>=0?tag:STEP_TAGS[0]}
+  // القواعد المولَّدة: الخادم يُعيد اسم التركيب المُختبَر، وهو مفتوحٌ لا قائمةٌ مغلقة
+  // (تراكيب English Profile أكثر من أن تُحصر) — فيُقبل أيّ وسمٍ عربيٍّ قصير، ويُهمَل غيره.
+  else if(tag&&tag.length<=24&&AR_CHARS.test(tag))item.sk=tag;
   return item;
 }
 // يفكّك ردّ الفيديو المولَّد (TITLE/SCENEn_EMOJI/SCENEn_TEXT×٣-٤/Q/A/B/C/CORRECT) إلى
@@ -6057,7 +6085,7 @@ function parseGenPickBlock(text,domain,wantTag){
 function parseGenVideoBlock(text){
   const lines=String(text||"").split(/\r?\n/);
   let title="",q="",a1="",a2="",a3="",correct="";const scenes={};
-  lines.forEach(function(l){
+  let tag="";lines.forEach(function(l){
     let m;
     if(m=/^TITLE:\s*(.+)$/i.exec(l))title=m[1].trim();
     else if(m=/^SCENE(\d)_EMOJI:\s*(.+)$/i.exec(l)){scenes[m[1]]=scenes[m[1]]||{};scenes[m[1]].e=m[2].trim()}
@@ -6067,6 +6095,7 @@ function parseGenVideoBlock(text){
     else if(m=/^B:\s*(.+)$/i.exec(l))a2=m[1].trim();
     else if(m=/^C:\s*(.+)$/i.exec(l))a3=m[1].trim();
     else if(m=/^CORRECT:\s*([ABC])/i.exec(l))correct=m[1].toUpperCase();
+    else if(m=/^TAG:\s*(.+)$/i.exec(l))tag=m[1].trim();
   });
   const idx=Object.keys(scenes).map(Number).sort(function(a,b){return a-b});
   if(idx.length<3)return null;
@@ -6076,6 +6105,7 @@ function parseGenVideoBlock(text){
   if(!title||!q||!a1||!a2||!a3||!correct)return null;
   if([title,q,a1,a2,a3].concat(sc.map(function(x){return x.t})).some(function(t){return AR_CHARS.test(t)}))return null;
   return{id:"ai_video_"+Date.now().toString(36)+"_"+Math.random().toString(36).slice(2,7),
+    sk:COMP_SKILLS.indexOf(tag)>=0?tag:null,
     t:title,sc:sc.map(function(x){return[x.e,x.t]}),q:q,c:[a1,a2,a3],a:{A:0,B:1,C:2}[correct],ai:true};
 }
 
@@ -6107,33 +6137,33 @@ function parseGenVideoBlock(text){
 // A1 المبتدئة) طُرح وقُرِّر تجاوزه صراحةً — قرار صاحب المشروع، لا حدسي.
 const LISTEN_BANK=[
   // A1 — عبارة واحدة أو عبارتان قصيرتان، حقيقة واحدة ملموسة (اسم/عمر/لون/عدد/يوم)
-  {id:"ls_a1_1",lv:"A1",audio:"My name is Lina. I am ten years old.",q:"How old is Lina?",c:["Nine","Ten","Eleven"],a:1},
-  {id:"ls_a1_2",lv:"A1",audio:"I have a red bag.",q:"What colour is the bag?",c:["Red","Blue","Green"],a:0},
-  {id:"ls_a1_3",lv:"A1",audio:"This is my brother. His name is Sami.",q:"What is the brother's name?",c:["Saad","Sami","Salem"],a:1},
-  {id:"ls_a1_4",lv:"A1",audio:"I have two cats and one dog.",q:"How many cats are there?",c:["One","Two","Three"],a:1},
-  {id:"ls_a1_5",lv:"A1",audio:"It is Monday today.",q:"What day is it today?",c:["Sunday","Monday","Tuesday"],a:1},
-  {id:"ls_a1_6",lv:"A1",audio:"My favourite colour is green.",q:"What is her favourite colour?",c:["Green","Yellow","Purple"],a:0},
-  {id:"ls_a1_7",lv:"A1",audio:"I live in a small white house.",q:"What colour is the house?",c:["White","Black","Brown"],a:0},
-  {id:"ls_a1_8",lv:"A1",audio:"I have three books on the table.",q:"How many books are on the table?",c:["Two","Three","Four"],a:1},
-  {id:"ls_a1_9",lv:"A1",audio:"My mother is a teacher.",q:"What is the mother's job?",c:["Doctor","Teacher","Engineer"],a:1},
-  {id:"ls_a1_10",lv:"A1",audio:"I go to school by bus.",q:"How does she go to school?",c:["By car","By bus","On foot"],a:1},
+  {id:"ls_a1_1",lv:"A1",sk:"تفصيل محدَّد",audio:"My name is Lina. I am ten years old.",q:"How old is Lina?",c:["Nine","Ten","Eleven"],a:1},
+  {id:"ls_a1_2",lv:"A1",sk:"تفصيل محدَّد",audio:"I have a red bag.",q:"What colour is the bag?",c:["Red","Blue","Green"],a:0},
+  {id:"ls_a1_3",lv:"A1",sk:"تفصيل محدَّد",audio:"This is my brother. His name is Sami.",q:"What is the brother's name?",c:["Saad","Sami","Salem"],a:1},
+  {id:"ls_a1_4",lv:"A1",sk:"تفصيل محدَّد",audio:"I have two cats and one dog.",q:"How many cats are there?",c:["One","Two","Three"],a:1},
+  {id:"ls_a1_5",lv:"A1",sk:"تفصيل محدَّد",audio:"It is Monday today.",q:"What day is it today?",c:["Sunday","Monday","Tuesday"],a:1},
+  {id:"ls_a1_6",lv:"A1",sk:"تفصيل محدَّد",audio:"My favourite colour is green.",q:"What is her favourite colour?",c:["Green","Yellow","Purple"],a:0},
+  {id:"ls_a1_7",lv:"A1",sk:"تفصيل محدَّد",audio:"I live in a small white house.",q:"What colour is the house?",c:["White","Black","Brown"],a:0},
+  {id:"ls_a1_8",lv:"A1",sk:"تفصيل محدَّد",audio:"I have three books on the table.",q:"How many books are on the table?",c:["Two","Three","Four"],a:1},
+  {id:"ls_a1_9",lv:"A1",sk:"تفصيل محدَّد",audio:"My mother is a teacher.",q:"What is the mother's job?",c:["Doctor","Teacher","Engineer"],a:1},
+  {id:"ls_a1_10",lv:"A1",sk:"تفصيل محدَّد",audio:"I go to school by bus.",q:"How does she go to school?",c:["By car","By bus","On foot"],a:1},
   // A2 — حوار قصير من دورين، والسؤال عن الفكرة أو تفصيل واحد لا أكثر
-  {id:"ls_a2_1",lv:"A2",audio:"A: Would you like tea or coffee? B: Coffee, please, with a little sugar.",q:"What did the second speaker order?",c:["Tea with sugar","Coffee with a little sugar","Coffee with no sugar"],a:1},
-  {id:"ls_a2_2",lv:"A2",audio:"A: Excuse me, where is the bank? B: It's next to the pharmacy, on the left.",q:"Where is the bank?",c:["Next to the school","Next to the pharmacy","In front of the mosque"],a:1},
-  {id:"ls_a2_3",lv:"A2",audio:"A: What time does the shop open? B: It opens at nine in the morning.",q:"When does the shop open?",c:["Eight o'clock","Nine o'clock","Ten o'clock"],a:1},
-  {id:"ls_a2_4",lv:"A2",audio:"A: How much is this shirt? B: It's twenty riyals, but the blue one is fifteen.",q:"How much is the blue shirt?",c:["15 riyals","20 riyals","25 riyals"],a:0},
-  {id:"ls_a2_5",lv:"A2",audio:"A: Are you free this weekend? B: Yes, but only on Saturday, not Friday.",q:"When is he free?",c:["Friday only","Saturday only","Friday and Saturday"],a:1},
-  {id:"ls_a2_6",lv:"A2",audio:"I usually wake up at seven, but today I woke up late, at nine.",q:"When did she wake up today?",c:["Seven o'clock","Eight o'clock","Nine o'clock"],a:2},
-  {id:"ls_a2_7",lv:"A2",audio:"A: Can I have a large pizza, please? B: Sorry, we only have medium and small today.",q:"Which size is not available?",c:["Large","Medium","Small"],a:0},
-  {id:"ls_a2_8",lv:"A2",audio:"My brother plays football on Tuesdays and swims on Thursdays.",q:"When does her brother swim?",c:["Tuesday","Thursday","Saturday"],a:1},
-  {id:"ls_a2_9",lv:"A2",audio:"A: Did you finish your homework? B: Not yet, I need ten more minutes.",q:"Did he finish his homework?",c:["Yes","No, he needs more time","There's no homework"],a:1},
-  {id:"ls_a2_10",lv:"A2",audio:"The train to Riyadh leaves at six, but it is fifteen minutes late today.",q:"When will the train arrive today, approximately?",c:["Six o'clock","Quarter past six","Seven o'clock"],a:1},
+  {id:"ls_a2_1",lv:"A2",sk:"تفصيل محدَّد",audio:"A: Would you like tea or coffee? B: Coffee, please, with a little sugar.",q:"What did the second speaker order?",c:["Tea with sugar","Coffee with a little sugar","Coffee with no sugar"],a:1},
+  {id:"ls_a2_2",lv:"A2",sk:"تفصيل محدَّد",audio:"A: Excuse me, where is the bank? B: It's next to the pharmacy, on the left.",q:"Where is the bank?",c:["Next to the school","Next to the pharmacy","In front of the mosque"],a:1},
+  {id:"ls_a2_3",lv:"A2",sk:"تفصيل محدَّد",audio:"A: What time does the shop open? B: It opens at nine in the morning.",q:"When does the shop open?",c:["Eight o'clock","Nine o'clock","Ten o'clock"],a:1},
+  {id:"ls_a2_4",lv:"A2",sk:"تفصيل محدَّد",audio:"A: How much is this shirt? B: It's twenty riyals, but the blue one is fifteen.",q:"How much is the blue shirt?",c:["15 riyals","20 riyals","25 riyals"],a:0},
+  {id:"ls_a2_5",lv:"A2",sk:"تفصيل محدَّد",audio:"A: Are you free this weekend? B: Yes, but only on Saturday, not Friday.",q:"When is he free?",c:["Friday only","Saturday only","Friday and Saturday"],a:1},
+  {id:"ls_a2_6",lv:"A2",sk:"تفصيل محدَّد",audio:"I usually wake up at seven, but today I woke up late, at nine.",q:"When did she wake up today?",c:["Seven o'clock","Eight o'clock","Nine o'clock"],a:2},
+  {id:"ls_a2_7",lv:"A2",sk:"تفصيل محدَّد",audio:"A: Can I have a large pizza, please? B: Sorry, we only have medium and small today.",q:"Which size is not available?",c:["Large","Medium","Small"],a:0},
+  {id:"ls_a2_8",lv:"A2",sk:"تفصيل محدَّد",audio:"My brother plays football on Tuesdays and swims on Thursdays.",q:"When does her brother swim?",c:["Tuesday","Thursday","Saturday"],a:1},
+  {id:"ls_a2_9",lv:"A2",sk:"تفصيل محدَّد",audio:"A: Did you finish your homework? B: Not yet, I need ten more minutes.",q:"Did he finish his homework?",c:["Yes","No, he needs more time","There's no homework"],a:1},
+  {id:"ls_a2_10",lv:"A2",sk:"استنتاج",audio:"The train to Riyadh leaves at six, but it is fifteen minutes late today.",q:"When will the train arrive today, approximately?",c:["Six o'clock","Quarter past six","Seven o'clock"],a:1},
   // B1 — مقطعٌ من أربع إلى ست جمل يسرد تجربة أو يشرح موقفاً، والسؤال عن الفكرة الرئيسية أو تفصيل يحتاج تتبّعاً
-  {id:"ls_b1_1",lv:"B1",audio:"Last weekend I went to Jeddah with my friends. We stayed at my cousin's house for two nights. On Saturday we went to the beach and had lunch by the sea. It was a great trip, even though the weather was a bit hot.",q:"What is the main idea?",c:["A trip to Jeddah with friends","A work day in Jeddah","A doctor's visit in Jeddah"],a:0},
-  {id:"ls_b1_2",lv:"B1",audio:"I've been trying to learn to cook this year. At first it was difficult, and I burned a few meals. But now I can make simple dishes like rice and grilled chicken. My family says my cooking is improving.",q:"What has improved?",c:["His swimming skills","His cooking skills","His driving skills"],a:1},
-  {id:"ls_b1_3",lv:"B1",audio:"Our college is planning a new library. It will have more computers and a quiet study area on the second floor. Students are excited because the old library was always full and noisy.",q:"Why are the students excited?",c:["A new, quieter and bigger library","A new holiday","A new sports building"],a:0},
-  {id:"ls_b1_4",lv:"B1",audio:"I work part-time at a coffee shop on weekends to help pay for my phone and transportation. It's tiring sometimes, especially in the morning shift, but I like meeting new people every day.",q:"Why does he work part-time?",c:["To help with his expenses","Because his family asked him to","Because he only likes coffee"],a:0},
-  {id:"ls_b1_5",lv:"B1",audio:"The weather this week has been unusual — very hot on Sunday, then suddenly rainy on Wednesday. People are saying it might rain again this weekend, which is rare for this time of year.",q:"What is unusual?",c:["The heat alone","Rain at this time of year","Extreme cold"],a:1},
+  {id:"ls_b1_1",lv:"B1",sk:"الفكرة الرئيسية",audio:"Last weekend I went to Jeddah with my friends. We stayed at my cousin's house for two nights. On Saturday we went to the beach and had lunch by the sea. It was a great trip, even though the weather was a bit hot.",q:"What is the main idea?",c:["A trip to Jeddah with friends","A work day in Jeddah","A doctor's visit in Jeddah"],a:0},
+  {id:"ls_b1_2",lv:"B1",sk:"استنتاج",audio:"I've been trying to learn to cook this year. At first it was difficult, and I burned a few meals. But now I can make simple dishes like rice and grilled chicken. My family says my cooking is improving.",q:"What has improved?",c:["His swimming skills","His cooking skills","His driving skills"],a:1},
+  {id:"ls_b1_3",lv:"B1",sk:"سببٌ وعلاقة",audio:"Our college is planning a new library. It will have more computers and a quiet study area on the second floor. Students are excited because the old library was always full and noisy.",q:"Why are the students excited?",c:["A new, quieter and bigger library","A new holiday","A new sports building"],a:0},
+  {id:"ls_b1_4",lv:"B1",sk:"سببٌ وعلاقة",audio:"I work part-time at a coffee shop on weekends to help pay for my phone and transportation. It's tiring sometimes, especially in the morning shift, but I like meeting new people every day.",q:"Why does he work part-time?",c:["To help with his expenses","Because his family asked him to","Because he only likes coffee"],a:0},
+  {id:"ls_b1_5",lv:"B1",sk:"استنتاج",audio:"The weather this week has been unusual — very hot on Sunday, then suddenly rainy on Wednesday. People are saying it might rain again this weekend, which is rare for this time of year.",q:"What is unusual?",c:["The heat alone","Rain at this time of year","Extreme cold"],a:1},
 ];
 // _v2: تكرارٌ وتلوّثٌ عربي-إنجليزي حقيقي وصلا للبنك v1 قبل بذرة الموضوع وحارس التلوّث
 // (١٦ أغسطس، شكوى إلياس) — مفتاحٌ جديد يهجر المخزَّن الملوَّث بدل مسحه يدوياً، كما
@@ -6188,7 +6218,7 @@ function listenChoose(i){
   const ok=i===it.a;if(ok)listenScore++;
   listenSrsUpdate(it.id,ok);
   logAnswer("listen",it.lv,ok,it.c[i],it.id,listenShownAt?Date.now()-listenShownAt:null,
-    {q_text:(genLogText(it)+" · plays:"+listenPlays).slice(0,1200)});
+    {_sk:skOf(it),q_text:(genLogText(it)+" · plays:"+listenPlays).slice(0,1200)});
   render();
 }
 function listenNext(){
@@ -6243,33 +6273,33 @@ function renderListenResult(){
 // الأسئلة والخيارات بالإنجليزية للثلاثة سواءً — نفس السبب المذكور أعلى LISTEN_BANK
 const READ_BANK=[
   // A1 — جملة أو جملتان، حقيقة واحدة ملموسة، يبقى النصّ أمامها فتُعيد النظر إليه
-  {id:"rd_a1_1",lv:"A1",passage:"This is Omar. He is nine years old. He has a black cat.",q:"How old is Omar?",c:["Eight","Nine","Ten"],a:1},
-  {id:"rd_a1_2",lv:"A1",passage:"My school bag is blue. My pencil case is yellow.",q:"What colour is the school bag?",c:["Yellow","Blue","Green"],a:1},
-  {id:"rd_a1_3",lv:"A1",passage:"Today is Friday. Tomorrow is Saturday.",q:"What day is it tomorrow?",c:["Thursday","Friday","Saturday"],a:2},
-  {id:"rd_a1_4",lv:"A1",passage:"I have four brothers and one sister.",q:"How many sisters does he have?",c:["One","Two","None"],a:0},
-  {id:"rd_a1_5",lv:"A1",passage:"Sara likes apples. She does not like bananas.",q:"What does Sara not like?",c:["Apples","Bananas","Grapes"],a:1},
-  {id:"rd_a1_6",lv:"A1",passage:"Our classroom has twenty desks and one board.",q:"How many desks are in the classroom?",c:["Ten","Fifteen","Twenty"],a:2},
-  {id:"rd_a1_7",lv:"A1",passage:"My father works in a hospital. He is a doctor.",q:"Where does the father work?",c:["A school","A hospital","A restaurant"],a:1},
-  {id:"rd_a1_8",lv:"A1",passage:"The small dog is under the table.",q:"Where is the dog?",c:["On the table","Under the table","Next to the door"],a:1},
-  {id:"rd_a1_9",lv:"A1",passage:"I wake up at six and go to bed at nine.",q:"When does she wake up?",c:["Five o'clock","Six o'clock","Seven o'clock"],a:1},
-  {id:"rd_a1_10",lv:"A1",passage:"Her favourite fruit is orange, not grapes.",q:"What is her favourite fruit?",c:["Orange","Grapes","Bananas"],a:0},
+  {id:"rd_a1_1",lv:"A1",sk:"تفصيل محدَّد",passage:"This is Omar. He is nine years old. He has a black cat.",q:"How old is Omar?",c:["Eight","Nine","Ten"],a:1},
+  {id:"rd_a1_2",lv:"A1",sk:"تفصيل محدَّد",passage:"My school bag is blue. My pencil case is yellow.",q:"What colour is the school bag?",c:["Yellow","Blue","Green"],a:1},
+  {id:"rd_a1_3",lv:"A1",sk:"تفصيل محدَّد",passage:"Today is Friday. Tomorrow is Saturday.",q:"What day is it tomorrow?",c:["Thursday","Friday","Saturday"],a:2},
+  {id:"rd_a1_4",lv:"A1",sk:"تفصيل محدَّد",passage:"I have four brothers and one sister.",q:"How many sisters does he have?",c:["One","Two","None"],a:0},
+  {id:"rd_a1_5",lv:"A1",sk:"تفصيل محدَّد",passage:"Sara likes apples. She does not like bananas.",q:"What does Sara not like?",c:["Apples","Bananas","Grapes"],a:1},
+  {id:"rd_a1_6",lv:"A1",sk:"تفصيل محدَّد",passage:"Our classroom has twenty desks and one board.",q:"How many desks are in the classroom?",c:["Ten","Fifteen","Twenty"],a:2},
+  {id:"rd_a1_7",lv:"A1",sk:"تفصيل محدَّد",passage:"My father works in a hospital. He is a doctor.",q:"Where does the father work?",c:["A school","A hospital","A restaurant"],a:1},
+  {id:"rd_a1_8",lv:"A1",sk:"تفصيل محدَّد",passage:"The small dog is under the table.",q:"Where is the dog?",c:["On the table","Under the table","Next to the door"],a:1},
+  {id:"rd_a1_9",lv:"A1",sk:"تفصيل محدَّد",passage:"I wake up at six and go to bed at nine.",q:"When does she wake up?",c:["Five o'clock","Six o'clock","Seven o'clock"],a:1},
+  {id:"rd_a1_10",lv:"A1",sk:"تفصيل محدَّد",passage:"Her favourite fruit is orange, not grapes.",q:"What is her favourite fruit?",c:["Orange","Grapes","Bananas"],a:0},
   // A2 — رسالة أو إعلان قصير من جملتين إلى ثلاث، والسؤال عن تفصيل واحد
-  {id:"rd_a2_1",lv:"A2",passage:"Notice: The library closes at 4pm on Thursdays, but stays open until 6pm on other days.",q:"When does the library close on Wednesdays?",c:["Four o'clock","Six o'clock","It doesn't close"],a:1},
-  {id:"rd_a2_2",lv:"A2",passage:"Hi Sam, I can't come to the party on Saturday because I have a family trip. See you next week!",q:"Why won't he come to the party?",c:["He is sick","A family trip","He forgot the date"],a:1},
-  {id:"rd_a2_3",lv:"A2",passage:"Sale this weekend! All shoes 20% off, but shirts are not included in the offer.",q:"What is not included in the offer?",c:["Shoes","Shirts","Both"],a:1},
-  {id:"rd_a2_4",lv:"A2",passage:"The bus to the museum leaves every hour, but the last one today is at 5pm.",q:"When is the last bus today?",c:["Four o'clock","Five o'clock","Six o'clock"],a:1},
-  {id:"rd_a2_5",lv:"A2",passage:"Reminder: bring your sports shoes tomorrow — we have PE class in the morning, not the afternoon.",q:"When is PE class tomorrow?",c:["Morning","Afternoon","Evening"],a:0},
-  {id:"rd_a2_6",lv:"A2",passage:"Dear guests, breakfast is served from 7 to 10, and the pool opens at 9.",q:"When does the pool open?",c:["Seven o'clock","Nine o'clock","Ten o'clock"],a:1},
-  {id:"rd_a2_7",lv:"A2",passage:"I found a small grey wallet near the park gate this morning. Please call this number if it's yours.",q:"Where was the wallet found?",c:["Inside the park","Near the park gate","In the street"],a:1},
-  {id:"rd_a2_8",lv:"A2",passage:"The test was moved from Monday to Wednesday because the teacher is travelling.",q:"Why was the test postponed?",c:["The teacher is travelling","The students asked for it","A scheduling mistake"],a:0},
-  {id:"rd_a2_9",lv:"A2",passage:"Our team won the match 3-1, even though we started slowly in the first half.",q:"What was the final score?",c:["1-3","3-1","2-1"],a:1},
-  {id:"rd_a2_10",lv:"A2",passage:"Please switch off all lights before leaving the lab, and lock the door.",q:"What must you do before leaving, besides switching off the lights?",c:["Open the windows","Lock the door","Clean the table"],a:1},
+  {id:"rd_a2_1",lv:"A2",sk:"تفصيل محدَّد",passage:"Notice: The library closes at 4pm on Thursdays, but stays open until 6pm on other days.",q:"When does the library close on Wednesdays?",c:["Four o'clock","Six o'clock","It doesn't close"],a:1},
+  {id:"rd_a2_2",lv:"A2",sk:"سببٌ وعلاقة",passage:"Hi Sam, I can't come to the party on Saturday because I have a family trip. See you next week!",q:"Why won't he come to the party?",c:["He is sick","A family trip","He forgot the date"],a:1},
+  {id:"rd_a2_3",lv:"A2",sk:"تفصيل محدَّد",passage:"Sale this weekend! All shoes 20% off, but shirts are not included in the offer.",q:"What is not included in the offer?",c:["Shoes","Shirts","Both"],a:1},
+  {id:"rd_a2_4",lv:"A2",sk:"تفصيل محدَّد",passage:"The bus to the museum leaves every hour, but the last one today is at 5pm.",q:"When is the last bus today?",c:["Four o'clock","Five o'clock","Six o'clock"],a:1},
+  {id:"rd_a2_5",lv:"A2",sk:"تفصيل محدَّد",passage:"Reminder: bring your sports shoes tomorrow — we have PE class in the morning, not the afternoon.",q:"When is PE class tomorrow?",c:["Morning","Afternoon","Evening"],a:0},
+  {id:"rd_a2_6",lv:"A2",sk:"تفصيل محدَّد",passage:"Dear guests, breakfast is served from 7 to 10, and the pool opens at 9.",q:"When does the pool open?",c:["Seven o'clock","Nine o'clock","Ten o'clock"],a:1},
+  {id:"rd_a2_7",lv:"A2",sk:"تفصيل محدَّد",passage:"I found a small grey wallet near the park gate this morning. Please call this number if it's yours.",q:"Where was the wallet found?",c:["Inside the park","Near the park gate","In the street"],a:1},
+  {id:"rd_a2_8",lv:"A2",sk:"سببٌ وعلاقة",passage:"The test was moved from Monday to Wednesday because the teacher is travelling.",q:"Why was the test postponed?",c:["The teacher is travelling","The students asked for it","A scheduling mistake"],a:0},
+  {id:"rd_a2_9",lv:"A2",sk:"تفصيل محدَّد",passage:"Our team won the match 3-1, even though we started slowly in the first half.",q:"What was the final score?",c:["1-3","3-1","2-1"],a:1},
+  {id:"rd_a2_10",lv:"A2",sk:"استنتاج",passage:"Please switch off all lights before leaving the lab, and lock the door.",q:"What must you do before leaving, besides switching off the lights?",c:["Open the windows","Lock the door","Clean the table"],a:1},
   // B1 — فقرة من أربع إلى ست جمل، والسؤال عن الفكرة الرئيسية أو تفصيل يحتاج تتبّعاً
-  {id:"rd_b1_1",lv:"B1",passage:"Many students find it hard to focus while studying at home because of phones and social media. Some experts suggest putting the phone in another room during study time. Others recommend using apps that block notifications for a set period. Either way, the goal is the same: fewer interruptions, better focus.",q:"What is the main idea?",c:["Ways to reduce phone distraction while studying","The health risks of phones","The best social media apps"],a:0},
-  {id:"rd_b1_2",lv:"B1",passage:"When I first started running, I could barely finish one kilometre without stopping. I kept a simple log of my times and distances every week. After three months of slow, steady progress, I ran my first five-kilometre race. It wasn't fast, but finishing felt like a real achievement.",q:"What helped him improve?",c:["A personal trainer","Logging his progress steadily every week","Running with friends"],a:1},
-  {id:"rd_b1_3",lv:"B1",passage:"The school is introducing a new cafeteria menu next month, with more fruit and vegetable options and less fried food. The change came after a survey showed that many students wanted healthier choices. Prices will stay the same, but some popular items, like fries, will only be available twice a week instead of daily.",q:"Why did the menu change?",c:["A budget shortage","A survey asked for healthier options","A government decision"],a:1},
-  {id:"rd_b1_4",lv:"B1",passage:"Working part-time while studying can teach useful skills like managing time and money, but it can also be tiring if the hours are too long. Career advisors usually suggest students limit part-time work to around ten or fifteen hours a week during term time, so studies don't suffer.",q:"What do career advisors recommend?",c:["Not working at all while studying","Limiting work to 10-15 hours a week","Working full-time, but only on holidays"],a:1},
-  {id:"rd_b1_5",lv:"B1",passage:"Our neighbourhood used to have only one small grocery store, so people often drove to the next town for shopping. Last year, a larger supermarket opened just two streets away. Now most residents shop locally, which has also brought more people to the small cafes and shops nearby.",q:"What changed in the neighbourhood?",c:["All the shops closed","A new supermarket made shopping closer and boosted nearby shops","Most residents moved to another town"],a:1},
+  {id:"rd_b1_1",lv:"B1",sk:"الفكرة الرئيسية",passage:"Many students find it hard to focus while studying at home because of phones and social media. Some experts suggest putting the phone in another room during study time. Others recommend using apps that block notifications for a set period. Either way, the goal is the same: fewer interruptions, better focus.",q:"What is the main idea?",c:["Ways to reduce phone distraction while studying","The health risks of phones","The best social media apps"],a:0},
+  {id:"rd_b1_2",lv:"B1",sk:"سببٌ وعلاقة",passage:"When I first started running, I could barely finish one kilometre without stopping. I kept a simple log of my times and distances every week. After three months of slow, steady progress, I ran my first five-kilometre race. It wasn't fast, but finishing felt like a real achievement.",q:"What helped him improve?",c:["A personal trainer","Logging his progress steadily every week","Running with friends"],a:1},
+  {id:"rd_b1_3",lv:"B1",sk:"سببٌ وعلاقة",passage:"The school is introducing a new cafeteria menu next month, with more fruit and vegetable options and less fried food. The change came after a survey showed that many students wanted healthier choices. Prices will stay the same, but some popular items, like fries, will only be available twice a week instead of daily.",q:"Why did the menu change?",c:["A budget shortage","A survey asked for healthier options","A government decision"],a:1},
+  {id:"rd_b1_4",lv:"B1",sk:"تفصيل محدَّد",passage:"Working part-time while studying can teach useful skills like managing time and money, but it can also be tiring if the hours are too long. Career advisors usually suggest students limit part-time work to around ten or fifteen hours a week during term time, so studies don't suffer.",q:"What do career advisors recommend?",c:["Not working at all while studying","Limiting work to 10-15 hours a week","Working full-time, but only on holidays"],a:1},
+  {id:"rd_b1_5",lv:"B1",sk:"استنتاج",passage:"Our neighbourhood used to have only one small grocery store, so people often drove to the next town for shopping. Last year, a larger supermarket opened just two streets away. Now most residents shop locally, which has also brought more people to the small cafes and shops nearby.",q:"What changed in the neighbourhood?",c:["All the shops closed","A new supermarket made shopping closer and boosted nearby shops","Most residents moved to another town"],a:1},
 ];
 // _v3: نفس سبب GEN_BANK_KEY_LISTEN أعلاه — عناصر [مولَّد] عربية قديمة عند السقف
 const GEN_BANK_KEY_READ="mawhiba_read_aibank_v3";
@@ -6308,7 +6338,8 @@ function readChoose(i){
   const it=readCur();readLocked=true;readPicked=i;
   const ok=i===it.a;if(ok)readScore++;
   readSrsUpdate(it.id,ok);
-  logAnswer("read",it.lv,ok,it.c[i],it.id,readShownAt?Date.now()-readShownAt:null,{q_text:genLogText(it).slice(0,1200)});
+  logAnswer("read",it.lv,ok,it.c[i],it.id,readShownAt?Date.now()-readShownAt:null,
+    {_sk:skOf(it),q_text:((skOf(it)?"["+skOf(it)+"] ":"")+genLogText(it)).slice(0,1200)});
   render();
 }
 function readNext(){
@@ -6366,40 +6397,40 @@ function renderReadResult(){
 // التي تبقى تصحيحاً معروضاً لا درجة.
 const WRITE_BANK=[
   // A1 — كما Movers/Flyers: أسئلة توجيهية تُجاب بجملٍ كاملة، لا فقرة حرّة
-  {id:"wr_a1_1",lv:"A1",min:10,prompt:"Write about your family.\n1) How many brothers or sisters do you have?\n2) What is one thing you like doing together?"},
-  {id:"wr_a1_2",lv:"A1",min:10,prompt:"Write about your favourite animal.\n1) What animal is it?\n2) What colour is it?\n3) What can it do?"},
-  {id:"wr_a1_3",lv:"A1",min:10,prompt:"Write about your school day.\n1) What time do you go to school?\n2) What is your favourite subject?"},
-  {id:"wr_a1_4",lv:"A1",min:10,prompt:"Write about your bedroom.\n1) What colour is it?\n2) What is one thing in your room?"},
-  {id:"wr_a1_5",lv:"A1",min:10,prompt:"Write about your best friend.\n1) What is their name?\n2) What do you both like doing?"},
-  {id:"wr_a1_6",lv:"A1",min:10,prompt:"Write about today's weather.\n1) What is the weather like today?\n2) What are you wearing?"},
-  {id:"wr_a1_7",lv:"A1",min:10,prompt:"Write about your favourite food.\n1) What food is it?\n2) When do you eat it?"},
-  {id:"wr_a1_8",lv:"A1",min:10,prompt:"Write about a pet you have or want.\n1) What animal is it?\n2) Why do you like it?"},
+  {id:"wr_a1_1",lv:"A1",sk:"وصف موجَّه",min:10,prompt:"Write about your family.\n1) How many brothers or sisters do you have?\n2) What is one thing you like doing together?"},
+  {id:"wr_a1_2",lv:"A1",sk:"وصف موجَّه",min:10,prompt:"Write about your favourite animal.\n1) What animal is it?\n2) What colour is it?\n3) What can it do?"},
+  {id:"wr_a1_3",lv:"A1",sk:"وصف موجَّه",min:10,prompt:"Write about your school day.\n1) What time do you go to school?\n2) What is your favourite subject?"},
+  {id:"wr_a1_4",lv:"A1",sk:"وصف موجَّه",min:10,prompt:"Write about your bedroom.\n1) What colour is it?\n2) What is one thing in your room?"},
+  {id:"wr_a1_5",lv:"A1",sk:"وصف موجَّه",min:10,prompt:"Write about your best friend.\n1) What is their name?\n2) What do you both like doing?"},
+  {id:"wr_a1_6",lv:"A1",sk:"وصف موجَّه",min:10,prompt:"Write about today's weather.\n1) What is the weather like today?\n2) What are you wearing?"},
+  {id:"wr_a1_7",lv:"A1",sk:"وصف موجَّه",min:10,prompt:"Write about your favourite food.\n1) What food is it?\n2) When do you eat it?"},
+  {id:"wr_a1_8",lv:"A1",sk:"وصف موجَّه",min:10,prompt:"Write about a pet you have or want.\n1) What animal is it?\n2) Why do you like it?"},
   // A2 — كما A2 Key Part 6: رسالة قصيرة بثلاث نقاط محتوى مفروضة، ٢٥-٣٥ كلمة
-  {id:"wr_a2_1",lv:"A2",min:25,prompt:"Your friend invited you to their birthday party this weekend. Write a message to your friend.\nSay:\n• thank them for the invitation\n• what you will bring\n• what time you will arrive\nWrite 25–35 words."},
-  {id:"wr_a2_2",lv:"A2",min:25,prompt:"Your English pen friend wants to know about your weekend. Write them an email.\nSay:\n• what you did on Saturday\n• who you were with\n• how you felt\nWrite 25–35 words."},
-  {id:"wr_a2_3",lv:"A2",min:25,prompt:"You cannot go to football practice tomorrow. Write a message to your coach.\nSay:\n• why you cannot come\n• when you can come next\n• say sorry\nWrite 25–35 words."},
-  {id:"wr_a2_4",lv:"A2",min:25,prompt:"A new student is joining your class next week. Write a message to welcome them.\nSay:\n• your name\n• one thing about the school\n• one question for them\nWrite 25–35 words."},
-  {id:"wr_a2_5",lv:"A2",min:25,prompt:"You borrowed a book from a friend and it is late. Write them a message.\nSay:\n• say sorry\n• when you will return it\n• thank them for lending it\nWrite 25–35 words."},
-  {id:"wr_a2_6",lv:"A2",min:25,prompt:"Your friend is sick and could not come to school today. Write them a message.\nSay:\n• ask how they feel\n• what they missed today\n• wish them well\nWrite 25–35 words."},
-  {id:"wr_a2_7",lv:"A2",min:25,prompt:"You want to invite a friend to the cinema this weekend. Write them a message.\nSay:\n• which film\n• what day and time\n• ask them to reply\nWrite 25–35 words."},
-  {id:"wr_a2_8",lv:"A2",min:25,prompt:"You lost your bag at school yesterday. Write a notice for the noticeboard.\nSay:\n• what you lost\n• where you think you lost it\n• how to contact you\nWrite 25–35 words."},
+  {id:"wr_a2_1",lv:"A2",sk:"رسالة قصيرة",min:25,prompt:"Your friend invited you to their birthday party this weekend. Write a message to your friend.\nSay:\n• thank them for the invitation\n• what you will bring\n• what time you will arrive\nWrite 25–35 words."},
+  {id:"wr_a2_2",lv:"A2",sk:"رسالة قصيرة",min:25,prompt:"Your English pen friend wants to know about your weekend. Write them an email.\nSay:\n• what you did on Saturday\n• who you were with\n• how you felt\nWrite 25–35 words."},
+  {id:"wr_a2_3",lv:"A2",sk:"رسالة قصيرة",min:25,prompt:"You cannot go to football practice tomorrow. Write a message to your coach.\nSay:\n• why you cannot come\n• when you can come next\n• say sorry\nWrite 25–35 words."},
+  {id:"wr_a2_4",lv:"A2",sk:"رسالة قصيرة",min:25,prompt:"A new student is joining your class next week. Write a message to welcome them.\nSay:\n• your name\n• one thing about the school\n• one question for them\nWrite 25–35 words."},
+  {id:"wr_a2_5",lv:"A2",sk:"رسالة قصيرة",min:25,prompt:"You borrowed a book from a friend and it is late. Write them a message.\nSay:\n• say sorry\n• when you will return it\n• thank them for lending it\nWrite 25–35 words."},
+  {id:"wr_a2_6",lv:"A2",sk:"رسالة قصيرة",min:25,prompt:"Your friend is sick and could not come to school today. Write them a message.\nSay:\n• ask how they feel\n• what they missed today\n• wish them well\nWrite 25–35 words."},
+  {id:"wr_a2_7",lv:"A2",sk:"رسالة قصيرة",min:25,prompt:"You want to invite a friend to the cinema this weekend. Write them a message.\nSay:\n• which film\n• what day and time\n• ask them to reply\nWrite 25–35 words."},
+  {id:"wr_a2_8",lv:"A2",sk:"رسالة قصيرة",min:25,prompt:"You lost your bag at school yesterday. Write a notice for the noticeboard.\nSay:\n• what you lost\n• where you think you lost it\n• how to contact you\nWrite 25–35 words."},
   // B1 — كما B1 Preliminary Part 2: قصّة قصيرة أو رسالة، بلا نقاط محتوى مفروضة، ٨٠-١٠٠ كلمة
-  {id:"wr_b1_1",lv:"B1",min:70,prompt:"Write a short story that begins with this sentence:\n“It was raining when Sam left the house.”\nWrite about 80–100 words."},
-  {id:"wr_b1_2",lv:"B1",min:70,prompt:"Write an email to a friend describing a trip you took recently.\nInclude: where you went, what you did, and whether you would go again.\nWrite about 80–100 words."},
-  {id:"wr_b1_3",lv:"B1",min:70,prompt:"Write a short story that ends with this sentence:\n“...and that is how I learned my lesson.”\nWrite about 80–100 words."},
-  {id:"wr_b1_4",lv:"B1",min:70,prompt:"Write an email to a friend about a part-time job or hobby you have.\nInclude: what you do, why you like it, and one challenge.\nWrite about 80–100 words."},
-  {id:"wr_b1_5",lv:"B1",min:70,prompt:"Write a short story that begins with this sentence:\n“The phone rang at midnight.”\nWrite about 80–100 words."},
-  {id:"wr_b1_6",lv:"B1",min:70,prompt:"Write an email to a friend recommending a place to visit in your city.\nInclude: what it is, why you like it, and what to do there.\nWrite about 80–100 words."},
+  {id:"wr_b1_1",lv:"B1",sk:"قصّة قصيرة",min:70,prompt:"Write a short story that begins with this sentence:\n“It was raining when Sam left the house.”\nWrite about 80–100 words."},
+  {id:"wr_b1_2",lv:"B1",sk:"رسالة سردية",min:70,prompt:"Write an email to a friend describing a trip you took recently.\nInclude: where you went, what you did, and whether you would go again.\nWrite about 80–100 words."},
+  {id:"wr_b1_3",lv:"B1",sk:"قصّة قصيرة",min:70,prompt:"Write a short story that ends with this sentence:\n“...and that is how I learned my lesson.”\nWrite about 80–100 words."},
+  {id:"wr_b1_4",lv:"B1",sk:"رسالة سردية",min:70,prompt:"Write an email to a friend about a part-time job or hobby you have.\nInclude: what you do, why you like it, and one challenge.\nWrite about 80–100 words."},
+  {id:"wr_b1_5",lv:"B1",sk:"قصّة قصيرة",min:70,prompt:"Write a short story that begins with this sentence:\n“The phone rang at midnight.”\nWrite about 80–100 words."},
+  {id:"wr_b1_6",lv:"B1",sk:"دمج جمل",min:70,prompt:"Write an email to a friend recommending a place to visit in your city.\nInclude: what it is, why you like it, and what to do there.\nWrite about 80–100 words."},
   // دمج الجمل (sentence combining) — البحث يؤكّد أنه يرفع التعقيد النحوي والدقّة
   // معاً في كتابة متعلّمي اللغة الثانية، ويستهدف بالضبط ما كشفه تحليل إنتاج محمد
   // الحرّ (١٧ أغسطس): جملته تنهار عند أقصى تعقيدٍ يحاوله لا قبله. موصولٌ بنفس مسار
   // الكتابة الحرّ بالكامل (type:"combine" وحدها الفارق) — نفس textarea، نفس مراجعة
   // LanguageTool، نفس FSRS؛ فقط معيار النجاح يختلف: نظافة نحوية لا عدد كلمات فقط.
-  {id:"wr_b1_sc1",lv:"B1",min:8,type:"combine",prompt:"Combine these two sentences into ONE sentence using a joining word (when, because, so, although...):\n1) It started raining.\n2) We went home early."},
-  {id:"wr_b1_sc2",lv:"B1",min:10,type:"combine",prompt:"Combine these two sentences into ONE sentence using a joining word (so that, because...):\n1) She works every weekend.\n2) She can save money for university."},
-  {id:"wr_b1_sc3",lv:"B1",min:10,type:"combine",prompt:"Combine these two sentences into ONE sentence using a joining word (although, but...):\n1) The museum is very old.\n2) Thousands of people visit it every year."},
-  {id:"wr_b1_sc4",lv:"B1",min:8,type:"combine",prompt:"Combine these two sentences into ONE sentence using a joining word (after, before...):\n1) He finished his homework.\n2) He watched a movie."},
-  {id:"wr_b1_sc5",lv:"B1",min:10,type:"combine",prompt:"Combine these two sentences into ONE sentence using 'which' (a relative clause):\n1) The bridge was built in 1990.\n2) It connects the two islands."},
+  {id:"wr_b1_sc1",lv:"B1",sk:"دمج جمل",min:8,type:"combine",prompt:"Combine these two sentences into ONE sentence using a joining word (when, because, so, although...):\n1) It started raining.\n2) We went home early."},
+  {id:"wr_b1_sc2",lv:"B1",sk:"دمج جمل",min:10,type:"combine",prompt:"Combine these two sentences into ONE sentence using a joining word (so that, because...):\n1) She works every weekend.\n2) She can save money for university."},
+  {id:"wr_b1_sc3",lv:"B1",sk:"دمج جمل",min:10,type:"combine",prompt:"Combine these two sentences into ONE sentence using a joining word (although, but...):\n1) The museum is very old.\n2) Thousands of people visit it every year."},
+  {id:"wr_b1_sc4",lv:"B1",sk:"دمج جمل",min:8,type:"combine",prompt:"Combine these two sentences into ONE sentence using a joining word (after, before...):\n1) He finished his homework.\n2) He watched a movie."},
+  {id:"wr_b1_sc5",lv:"B1",sk:"دمج جمل",min:10,type:"combine",prompt:"Combine these two sentences into ONE sentence using 'which' (a relative clause):\n1) The bridge was built in 1990.\n2) It connects the two islands."},
 ];
 // مثالٌ محلول واحد لكل مستوى — نفس مبدأ "السلّم المتلاشي" (worked examples) المعتمد
 // أصلاً في وضع التقوية (fadeStage===1)، لا ميزة جديدة. وعمداً لموضوعٍ آخر غير سؤالها
@@ -6652,7 +6683,7 @@ async function writeSubmit(){
   const ttr=writeTtr(txt),selfSim=writeSelfSim(txt),lfp=writeLfp(txt);
   // q_text وresponse كاملان — بلا هذين لا تشخيص، ونفس عُرف تسجيل الفرق/الشكل في بقية التطبيق
   logAnswer("write",it.lv,ok,txt,it.id,writeShownAt?Date.now()-writeShownAt:null,
-    {q_text:((it.ai?"[مولَّد] ":"")+it.prompt+" · الهدف "+it.min+" كلمة · كتبت "+writeCount+" · review:"+reviewState+" · lt:"+writeLtJudged+"/"+writeLtDropped+" · مثال:"+writeModelViews+" · نسخ:"+(writeCopy?1:0)+" · تنوّع:"+ttr+" · شبه سابق:"+selfSim+" · فوق K1:"+lfp.pct+"%").slice(0,1200)});
+    {_sk:skOf(it),q_text:((it.ai?"[مولَّد] ":"")+it.prompt+" · الهدف "+it.min+" كلمة · كتبت "+writeCount+" · review:"+reviewState+" · lt:"+writeLtJudged+"/"+writeLtDropped+" · مثال:"+writeModelViews+" · نسخ:"+(writeCopy?1:0)+" · تنوّع:"+ttr+" · شبه سابق:"+selfSim+" · فوق K1:"+lfp.pct+"%").slice(0,1200)});
   // يُحفظ بعد التسجيل لا قبله — والنسخ المحض لا يدخل السجلّ فلا يصير أساساً يُقاس عليه
   if(!writeCopy)writePrevAdd(txt);
   // نفس مسار بطاقات تصحيح المحادثة بالضبط: بطاقةٌ مجدولة تعود عند حافّة النسيان،
@@ -6755,79 +6786,79 @@ function renderWriteResult(){
 // شاشة نتيجة، لا آلية جديدة.
 const GRAM_BANK=[
   // A1 — تصريف الغائب، تطابق be، جمع الأعداد، ترتيب الصفة، الملكية
-  {id:"gr_a1_1",lv:"A1",c:[
+  {id:"gr_a1_1",lv:"A1",sk:"تصريف الغائب",c:[
     {t:"My sister go to school every day.",ok:false,why:"نسيتِ -s: الفعل مع he/she/it يأخذ -s"},
     {t:"My sister goes to school every day.",ok:true,why:"صحيحة — الفعل تصرّف مع الغائب المفرد"},
     {t:"My sister is go to school every day.",ok:false,why:"لا نجمع be مع فعلٍ أساسي هكذا"},
     {t:"My sisters goes to school every day.",ok:false,why:"الفاعل جمع (sisters)، والفعل هنا للمفرد"}]},
-  {id:"gr_a1_2",lv:"A1",c:[
+  {id:"gr_a1_2",lv:"A1",sk:"الفعل be",c:[
     {t:"He are happy today.",ok:false,why:"he تأخذ is لا are"},
     {t:"He is happy today.",ok:true,why:"صحيحة — he مع is"},
     {t:"He am happy today.",ok:false,why:"am تُستعمل مع I فقط"},
     {t:"He happy today.",ok:false,why:"الجملة تحتاج فعل be (is) قبل الصفة"}]},
-  {id:"gr_a1_3",lv:"A1",c:[
+  {id:"gr_a1_3",lv:"A1",sk:"جمع الأسماء",c:[
     {t:"I have three book in my bag.",ok:false,why:"بعد عددٍ أكبر من واحد يأخذ الاسم -s"},
     {t:"I have three books in my bag.",ok:true,why:"صحيحة — الجمع بعد العدد ثلاثة"},
     {t:"I have three bookes in my bag.",ok:false,why:"book جمعها books لا bookes"},
     {t:"I have three the books in my bag.",ok:false,why:"لا تأتي the قبل عددٍ هكذا"}]},
-  {id:"gr_a1_4",lv:"A1",c:[
+  {id:"gr_a1_4",lv:"A1",sk:"ترتيب الصفة",c:[
     {t:"I have a car red.",ok:false,why:"الصفة تأتي قبل الاسم في الإنجليزية لا بعده"},
     {t:"I have a red car.",ok:true,why:"صحيحة — الصفة قبل الاسم"},
     {t:"I have red a car.",ok:false,why:"ترتيب الصفة وأداة التنكير مقلوب"},
     {t:"I have a car is red.",ok:false,why:"لا حاجة لفعل be هنا مع صفةٍ مباشرة قبل الاسم"}]},
-  {id:"gr_a1_5",lv:"A1",c:[
+  {id:"gr_a1_5",lv:"A1",sk:"الملكية",c:[
     {t:"This is my brother book.",ok:false,why:"الملكية تحتاج 's بعد صاحب الشيء"},
     {t:"This is my brother's book.",ok:true,why:"صحيحة — 's تدلّ على الملكية"},
     {t:"This is my brothers book.",ok:false,why:"هذه جمعٌ (brothers) لا ملكية (brother's)"},
     {t:"This is book of my brother.",ok:false,why:"تُحذف أداة التعريف the، والأصح 's لا of مع الأشخاص"}]},
   // A2 — الماضي الشاذّ، المقارنة، حروف جرّ الوقت، much/many، صيغة السؤال
-  {id:"gr_a2_1",lv:"A2",c:[
+  {id:"gr_a2_1",lv:"A2",sk:"الماضي الشاذّ",c:[
     {t:"Yesterday I go to the beach with my friends.",ok:false,why:"الفعل بلا تصريفٍ للماضي"},
     {t:"Yesterday I went to the beach with my friends.",ok:true,why:"صحيحة — went ماضي go الشاذّ"},
     {t:"Yesterday I goed to the beach with my friends.",ok:false,why:"go فعلٌ شاذّ، ماضيه went لا goed"},
     {t:"Yesterday I was go to the beach with my friends.",ok:false,why:"لا نجمع was مع الفعل الأساسي هكذا"}]},
-  {id:"gr_a2_2",lv:"A2",c:[
+  {id:"gr_a2_2",lv:"A2",sk:"المقارنة",c:[
     {t:"This bag is more big than that one.",ok:false,why:"big كلمة قصيرة، مقارنتها bigger لا more big"},
     {t:"This bag is bigger than that one.",ok:true,why:"صحيحة — bigger للمقارنة بين اثنين"},
     {t:"This bag is biggest than that one.",ok:false,why:"biggest للتفضيل بين أكثر من اثنين، لا للمقارنة بين اثنين"},
     {t:"This bag is more bigger than that one.",ok:false,why:"لا نجمع more مع -er معاً"}]},
-  {id:"gr_a2_3",lv:"A2",c:[
+  {id:"gr_a2_3",lv:"A2",sk:"حروف الزمن",c:[
     {t:"The party is in Friday at 5 pm.",ok:false,why:"الأيام تأخذ on لا in"},
     {t:"The party is on Friday at 5 pm.",ok:true,why:"صحيحة — on مع الأيام، at مع الساعة"},
     {t:"The party is at Friday at 5 pm.",ok:false,why:"at للوقت المحدّد لا لليوم"},
     {t:"The party is on Friday in 5 pm.",ok:false,why:"الساعة المحدّدة تأخذ at لا in"}]},
-  {id:"gr_a2_4",lv:"A2",c:[
+  {id:"gr_a2_4",lv:"A2",sk:"much / many",c:[
     {t:"How much people came to the party?",ok:false,why:"people قابلة للعدّ، فتأخذ many لا much"},
     {t:"How many people came to the party?",ok:true,why:"صحيحة — many مع الأسماء القابلة للعدّ"},
     {t:"How many money did you spend?",ok:false,why:"money غير قابلة للعدّ، فتأخذ much لا many"},
     {t:"How much peoples came to the party?",ok:false,why:"people بالأصل جمعٌ، فلا تُجمع peoples"}]},
-  {id:"gr_a2_5",lv:"A2",c:[
+  {id:"gr_a2_5",lv:"A2",sk:"صيغة السؤال",c:[
     {t:"You like coffee or tea?",ok:false,why:"السؤال يحتاج Do في بدايته"},
     {t:"Do you like coffee or tea?",ok:true,why:"صحيحة — Do في بداية السؤال"},
     {t:"Do you likes coffee or tea?",ok:false,why:"بعد Do يعود الفعل لصورته الأساسية بلا -s"},
     {t:"Like you coffee or tea?",ok:false,why:"الفعل الأساسي لا يتقدّم على الفاعل هكذا"}]},
   // B1 — المضارع التامّ، المبني للمجهول، جملة الشرط الأولى، الموصول، used to
-  {id:"gr_b1_1",lv:"B1",c:[
+  {id:"gr_b1_1",lv:"B1",sk:"المضارع التامّ",c:[
     {t:"I work at this company since three years.",ok:false,why:"لا زمن تامّ هنا، وsince تحتاج نقطة زمن لا مدّة"},
     {t:"I have worked at this company for three years.",ok:true,why:"صحيحة — تامّ + for مع المدّة"},
     {t:"I have worked at this company since three years.",ok:false,why:"الزمن صحيح، لكن since تحتاج نقطة بداية (since 2020) لا مدّة"},
     {t:"I am working at this company for three years.",ok:false,why:"المضارع المستمر لا يوصل معنى الامتداد من الماضي حتى الآن كالتامّ"}]},
-  {id:"gr_b1_2",lv:"B1",c:[
+  {id:"gr_b1_2",lv:"B1",sk:"المبني للمجهول",c:[
     {t:"The email written by my manager yesterday.",ok:false,why:"ينقص فعل be (was) لبناء المبني للمجهول"},
     {t:"The email was written by my manager yesterday.",ok:true,why:"صحيحة — was + التصريف الثالث"},
     {t:"The email was wrote by my manager yesterday.",ok:false,why:"بعد was نستعمل written لا الماضي البسيط wrote"},
     {t:"The email was writing by my manager yesterday.",ok:false,why:"بعد was في المبني للمجهول نستعمل written لا writing"}]},
-  {id:"gr_b1_3",lv:"B1",c:[
+  {id:"gr_b1_3",lv:"B1",sk:"الشرط الأول",c:[
     {t:"If it will rain, I will stay home.",ok:false,why:"جملة الشرط (if) تأخذ مضارعاً بسيطاً لا will"},
     {t:"If it rains, I will stay home.",ok:true,why:"صحيحة — if+مضارع، وwill في الجواب"},
     {t:"If it rains, I stay home.",ok:false,why:"جواب الشرط هنا توقّعٌ مستقبلي فيحتاج will"},
     {t:"If it will rains, I will stay home.",ok:false,why:"will وs معاً على الفعل نفسه (will rains) لا يصحّان"}]},
-  {id:"gr_b1_4",lv:"B1",c:[
+  {id:"gr_b1_4",lv:"B1",sk:"الجمل الموصولة",c:[
     {t:"The man who he called me is my teacher.",ok:false,why:"بعد who لا نكرّر الفاعل بضمير (he) ثانية"},
     {t:"The man who called me is my teacher.",ok:true,why:"صحيحة — who تربط الوصف بالاسم بلا تكرار"},
     {t:"The man which called me is my teacher.",ok:false,why:"which للأشياء، وwho للأشخاص"},
     {t:"The man called me is my teacher.",ok:false,why:"الجملة تحتاج who لتربط الوصف بالاسم"}]},
-  {id:"gr_b1_5",lv:"B1",c:[
+  {id:"gr_b1_5",lv:"B1",sk:"used to",c:[
     {t:"I use to play football every weekend when I was young.",ok:false,why:"used to تُكتب بصيغة الماضي use**d** to"},
     {t:"I used to play football every weekend when I was young.",ok:true,why:"صحيحة — used to لعادةٍ ماضية"},
     {t:"I was used to play football every weekend when I was young.",ok:false,why:"used to (عادة ماضية) لا تحتاج was قبلها"},
@@ -6837,27 +6868,27 @@ const GRAM_BANK=[
   // الفعلي (١٧ أغسطس): خلط نوعي الشرط («If I didn't help, I will» بدل would)، ومبنيٌّ
   // للمجهول مشوَّه («…protects by strong shielding» بدل is protected by). لا بنكاً
   // عاماً لـB2 — بل توسيعٌ يُضاف إلى بنك B1 عند من مستواه B1 تحديداً (gramBankFor)
-  {id:"gr_b1p_1",lv:"B1+",c:[
+  {id:"gr_b1p_1",lv:"B1+",sk:"الشرط الأول",c:[
     {t:"If I didn't help my family, I will feel bad.",ok:false,why:"خلطٌ بين نوعي الشرط: ماضٍ في الجملة الشرطية مع will في الجواب لا يصحّان معاً"},
     {t:"If I don't help my family, I will feel bad.",ok:true,why:"صحيحة — شرطٌ أوّل: مضارعٌ بسيط + will، لموقفٍ حقيقيّ محتمل"},
     {t:"If I don't helped my family, I would feel bad.",ok:false,why:"بعد if في الشرط الأوّل يأتي مضارعٌ بسيط (help) لا ماضٍ (helped)"},
     {t:"If I wouldn't help my family, I will feel bad.",ok:false,why:"لا تدخل would في جملة if نفسها"}]},
-  {id:"gr_b1p_2",lv:"B1+",c:[
+  {id:"gr_b1p_2",lv:"B1+",sk:"الشرط الثاني",c:[
     {t:"If I had more time, I will travel more.",ok:false,why:"شرطٌ ثانٍ (had) يحتاج would في الجواب لا will"},
     {t:"If I had more time, I would travel more.",ok:true,why:"صحيحة — شرطٌ ثانٍ: ماضٍ + would، لموقفٍ افتراضي غير واقعي الآن"},
     {t:"If I have more time, I would travel more.",ok:false,why:"جملة if هنا مضارعة (have) لكن الجواب افتراضي (would) — لا يتطابقان، فإمّا have+will أو had+would"},
     {t:"If I would have more time, I would travel more.",ok:false,why:"لا تدخل would في جملة if نفسها"}]},
-  {id:"gr_b1p_3",lv:"B1+",c:[
+  {id:"gr_b1p_3",lv:"B1+",sk:"المبني للمجهول",c:[
     {t:"The crew should protect by strong shielding.",ok:false,why:"بعد should في المبني للمجهول يلزم be: should be protected"},
     {t:"The crew should be protected by strong shielding.",ok:true,why:"صحيحة — مبنيٌّ للمجهول بعد فعل ناقص: should be + التصريف الثالث"},
     {t:"The crew should protected by strong shielding.",ok:false,why:"ينقص be بين should والتصريف الثالث protected"},
     {t:"The crew should being protected by strong shielding.",ok:false,why:"بعد should نستعمل be لا being"}]},
-  {id:"gr_b1p_4",lv:"B1+",c:[
+  {id:"gr_b1p_4",lv:"B1+",sk:"المبني للمجهول",c:[
     {t:"The reactor needs design carefully.",ok:false,why:"ينقص to be قبل التصريف الثالث design(ed)"},
     {t:"The reactor needs to be designed carefully.",ok:true,why:"صحيحة — مبنيٌّ للمجهول بالمصدر: to be + التصريف الثالث"},
     {t:"The reactor need to be design carefully.",ok:false,why:"الفاعل مفرد (reactor) فالفعل need يأخذ -s، والتصريف الثالث designed لا design"},
     {t:"The reactor needs to designed carefully.",ok:false,why:"ينقص be بين to والتصريف الثالث designed"}]},
-  {id:"gr_b1p_5",lv:"B1+",c:[
+  {id:"gr_b1p_5",lv:"B1+",sk:"المبني للمجهول",c:[
     {t:"A prize was given to he.",ok:false,why:"بعد حرف الجرّ to يأتي ضمير المفعول him لا he"},
     {t:"He was given a prize.",ok:true,why:"صحيحة — مبنيٌّ للمجهول بمفعولين: الشخص فاعل المبني للمجهول مباشرة"},
     {t:"He was gave a prize.",ok:false,why:"بعد was في المبني للمجهول نستعمل التصريف الثالث given لا الماضي gave"},
@@ -6929,7 +6960,7 @@ function gramChoose(i){
   const elapsed=Date.now()-gramShownAt;
   gramSrsUpdate(it.id,ok);
   logAnswer("gram","sentence",ok,it.c[i].t,it.id,elapsed,
-    {q_text:it.c.map(function(x,k){return (k+1)+") "+x.t+(x.ok?" ✓":"")}).join(" | ")});
+    {_sk:skOf(it),q_text:it.c.map(function(x,k){return (k+1)+") "+x.t+(x.ok?" ✓":"")}).join(" | ")});
   render();
 }
 function gramNext(){
@@ -7191,7 +7222,7 @@ function stepChoose(i){
   if(ok)stepScore++;
   stepSrsUpdate(it.id,ok);
   logAnswer("step",it.type,ok,it.c[i].t,it.id,Date.now()-stepShownAt,
-    {q_text:((it.tag?"["+it.tag+"] ":"")+(it.q?it.q+" · ":"")
+    {_sk:skOf(it),q_text:((it.tag?"["+it.tag+"] ":"")+(it.q?it.q+" · ":"")
       +it.c.map(function(x,k){return (k+1)+") "+x.t+(x.ok?" ✓":"")}).join(" | ")).slice(0,1200)});
   render();
 }
@@ -7207,7 +7238,7 @@ function stepSeqSubmit(){
   stepSrsUpdate(it.id,ok);
   logAnswer("step","order",ok,stepSeqPicked.map(function(v){return v+1}).join("-"),it.id,
     Date.now()-stepShownAt,
-    {q_text:("[ترتيب] الصواب "+it.s.map(function(_,k){return k+1}).join("-")+" · "
+    {_sk:skOf(it),q_text:("[ترتيب] الصواب "+it.s.map(function(_,k){return k+1}).join("-")+" · "
       +it.s.map(function(t,k){return (k+1)+") "+t}).join(" | ")).slice(0,1200)});
   render();
 }
@@ -7296,38 +7327,38 @@ function renderStepResult(){
 // والخيارات)، لا عن لحظة تعليم مفردة — والمشروع أصلاً يترجم المفردات في خطة الإنجليزية.
 const MINPAIR_BANK=[
   // A1 — أزواج حركات أساسية شائعة عند مبتدئ صغير
-  {id:"mp_a1_1",lv:"A1",w:["ship","sheep"],ph:["ʃɪp","ʃiːp"],m:["سفينة","خروف"],s:["We travelled by ship.","The sheep is in the field."]},
-  {id:"mp_a1_2",lv:"A1",w:["bit","beat"],ph:["bɪt","biːt"],m:["قطعة صغيرة","ينبض / يخفق"],s:["I ate a bit of cake.","My heart began to beat fast."]},
-  {id:"mp_a1_3",lv:"A1",w:["cat","cut"],ph:["kæt","kʌt"],m:["قطة","يقطع"],s:["The cat is sleeping.","I cut the paper with scissors."]},
-  {id:"mp_a1_4",lv:"A1",w:["bed","bad"],ph:["bed","bæd"],m:["سرير","سيّئ"],s:["I sleep in my bed.","That was a bad idea."]},
-  {id:"mp_a1_5",lv:"A1",w:["pin","pen"],ph:["pɪn","pen"],m:["دبّوس","قلم"],s:["She used a pin to fix her scarf.","I write with a blue pen."]},
-  {id:"mp_a1_6",lv:"A1",w:["full","fool"],ph:["fʊl","fuːl"],m:["ممتلئ","أحمق"],s:["The bottle is full of water.","Don't be a fool, listen carefully."]},
-  {id:"mp_a1_7",lv:"A1",w:["hat","hot"],ph:["hæt","hɒt"],m:["قبّعة","حارّ"],s:["I wear a hat in the sun.","The soup is very hot."]},
-  {id:"mp_a1_8",lv:"A1",w:["cap","cup"],ph:["kæp","kʌp"],m:["طاقية / غطاء","كوب"],s:["He wore a red cap to school.","I drink milk from a cup."]},
-  {id:"mp_a1_9",lv:"A1",w:["not","note"],ph:["nɒt","noʊt"],m:["لا / ليس","ملاحظة / رسالة قصيرة"],s:["I do not like cold weather.","She wrote a short note to her friend."]},
-  {id:"mp_a1_10",lv:"A1",w:["boat","boot"],ph:["boʊt","buːt"],m:["قارب","حذاء طويل"],s:["We sailed in a small boat.","She wore a black boot in winter."]},
+  {id:"mp_a1_1",lv:"A1",sk:"حركة طويلة/قصيرة",w:["ship","sheep"],ph:["ʃɪp","ʃiːp"],m:["سفينة","خروف"],s:["We travelled by ship.","The sheep is in the field."]},
+  {id:"mp_a1_2",lv:"A1",sk:"حركة طويلة/قصيرة",w:["bit","beat"],ph:["bɪt","biːt"],m:["قطعة صغيرة","ينبض / يخفق"],s:["I ate a bit of cake.","My heart began to beat fast."]},
+  {id:"mp_a1_3",lv:"A1",sk:"جودة الحركة",w:["cat","cut"],ph:["kæt","kʌt"],m:["قطة","يقطع"],s:["The cat is sleeping.","I cut the paper with scissors."]},
+  {id:"mp_a1_4",lv:"A1",sk:"جودة الحركة",w:["bed","bad"],ph:["bed","bæd"],m:["سرير","سيّئ"],s:["I sleep in my bed.","That was a bad idea."]},
+  {id:"mp_a1_5",lv:"A1",sk:"جودة الحركة",w:["pin","pen"],ph:["pɪn","pen"],m:["دبّوس","قلم"],s:["She used a pin to fix her scarf.","I write with a blue pen."]},
+  {id:"mp_a1_6",lv:"A1",sk:"حركة طويلة/قصيرة",w:["full","fool"],ph:["fʊl","fuːl"],m:["ممتلئ","أحمق"],s:["The bottle is full of water.","Don't be a fool, listen carefully."]},
+  {id:"mp_a1_7",lv:"A1",sk:"جودة الحركة",w:["hat","hot"],ph:["hæt","hɒt"],m:["قبّعة","حارّ"],s:["I wear a hat in the sun.","The soup is very hot."]},
+  {id:"mp_a1_8",lv:"A1",sk:"جودة الحركة",w:["cap","cup"],ph:["kæp","kʌp"],m:["طاقية / غطاء","كوب"],s:["He wore a red cap to school.","I drink milk from a cup."]},
+  {id:"mp_a1_9",lv:"A1",sk:"جودة الحركة",w:["not","note"],ph:["nɒt","noʊt"],m:["لا / ليس","ملاحظة / رسالة قصيرة"],s:["I do not like cold weather.","She wrote a short note to her friend."]},
+  {id:"mp_a1_10",lv:"A1",sk:"جودة الحركة",w:["boat","boot"],ph:["boʊt","buːt"],m:["قارب","حذاء طويل"],s:["We sailed in a small boat.","She wore a black boot in winter."]},
   // A2 — صوت النهاية (اختلاف الصوت لا الحرف) وحركات أطول قليلاً
-  {id:"mp_a2_1",lv:"A2",w:["live","leave"],ph:["lɪv","liːv"],m:["يعيش","يغادر"],s:["I live in a small house.","We leave for school at seven."]},
-  {id:"mp_a2_2",lv:"A2",w:["work","walk"],ph:["wɜːrk","wɔːk"],m:["يعمل","يمشي"],s:["My father goes to work every day.","We walk to the park after lunch."]},
-  {id:"mp_a2_3",lv:"A2",w:["price","prize"],ph:["praɪs","praɪz"],m:["سعر","جائزة"],s:["The price of the shirt is twenty riyals.","She won the first prize in the race."]},
-  {id:"mp_a2_4",lv:"A2",w:["thirty","thirsty"],ph:["ˈθɜːrti","ˈθɜːrsti"],m:["ثلاثون","عطشان"],s:["There are thirty students in our class.","I feel thirsty after running."]},
-  {id:"mp_a2_5",lv:"A2",w:["sit","seat"],ph:["sɪt","siːt"],m:["يجلس","مقعد"],s:["Please sit down.","This is my seat on the bus."]},
-  {id:"mp_a2_6",lv:"A2",w:["fill","feel"],ph:["fɪl","fiːl"],m:["يملأ","يشعر"],s:["Please fill the glass with water.","I feel very happy today."]},
-  {id:"mp_a2_7",lv:"A2",w:["pull","pool"],ph:["pʊl","puːl"],m:["يسحب","بركة سباحة"],s:["Pull the door to open it.","We swim in the pool every summer."]},
-  {id:"mp_a2_8",lv:"A2",w:["sleep","slip"],ph:["sliːp","slɪp"],m:["ينام","ينزلق"],s:["I need more sleep at night.","Be careful not to slip on the ice."]},
-  {id:"mp_a2_9",lv:"A2",w:["cost","coast"],ph:["kɒst","koʊst"],m:["يكلّف","ساحل"],s:["The ticket did not cost much.","We drove along the coast yesterday."]},
-  {id:"mp_a2_10",lv:"A2",w:["wet","wait"],ph:["wet","weɪt"],m:["مبلّل","ينتظر"],s:["My shoes are wet from the rain.","Please wait for me at the gate."]},
+  {id:"mp_a2_1",lv:"A2",sk:"حركة طويلة/قصيرة",w:["live","leave"],ph:["lɪv","liːv"],m:["يعيش","يغادر"],s:["I live in a small house.","We leave for school at seven."]},
+  {id:"mp_a2_2",lv:"A2",sk:"جودة الحركة",w:["work","walk"],ph:["wɜːrk","wɔːk"],m:["يعمل","يمشي"],s:["My father goes to work every day.","We walk to the park after lunch."]},
+  {id:"mp_a2_3",lv:"A2",sk:"جهر النهاية",w:["price","prize"],ph:["praɪs","praɪz"],m:["سعر","جائزة"],s:["The price of the shirt is twenty riyals.","She won the first prize in the race."]},
+  {id:"mp_a2_4",lv:"A2",sk:"صامتٌ أو مقطعٌ زائد",w:["thirty","thirsty"],ph:["ˈθɜːrti","ˈθɜːrsti"],m:["ثلاثون","عطشان"],s:["There are thirty students in our class.","I feel thirsty after running."]},
+  {id:"mp_a2_5",lv:"A2",sk:"حركة طويلة/قصيرة",w:["sit","seat"],ph:["sɪt","siːt"],m:["يجلس","مقعد"],s:["Please sit down.","This is my seat on the bus."]},
+  {id:"mp_a2_6",lv:"A2",sk:"حركة طويلة/قصيرة",w:["fill","feel"],ph:["fɪl","fiːl"],m:["يملأ","يشعر"],s:["Please fill the glass with water.","I feel very happy today."]},
+  {id:"mp_a2_7",lv:"A2",sk:"حركة طويلة/قصيرة",w:["pull","pool"],ph:["pʊl","puːl"],m:["يسحب","بركة سباحة"],s:["Pull the door to open it.","We swim in the pool every summer."]},
+  {id:"mp_a2_8",lv:"A2",sk:"حركة طويلة/قصيرة",w:["sleep","slip"],ph:["sliːp","slɪp"],m:["ينام","ينزلق"],s:["I need more sleep at night.","Be careful not to slip on the ice."]},
+  {id:"mp_a2_9",lv:"A2",sk:"جودة الحركة",w:["cost","coast"],ph:["kɒst","koʊst"],m:["يكلّف","ساحل"],s:["The ticket did not cost much.","We drove along the coast yesterday."]},
+  {id:"mp_a2_10",lv:"A2",sk:"جودة الحركة",w:["wet","wait"],ph:["wet","weɪt"],m:["مبلّل","ينتظر"],s:["My shoes are wet from the rain.","Please wait for me at the gate."]},
   // B1 — نمط اسم/فعل ودقّة أعلى، كالمثال الذي طلبه صاحب المشروع (chose/choose)
-  {id:"mp_b1_1",lv:"B1",w:["chose","choose"],ph:["tʃoʊz","tʃuːz"],m:["اختار (ماضٍ)","يختار"],s:["Yesterday I chose the blue shirt.","You can choose any book you like."]},
-  {id:"mp_b1_2",lv:"B1",w:["lose","loose"],ph:["luːz","luːs"],m:["يخسر / يفقد","فضفاض"],s:["Don't lose your keys again.","These trousers are too loose for me."]},
-  {id:"mp_b1_3",lv:"B1",w:["advice","advise"],ph:["ədˈvaɪs","ədˈvaɪz"],m:["نصيحة (اسم)","ينصح (فعل)"],s:["Can you give me some advice?","I advise you to study every day."]},
-  {id:"mp_b1_4",lv:"B1",w:["desert","dessert"],ph:["ˈdezərt","dɪˈzɜːrt"],m:["صحراء","حلوى / تحلية"],s:["The camel walked across the desert.","We had ice cream for dessert."]},
-  {id:"mp_b1_5",lv:"B1",w:["accept","except"],ph:["əkˈsept","ɪkˈsept"],m:["يقبل","ما عدا"],s:["I accept your apology.","Everyone came except Sara."]},
-  {id:"mp_b1_6",lv:"B1",w:["affect","effect"],ph:["əˈfekt","ɪˈfekt"],m:["يؤثّر في (فعل)","تأثير / أثر (اسم)"],s:["Loud noise can affect your focus.","The medicine had a strong effect."]},
-  {id:"mp_b1_7",lv:"B1",w:["quiet","quite"],ph:["ˈkwaɪət","kwaɪt"],m:["هادئ","تماماً / إلى حدٍّ ما"],s:["The library is very quiet.","I am quite tired after school."]},
-  {id:"mp_b1_8",lv:"B1",w:["collar","colour"],ph:["ˈkɒlər","ˈkʌlər"],m:["ياقة","لون"],s:["His shirt collar was too tight.","What is your favourite colour?"]},
-  {id:"mp_b1_9",lv:"B1",w:["cloth","clothes"],ph:["klɒθ","kloʊðz"],m:["قماش","ملابس"],s:["She cleaned the table with a cloth.","I need to buy new clothes."]},
-  {id:"mp_b1_10",lv:"B1",w:["bought","brought"],ph:["bɔːt","brɔːt"],m:["اشترى","أحضر"],s:["I bought a new bag yesterday.","He brought his book to class."]},
+  {id:"mp_b1_1",lv:"B1",sk:"صيغة الفعل",w:["chose","choose"],ph:["tʃoʊz","tʃuːz"],m:["اختار (ماضٍ)","يختار"],s:["Yesterday I chose the blue shirt.","You can choose any book you like."]},
+  {id:"mp_b1_2",lv:"B1",sk:"جهر النهاية",w:["lose","loose"],ph:["luːz","luːs"],m:["يخسر / يفقد","فضفاض"],s:["Don't lose your keys again.","These trousers are too loose for me."]},
+  {id:"mp_b1_3",lv:"B1",sk:"اسم/فعل",w:["advice","advise"],ph:["ədˈvaɪs","ədˈvaɪz"],m:["نصيحة (اسم)","ينصح (فعل)"],s:["Can you give me some advice?","I advise you to study every day."]},
+  {id:"mp_b1_4",lv:"B1",sk:"نبر الكلمة",w:["desert","dessert"],ph:["ˈdezərt","dɪˈzɜːrt"],m:["صحراء","حلوى / تحلية"],s:["The camel walked across the desert.","We had ice cream for dessert."]},
+  {id:"mp_b1_5",lv:"B1",sk:"جودة الحركة",w:["accept","except"],ph:["əkˈsept","ɪkˈsept"],m:["يقبل","ما عدا"],s:["I accept your apology.","Everyone came except Sara."]},
+  {id:"mp_b1_6",lv:"B1",sk:"جودة الحركة",w:["affect","effect"],ph:["əˈfekt","ɪˈfekt"],m:["يؤثّر في (فعل)","تأثير / أثر (اسم)"],s:["Loud noise can affect your focus.","The medicine had a strong effect."]},
+  {id:"mp_b1_7",lv:"B1",sk:"صامتٌ أو مقطعٌ زائد",w:["quiet","quite"],ph:["ˈkwaɪət","kwaɪt"],m:["هادئ","تماماً / إلى حدٍّ ما"],s:["The library is very quiet.","I am quite tired after school."]},
+  {id:"mp_b1_8",lv:"B1",sk:"جودة الحركة",w:["collar","colour"],ph:["ˈkɒlər","ˈkʌlər"],m:["ياقة","لون"],s:["His shirt collar was too tight.","What is your favourite colour?"]},
+  {id:"mp_b1_9",lv:"B1",sk:"جهر النهاية",w:["cloth","clothes"],ph:["klɒθ","kloʊðz"],m:["قماش","ملابس"],s:["She cleaned the table with a cloth.","I need to buy new clothes."]},
+  {id:"mp_b1_10",lv:"B1",sk:"صامتٌ أو مقطعٌ زائد",w:["bought","brought"],ph:["bɔːt","brɔːt"],m:["اشترى","أحضر"],s:["I bought a new bag yesterday.","He brought his book to class."]},
 ];
 function minpairBankFor(level){
   const L=String(level||"A2");
@@ -7433,7 +7464,7 @@ function minpairChoose(i){
   const cands=minpairSentencesFor(it,minpairTarget);
   minpairShowSent=cands[Math.floor(Math.random()*cands.length)];
   logAnswer("minpair","pair",ok,it.w[i],it.id,elapsed,
-    {q_text:`${it.w[0]} / ${it.w[1]} · الهدف: ${it.w[minpairTarget]} · استماعات:${minpairPlays} · جملة:${minpairShowSent}`});
+    {_sk:skOf(it),q_text:`${it.w[0]} / ${it.w[1]} · الهدف: ${it.w[minpairTarget]} · استماعات:${minpairPlays} · جملة:${minpairShowSent}`});
   render();
 }
 function minpairNext(){
@@ -7499,26 +7530,26 @@ function renderMinpairResult(){
 // كامل دفعة واحدة، وهذا من طبيعة "الفيديو" (تتابع زمني) لا اجتهاداً.
 const VIDEO_BANK=[
   // A1 (هيا) — ثلاثة مشاهد، جملة واحدة قصيرة لكلٍّ، حقيقة ملموسة كـLISTEN_BANK A1
-  {id:"vd_a1_1",lv:"A1",t:"My Morning",sc:[["🌅","I wake up at seven o'clock."],["🍳","I eat eggs for breakfast."],["🚌","I go to school by bus."]],q:"How does she go to school?",c:["By car","By bus","On foot"],a:1},
-  {id:"vd_a1_2",lv:"A1",t:"My Pet",sc:[["🐱","This is my cat. Her name is Mishmish."],["🥛","She drinks milk every morning."],["😴","She sleeps under my bed."]],q:"What is the cat's name?",c:["Mishmish","Simsim","Haboob"],a:0},
-  {id:"vd_a1_3",lv:"A1",t:"At the Park",sc:[["🌳","We go to the park on Friday."],["⚽","My brother plays football there."],["🍦","After that, we eat ice cream."]],q:"When do they go to the park?",c:["Friday","Saturday","Sunday"],a:0},
-  {id:"vd_a1_4",lv:"A1",t:"My Room",sc:[["🛏️","My room is small and blue."],["📚","I have five books on my shelf."],["🧸","My favourite toy is a brown bear."]],q:"How many books are on the shelf?",c:["Four","Five","Six"],a:1},
-  {id:"vd_a1_5",lv:"A1",t:"Shopping",sc:[["🛒","My mother and I go to the shop."],["🍎","We buy apples and bread."],["💰","It costs ten riyals."]],q:"What do they buy?",c:["Apples and bread","Milk and eggs","Rice and meat"],a:0},
-  {id:"vd_a1_6",lv:"A1",t:"The Weather",sc:[["☀️","It is sunny today."],["🧢","I wear a cap and go outside."],["🚲","I ride my bicycle in the street."]],q:"What is the weather like today?",c:["Rainy","Sunny","Cold"],a:1},
+  {id:"vd_a1_1",lv:"A1",sk:"تفصيل محدَّد",t:"My Morning",sc:[["🌅","I wake up at seven o'clock."],["🍳","I eat eggs for breakfast."],["🚌","I go to school by bus."]],q:"How does she go to school?",c:["By car","By bus","On foot"],a:1},
+  {id:"vd_a1_2",lv:"A1",sk:"تفصيل محدَّد",t:"My Pet",sc:[["🐱","This is my cat. Her name is Mishmish."],["🥛","She drinks milk every morning."],["😴","She sleeps under my bed."]],q:"What is the cat's name?",c:["Mishmish","Simsim","Haboob"],a:0},
+  {id:"vd_a1_3",lv:"A1",sk:"تفصيل محدَّد",t:"At the Park",sc:[["🌳","We go to the park on Friday."],["⚽","My brother plays football there."],["🍦","After that, we eat ice cream."]],q:"When do they go to the park?",c:["Friday","Saturday","Sunday"],a:0},
+  {id:"vd_a1_4",lv:"A1",sk:"تفصيل محدَّد",t:"My Room",sc:[["🛏️","My room is small and blue."],["📚","I have five books on my shelf."],["🧸","My favourite toy is a brown bear."]],q:"How many books are on the shelf?",c:["Four","Five","Six"],a:1},
+  {id:"vd_a1_5",lv:"A1",sk:"تفصيل محدَّد",t:"Shopping",sc:[["🛒","My mother and I go to the shop."],["🍎","We buy apples and bread."],["💰","It costs ten riyals."]],q:"What do they buy?",c:["Apples and bread","Milk and eggs","Rice and meat"],a:0},
+  {id:"vd_a1_6",lv:"A1",sk:"تفصيل محدَّد",t:"The Weather",sc:[["☀️","It is sunny today."],["🧢","I wear a cap and go outside."],["🚲","I ride my bicycle in the street."]],q:"What is the weather like today?",c:["Rainy","Sunny","Cold"],a:1},
   // A2 (إلياس) — ثلاثة مشاهد، حوارٌ أو موقفٌ قصير كـLISTEN_BANK A2
-  {id:"vd_a2_1",lv:"A2",t:"The Bus Trip",sc:[["🚌","Yesterday I took the bus to visit my uncle."],["🚦","The bus stopped for ten minutes because of traffic."],["🏠","I arrived a little late, but he was still waiting."]],q:"Why did the bus stop?",c:["Traffic","A flat tyre","The driver was tired"],a:0},
-  {id:"vd_a2_2",lv:"A2",t:"A New Phone",sc:[["📱","I want to buy a new phone this month."],["💵","The blue one costs six hundred riyals."],["🤔","But I only have four hundred, so I need to save more."]],q:"How much money does he need to save?",c:["Two hundred riyals","Four hundred riyals","Six hundred riyals"],a:0},
-  {id:"vd_a2_3",lv:"A2",t:"Cooking Dinner",sc:[["👨‍🍳","Tonight I am cooking dinner for my family."],["🍗","I am making chicken and rice."],["😅","I forgot to buy onions, so I will use garlic instead."]],q:"What did he forget to buy?",c:["Garlic","Onions","Rice"],a:1},
-  {id:"vd_a2_4",lv:"A2",t:"The Football Match",sc:[["⚽","My team played a match on Thursday."],["😢","We lost two goals to one."],["💪","But our coach said we played much better than last time."]],q:"What was the score?",c:["One to two","Two to one","Two to two"],a:1},
-  {id:"vd_a2_5",lv:"A2",t:"Studying for the Exam",sc:[["📖","I have a science exam next week."],["😴","I studied late last night and I am very tired."],["☕","My mother made me tea to help me stay awake."]],q:"When is the exam?",c:["This week","Next week","Next month"],a:1},
-  {id:"vd_a2_6",lv:"A2",t:"Visiting the Doctor",sc:[["🤒","I had a headache yesterday."],["🏥","My father took me to the doctor."],["💊","The doctor gave me some medicine and told me to rest."]],q:"Who took him to the doctor?",c:["His mother","His father","His brother"],a:1},
+  {id:"vd_a2_1",lv:"A2",sk:"سببٌ وعلاقة",t:"The Bus Trip",sc:[["🚌","Yesterday I took the bus to visit my uncle."],["🚦","The bus stopped for ten minutes because of traffic."],["🏠","I arrived a little late, but he was still waiting."]],q:"Why did the bus stop?",c:["Traffic","A flat tyre","The driver was tired"],a:0},
+  {id:"vd_a2_2",lv:"A2",sk:"تفصيل محدَّد",t:"A New Phone",sc:[["📱","I want to buy a new phone this month."],["💵","The blue one costs six hundred riyals."],["🤔","But I only have four hundred, so I need to save more."]],q:"How much money does he need to save?",c:["Two hundred riyals","Four hundred riyals","Six hundred riyals"],a:0},
+  {id:"vd_a2_3",lv:"A2",sk:"تفصيل محدَّد",t:"Cooking Dinner",sc:[["👨‍🍳","Tonight I am cooking dinner for my family."],["🍗","I am making chicken and rice."],["😅","I forgot to buy onions, so I will use garlic instead."]],q:"What did he forget to buy?",c:["Garlic","Onions","Rice"],a:1},
+  {id:"vd_a2_4",lv:"A2",sk:"تفصيل محدَّد",t:"The Football Match",sc:[["⚽","My team played a match on Thursday."],["😢","We lost two goals to one."],["💪","But our coach said we played much better than last time."]],q:"What was the score?",c:["One to two","Two to one","Two to two"],a:1},
+  {id:"vd_a2_5",lv:"A2",sk:"تفصيل محدَّد",t:"Studying for the Exam",sc:[["📖","I have a science exam next week."],["😴","I studied late last night and I am very tired."],["☕","My mother made me tea to help me stay awake."]],q:"When is the exam?",c:["This week","Next week","Next month"],a:1},
+  {id:"vd_a2_6",lv:"A2",sk:"تفصيل محدَّد",t:"Visiting the Doctor",sc:[["🤒","I had a headache yesterday."],["🏥","My father took me to the doctor."],["💊","The doctor gave me some medicine and told me to rest."]],q:"Who took him to the doctor?",c:["His mother","His father","His brother"],a:1},
   // B1 (محمد) — أربعة مشاهد، قصّةٌ فيها بداية ومنعطف ونتيجة كـLISTEN_BANK B1
-  {id:"vd_b1_1",lv:"B1",t:"A Difficult Decision",sc:[["🎓","After finishing school, I had to choose between two universities."],["🏙️","One was close to home, but the other had a much better program."],["😟","It was a difficult decision because I would miss my family."],["✅","In the end, I chose the better program, and I don't regret it."]],q:"Why was the decision difficult?",c:["He would miss his family","He couldn't afford it","His friends disagreed"],a:0},
-  {id:"vd_b1_2",lv:"B1",t:"Learning to Drive",sc:[["🚗","Last year, I started learning to drive with my older brother."],["😬","At first, I was nervous and made a lot of mistakes."],["📅","After three months of practice, I finally passed my test."],["🎉","Now I drive to college every day, and it saves me a lot of time."]],q:"What happened after three months?",c:["He passed his test","He gave up","He bought a car"],a:0},
-  {id:"vd_b1_3",lv:"B1",t:"A Trip That Went Wrong",sc:[["✈️","My family planned a trip to Jeddah for the holiday."],["⛈️","But on the day we were leaving, there was a big storm."],["😞","Our flight was cancelled, so we had to stay home instead."],["🎲","We spent the holiday playing games together, which was still fun."]],q:"Why was the trip cancelled?",c:["A storm","A car problem","Money issues"],a:0},
-  {id:"vd_b1_4",lv:"B1",t:"Starting a Small Business",sc:[["💡","My friend had an idea to sell homemade sweets online."],["📦","At the beginning, orders were slow and he almost gave up."],["📢","Then he started sharing videos on social media, and things changed."],["💰","Now he receives orders every day and even hired a helper."]],q:"What changed things for him?",c:["Sharing videos on social media","Lowering his prices","Opening a shop"],a:0},
-  {id:"vd_b1_5",lv:"B1",t:"A Lesson from Failure",sc:[["🏃","I trained for months to run in the school competition."],["😔","On the day of the race, I fell and finished last."],["🤝","My coach told me that trying again is more important than winning."],["🏆","The next year, I trained harder and came in second place."]],q:"What did the coach tell him?",c:["Trying again matters more than winning","He should quit running","He needed a new coach"],a:0},
-  {id:"vd_b1_6",lv:"B1",t:"Helping a Neighbour",sc:[["👴","Our elderly neighbour lives alone since his children moved abroad."],["🛒","Every week, I help him carry his shopping bags home."],["☕","Sometimes we sit and he tells me stories about his youth."],["😊","I always leave feeling like I learned something new."]],q:"Why does the neighbour live alone?",c:["His children moved abroad","He prefers being alone","He is new to the area"],a:0},
+  {id:"vd_b1_1",lv:"B1",sk:"سببٌ وعلاقة",t:"A Difficult Decision",sc:[["🎓","After finishing school, I had to choose between two universities."],["🏙️","One was close to home, but the other had a much better program."],["😟","It was a difficult decision because I would miss my family."],["✅","In the end, I chose the better program, and I don't regret it."]],q:"Why was the decision difficult?",c:["He would miss his family","He couldn't afford it","His friends disagreed"],a:0},
+  {id:"vd_b1_2",lv:"B1",sk:"تسلسل الأحداث",t:"Learning to Drive",sc:[["🚗","Last year, I started learning to drive with my older brother."],["😬","At first, I was nervous and made a lot of mistakes."],["📅","After three months of practice, I finally passed my test."],["🎉","Now I drive to college every day, and it saves me a lot of time."]],q:"What happened after three months?",c:["He passed his test","He gave up","He bought a car"],a:0},
+  {id:"vd_b1_3",lv:"B1",sk:"سببٌ وعلاقة",t:"A Trip That Went Wrong",sc:[["✈️","My family planned a trip to Jeddah for the holiday."],["⛈️","But on the day we were leaving, there was a big storm."],["😞","Our flight was cancelled, so we had to stay home instead."],["🎲","We spent the holiday playing games together, which was still fun."]],q:"Why was the trip cancelled?",c:["A storm","A car problem","Money issues"],a:0},
+  {id:"vd_b1_4",lv:"B1",sk:"استنتاج",t:"Starting a Small Business",sc:[["💡","My friend had an idea to sell homemade sweets online."],["📦","At the beginning, orders were slow and he almost gave up."],["📢","Then he started sharing videos on social media, and things changed."],["💰","Now he receives orders every day and even hired a helper."]],q:"What changed things for him?",c:["Sharing videos on social media","Lowering his prices","Opening a shop"],a:0},
+  {id:"vd_b1_5",lv:"B1",sk:"تفصيل محدَّد",t:"A Lesson from Failure",sc:[["🏃","I trained for months to run in the school competition."],["😔","On the day of the race, I fell and finished last."],["🤝","My coach told me that trying again is more important than winning."],["🏆","The next year, I trained harder and came in second place."]],q:"What did the coach tell him?",c:["Trying again matters more than winning","He should quit running","He needed a new coach"],a:0},
+  {id:"vd_b1_6",lv:"B1",sk:"سببٌ وعلاقة",t:"Helping a Neighbour",sc:[["👴","Our elderly neighbour lives alone since his children moved abroad."],["🛒","Every week, I help him carry his shopping bags home."],["☕","Sometimes we sit and he tells me stories about his youth."],["😊","I always leave feeling like I learned something new."]],q:"Why does the neighbour live alone?",c:["His children moved abroad","He prefers being alone","He is new to the area"],a:0},
 ];
 // مولَّدٌ الآن (٢٠ أغسطس) — كان بلا توليدٍ يوم شُحن (١٩ أغسطس)، وبنيته (N=٥ من بنك ٦)
 // كانت مطابقةً لشكل gram المتكرّر تماماً، فوُصل بنفس الآلية قبل أن تتكرّر الشكوى فعلاً
@@ -7586,7 +7617,7 @@ function videoChoose(i){
   const ok=i===it.a;if(ok)videoScore++;
   videoSrsUpdate(it.id,ok);
   logAnswer("video",it.lv,ok,it.c[i],it.id,videoShownAt?Date.now()-videoShownAt:null,
-    {q_text:`${it.t} · ${it.q} · مشاهد:${it.sc.length}`.slice(0,1200)});
+    {_sk:skOf(it),q_text:`${it.t} · ${it.q} · مشاهد:${it.sc.length}`.slice(0,1200)});
   render();
 }
 function videoNext(){
@@ -8995,7 +9026,7 @@ function mockChoose(i){
   if(mockDone)return;
   const x=mockCur();if(!x)return;
   const Q=mockQuestion(x),ord=mockOrder[mockIdx],real=ord[i];
-  mockAns.push({sec:x.sec,id:x.it.id,pick:real,ok:real===Q.a,pos:i+1});
+  mockAns.push({sec:x.sec,id:x.it.id,sk:skOf(x.it),pick:real,ok:real===Q.a,pos:i+1});
   if(mockIdx+1>=mockPaper.items.length)mockFinish();
   else{mockIdx++;render()}
 }
@@ -9009,7 +9040,7 @@ function mockFinish(){
   // كل عنصر يُسجَّل على حدة بقسمه وموضع اختياره — نفس أعراف التسجيل، ودرجةٌ جامعة معه
   mockAns.forEach(function(a){
     logAnswer("mock",a.sec,a.ok,"موضع "+a.pos,a.id,null,
-      {q_text:("محاكاة "+mockPaper.lv+" · "+a.sec).slice(0,200)});
+      {_sk:a.sk,q_text:("محاكاة "+mockPaper.lv+" · "+a.sec+(a.sk?" · "+a.sk:"")).slice(0,200)});
   });
   logAnswer("mock","paper",pct>=70,pct+"% · درجة "+band.g,null,secs*1000,
     {score_pct:pct,q_text:("محاكاة "+mockPaper.lv+" · "+Object.keys(per).map(function(k){
@@ -9152,7 +9183,7 @@ function renderKpi(){
     على الأقلّ، فلا يُعلَن إتقانٌ على دليلٍ أقلّ ممّا يحتمله.</p>
     ${keys.map(function(k){
       const r=bkt[k],p=Math.round(100*r.p),parts=k.split(":");
-      const nm=(KPI_NAMES[parts[0]]||parts[0])+(parts[1]&&parts[1]!=="—"?" · "+parts[1]:"");
+      const nm=(KPI_NAMES[parts[0]]||parts[0])+(parts.slice(1).join(":")&&parts[1]!=="—"?" · "+parts.slice(1).join(":"):"");
       const done=bktMastered(parts[0],parts[1]),left=done?null:bktToMastery(parts[0],parts[1]);
       return `<div style="padding:.5rem .8rem;border-bottom:1px solid #E2E8F0">
         <div style="display:flex;justify-content:space-between;gap:.6rem;flex-wrap:wrap">
