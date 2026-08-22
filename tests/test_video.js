@@ -2,6 +2,9 @@
 // لا فيديو حقيقي — نفس جدار الترخيص الذي واجهناه مع LISTEN_BANK (لا بنك فيديو مفتوح
 // الرخصة يصلح)، فالحلّ نفسه: نؤلّف قصّة قصيرة بأنفسنا، تُعرض مشهداً مشهداً (رمزٌ كبير
 // + جملة مسرودة بصوت speakEnglish)، ثم سؤال فهمٍ كـLISTEN_BANK/READ_BANK بالضبط.
+// بوّابة التسرّع (٢٢ أغسطس) تمنع النقر قبل زمنٍ أدنى، وهذه الاختبارات تنقر فوراً.
+// فتُنهي العدّ أوّلاً — كما ينتظر المتعلّم — ثم تختار: gateLeft=0;gateStop().
+// وهذا لا يُعطّل البوّابة ولا يُخفي انحدارها؛ فحصها نفسه في tests/test_rapidgate.js.
 const {chromium}=require('/opt/node22/lib/node_modules/playwright');
 let fails=0;const ok=(c,m)=>{console.log((c?'  ✓ ':'  ✗ FAIL ')+m);if(!c)fails++};
 (async()=>{
@@ -67,7 +70,7 @@ ok(afterLast.qOn===true&&afterLast.choices>=3,'وبعد آخر مشهد يظهر
 console.log('\n٤) الإجابة تُحتسب وتُسجَّل، ومعها عنوان القصّة وعدد المشاهد');
 logs=[];
 const r=await page.evaluate(()=>{
-  const it=videoCur();videoChoose(it.a);
+  const it=videoCur();gateLeft=0;gateStop();videoChoose(it.a);
   return {picked:videoPicked,ok:videoPicked===it.a,score:videoScore};
 });
 ok(r.ok&&r.score===1,'الإجابة الصحيحة تُحتسب');
@@ -106,7 +109,7 @@ while(guard++<200){
   const st=await page.evaluate(()=>({done:videoDone,qOn:videoQOn,locked:videoLocked,ai:videoCur()?videoCur().a:null}));
   if(st.done)break;
   if(!st.qOn){await page.evaluate(()=>videoNextScene());continue}
-  if(!st.locked){await page.evaluate(a=>videoChoose(a),st.ai);continue}
+  if(!st.locked){await page.evaluate(a=>{gateLeft=0;gateStop();videoChoose(a)},st.ai);continue}
   await page.evaluate(()=>videoNext());
 }
 ok(await page.evaluate(()=>videoDone)===true,`انتهت الجلسة (${guard} خطوة)`);
