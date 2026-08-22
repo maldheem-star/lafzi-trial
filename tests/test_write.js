@@ -329,12 +329,16 @@ ok(genParse.badAr===null,'وتلوّثٌ عربي يُرفض رغم شكلٍ س�
 ok(genParse.missing===null,'ونصٌّ بلا وسم PROMT/MIN يُرفض');
 await page.evaluate(()=>{try{lsDel('mawhiba_write_aibank_v1')}catch(e){}});
 calls=[];
+// التوقّع يُحسب من حجم البنك الفعلي قبل التوليد لا من صفر — البنك المؤلَّف ليس فارغاً
+const wantWrite=await page.evaluate(()=>genCallsFor(writeBankFor('A1').length,WRITE_N));
 await page.evaluate(level=>writeGenTopUp(level),'A1');
 await page.waitForTimeout(300);
 const genCall=calls.find(c=>c.mode==='gen'&&c.domain==='write');
 ok(!!genCall&&genCall.level==='A1','writeGenTopUp يطلب توليداً بمستواها');
 const aiBank=await page.evaluate(()=>genBankLoad('mawhiba_write_aibank_v1'));
-ok(aiBank.length===1&&aiBank[0].lv==='A1'&&aiBank[0].ai===true,'والعنصر المقبول يدخل بنك التوليد المحلّي');
+// العدد مُشتقٌّ من genCallsFor لا مثبَّت — الدفعة صارت متعدّدة (درس «الأعداد المكتوبة فخّ صامت»)
+ok(aiBank.length===wantWrite&&aiBank.every(x=>x.lv==='A1'&&x.ai===true),
+  `والعناصر المقبولة تدخل بنك التوليد المحلّي (${aiBank.length} من ${wantWrite})`);
 const mergedBank=await page.evaluate(()=>writeBankFor('A1'));
 ok(mergedBank.some(x=>x.ai===true),'ويظهر ضمن writeBankFor مع البنك المؤلَّف — لا بديلاً عنه');
 ok(mergedBank.some(x=>!x.ai),'والبنك المؤلَّف الأصلي يبقى حاضراً كذلك');
