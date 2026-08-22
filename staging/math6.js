@@ -533,34 +533,71 @@ function m_keyword() {
 
 // ---- ١-١ الأنماط: العائلات الثلاث الواردة في الكتاب (ص ١٥-١٦) ----
 function m_pattern() {
-  const kind = pick(["add", "sub", "mulStep", "dec"]);
+  const kind = pick(["add", "sub", "mulStep", "dec", "grow"]);
   let seq = [], next, why;
   if (kind === "add") {                      // ٥ ، ١١ ، ١٧ ، ٢٣ ، …
     const a = rand(3, 12), d = rand(4, 9);
     for (let i = 0; i < 4; i++) seq.push(a + i * d);
     next = a + 4 * d;
-    why = `كل حدٍّ يزيد ${toAr(d)} عن سابقه ⇒ الحدّ التالي ${toAr(seq[3])} + ${toAr(d)} = ${toAr(next)}.`;
+    why = `كل حدٍّ يزيد ${toAr(d)} عن سابقه ⇒ ${toAr(seq[3])} + ${toAr(d)} = ${toAr(next)}. ` +
+      `**تحقّق بالعمل عكسياً**: ابدئي بـ${toAr(next)} واطرحي ${toAr(d)} مرّاتٍ حتى تصلي إلى ${toAr(seq[0])}.`;
   } else if (kind === "sub") {               // ٥٧ ، ٤٩ ، ٤١ ، ٣٣ ، …
     const d = rand(4, 9), a = d * 4 + rand(20, 40);
     for (let i = 0; i < 4; i++) seq.push(a - i * d);
     next = a - 4 * d;
-    why = `كل حدٍّ يقلّ ${toAr(d)} عن سابقه ⇒ الحدّ التالي ${toAr(seq[3])} − ${toAr(d)} = ${toAr(next)}.`;
+    why = `كل حدٍّ يقلّ ${toAr(d)} عن سابقه ⇒ ${toAr(seq[3])} − ${toAr(d)} = ${toAr(next)}. ` +
+      `**تحقّق بالعمل عكسياً**: ابدئي بـ${toAr(next)} وأضيفي ${toAr(d)} مرّاتٍ حتى تصلي إلى ${toAr(seq[0])}.`;
+  } else if (kind === "grow") {
+    // فرقٌ متزايد: ٢ ، ٤ ، ٧ ، ١١ ، ▢ — الفروق ٢ ثم ٣ ثم ٤ (تحقّق من فهمك، ص١٤)
+    const a = rand(1, 6), d0 = rand(2, 5);
+    seq = [a];
+    for (let i = 0; i < 3; i++) seq.push(seq[i] + d0 + i);
+    next = seq[3] + d0 + 3;
+    why = `الفروق نفسها تكبر واحداً كل مرّة: ${toAr(d0)} ثم ${toAr(d0 + 1)} ثم ${toAr(d0 + 2)} ` +
+      `⇒ الفرق التالي ${toAr(d0 + 3)}، و${toAr(seq[3])} + ${toAr(d0 + 3)} = ${toAr(next)}. ` +
+      `**تحقّق بالعمل عكسياً**: ${toAr(next)} − ${toAr(d0 + 3)} = ${toAr(seq[3])}.`;
   } else if (kind === "mulStep") {           // ٣ ، ٣ ، ٦ ، ١٨ ، ٧٢ ، … (×١ ثم ×٢ ثم ×٣)
     const a = rand(2, 4);
     seq = [a, a];
     for (let i = 2; i <= 4; i++) seq.push(seq[i - 1] * i);
     next = seq[4] * 5;
-    why = `المضروب فيه يكبر كل مرّة: ×٢ ثم ×٣ ثم ×٤ ⇒ الحدّ التالي ${toAr(seq[4])} × ٥ = ${toAr(next)}.`;
-  } else {                                   // ٣٫٢٥ ، ٤٫٠٠ ، ٤٫٧٥ ، ٥٫٥٠ ، … (مثال المواليد)
+    why = `المضروب فيه يكبر كل مرّة: ×٢ ثم ×٣ ثم ×٤ ⇒ ${toAr(seq[4])} × ٥ = ${toAr(next)}. ` +
+      `**تحقّق بالعمل عكسياً**: ${toAr(next)} ÷ ٥ = ${toAr(seq[4])}.`;
+  } else {                                   // ٣٫٢٥ ، ٤٫٠٠ ، ٤٫٧٥ ، ٥٫٥٠ ، … (مثال المواليد ص١٤)
     const a = round2(rand(200, 400) / 100), d = pick([0.25, 0.5, 0.75]);
     for (let i = 0; i < 4; i++) seq.push(round2(a + i * d));
     next = round2(a + 4 * d);
     return qzT("math6", `أكملي النمط: ${seq.map(arDec).join(" ، ")} ، ▢`, arDec(next),
       decCands([next + d, next - d, next + 1, round2(next + 0.1)]),
-      `كل حدٍّ يزيد ${arDec(d)} عن سابقه ⇒ ${arDec(seq[3])} + ${arDec(d)} = ${arDec(next)}.`);
+      `كل حدٍّ يزيد ${arDec(d)} عن سابقه ⇒ ${arDec(seq[3])} + ${arDec(d)} = ${arDec(next)}. ` +
+      `**تحقّق بالعمل عكسياً**: ابدئي بـ${arDec(next)} واطرحي ${arDec(d)} حتى تصلي إلى ${arDec(seq[0])}.`);
   }
   return qz("math6", `أكملي النمط: ${seq.map(toAr).join(" ، ")} ، ▢`, next,
     [next + 1, next - 1, seq[3] + seq[2], next * 2], why);
+}
+
+// ---- ١-١ نمطٌ في جدولٍ، ويُطلب حدٌّ أبعد من التالي مباشرة (مسبح، ص١٤) ----
+const TAB_PAT = [
+  { head: "الزمن (بالدقائق)", row: "كمية الماء (باللترات)", step: 5, unit: "دقيقة",
+    lead: "الجدول يوضّح كمية الماء التي تملأ المسبح بعد أوقاتٍ مختلفة", ask: "فأوجدي كمية الماء بعد" },
+  { head: "الزمن (بالدقائق)", row: "المسافة (بالأمتار)", step: 10, unit: "دقيقة",
+    lead: "الجدول يوضّح المسافة التي يقطعها متسابقٌ بعد أوقاتٍ مختلفة", ask: "فأوجدي المسافة بعد" },
+  { head: "عدد العلب", row: "عدد الأقلام", step: 1, unit: "علبة",
+    lead: "الجدول يوضّح عدد الأقلام في عددٍ من العلب", ask: "فأوجدي عدد الأقلام في" },
+];
+function m_patternTable() {
+  const c = pick(TAB_PAT);
+  const per = c.step === 1 ? rand(6, 14) : rand(2, 9) * (c.step === 5 ? 60 : 30);
+  const shown = 4, ahead = rand(2, 3);
+  const cells = [];
+  for (let i = 1; i <= shown; i++) cells.push(`${toAr(i * c.step)}: ${toAr(i * per)}`);
+  const at = (shown + ahead) * c.step, val = (shown + ahead) * per;
+  return qz("math6",
+    `${c.lead} — ${cells.join(" · ")}. فإذا استمرّ هذا النمط، ${c.ask} ${arCount(at, c.unit === "دقيقة" ? "دقائق" : "علب", c.unit === "دقيقة" ? "دقيقة" : "علبة")}.`,
+    val, [val + per, val - per, (shown + 1) * per, per * at],
+    `كل ${c.step === 1 ? c.unit : arCount(c.step, c.unit === "دقيقة" ? "دقائق" : "علب", c.unit === "دقيقة" ? "دقيقة" : "علبة")} تزيد ${toAr(per)} ` +
+    `⇒ عدد الخطوات ${toAr(at)} ÷ ${toAr(c.step)} = ${toAr(shown + ahead)}، والمقدار ${toAr(shown + ahead)} × ${toAr(per)} = ${toAr(val)}. ` +
+    `**تحقّق بالعمل عكسياً**: ${toAr(val)} − ${toAr(per)} × ${toAr(ahead)} = ${toAr(shown * per)}، وهو آخر ما في الجدول.`);
 }
 
 // ---- ١-١ الخطوات الأربع: مسألةُ فرقٍ بجدولٍ فيه معلوماتٌ زائدة (مثال ١ ومسألة ٤) ----
@@ -588,11 +625,17 @@ function m_fourStepsDiff() {
   const hi = vals[i], lo = vals[j], d = hi - lo;
   const est = Math.round(hi / 10) * 10 - Math.round(lo / 10) * 10;
   const rows = who.map(function (n, k) { return `${n}: ${toAr(vals[k])}`; }).join(" · ");
+  // الكتاب يسأل بالصيغتين: «بكم تزيد… على» (مثال كرة السلة) و«بكم تقلّ… عن» (الدببة).
+  // والجواب في الحالتين الفرقُ نفسه — والفخّ أن تُطرح بالترتيب المعروض في السؤال.
+  const less = pick([true, false]);
+  const ask = less
+    ? `بكم تقلّ ${ctx.g} ${who[j]} عن ${who[i]}؟`
+    : `بكم تزيد ${ctx.g} ${who[i]} على ${who[j]}؟`;
   return qz("math6",
-    `${ctx.t} لخمسة أصدقاء — ${rows}. بكم تزيد ${ctx.g} ${who[i]} على ${who[j]}؟`,
+    `${ctx.t} لخمسة أصدقاء — ${rows}. ${ask}`,
     d, [hi + lo, bugSmallerFromLarger(hi, lo), d + 10, d - 1],
     `**افهم**: في الجدول معلوماتٌ زائدة، والمطلوب الفرق بين ${who[i]} و${who[j]} وحدهما. ` +
-    `**خطّط**: «بكم تزيد» تدلّ على الطرح، والتقدير ${toAr(Math.round(hi / 10) * 10)} − ${toAr(Math.round(lo / 10) * 10)} = ${toAr(est)}. ` +
+    `**خطّط**: «${less ? "بكم تقلّ … عن" : "بكم تزيد … على"}» تدلّ على الطرح، والتقدير ${toAr(Math.round(hi / 10) * 10)} − ${toAr(Math.round(lo / 10) * 10)} = ${toAr(est)}. ` +
     `**حل**: ${toAr(hi)} − ${toAr(lo)} = ${toAr(d)}. ` +
     `**تحقّق**: ${toAr(d)} + ${toAr(lo)} = ${toAr(hi)}، والناتج قريبٌ من التقدير ⇒ معقول.`);
 }
@@ -639,5 +682,5 @@ const MATH6_PREP = {
 // الدرس ١-١ يخلط أنواعه الأربعة كما يخلطها الكتاب نفسه: كلمةٌ مفتاحية، ونمط،
 // ومسألةُ فرقٍ بجدولٍ فيه زائد، ومسألةُ معدَّل — لا نوعٌ واحد يُعاد.
 function m_fourSteps() {
-  return pick([m_keyword, m_pattern, m_fourStepsDiff, m_fourStepsRate])();
+  return pick([m_keyword, m_pattern, m_patternTable, m_fourStepsDiff, m_fourStepsRate])();
 }

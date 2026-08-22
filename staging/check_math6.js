@@ -404,11 +404,17 @@ console.log("\n٢ج) التهيئة والدرس ١-١");
     const seq = (it.q.split(":")[1] || "").split("،").map(x => x.trim())
       .filter(x => /[٠-٩]/.test(x)).map(arToNum);
     const got = arToNum(chosen(it));
-    const d = round2(seq[1] - seq[0]), r = seq[0] ? seq[1] / seq[0] : 0;
+    const d = round2(seq[1] - seq[0]);
+    // ثلاث عائلات مقبولة، وكلٌّ تُتحقَّق بقاعدتها هي لا بقاعدةٍ واحدة للجميع
     const arith = Math.abs(round2(seq[3] + d) - got) < 1e-9 &&
                   seq.every((v, k) => k === 0 || Math.abs(round2(v - seq[k - 1]) - d) < 1e-9);
     const step = seq.length === 5 && seq[4] * 5 === got;   // ×٢ ثم ×٣ ثم ×٤
-    if (!arith && !step) bad++;
+    let grow = false;                                      // ٢ ، ٤ ، ٧ ، ١١ (فرقٌ متزايد)
+    if (seq.length === 4) {
+      const g = [seq[1] - seq[0], seq[2] - seq[1], seq[3] - seq[2]];
+      grow = (g[1] === g[0] + 1) && (g[2] === g[1] + 1) && (seq[3] + g[2] + 1 === got);
+    }
+    if (!arith && !step && !grow) bad++;
   }
   ok(bad === 0, "m_pattern: الحدّ التالي يتبع قاعدة النمط المعروض — " + bad);
 })();
@@ -420,11 +426,17 @@ console.log("\n٢ج) التهيئة والدرس ١-١");
     (it.q.match(/([\u0621-\u064A]+): ([٠-٩]+)/g) || []).forEach(function (m) {
       const p = m.split(":"); pairs[p[0].trim()] = arToNum(p[1]);
     });
-    const who = it.q.match(/بكم تزيد [\u0621-\u064A]+ ([\u0621-\u064A]+) على ([\u0621-\u064A]+)؟/);
+    const inc = it.q.match(/بكم تزيد [\u0621-\u064A]+ ([\u0621-\u064A]+) على ([\u0621-\u064A]+)؟/);
+    const dec = it.q.match(/بكم تقلّ [\u0621-\u064A]+ ([\u0621-\u064A]+) عن ([\u0621-\u064A]+)؟/);
+    // «تزيد A على B» ⇒ A أكبر · «تقلّ B عن A» ⇒ A أكبر — والجواب A−B في الحالتين
+    const who = inc ? [null, inc[1], inc[2]] : (dec ? [null, dec[2], dec[1]] : null);
     if (!who || pairs[who[1]] === undefined || pairs[who[2]] === undefined) { bad++; continue; }
     if (pairs[who[1]] - pairs[who[2]] !== arToNum(chosen(it))) bad++;
-    if (pairs[who[1]] <= pairs[who[2]]) bad++;      // «بكم تزيد» تقتضي أن يكون الأوّل أكبر
+    if (pairs[who[1]] <= pairs[who[2]]) bad++;
     if (Object.keys(pairs).length < 4) bad++;       // معلوماتٌ زائدة كما في مثال الكتاب
+    // الشرح يقتبس صيغة السؤال نفسها لا صيغةً أخرى
+    if (dec && it.w.indexOf("بكم تقلّ") < 0) bad++;
+    if (inc && it.w.indexOf("بكم تزيد") < 0) bad++;
   }
   ok(bad === 0, "m_fourStepsDiff: الفرق مطابقٌ للجدول، والأوّل أكبر، ومعه زائد — " + bad);
 })();
@@ -454,6 +466,59 @@ console.log("\n٢ج) التهيئة والدرس ١-١");
   ok(MATH6_PREP[1].p === 11, "وصفحتها ١١");
 })();
 
+
+
+(function () {
+  // نمطٌ بفرقٍ متزايد (٢،٤،٧،١١) — الفروق نفسها تكبر واحداً
+  let seen = 0, bad = 0;
+  for (let i = 0; i < 1500; i++) {
+    const it = m_pattern();
+    const seq = (it.q.split(":")[1] || "").split("،").map(x => x.trim())
+      .filter(x => /[٠-٩]/.test(x)).map(arToNum);
+    if (seq.length !== 4) continue;
+    const d = [seq[1] - seq[0], seq[2] - seq[1], seq[3] - seq[2]];
+    if (d[1] === d[0] + 1 && d[2] === d[1] + 1) {
+      seen++;
+      if (seq[3] + d[2] + 1 !== arToNum(chosen(it))) bad++;
+    }
+  }
+  ok(seen > 0, "نمطُ الفرق المتزايد يظهر فعلاً — " + seen);
+  ok(bad === 0, "وحدُّه التالي صحيح — " + bad);
+})();
+(function () {
+  let bad = 0;
+  for (let i = 0; i < 700; i++) {
+    const it = m_patternTable();
+    const cells = (it.q.match(/([٠-٩]+): ([٠-٩]+)/g) || []).map(function (m) {
+      return m.split(":").map(x => arToNum(x));
+    });
+    if (cells.length < 4) { bad++; continue; }
+    const per = cells[0][1] / cells[0][0];
+    // النمط منتظم فعلاً في كل خلايا الجدول
+    if (!cells.every(c => c[1] === c[0] * per)) bad++;
+    const askAt = arToNum((it.q.match(/بعد ([٠-٩]+)|في ([٠-٩]+)/) || [])[0].replace(/[^٠-٩]/g, ""));
+    if (askAt * per !== arToNum(chosen(it))) bad++;
+    if (askAt <= cells[3][0]) bad++;     // المطلوب أبعد ممّا في الجدول (مسبح ص١٤)
+  }
+  ok(bad === 0, "m_patternTable: النمط منتظم والمطلوب أبعد من الجدول — " + bad);
+  // صياغة: أمرٌ بنقطة لا بعلامة استفهام، و«كل علبة» لا «كل ١ علبة»
+  let style = 0;
+  for (let i = 0; i < 500; i++) {
+    const it = m_patternTable();
+    if (/فأوجدي[^.؟]*؟/.test(it.q)) style++;
+    if (/كل ١ /.test(it.w)) style++;
+  }
+  ok(style === 0, "m_patternTable: صياغةٌ سليمة (لا «فأوجدي…؟» ولا «كل ١ علبة») — " + style);
+})();
+(function () {
+  // التحقّق بالعمل عكسياً — يُعلّمه الكتاب صراحةً في ص١٤
+  let miss = 0;
+  for (let i = 0; i < 500; i++) {
+    const it = pick([m_pattern, m_patternTable])();
+    if (it.w.indexOf("عكسياً") < 0) miss++;
+  }
+  ok(miss === 0, "شرحُ النمط يحمل التحقّق بالعمل عكسياً — " + miss);
+})();
 
 // ===== ٢د) عربيّةُ النصّ — أخطاءٌ لا يراها الحساب ويراها أوّل قارئ =====
 console.log("\n٢د) سلامة العربية");
