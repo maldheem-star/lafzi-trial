@@ -102,7 +102,7 @@ async function mk(browser,q){
       next();
       // الثانية: تُسلّح
       choose(wrongIdx(filtered[1]));
-      out.armedAfter2=(typeof seqOn!=='undefined')&&seqOn;
+      out.armedAfter2=seqArmed();
       // تُطفَأ بوّابة الثواني قبل القياس: لولا ذلك لاختفت الخيارات بسببها هي، فيمرّ
       // الفحص وهو لا يقيس بوّابة الطرف أصلاً — نفس فخّ «النجاح لسببٍ خاطئ».
       next();gateLeft=0;gateStop();render();
@@ -144,12 +144,33 @@ async function mk(browser,q){
       const before=seqGated();
       // إجابةٌ صحيحة تحلّ التسليح
       seqPickEnd(seqWantIdx(a));locked=false;choose(a.a);
-      return{before:before,after:(typeof seqOn!=='undefined')&&seqOn,
+      return{before:before,after:seqArmed(),
              cleared:!shapeArmed("consec_wrong_end")};
     });
     ok(r.before===true,'مسلَّحةٌ قبل الصواب');
     ok(r.after===false,'والصواب يحلّها');
     ok(r.cleared===true,'ويُصفَّر عدّاد الشكل — لا تُعاقَب من لا تحتاجها');
+    await page.close();
+  }
+
+  {
+    // تعبر الجلسات: تُسلَّح، ثم تُغلَق الصفحة وتُفتح، فتبقى مسلَّحة
+    const page=await mk(browser);
+    await page.evaluate(()=>{
+      shapeRecord("consec_wrong_end",true);shapeRecord("consec_wrong_end",true);
+    });
+    await page.reload({waitUntil:'domcontentloaded'});
+    await page.waitForFunction(()=>typeof window.render==='function',{timeout:15000});
+    const r=await page.evaluate(()=>{
+      const a=gConsec();
+      filtered=[a];idx=0;picked=null;locked=false;mode="quiz";answered=[];score=0;
+      questionShownAt=Date.now();gateLeft=0;gateStop();render();
+      return{armed:seqArmed(),gated:seqGated(),runtimeFlag:seqOn,
+             choices:document.querySelectorAll('.choices .choice').length};
+    });
+    ok(r.runtimeFlag===false,'متغيّر الجلسة صفرٌ بعد إعادة التحميل — فالتسليح ليس منه');
+    ok(r.armed===true,'ومع ذلك تبقى مسلَّحةً من العدّاد المحفوظ');
+    ok(r.gated===true&&r.choices===0,'والبوّابة تعمل في الجلسة الجديدة — لا تموت مع الصفحة');
     await page.close();
   }
 

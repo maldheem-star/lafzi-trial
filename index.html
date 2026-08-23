@@ -2107,10 +2107,16 @@ function seqWantName(q){return q&&q.want==="mid"?"الأوسط":"الأصغر"}
 // البوّابة تُسلَّح بتكرار الاسم لا بأوّل زلّة (SHAPE_ARM=2)، كبقيّة بوّابات المشروع،
 // وتنحلّ بالصواب — فلا تُعاقَب من لا تحتاجها. ونمطها نمط بوّابة النطاق في النسبة
 // (pctArm/pctPickBand) بالضبط: خطوةٌ واحدة تُقرّ قبل أن تُعرض الخيارات، لا أداةٌ جديدة.
+// والتسليح يُقرأ من عدّاد الشكل المحفوظ لا من متغيّرٍ يعيش داخل الجلسة وحدها:
+// لو أخطأت الطرف مرّتين في آخر سؤالين من جلسةٍ ثم أغلقت الصفحة، لَما وصلتها البوّابة
+// أبداً — تُسلَّح بعد فوات أوانها وتموت مع الصفحة. وهذا حرفياً «ما يُبنى للنهاية لا
+// يصل إلى من لا ينتهي» (درس إلياس). وshapeRecord يحفظ في localStorage أصلاً، فالقراءة
+// منه تجعل البوّابة تعبر الجلسات وتنحلّ بأوّل صوابٍ كما تنحلّ داخل الجلسة سواءً.
 let seqOn=false,seqPicked=-1;
 function seqArm(){seqOn=true;seqPicked=-1}
 function seqClear(){seqOn=false;seqPicked=-1}
-function seqNeeded(q){return seqOn&&!!(q&&Array.isArray(q.seq)&&q.seq.length)}
+function seqArmed(){return seqOn||shapeArmed(SEQ_END_BUG)}
+function seqNeeded(q){return seqArmed()&&!!(q&&Array.isArray(q.seq)&&q.seq.length)}
 function seqGated(){return seqNeeded(filtered&&filtered[idx])&&!seqOk()}
 function seqOk(){const q=filtered&&filtered[idx];return !seqNeeded(q)||seqPicked===seqWantIdx(q)}
 function seqWantIdx(q){return q&&q.want==="mid"?1:0}   // ٠ الأصغر · ١ الأوسط · ٢ الأكبر
