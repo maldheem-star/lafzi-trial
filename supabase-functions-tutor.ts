@@ -501,6 +501,28 @@ function systemGen(domain: string, level: string, word: string) {
   };
   const lv = styleByLevel[level] || styleByLevel.A2;
   const topic = GEN_TOPICS[Math.floor(Math.random() * GEN_TOPICS.length)];
+  // ===== قالبُ السؤال يُفرَض كما يُفرَض الموضوع — ٢٣ أغسطس =====
+  // بياناتٌ حيّة (هيا، A1): ثلاثةٌ من أخطائها الخمسة في الاستماع بصيغةٍ واحدة —
+  // «When does X … on <day>?» بمواضيع مختلفة تماماً (طبيب، كرة قدم، جبل). أي أن
+  // GEN_TOPICS نجحت في تنويع **الموضوع** وبقي **السؤال** يقع على الزمن/اليوم كل مرّة،
+  // فصار القسم يقيس مفردةً واحدة (أيّام الأسبوع) بدل الفهم — ومنعُ التوائم لا يمسك هذا
+  // لأنه يقارن الفقرات (itemText يقرأ audio/passage) لا نصوص الأسئلة.
+  //
+  // ووسمُ المهارة (TAG) كان معروضاً على النموذج ليختار منه بحرّيته، فاستقرّ على
+  // «تفصيل محدَّد» عملياً. فيُختار هنا ويُفرَض — نفس ما فُعل بـsubByTag في systemGenStep
+  // بعد تكرار «قائمةٍ بفواصل»، وبـGEN_TOPICS نفسها قبله: إجبارٌ بنيوي لا تعليمةٌ مرجوّة
+  // من نموذجٍ بلا ذاكرة بين النداءات.
+  const SKILLS = level === "A1"
+    ? ["تفصيل محدَّد", "الفكرة الرئيسية", "سببٌ وعلاقة"]
+    : ["تفصيل محدَّد", "الفكرة الرئيسية", "سببٌ وعلاقة", "استنتاج", "تسلسل الأحداث"];
+  const skill = SKILLS[Math.floor(Math.random() * SKILLS.length)];
+  const ASK: Record<string, string> = {
+    "تفصيل محدَّد": "a WHAT/WHO/WHERE/HOW MANY question about one concrete detail",
+    "الفكرة الرئيسية": "a question about what the text is mainly about, as a whole",
+    "سببٌ وعلاقة": "a WHY question whose answer is stated as a reason in the text",
+    "استنتاج": "a question whose answer follows from the text without being stated word-for-word",
+    "تسلسل الأحداث": "a question about what happened FIRST / NEXT / LAST",
+  };
   return [
     `Write ONE short English ${isListen ? "listening" : "reading"} comprehension item for a CEFR ${level} English learner.`,
     `TEXT STYLE (CEFR ${level}): ${lv}`,
@@ -508,9 +530,13 @@ function systemGen(domain: string, level: string, word: string) {
     "invented names, numbers and details. Do NOT reuse a generic textbook example you have seen before",
     "(for instance, do not default to a library-at-three-o'clock meeting dialogue).",
     "",
+    `THE QUESTION FOR THIS ITEM MUST BE: ${ASK[skill]}.`,
+    "This is fixed for this item — do NOT substitute a different kind of question.",
+    "Do NOT ask about a day of the week or a clock time unless the required question type",
+    "above genuinely calls for it; those have been over-used and now test vocabulary, not comprehension.",
+    "",
     "OUTPUT EXACTLY in this shape, nothing else, no numbering, no markdown, no extra commentary:",
-    "TAG: <the comprehension sub-skill your question tests, IN ARABIC, EXACTLY one of:",
-    "      «تفصيل محدَّد» «الفكرة الرئيسية» «سببٌ وعلاقة» «استنتاج» «تسلسل الأحداث»>",
+    `TAG: ${skill}`,
     "TEXT: <the English passage, on one line>",
     "Q: <a comprehension question about it, written in ENGLISH>",
     "A: <choice 1, in ENGLISH>",

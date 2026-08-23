@@ -358,7 +358,19 @@ function gClock(){const names=["","الواحدة","الثانية","الثال�
 function gSides(){const sh=pick([["المثلث",3],["المربع",4],["الشكل الخماسي",5],["الشكل السداسي",6],["الشكل الثماني",8]]);return qz("quant",`كم عدد أضلاع ${sh[0]}؟`,sh[1],[sh[1]+1,sh[1]-1,sh[1]+2],`${sh[0]} له ${toAr(sh[1])} أضلاع.`)}
 // متقدّمة
 function gWorkers(){const w1=rand(3,6),f=rand(2,4),d2=rand(3,6);const total=w1*d2*f;const d1=total/w1;const w2=total/d2;return qz("quant",`يستطيع ${toAr(w1)} عمّال دهن بيت في ${toAr(d1)} يوماً. كم عاملاً يدهنون نفس البيت في ${toAr(d2)} أيام؟`,w2,[w2+1,w2-1,w1+d2],`العمل ثابت: العمّال × الأيام = ${toAr(total)}. العمّال = ${toAr(total)} ÷ ${toAr(d2)} = ${toAr(w2)}.`)}
-function gMedian(){const mid=rand(4,20),sum=5*mid;return qz("quant",`مجموع خمسة أعداد صحيحة متتالية يساوي ${toAr(sum)}. أوجد وسيطها.`,mid,[mid+1,mid-1,Math.round(sum/4)],`الوسيط = المجموع ÷ العدد = ${toAr(sum)} ÷ ٥ = ${toAr(mid)}.`)}
+// ===== المتتاليات: أيّ طرفٍ مطلوب — بذرتها بياناتٌ حيّة (٢٣ أغسطس) =====
+// أخطأت السؤالين كليهما في اليوم نفسه، وفي كليهما اختارت **أكبر أعداد المتتالية**:
+//   · «مجموع ٣ متتالية = ٦٠، ما الأصغر؟» الصواب ١٩، والمعروض ٢١ | ١٨ | ٢٠ | ١٩ ⇐ اختارت ٢١.
+//   · «مجموع ٥ متتالية = ٢٥، أوجد وسيطها» الصواب ٥، والمعروض ٤ | ٧ | ٥ | ٦ ⇐ اختارت ٧.
+// والدليل أن هذا آليةٌ لا زلّةُ قرب: في الحالتين كان المموّه الأقرب (±١) معروضاً
+// أمامها (٢٠ و٦) **فتخطّته** لتقع على أكبر عددٍ في المتتالية بالضبط. وزلّةُ القرب
+// تُفضّل الأقرب لا الأبعد — فهي تحسب المتتالية صحيحةً ثم تقرأ منها الطرف الخطأ.
+//
+// ولهذا تُوسَم المتتالية نفسها والطرفُ المطلوب هنا: بلا هذا يستحيل تمييز «قرأت الطرف
+// الخطأ» عن «حسبت خطأً» — وهو عين مبدأ «شكل الخطأ لا وقوعه» المعتمَد في المشروع.
+function gMedian(){const mid=rand(4,20),sum=5*mid;
+  const o=qz("quant",`مجموع خمسة أعداد صحيحة متتالية يساوي ${toAr(sum)}. أوجد وسيطها.`,mid,[mid+1,mid-1,Math.round(sum/4)],`الوسيط = المجموع ÷ العدد = ${toAr(sum)} ÷ ٥ = ${toAr(mid)}.`);
+  o.seq=[mid-2,mid-1,mid,mid+1,mid+2];o.want="mid";return o}
 function gCube(){const s=rand(2,5),v=s*s*s,nv=(2*s)**3;return qz("quant",`مكعّب حجمه ${toAr(v)} سم³. إذا ضاعفنا طول ضلعه، فما حجمه الجديد؟`,nv,[v*2,v*4,v*6],`مضاعفة الضلع تضاعف الحجم ٨ مرّات: ${toAr(v)} × ٨ = ${toAr(nv)} سم³.`)}
 function gPercent(){const rentP=pick([30,40,50]),expP=pick([20,30]),leftP=100-rentP-expP;if(leftP<=0)return gPercent();const salary=pick([6000,8000,9000,10000,12000]);const left=salary*leftP/100;if(!Number.isInteger(left))return gPercent();const onePercent=left/leftP;return qz("quant",`دفع سالم ${toAr(rentP)}% من راتبه إيجاراً و${toAr(expP)}% مصروفات، وتبقّى له ${toAr(left)} ريال. كم راتبه؟`,salary,[salary+1000,salary-1000,left*2],`المتبقّي = ${toAr(leftP)}% من الراتب = ${toAr(left)} ريال. قيمة ١% واحد = ${toAr(left)} ÷ ${toAr(leftP)} = ${toAr(onePercent)} ريال. الراتب الكامل = ${toAr(onePercent)} × ١٠٠ = ${toAr(salary)} ريال.`)}
 function gPaths(){const p=rand(2,4),q=rand(2,4);return qz("quant",`عدد الطرق من (أ) إلى (ب) ${toAr(p)}، ومن (ب) إلى (ج) ${toAr(q)}. كم عدد الطرق من (أ) إلى (ج)؟`,p*q,[p+q,p*q+1,p*q-1],`نضرب: ${toAr(p)} × ${toAr(q)} = ${toAr(p*q)} طريقاً.`)}
@@ -385,7 +397,9 @@ function gCompound(){const m1=rand(2,5),h1=rand(2,6),rate=rand(2,5);const units1
 function gFraction(){const opts=pick([[[1,4],[1,3],"٥/١٢"],[[1,2],[1,4],"١/٤"],[[1,3],[1,6],"١/٢"],[[2,5],[1,5],"٢/٥"]]);const [[n1,d1],[n2,d2],correct]=opts;const distract=shuffle(["١/٣","٢/٣","٣/٤","١/٢","١/٤","٥/١٢","٧/١٢"].filter(x=>x!==correct)).slice(0,3);const all=shuffle([correct,...distract]);return {d:"quant",q:`قضى محمد ${toAr(n1)}/${toAr(d1)} من يومه في المدرسة، و${toAr(n2)}/${toAr(d2)} في النوم. ما الكسر المتبقّي من يومه؟`,c:all,a:all.indexOf(correct),w:`المتبقّي = ١ − ${toAr(n1)}/${toAr(d1)} − ${toAr(n2)}/${toAr(d2)} = ${correct}.`}}
 function gTrees(){const L=pick([12,18,24,30]),W=pick([6,9,12]);const perim=2*(L+W);const gap=pick([2,3,6]);if(perim%gap!==0)return gTrees();const trees=perim/gap;return qz("quant",`بستان مستطيل طوله ${toAr(L)}م وعرضه ${toAr(W)}م. زُرعت أشجار على حدوده كل ${toAr(gap)} أمتار. كم شجرة زُرعت؟`,trees,[trees+1,trees-1,perim],`المحيط = ٢×(${toAr(L)}+${toAr(W)}) = ${toAr(perim)}م. الأشجار = ${toAr(perim)} ÷ ${toAr(gap)} = ${toAr(trees)}.`)}
 function gCircleValue(){const rule=pick(["sum","prod"]);if(rule==="sum"){const a=rand(3,12),b=rand(3,12);return qz("quant",`في الدائرة: العلوي = مجموع السفليين. إذا كان العلوي ${toAr(a+b)} وأحد السفليين ${toAr(a)}، فما الآخر؟`,b,[b+2,b-2,a],`الآخر = ${toAr(a+b)} − ${toAr(a)} = ${toAr(b)}.`)}const a=rand(2,6),b=rand(2,6);return qz("quant",`في الدائرة: العلوي = حاصل ضرب السفليين. إذا كان العلوي ${toAr(a*b)} وأحد السفليين ${toAr(a)}، فما الآخر؟`,b,[b+1,b-1,a],`الآخر = ${toAr(a*b)} ÷ ${toAr(a)} = ${toAr(b)}.`)}
-function gConsec(){const count=pick([3,5]),mid=rand(5,20);const sum=count*mid;const first=mid-Math.floor(count/2);return qz("quant",`مجموع ${toAr(count)} أعداد صحيحة متتالية يساوي ${toAr(sum)}. ما العدد الأول (الأصغر)؟`,first,[first+1,first-1,mid],`الأوسط = ${toAr(sum)} ÷ ${toAr(count)} = ${toAr(mid)}. الأول = ${toAr(mid)} − ${toAr(Math.floor(count/2))} = ${toAr(first)}.`)}
+function gConsec(){const count=pick([3,5]),mid=rand(5,20);const sum=count*mid;const first=mid-Math.floor(count/2);
+  const o=qz("quant",`مجموع ${toAr(count)} أعداد صحيحة متتالية يساوي ${toAr(sum)}. ما العدد الأول (الأصغر)؟`,first,[first+1,first-1,mid],`الأوسط = ${toAr(sum)} ÷ ${toAr(count)} = ${toAr(mid)}. الأول = ${toAr(mid)} − ${toAr(Math.floor(count/2))} = ${toAr(first)}.`);
+  o.seq=[];for(let k=0;k<count;k++)o.seq.push(first+k);o.want="first";return o}
 
 // ===== أدوات هندسية مشتركة (زوايا) =====
 // نقطة على بعد r من V باتجاه الزاوية phi (٠=يمين، ٩٠=أعلى)
@@ -2076,6 +2090,60 @@ function parseArNum(s){
 // شكل الخطأ في اختبار الكمّي/المرونة كذلك — نفس عُرف basicsErrDelta، لا آلية جديدة.
 // كسورٌ ("١/٨") ورسومٌ (SVG) تُستبعَد: parseArNum يمحو الشرطة المائلة فيصنع رقماً
 // خاطئاً من كسر، ورسمٌ ليس رقماً أصلاً. وفرقٌ صحيحٌ فقط يُذكر — عشريّ طويل ضجيج.
+// ===== «أيّ طرفٍ مطلوب؟» — بوّابةٌ على قراءة الطرف لا على الحساب — ٢٣ أغسطس =====
+// تُسمّى الآلية أوّلاً (`consec_wrong_end`): إجابةٌ خاطئة **هي أحد أعداد المتتالية
+// نفسها** تعني أنها بنت المتتالية صحيحةً ثم قرأت منها الطرف الخطأ — لا أنها حسبت خطأً.
+// ويُذكر أيُّ طرفٍ قرأته (الأكبر/الأصغر/الأوسط) فتُقاس العائلة لا الوقوع.
+const SEQ_END_BUG="consec_wrong_end";
+function seqEndName(q,val){
+  if(!q||!Array.isArray(q.seq)||!q.seq.length)return null;
+  if(q.seq.indexOf(val)<0)return null;
+  if(val===q.seq[0])return "الأصغر";
+  if(val===q.seq[q.seq.length-1])return "الأكبر";
+  if(val===q.seq[(q.seq.length-1)/2])return "الأوسط";
+  return "عدداً من داخلها";
+}
+function seqWantName(q){return q&&q.want==="mid"?"الأوسط":"الأصغر"}
+// البوّابة تُسلَّح بتكرار الاسم لا بأوّل زلّة (SHAPE_ARM=2)، كبقيّة بوّابات المشروع،
+// وتنحلّ بالصواب — فلا تُعاقَب من لا تحتاجها. ونمطها نمط بوّابة النطاق في النسبة
+// (pctArm/pctPickBand) بالضبط: خطوةٌ واحدة تُقرّ قبل أن تُعرض الخيارات، لا أداةٌ جديدة.
+let seqOn=false,seqPicked=-1;
+function seqArm(){seqOn=true;seqPicked=-1}
+function seqClear(){seqOn=false;seqPicked=-1}
+function seqNeeded(q){return seqOn&&!!(q&&Array.isArray(q.seq)&&q.seq.length)}
+function seqGated(){return seqNeeded(filtered&&filtered[idx])&&!seqOk()}
+function seqOk(){const q=filtered&&filtered[idx];return !seqNeeded(q)||seqPicked===seqWantIdx(q)}
+function seqWantIdx(q){return q&&q.want==="mid"?1:0}   // ٠ الأصغر · ١ الأوسط · ٢ الأكبر
+function seqPickEnd(i){
+  const q=filtered&&filtered[idx];if(!seqNeeded(q)||locked)return;
+  seqPicked=i;render();
+}
+// المتتالية تُعرض كاملةً ويُطلب تحديد الطرف المطلوب — فتراه بعينها بدل أن تقرأه من
+// ذاكرةٍ بنتها ثم أخطأت في قراءتها. ونفس ألوان صندوق «مثال محلول» القائم في التقوية
+// (#EFF6FF/#1E40AF) — لا لونٌ جديد ولا اسمٌ جديد.
+function seqBoxHTML(){
+  const q=filtered&&filtered[idx];
+  if(!seqNeeded(q))return "";
+  const want=seqWantIdx(q),names=["الأصغر","الأوسط","الأكبر"];
+  const wrong=seqPicked>=0&&seqPicked!==want;
+  const chips=q.seq.map(function(v,k){
+    const isEnd=(k===0&&want===0)||(k===q.seq.length-1&&want===2)||(k===(q.seq.length-1)/2&&want===1);
+    const lit=seqOk()&&isEnd;
+    return `<span style="display:inline-block;min-width:38px;text-align:center;padding:7px 9px;margin:3px;border-radius:9px;font-weight:800;font-size:15px;background:${lit?"#1E40AF":"#FFFFFF"};color:${lit?"#FFFFFF":"#1E40AF"};border:1.5px solid #BFDBFE">${toAr(v)}</span>`;
+  }).join("");
+  const btns=names.map(function(n,k){
+    const on=seqPicked===k;
+    return `<button type="button" onclick="seqPickEnd(${k})" style="background:${on?(k===want?"#DCFCE7":"#FEE2E2"):"#FFFFFF"};border:1.5px solid ${on?(k===want?"#16A34A":"#DC2626"):"#BFDBFE"};color:#1E40AF;border-radius:11px;padding:9px 16px;font-size:14px;font-weight:700;cursor:pointer;margin:4px;font-family:inherit">${n}</button>`;
+  }).join("");
+  return `<div style="background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:12px;padding:14px 16px;margin-bottom:14px">
+    <div style="font-size:13px;font-weight:800;color:#1E40AF;margin-bottom:8px">📘 خطوةٌ قبل الاختيار: أيّ طرفٍ مطلوب؟</div>
+    <div style="font-size:12.5px;color:#1E3A8A;line-height:1.9;margin-bottom:8px">حسابُك للمتتالية صحيح — والخطأ المتكرّر أنّكِ تقرئين منها الطرف الخطأ. هذه هي المتتالية، فحدّدي أيّ عددٍ يطلبه السؤال:</div>
+    <div style="margin-bottom:10px">${chips}</div>
+    <div>${btns}</div>
+    ${wrong?`<div style="font-size:12.5px;color:#B91C1C;font-weight:700;margin-top:9px">اقرئي السؤال مرّةً أخرى — أيّ عددٍ يطلب بالضبط؟</div>`:""}
+    ${seqOk()?`<div style="font-size:12.5px;color:#166534;font-weight:700;margin-top:9px">✓ ${names[want]} — وهو المُظلَّل أعلاه. الآن اختاري قيمته.</div>`:""}
+  </div>`;
+}
 function quizErrDelta(gotTxt,correctTxt){
   if(gotTxt==null||correctTxt==null)return null;
   if(/\/|<svg/i.test(gotTxt)||/\/|<svg/i.test(correctTxt))return null;
@@ -3602,6 +3670,27 @@ const ENG_LESSONS={
 // المفردات من قوائم TEACHING/REVISION الفعلية، والقواعد بترتيب وحدات الكتاب نفسه.
 // المعرّف مفتاح جدولة التباعد — لا يُغيَّر بعد النشر.
 const ENG_ITEMS=[
+ // ===== أيّام الأسبوع — بذرتها بياناتٌ حيّة لا تقديرٌ منهجي (٢٣ أغسطس) =====
+ // استماع هيا ٣/٨، وأربعةٌ من أخطائها الخمسة يومٌ **مجاور** للصواب: «on Tuesday» ⇐
+ // Monday، و«on Saturday» ⇐ Friday مرّتين. فالضعف ليس في الاستماع بل في مفردةٍ لم
+ // يكن لها موضعٌ في أيّ بنك: أيّام الأسبوع ليست في ENG_ITEMS ولا DICTATION_A1 ولا
+ // غيرهما — كانت تُطلَب في الاستماع ولا تُدرَّس في مكان.
+ //
+ // وموضعها هنا لا في بنكٍ جديد: المفردات لا تحمل `lesson` فلا يمسّها فحص المستوى
+ // (engLevelOk يفحص t==="grammar" وحده)، فتصل A1 بلا استثناءٍ يُكتب لها. وتدخل
+ // تلقائياً كلَّ ما بُني على engPool: خطّة الإنجليزي، وتباعد FSRS، ووضع «أخطائي»
+ // عند الخطأ، ونطقُ الكلمة بـspeakEnglish عبر حقل listen — بلا سطرِ وصلٍ واحد.
+ {id:"u0_day1",t:"vocab",q:'ما ترجمة "Sunday"؟',c:["الأحد","السبت","الاثنين","الجمعة"],a:0,w:'"Sunday" الأحد — أوّل أيّام الأسبوع في التقويم الإنجليزي.',listen:"Sunday"},
+ {id:"u0_day2",t:"vocab",q:'ما ترجمة "Monday"؟',c:["الاثنين","الأحد","الثلاثاء","الخميس"],a:0,w:'"Monday" الاثنين — بعد Sunday مباشرة.',listen:"Monday"},
+ {id:"u0_day3",t:"vocab",q:'ما ترجمة "Tuesday"؟',c:["الثلاثاء","الاثنين","الأربعاء","الأحد"],a:0,w:'"Tuesday" الثلاثاء — وتُخلَط كثيراً بـMonday لأنهما متجاوران.',listen:"Tuesday"},
+ {id:"u0_day4",t:"vocab",q:'ما ترجمة "Wednesday"؟',c:["الأربعاء","الثلاثاء","الخميس","السبت"],a:0,w:'"Wednesday" الأربعاء — تُكتب بحرف d لا يُنطق.',listen:"Wednesday"},
+ {id:"u0_day5",t:"vocab",q:'ما ترجمة "Thursday"؟',c:["الخميس","الأربعاء","الجمعة","الثلاثاء"],a:0,w:'"Thursday" الخميس.',listen:"Thursday"},
+ {id:"u0_day6",t:"vocab",q:'ما ترجمة "Friday"؟',c:["الجمعة","السبت","الخميس","الأحد"],a:0,w:'"Friday" الجمعة — وتُخلَط بـSaturday لأنهما متجاوران.',listen:"Friday"},
+ {id:"u0_day7",t:"vocab",q:'ما ترجمة "Saturday"؟',c:["السبت","الجمعة","الأحد","الاثنين"],a:0,w:'"Saturday" السبت — آخر أيّام الأسبوع الإنجليزي، وبعده Sunday.',listen:"Saturday"},
+ // والزوجان اللذان أخطأتهما فعلاً يُدرَّبان بالتقابل لا بالحفظ المنفرد: الخطأ وقع
+ // بين متجاورين تحديداً (Tuesday/Monday و Saturday/Friday)، فالسؤال يُقابلهما.
+ {id:"u0_day_ord1",t:"vocab",q:'أيّ يومٍ يأتي **بعد** Friday؟',c:["Saturday","Thursday","Sunday","Monday"],a:0,w:'الترتيب: Thursday ← Friday ← Saturday. وقد أجبتِ Friday حين قال النصّ Saturday.',listen:"Friday, then Saturday."},
+ {id:"u0_day_ord2",t:"vocab",q:'أيّ يومٍ يأتي **بعد** Monday؟',c:["Tuesday","Sunday","Wednesday","Friday"],a:0,w:'الترتيب: Sunday ← Monday ← Tuesday. وقد أجبتِ Monday حين قال النصّ Tuesday.',listen:"Monday, then Tuesday."},
  // ===== W: Welcome — مراجعة =====
  {id:"w_v1",t:"vocab",q:'ما ترجمة "journalist"؟',c:["صحفي","مهندس","طيار","محاسب"],a:0,w:'"journalist" صحفي.',listen:"journalist"},
  {id:"w_v2",t:"vocab",q:'ما ترجمة "helmet"؟',c:["خوذة","قفاز","حزام","نظارة"],a:0,w:'"helmet" خوذة للرأس.',listen:"helmet"},
@@ -9078,6 +9167,25 @@ function pronAlign(t,h){
   return hit;
 }
 const PRON_PASS=80; // نسبة الكلمات المطلوبة لاعتبار المحاولة ناجحة
+// ===== سطر النطق يحمل الجملة المطلوبة وحكمَ كل كلمة — ٢٣ أغسطس =====
+// قسم النطق لم يُسجّل `q_text` ولا مرّة في أربعة عشر يوماً: يُسجَّل ما سمعه Whisper
+// (`response`) ولا يُسجَّل ما طُلب منها قوله. فجاء يومٌ بـ٠ من ٨ ولم يكن ممكناً الحكم:
+// أهو نطقها، أم خطأُ تفريغٍ، أم عتبةٌ عالية؟ استخرجتُ الجمل بيدي من SPEAK_ITEMS عبر
+// item_id لأقارن — وهذا لا يجوز أن يكون لازماً، وهو حرفياً «ما لا يُسجَّل الآن لا
+// يُشخَّص لاحقاً» قائماً في قسمٍ كامل.
+//
+// وحكمُ كل كلمة يدخل السطر كذلك، لأن بدونه يبقى السؤال الحقيقي بلا جواب: جملةٌ
+// تفريغها **مطابقٌ حرفياً** للمطلوب سُجّلت ٧٨٪ وخطأً. وهذا قد يكون صحيحاً تماماً
+// (حَكَم النطق يُعاقب كلمةً نُطقت رديئاً ولو كُتبت صحيحة — وهو غرضه أصلاً)، وقد يكون
+// خللاً في الدرجة. والفرق بينهما يظهر في حكم الكلمات وحده. ونفس عُرف «الخيارات
+// تُسجَّل بموضعها» المتّبع في بقية الأقسام: علامةٌ لكل عنصر لا حصيلةٌ مجملة.
+function speakLogText(target,sc){
+  const t=String(target||"");
+  if(!sc||!Array.isArray(sc.words)||!sc.words.length)return t.slice(0,1200);
+  const marks=sc.words.map(function(w,i){return w+((sc.hit&&sc.hit[i])?"✓":"✗")}).join(" ");
+  return (t+" · الكلمات: "+marks+" · "+toAr(sc.pct)+"٪ · العتبة "+toAr(PRON_PASS)
+          +" · الحَكَم "+(sc.by||"?")).slice(0,1200);
+}
 // judged (اختياري): حكم النموذج اللغوي كلمةً بكلمة. نقبله فقط إذا طابق طوله عدد كلمات الهدف،
 // وإلا سقطت المحاذاة على الكلمة الخطأ. القسمة تبقى هنا دائماً فلا تتأرجح درجتها على نفس الأداء.
 function pronScoreOf(target,heard,judged){
@@ -9488,7 +9596,7 @@ async function speakFinish(){
   // محاولة مُهمَلة: لا تُحتسب خطأً ولا تُكتب في التباعد — الجملة تبقى كما هي لتعيدها
   if(speakElapsed*1000<PRON_MIN_MS){
     speakResult={heard:"",discarded:true,why:"short"};speakBusy=false;
-    logAnswer("speaking","discarded",false,"[too_short]",it?it.id:null,Math.round(speakElapsed*1000),{is_new:!!(it&&it._isNew),srs_box:it?it._box:null});
+    logAnswer("speaking","discarded",false,"[too_short]",it?it.id:null,Math.round(speakElapsed*1000),{is_new:!!(it&&it._isNew),srs_box:it?it._box:null,q_text:speakLogText(target,null)});
     render();return;
   }
   try{
@@ -9499,15 +9607,15 @@ async function speakFinish(){
     const bad=data&&data.ok&&(data.lowConfidence||data.garbled||pronHallucinated(target,data.heard));
     if(bad){
       speakResult={heard:data.heard||"",discarded:true,why:"noisy"};
-      logAnswer("speaking","discarded",false,data.heard||"[low_confidence]",it.id,Math.round(speakElapsed*1000),{is_new:!!it._isNew,srs_box:it._box});
+      logAnswer("speaking","discarded",false,data.heard||"[low_confidence]",it.id,Math.round(speakElapsed*1000),{is_new:!!it._isNew,srs_box:it._box,q_text:speakLogText(target,null)});
     }else if(data&&data.ok){
       const sc=pronScoreOf(target,data.heard,data.judged);
       speakTries++;
       speakResult={heard:data.heard,ok:sc.ok,sc,note:data.note||""};
-      logAnswer("speaking","stage"+speakStage,sc.ok,data.heard,it.id,Math.round(speakElapsed*1000),{score_pct:sc.pct,is_new:!!it._isNew,srs_box:it._box,judged_by:sc.by});
+      logAnswer("speaking","stage"+speakStage,sc.ok,data.heard,it.id,Math.round(speakElapsed*1000),{score_pct:sc.pct,is_new:!!it._isNew,srs_box:it._box,judged_by:sc.by,q_text:speakLogText(target,sc)});
     }else{
       speakResult={heard:"",error:true,notConfigured:!!(data&&data.error==="not_configured")};
-      logAnswer("speaking","stage"+speakStage,false,"[transcription_error]",it.id);
+      logAnswer("speaking","stage"+speakStage,false,"[transcription_error]",it.id,null,{q_text:speakLogText(target,null)});
     }
   }catch(e){speakResult={heard:"",error:true}}
   speakBusy=false;render();
@@ -9745,6 +9853,7 @@ async function home(){mode="home";gateStop();fadeGateStop();window.scrollTo(0,0)
   await loadWeakness();if(mode==="home")render()}
 function choose(i){
   if(locked)return;
+  if(seqGated())return;   // بوّابة بنيوية: تُقرّ الطرف المطلوب قبل أن تُعرض الخيارات
   picked=i;locked=true;
   const q=filtered[idx];
   const ok=i===q.a;
@@ -9771,9 +9880,16 @@ function choose(i){
   // فرقها بالضبط ±١ — وبلا هذا السطر كانت السجلّات تُقرأ «أخطأت» لا «كيف أخطأت».
   const correctTxt=q.c&&q.c[q.a]!=null?String(q.c[q.a]):null;
   const dlt=!ok?quizErrDelta(ansTxt,correctTxt):null;
-  const ansShape=(!ok&&dlt!=null&&ansTxt!=null)
+  let ansShape=(!ok&&dlt!=null&&ansTxt!=null)
     ?ansTxt+" · الصواب "+correctTxt+" · فرق "+(dlt>0?"+":"−")+toAr(Math.abs(dlt))
     :ansTxt;
+  // الآلية تُسمّى في السطر نفسه متى كانت الإجابة عدداً من المتتالية — لا «فرقٌ» فقط
+  const endName=!ok?seqEndName(q,parseArNum(ansTxt)):null;
+  if(endName){
+    ansShape=(ansShape||"")+" · "+SEQ_END_BUG+" (قرأتِ "+endName+" والمطلوب "+seqWantName(q)+")";
+    shapeRecord(SEQ_END_BUG,true);
+    if(shapeArmed(SEQ_END_BUG))seqArm();
+  }else if(ok&&Array.isArray(q.seq)){shapeRecord(SEQ_END_BUG,false);seqClear()}
   logAnswer(q.d,q.qtype||"bank",ok,ansShape,null,elapsed,
     {q_text:(String(q.q||"")+chLog).slice(0,1200)});
   // الذاكرة قبل البطاقة: البطاقة تُقرَأ من الحالة بعد التسجيل
@@ -9795,7 +9911,7 @@ function choose(i){
   render();
 }
 function qzCardDone(){qzCard=null;render()}
-function next(){if(idx+1>=filtered.length){done=true;gateStop();window.scrollTo(0,0);saveAttempt()}else{idx++;picked=null;locked=false;rapidNudge=false;breakSuggest=false;questionShownAt=Date.now();gateStart(filtered[idx])}render()}
+function next(){if(idx+1>=filtered.length){done=true;gateStop();window.scrollTo(0,0);saveAttempt()}else{idx++;picked=null;locked=false;seqPicked=-1;rapidNudge=false;breakSuggest=false;questionShownAt=Date.now();gateStart(filtered[idx])}render()}
 function domainStats(){const acc={};Object.keys(DOMAINS).forEach(k=>acc[k]={r:0,t:0});filtered.forEach((q,i)=>{if(acc[q.d]){acc[q.d].t++;if(answered[i])acc[q.d].r++}});return acc}
 function weakestOf(acc){let key=null,pct=101;Object.keys(DOMAINS).forEach(k=>{if(acc[k].t){const p=acc[k].r/acc[k].t*100;if(p<pct){pct=p;key=k}}});return{key,pct}}
 
@@ -10691,7 +10807,8 @@ function renderQuiz(){
       : `<div class="q">${q.q}</div>`}
     ${svg}
     ${gateBox}
-    ${gateOpen()?`<div class="choices">${choices}</div>`:""}
+    ${seqBoxHTML()}
+    ${(gateOpen()&&!seqGated())?`<div class="choices">${choices}</div>`:""}
     ${explain}
     ${repeatCard}
     ${(locked&&picked!==q.a&&!tuOn&&tutorAvailable())?`<button type="button" onclick="quizAskTutor()" style="background:#EEF2FF;border:1.5px solid #C7D2FE;color:#4338CA;border-radius:12px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer;margin-top:10px;font-family:inherit">🧑‍🏫 ناقشيني فيها</button>`:""}
