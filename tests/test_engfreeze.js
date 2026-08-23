@@ -115,6 +115,31 @@ const TRAP=['u3_g1','u3_g2','u3_g3','u7_g3','u7_g4','u2_g1','u2_g2'];
     await page.close();
   }
 
+  // ===== ٣ب) الخطّة لا تجوع نوعاً — كشفه فشلٌ حقيقي لا حدس =====
+  // إضافة تسع مفردات (أيّام الأسبوع) قلبت خطّة A1 كاملةً إلى ٢٣ مفردة و٢ إملاء و**صفر
+  // قواعد وصفر قراءة**: الالتقاط كان بترتيب المخزون، والمخزون مرتَّبٌ بالوحدات (عشر
+  // مفردات ثم قواعدها)، فامتلأ السقف مفرداتٍ قبل أن يبلغ قاعدةً واحدة — وزاد الأمرَ أن
+  // فحص المستوى صار يتخطّى قواعد B1 فيملأ مكانها مفردات. فصار الالتقاط يتشابك كالعرض.
+  console.log('\n٣ب) الخطّة تتشابك في الاختيار لا في العرض وحده');
+  {
+    const page=await mk(browser);
+    const r=await page.evaluate(()=>{
+      localStorage.clear();_engPool=null;
+      const plan=buildDailyPlan();
+      const by={};plan.items.forEach(function(i){by[i.t]=(by[i.t]||0)+1});
+      return{by:by,n:plan.items.length,
+             types:Object.keys(by).filter(function(t){return t!=="lesson"}),
+             maxShare:Math.max.apply(null,Object.keys(by).filter(function(t){return t!=="lesson"})
+               .map(function(t){return by[t]}))/plan.items.length};
+    });
+    ok(r.by.grammar>0,'قواعدُ في خطّة A1 — كانت صفراً '+JSON.stringify(r.by));
+    ok(r.by.reading>0,'وقراءة — كانت صفراً');
+    ok(r.by.vocab>0,'ومفردات');
+    ok(r.by.build>0,'وبناءُ جملة — وكان يُختار ثم يُسقَط صامتاً لغيابه من ترتيب التوزيع');
+    ok(r.maxShare<0.5,'ولا نوعَ يبتلع نصف الخطّة — أكبر حصّة '+Math.round(r.maxShare*100)+'٪');
+    await page.close();
+  }
+
   // ===== ٤) بوّابة التسرّع في القواعد والمفردات =====
   console.log('\n٤) البوّابة تشمل القواعد والمفردات');
   {

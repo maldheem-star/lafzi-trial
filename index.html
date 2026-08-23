@@ -4043,7 +4043,31 @@ function buildDailyPlan(){
   // كانت البوّابة تُخفي بالضبط العناصر التي بُنيت البوّابة العالقة لأجلها (اكتُشف بالاختبار
   // لا بالحدس: قسم ١١ في test_gram.js وجد أربعة من الستّة B1 المبذورة تختفي من خطةٍ كاملة).
   const lv=profileOf().level;
-  for(const it of fresh){if(newCount>=NEW_CAP)break;if(chosen.some(c=>c.id===it.id))continue;if(engFrozen(it,lv))continue;if(add(it))newCount++}
+  // ===== الاختيار نفسه يتشابك لا الترتيب وحده — ٢٣ أغسطس =====
+  // كان الجديد يُلتقط بترتيب المخزون، والمخزون مرتَّبٌ بالوحدات: عشر مفردات ثم قواعدها.
+  // فالسقف (NEW_CAP=25) يمتلئ مفرداتٍ قبل أن يبلغ قاعدةً واحدة. ولم يظهر هذا قبل اليوم
+  // لأن قواعد الوحدات الأولى كانت تصل، ثم جمّدها فحص المستوى (B1 عن A1) فصار الالتقاط
+  // يتخطّاها إلى مزيدٍ من المفردات — وكشفه أنّ إضافة تسع مفردات (أيّام الأسبوع) قلبت
+  // خطّة A1 كاملةً إلى ٢٣ مفردة و٢ إملاء و**صفر قواعد وصفر قراءة**.
+  //
+  // والتشبيك مُعلَنٌ في هذه الدالّة أصلاً (سطر «توزيع الأنواع بالتناوب» أدناه) لكنه
+  // يُطبَّق على العرض بعد الاختيار — فلا يُنقذ نوعاً لم يُختَر أصلاً. فيُطبَّق على
+  // الاختيار كذلك: دورةٌ على الأنواع تأخذ من كلٍّ واحداً. وهذا إتمامُ آليةٍ قائمة لا
+  // آليةٌ جديدة، وهو التشابك المعياريّ (interleaving) المعتمَد في الأساسيات (BASICS_MIX).
+  const freshQ={};for(const it of fresh){(freshQ[it.t]=freshQ[it.t]||[]).push(it)}
+  const TYPE_ORDER=["vocab","grammar","dict","reading","build"];
+  let more=true;
+  while(more&&newCount<NEW_CAP){
+    more=false;
+    for(const t of TYPE_ORDER){
+      if(newCount>=NEW_CAP)break;
+      const q=freshQ[t];if(!q||!q.length)continue;
+      const it=q.shift();more=true;
+      if(chosen.some(c=>c.id===it.id))continue;
+      if(engFrozen(it,lv))continue;
+      if(add(it))newCount++;
+    }
+  }
   // ويُنقّى المختار كلّه — المستحقّ وإعادةُ التدريس والجديد معاً — لا الجديدُ وحده
   // chosen معرَّفٌ بـconst، فيُنقّى في مكانه بـsplice لا بإسنادٍ جديد
   const frozen=chosen.filter(function(i){return engFrozen(i,lv)});
@@ -4054,7 +4078,10 @@ function buildDailyPlan(){
   }
   // تشبيك: توزيع الأنواع بالتناوب بدل تجميع كل نوع معاً
   const byType={};chosen.forEach(i=>(byType[i.t]=byType[i.t]||[]).push(i));
-  const order=["vocab","grammar","dict","reading"],woven=[];
+  // "build" مذكورٌ هنا لأن غيابه كان يُسقط العنصر إسقاطاً صامتاً: التوزيع يبني woven
+  // من هذه الأنواع وحدها، فعنصرُ بناءِ جملةٍ يُختار ثم لا يصل الشاشة أبداً — رغم أن
+  // renderEngPlan يعرفه ويرسمه (it.t==="build"). كُشف عرَضاً عند إصلاح تشابك الاختيار.
+  const order=["vocab","grammar","dict","reading","build"],woven=[];
   let any=true;while(any){any=false;order.forEach(t=>{const q=byType[t];if(q&&q.length){woven.push(q.shift());any=true}})}
   // إدراج بطاقة الشرح مرة واحدة قبل أول عنصر يعتمد عليها
   const out=[],taught={};let reteach=0;
