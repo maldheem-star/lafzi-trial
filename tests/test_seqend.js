@@ -183,13 +183,20 @@ async function mk(browser,q){
       try{posted.push(JSON.parse(rt.request().postData()||'{}'))}catch(e){}
       rt.fulfill({status:201,body:''});
     });
-    await page.evaluate(()=>{
-      const a=gConsec();
+    const built=await page.evaluate(()=>{
+      // أكبرُ المتتالية ليس مضموناً بين الخيارات في كل توليدة (المموّهات [first±1, mid])،
+      // فيُبحَث عن توليدةٍ يظهر فيها فعلاً. ولولا هذا لسقط الاختيار على خيارٍ آخر ومرّ
+      // الفحص أو رسب لسببٍ لا يخصّ ما يقيسه — وقد رسب في السويت ونجح منفرداً بحظّ rand.
+      const big=q=>q.c.findIndex(x=>parseArNum(x)===q.seq[q.seq.length-1]);
+      let a=null,w=-1;
+      for(let i=0;i<400;i++){const q=gConsec();const k=big(q);if(k>=0&&k!==q.a){a=q;w=k;break}}
+      if(!a)return false;
       filtered=[a];idx=0;picked=null;locked=false;seqClear();
       mode="quiz";answered=[];score=0;questionShownAt=Date.now();
-      const w=a.c.findIndex(x=>parseArNum(x)===a.seq[a.seq.length-1]);
-      choose(w>=0?w:(a.a+1)%4);
+      choose(w);
+      return true;
     });
+    ok(built,'وُجدت توليدةٌ أكبرُ متتاليتها معروضٌ بين الخيارات — كحالتها الحقيقية');
     await page.waitForTimeout(300);
     const row=posted.find(x=>x.domain==='quant');
     ok(!!row,'سطرٌ وصل الخادم');
