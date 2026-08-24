@@ -7199,10 +7199,13 @@ function startWrite(){
   mode="write";writeShownAt=Date.now();window.scrollTo(0,0);render();
   // فتحُ الجلسة يُسجَّل — بلا هذا لا يُفرَّق بين «لم يدخل» و«دخل فخرج قبل أن يكتب».
   // وهو بالضبط ما عجزتُ عن الحكم فيه اليوم: إلياس صفر محاولة، ولا سطر في السجلّ يقول
-  // أفتَح القسم أصلاً أم لا. صفٌّ بلا نتيجة (is_correct=null) كعُرف صفوف النظام، وكل
-  // حساب دقّةٍ في هذا المشروع يُصفّي `is_correct is not null` أصلاً فلا يتلوّث.
+  // أفتَح القسم أصلاً أم لا. وتحت domain='gen' لا domain='write' — نفس عُرف إسقاط
+  // التوأم المُصلَح أمس بالضبط: هذا ما يفعله النظام (فتحُ جلسة) لا ما تفعله هي بسؤال.
+  // وكان أوّل شحنةٍ منه تحت domain='write' فكسرت كل استعلامٍ في test_write.js يبحث
+  // عن «أوّل صفّ write ليس fix» — لأنّ صفّ البدء بلا qtype='fix' فيُلتقَط هو بدل صفّ
+  // الإجابة الفعلي. كُشف بالسويت لا بالحدس.
   const lv0=profileOf().level||"A2";
-  try{logAnswer("write","start",null,lv0+" · "+writeItems.length+" عناصر",null,null,
+  try{logAnswer("gen","write_start",null,lv0+" · "+writeItems.length+" عناصر",null,null,
     {q_text:("بدء جلسة كتابة · المستوى "+lv0+" · سقالة:"+(writeScafOn(lv0)?"on":"off")
       +" · نجاحات متتالية:"+writeScafWins(lv0)
       +" · العناصر: "+writeItems.map(function(i){return i.id}).join(",")).slice(0,1200)})}catch(e){}
@@ -7222,7 +7225,10 @@ async function writeSubmit(){
   const it=writeCur();if(!it)return;
   const el=document.getElementById('writeIn');
   const txt=(el?el.value:"").trim();
-  if(!txt)return;   // لا نحرق محاولة على حقلٍ فارغ — كنظيرتها في الأساسيات
+  // الجملة الأولى تُملأ في الحقل مسبقاً (البناء المشترك)، فحقلٌ لم تُضِف إليه شيئاً
+  // ليس فارغاً حرفياً لكنه فارغٌ من إنتاجها هي — ولا يجوز أن يُحرق محاولةً حقيقية
+  // على نقرةٍ عاجلة قبل أن تكتب. نفس حراسة الحقل الفارغ بالضبط، موسَّعةً لتشمل هذه الحالة.
+  if(!txt||txt===writeJointFor(it).trim())return;
   writeTyped=txt;writeCount=writeWordCount(txt);writeCopy=writeIsCopy(txt,it.prompt);
   // هدف المنتَج صار مركّباً لا عددَ كلماتٍ وحده (Writing Next: أثر ٠٫٧٠): الكلماتُ،
   // ومعها تغطيةُ النقاط التي **تنصّ عليها التعليمة نفسها** حيث تنصّ عليها (رسائل A2

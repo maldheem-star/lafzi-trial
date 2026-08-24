@@ -182,7 +182,10 @@ async function mk(browser,q){
     });
     await page.evaluate(()=>startWrite());
     await page.waitForTimeout(400);
-    const st=posted.filter(x=>x.domain==='write'&&x.qtype==='start');
+    // domain='gen' لا domain='write' — نفس عُرف إسقاط التوأم: ما يفعله النظام
+    // (فتحُ جلسة) لا ما تفعله هي بسؤال، وإلا التقطه كل استعلامٍ يبحث عن أوّل صفّ
+    // write. كشفه فشلٌ حقيقي في test_write.js بعد الشحن الأوّل لهذا السطر.
+    const st=posted.filter(x=>x.domain==='gen'&&x.qtype==='write_start');
     ok(st.length===1,'سطرٌ واحد عند الفتح — '+st.length);
     ok(st.length&&st[0].is_correct===null,'بلا نتيجة (لا يُلوّث حساب الدقّة)');
     ok(st.length&&/سقالة:(on|off)/.test(st[0].q_text||''),'ومعه حال السقالة — '+(st[0]&&String(st[0].q_text).slice(0,70)));
