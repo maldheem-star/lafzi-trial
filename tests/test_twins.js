@@ -102,20 +102,33 @@ const RAIN ="The sky turned grey and heavy rain started falling just as Leo left
     const page=await mk(browser,'?p=mohammed');
     const r=await page.evaluate(()=>{
       const out={};
-      [["listen",buildListenPlan,LISTEN_N],["read",buildReadPlan,READ_N],
-       ["write",buildWritePlan,WRITE_N],["gram",buildGramPlan,GRAM_N],
-       ["step",buildStepPlan,STEP_N],["video",buildVideoPlan,VIDEO_N]].forEach(function(x){
-        const p=x[1]();
-        out[x[0]]={n:p.length,want:x[2],
-          twins:p.some(function(a,i){return p.some(function(b,j){
-            return j>i&&twinSim(itemText(a),itemText(b))>=GEN_TWIN})})};
+      const lv=profileOf().level;
+      [["listen",buildListenPlan,LISTEN_N,listenBankFor],["read",buildReadPlan,READ_N,readBankFor],
+       ["write",buildWritePlan,WRITE_N,writeBankFor],["gram",buildGramPlan,GRAM_N,gramBankFor],
+       ["step",buildStepPlan,STEP_N,stepBankFor],["video",buildVideoPlan,VIDEO_N,videoBankFor]].forEach(function(x){
+        const p=x[1](),POOL=bankStretched(x[0],lv,x[3]);
+        const twin=function(a,b){return twinSim(itemText(a),itemText(b))>=GEN_TWIN};
+        const hasTwin=p.some(function(a,i){return p.some(function(b,j){return j>i&&twin(a,b)})});
+        // عقدُ planNoTwins المُعلَن: التوأم يعود **فقط** إن لم يوجد في المخزون بديلٌ
+        // متمايزٌ عن كل ما بقي («ولا تُترك الجلسة ناقصةً»). فيُفحَص العقد نفسه لا
+        // نتيجةٌ لا يضمنها: هل بقي في المخزون عنصرٌ غيرُ مُستعمَلٍ ومتمايزٌ عن الجميع؟
+        const used={};p.forEach(function(i){used[i.id]=1});
+        const rescuable=POOL.some(function(c){
+          return !used[c.id]&&!p.some(function(k){return twin(k,c)});
+        });
+        out[x[0]]={n:p.length,want:x[2],pool:POOL.length,twins:hasTwin,rescuable:rescuable};
       });
       out.stepOrder=buildStepPlan().some(function(i){return i.type==="order"});
       return out;
     });
     ["listen","read","write","gram","step","video"].forEach(function(d){
       ok(r[d].n>=Math.min(r[d].want,3),d+': الجلسة مكتملة — '+r[d].n+' من '+r[d].want);
-      ok(r[d].twins===false,d+': ولا توأمين فيها');
+      // «لا توأمين» ليست وعداً مطلقاً — البنك الصغير (الفيديو ٦/مستوى وVIDEO_N=٥)
+      // قد لا يملك بديلاً متمايزاً، فيعود التوأم عمداً بدل أن تنقص الجلسة. فالفحص
+      // على العقد: توأمٌ باقٍ **مع** وجود بديلٍ متمايزٍ مُهمَل = عطلٌ حقيقي.
+      ok(!(r[d].twins&&r[d].rescuable),
+         d+': لا توأم إلّا حين لا بديل — توأم:'+r[d].twins+' · بديلٌ مُهمَل:'+r[d].rescuable
+         +' · مخزون:'+r[d].pool+'/'+r[d].want);
     });
     ok(r.stepOrder===true,'وضمانُ عنصر الترتيب في STEP باقٍ رغم الإسقاط');
     await page.close();
