@@ -6821,23 +6821,27 @@ function renderReadResult(){
 // التي تبقى تصحيحاً معروضاً لا درجة.
 const WRITE_BANK=[
   // A1 — كما Movers/Flyers: أسئلة توجيهية تُجاب بجملٍ كاملة، لا فقرة حرّة
-  {id:"wr_a1_1",lv:"A1",sk:"وصف موجَّه",min:10,prompt:"Write about your family.\n1) How many brothers or sisters do you have?\n2) What is one thing you like doing together?"},
-  {id:"wr_a1_2",lv:"A1",sk:"وصف موجَّه",min:10,prompt:"Write about your favourite animal.\n1) What animal is it?\n2) What colour is it?\n3) What can it do?"},
-  {id:"wr_a1_3",lv:"A1",sk:"وصف موجَّه",min:10,prompt:"Write about your school day.\n1) What time do you go to school?\n2) What is your favourite subject?"},
-  {id:"wr_a1_4",lv:"A1",sk:"وصف موجَّه",min:10,prompt:"Write about your bedroom.\n1) What colour is it?\n2) What is one thing in your room?"},
-  {id:"wr_a1_5",lv:"A1",sk:"وصف موجَّه",min:10,prompt:"Write about your best friend.\n1) What is their name?\n2) What do you both like doing?"},
-  {id:"wr_a1_6",lv:"A1",sk:"وصف موجَّه",min:10,prompt:"Write about today's weather.\n1) What is the weather like today?\n2) What are you wearing?"},
-  {id:"wr_a1_7",lv:"A1",sk:"وصف موجَّه",min:10,prompt:"Write about your favourite food.\n1) What food is it?\n2) When do you eat it?"},
-  {id:"wr_a1_8",lv:"A1",sk:"وصف موجَّه",min:10,prompt:"Write about a pet you have or want.\n1) What animal is it?\n2) Why do you like it?"},
+  // حقل joint = الجملة الأولى تُكتَب لها وتُكمل هي (البناء المشترك). وهي **بادئةٌ
+  // بنيوية لا معلومةٌ عنها**: «My favourite animal is» تصلح لأيّ حيوان، بينما
+  // «My favourite animal is the cat» تضع في فمها ما قد لا يكون صحيحاً — ودرسُ
+  // «الدعم الذي يُعلّم خطأً أسوأ من غيابه» يمنع الثاني.
+  {id:"wr_a1_1",lv:"A1",sk:"وصف موجَّه",min:10,joint:"In my family, there are",prompt:"Write about your family.\n1) How many brothers or sisters do you have?\n2) What is one thing you like doing together?"},
+  {id:"wr_a1_2",lv:"A1",sk:"وصف موجَّه",min:10,joint:"My favourite animal is",prompt:"Write about your favourite animal.\n1) What animal is it?\n2) What colour is it?\n3) What can it do?"},
+  {id:"wr_a1_3",lv:"A1",sk:"وصف موجَّه",min:10,joint:"I go to school at",prompt:"Write about your school day.\n1) What time do you go to school?\n2) What is your favourite subject?"},
+  {id:"wr_a1_4",lv:"A1",sk:"وصف موجَّه",min:10,joint:"My bedroom is",prompt:"Write about your bedroom.\n1) What colour is it?\n2) What is one thing in your room?"},
+  {id:"wr_a1_5",lv:"A1",sk:"وصف موجَّه",min:10,joint:"My best friend is",prompt:"Write about your best friend.\n1) What is their name?\n2) What do you both like doing?"},
+  {id:"wr_a1_6",lv:"A1",sk:"وصف موجَّه",min:10,joint:"Today the weather is",prompt:"Write about today's weather.\n1) What is the weather like today?\n2) What are you wearing?"},
+  {id:"wr_a1_7",lv:"A1",sk:"وصف موجَّه",min:10,joint:"My favourite food is",prompt:"Write about your favourite food.\n1) What food is it?\n2) When do you eat it?"},
+  {id:"wr_a1_8",lv:"A1",sk:"وصف موجَّه",min:10,joint:"I have a",prompt:"Write about a pet you have or want.\n1) What animal is it?\n2) Why do you like it?"},
   // A2 — كما A2 Key Part 6: رسالة قصيرة بثلاث نقاط محتوى مفروضة، ٢٥-٣٥ كلمة
-  {id:"wr_a2_1",lv:"A2",sk:"رسالة قصيرة",min:25,prompt:"Your friend invited you to their birthday party this weekend. Write a message to your friend.\nSay:\n• thank them for the invitation\n• what you will bring\n• what time you will arrive\nWrite 25–35 words."},
-  {id:"wr_a2_2",lv:"A2",sk:"رسالة قصيرة",min:25,prompt:"Your English pen friend wants to know about your weekend. Write them an email.\nSay:\n• what you did on Saturday\n• who you were with\n• how you felt\nWrite 25–35 words."},
-  {id:"wr_a2_3",lv:"A2",sk:"رسالة قصيرة",min:25,prompt:"You cannot go to football practice tomorrow. Write a message to your coach.\nSay:\n• why you cannot come\n• when you can come next\n• say sorry\nWrite 25–35 words."},
-  {id:"wr_a2_4",lv:"A2",sk:"رسالة قصيرة",min:25,prompt:"A new student is joining your class next week. Write a message to welcome them.\nSay:\n• your name\n• one thing about the school\n• one question for them\nWrite 25–35 words."},
-  {id:"wr_a2_5",lv:"A2",sk:"رسالة قصيرة",min:25,prompt:"You borrowed a book from a friend and it is late. Write them a message.\nSay:\n• say sorry\n• when you will return it\n• thank them for lending it\nWrite 25–35 words."},
-  {id:"wr_a2_6",lv:"A2",sk:"رسالة قصيرة",min:25,prompt:"Your friend is sick and could not come to school today. Write them a message.\nSay:\n• ask how they feel\n• what they missed today\n• wish them well\nWrite 25–35 words."},
-  {id:"wr_a2_7",lv:"A2",sk:"رسالة قصيرة",min:25,prompt:"You want to invite a friend to the cinema this weekend. Write them a message.\nSay:\n• which film\n• what day and time\n• ask them to reply\nWrite 25–35 words."},
-  {id:"wr_a2_8",lv:"A2",sk:"رسالة قصيرة",min:25,prompt:"You lost your bag at school yesterday. Write a notice for the noticeboard.\nSay:\n• what you lost\n• where you think you lost it\n• how to contact you\nWrite 25–35 words."},
+  {id:"wr_a2_1",lv:"A2",sk:"رسالة قصيرة",min:25,joint:"Hi Sara,\nThank you so much for",prompt:"Your friend invited you to their birthday party this weekend. Write a message to your friend.\nSay:\n• thank them for the invitation\n• what you will bring\n• what time you will arrive\nWrite 25–35 words."},
+  {id:"wr_a2_2",lv:"A2",sk:"رسالة قصيرة",min:25,joint:"Hi Tom,\nLast Saturday I",prompt:"Your English pen friend wants to know about your weekend. Write them an email.\nSay:\n• what you did on Saturday\n• who you were with\n• how you felt\nWrite 25–35 words."},
+  {id:"wr_a2_3",lv:"A2",sk:"رسالة قصيرة",min:25,joint:"Dear Coach,\nI am sorry, but I cannot come tomorrow because",prompt:"You cannot go to football practice tomorrow. Write a message to your coach.\nSay:\n• why you cannot come\n• when you can come next\n• say sorry\nWrite 25–35 words."},
+  {id:"wr_a2_4",lv:"A2",sk:"رسالة قصيرة",min:25,joint:"Hi and welcome!\nMy name is",prompt:"A new student is joining your class next week. Write a message to welcome them.\nSay:\n• your name\n• one thing about the school\n• one question for them\nWrite 25–35 words."},
+  {id:"wr_a2_5",lv:"A2",sk:"رسالة قصيرة",min:25,joint:"Hi,\nI am really sorry that",prompt:"You borrowed a book from a friend and it is late. Write them a message.\nSay:\n• say sorry\n• when you will return it\n• thank them for lending it\nWrite 25–35 words."},
+  {id:"wr_a2_6",lv:"A2",sk:"رسالة قصيرة",min:25,joint:"Hi,\nHow are you feeling",prompt:"Your friend is sick and could not come to school today. Write them a message.\nSay:\n• ask how they feel\n• what they missed today\n• wish them well\nWrite 25–35 words."},
+  {id:"wr_a2_7",lv:"A2",sk:"رسالة قصيرة",min:25,joint:"Hi,\nWould you like to",prompt:"You want to invite a friend to the cinema this weekend. Write them a message.\nSay:\n• which film\n• what day and time\n• ask them to reply\nWrite 25–35 words."},
+  {id:"wr_a2_8",lv:"A2",sk:"رسالة قصيرة",min:25,joint:"LOST: I lost my",prompt:"You lost your bag at school yesterday. Write a notice for the noticeboard.\nSay:\n• what you lost\n• where you think you lost it\n• how to contact you\nWrite 25–35 words."},
   // B1 — كما B1 Preliminary Part 2: قصّة قصيرة أو رسالة، بلا نقاط محتوى مفروضة، ٨٠-١٠٠ كلمة
   {id:"wr_b1_1",lv:"B1",sk:"قصّة قصيرة",min:70,prompt:"Write a short story that begins with this sentence:\n“It was raining when Sam left the house.”\nWrite about 80–100 words."},
   {id:"wr_b1_2",lv:"B1",sk:"رسالة سردية",min:70,prompt:"Write an email to a friend describing a trip you took recently.\nInclude: where you went, what you did, and whether you would go again.\nWrite about 80–100 words."},
@@ -6855,6 +6859,26 @@ const WRITE_BANK=[
   {id:"wr_b1_sc3",lv:"B1",sk:"دمج جمل",min:10,type:"combine",prompt:"Combine these two sentences into ONE sentence using a joining word (although, but...):\n1) The museum is very old.\n2) Thousands of people visit it every year."},
   {id:"wr_b1_sc4",lv:"B1",sk:"دمج جمل",min:8,type:"combine",prompt:"Combine these two sentences into ONE sentence using a joining word (after, before...):\n1) He finished his homework.\n2) He watched a movie."},
   {id:"wr_b1_sc5",lv:"B1",sk:"دمج جمل",min:10,type:"combine",prompt:"Combine these two sentences into ONE sentence using 'which' (a relative clause):\n1) The bridge was built in 1990.\n2) It connects the two islands."},
+  // ===== الجملة قبل الفقرة لِA1/A2 — ٢٤ أغسطس =====
+  // دمج الجمل ثالثُ أقوى عنصرٍ عمليّ في Writing Next (أثر ٠٫٥٠، Graham & Perin 2007)
+  // وتوصي به What Works Clearinghouse صراحةً، وهو قلبُ طريقة Hochman («الجملة قبل
+  // الفقرة»، وتحديداً الربط بـbecause / but / so). وكان مبنيّاً عندنا وعاملاً منذ
+  // تدريبات محمد، لكنه محجوزٌ لـB1 وحده — فالمبتدئان يُطلب منهما نصٌّ كامل ولم يُطلب
+  // منهما جملةٌ واحدة قطّ. وهذا يفسّر البيانات: محمد ٢١/٢٤، وهيا ٣ محاولات في يومٍ
+  // واحد ثم توقّفت، وإلياس **صفر محاولة منذ شُحن القسم**.
+  // ولا شيفرة جديدة لهذا إطلاقاً: نفس type:"combine" ونفس المسار ونفس معيار النجاح.
+  {id:"wr_a1_sc1",lv:"A1",sk:"دمج جمل",min:7,type:"combine",prompt:"Join these two sentences into ONE sentence with \"because\":\n1) I like summer.\n2) I can swim every day."},
+  {id:"wr_a1_sc2",lv:"A1",sk:"دمج جمل",min:7,type:"combine",prompt:"Join these two sentences into ONE sentence with \"and\":\n1) My brother plays football.\n2) My sister plays tennis."},
+  {id:"wr_a1_sc3",lv:"A1",sk:"دمج جمل",min:7,type:"combine",prompt:"Join these two sentences into ONE sentence with \"but\":\n1) The cat is small.\n2) It is very fast."},
+  {id:"wr_a1_sc4",lv:"A1",sk:"دمج جمل",min:7,type:"combine",prompt:"Join these two sentences into ONE sentence with \"so\":\n1) It was cold.\n2) I wore my coat."},
+  {id:"wr_a1_sc5",lv:"A1",sk:"دمج جمل",min:7,type:"combine",prompt:"Join these two sentences into ONE sentence with \"because\":\n1) I was happy.\n2) My friend came to my house."},
+  {id:"wr_a1_sc6",lv:"A1",sk:"دمج جمل",min:7,type:"combine",prompt:"Join these two sentences into ONE sentence with \"and\":\n1) I opened my book.\n2) I started reading."},
+  {id:"wr_a2_sc1",lv:"A2",sk:"دمج جمل",min:8,type:"combine",prompt:"Combine these two sentences into ONE sentence using \"when\":\n1) I was walking home.\n2) It started to rain."},
+  {id:"wr_a2_sc2",lv:"A2",sk:"دمج جمل",min:8,type:"combine",prompt:"Combine these two sentences into ONE sentence using \"because\":\n1) We stayed at home.\n2) The weather was very bad."},
+  {id:"wr_a2_sc3",lv:"A2",sk:"دمج جمل",min:8,type:"combine",prompt:"Combine these two sentences into ONE sentence using \"but\":\n1) I wanted to buy the shoes.\n2) They were too expensive."},
+  {id:"wr_a2_sc4",lv:"A2",sk:"دمج جمل",min:8,type:"combine",prompt:"Combine these two sentences into ONE sentence using \"after\":\n1) We finished our dinner.\n2) We watched a film together."},
+  {id:"wr_a2_sc5",lv:"A2",sk:"دمج جمل",min:8,type:"combine",prompt:"Combine these two sentences into ONE sentence using \"so\":\n1) The bus was very late.\n2) I walked to school."},
+  {id:"wr_a2_sc6",lv:"A2",sk:"دمج جمل",min:9,type:"combine",prompt:"Combine these two sentences into ONE sentence using \"who\":\n1) I have a friend.\n2) She lives in Riyadh."},
 ];
 // مثالٌ محلول واحد لكل مستوى — نفس مبدأ "السلّم المتلاشي" (worked examples) المعتمد
 // أصلاً في وضع التقوية (fadeStage===1)، لا ميزة جديدة. وعمداً لموضوعٍ آخر غير سؤالها
@@ -7049,19 +7073,145 @@ function writeSentences(t){
   }
   return out.length?out.slice(0,10):(String(t||"").trim()?[String(t).trim()]:[]);
 }
+// ===== سقالة الكتابة: معايير نجاحٍ ظاهرة + بناءٌ مشترك + سلّم SRSD — ٢٤ أغسطس =====
+// بذرتها بياناتٌ حيّة قاطعة: إلياس **صفر محاولة** منذ شُحن القسم (١٧ أغسطس)، وهيا ثلاث
+// محاولات في يومٍ واحد ثم توقّفت، ومحمد ٢١/٢٤. واثنتان من محاولاتهما كانتا **نسخاً
+// حرفياً لنصّ السؤال** في خانة الإجابة — وهي البصمة المعروفة لمن لم يميّز التعليمة من
+// المطلوب. والمثال المحلول (دعمنا الاختياري الوحيد) فُتح **مرّةً واحدة من ٢٧**.
+//
+// والعلّة بنيوية لا في اجتهادهم: نسخنا **صيغة الامتحان** (أوراق كامبردج) مكان **صيغة
+// التدريس**. وWriting Next (Graham & Perin 2007) يرتّب العناصر بأثرها: تعليم
+// الاستراتيجيات ٠٫٨٢، وهدف المنتَج ٠٫٧٠، ودمج الجمل ٠٫٥٠، ودراسة النماذج ٠٫٢٥ —
+// فبنينا الأضعف وجعلناه اختيارياً، وتركنا الأقوى بلا شيء. وتوصيةُ What Works
+// Clearinghouse الوحيدة ذات «الدليل القوي» هي دورة **نموذج ← تدريب ← تأمّل**.
+//
+// وثلاث سقالات تُضاف هنا، كلٌّ باسمها المنشور:
+//   · معايير نجاحٍ ظاهرة بالعربية (Hattie: أثر ٠٫٨٨) — تُحدَّث حيّةً وهي تكتب.
+//   · البناء المشترك (دورة سيدني، Rothery & Martin) — الجملة الأولى تُكتب لها فتُكمل.
+//     وكانت هذه هي الحلقة الوسطى المفقودة: نفّذنا التفكيك والبناء المستقل وأسقطناها.
+//   · سلّم POW (SRSD، Harris & Graham: أثر ٠٫٦٨) — خطّطي ← رتّبي ← اكتبي وزيدي.
+//
+// وكلّها **تتلاشى** كما يتلاشى كل دعمٍ في هذا التطبيق: ثلاث نجاحاتٍ متتالية في
+// المستوى تُطفئها، وتعثّرٌ واحد يُعيدها كاملة (النزول عند التعثّر — expertise reversal).
+const WRITE_SCAF_KEY="mawhiba_write_scaf_v1",WRITE_SCAF_OFF=3;
+function writeScafLoad(){try{return JSON.parse(lsGet(WRITE_SCAF_KEY)||"{}")||{}}catch(e){return{}}}
+function writeScafSave(o){try{lsSet(WRITE_SCAF_KEY,JSON.stringify(o))}catch(e){}}
+function writeScafWins(lv){return writeScafLoad()[lv||"A2"]||0}
+function writeScafOn(lv){return writeScafWins(lv)<WRITE_SCAF_OFF}
+function writeScafRecord(lv,ok){
+  const o=writeScafLoad(),k=lv||"A2";
+  o[k]=ok?Math.min(WRITE_SCAF_OFF,(o[k]||0)+1):0;
+  writeScafSave(o);
+}
+function writeJointFor(it){return (it&&it.joint&&writeScafOn(it.lv))?it.joint:""}
+function writeSentenceCount(t){const s=writeSentences(t);return s?s.length:0}
+// عدد النقاط التي تنصّ عليها التعليمة نفسها — لا رقمٌ أختاره: «•» في رسائل A2،
+// و«1) 2)» في أسئلة A1 الموجَّهة. فهدف المنتَج مأخوذٌ من المهمّة لا مفروضٌ عليها.
+function writePoints(it){
+  const p=String((it&&it.prompt)||"");
+  const b=(p.match(/^\s*•/gm)||[]).length;
+  if(b)return b;
+  return (p.match(/^\s*\d\)/gm)||[]).length;
+}
+function writeGoals(it){
+  const joint=writeJointFor(it),jw=joint?writeWordCount(joint):0,pts=writePoints(it);
+  return{
+    // البادئة تُضاف إلى الهدف لا تُخصَم منه: ما تُنتجه هي يبقى كما كان بالضبط،
+    // وإلا صارت السقالة تخفيضاً للمطلوب لا دعماً عليه.
+    words:((it&&it.min)|0)+jw,
+    sentences:(it&&it.type!=="combine"&&pts)?pts:0,
+    points:pts,jointWords:jw,combine:!!(it&&it.type==="combine"),
+  };
+}
+function arCount(n,one,two,many){return n===1?one:n===2?two:toAr(n)+" "+many}
+function writeCriteria(it){
+  const g=writeGoals(it),out=[];
+  if(g.combine){
+    out.push({k:"one",t:"جملةٌ واحدة تجمع الجملتين — لا جملتان"});
+    out.push({k:"words",t:"لا تقلّ عن "+toAr(g.words)+" كلمة"});
+    out.push({k:"own",t:"بكلماتك أنتِ لا نسخُ نصّ السؤال"});
+  }else{
+    if(g.sentences)out.push({k:"sentences",t:"تُغطّين "+arCount(g.sentences,"النقطة","النقطتين","نقاط")+" المطلوبة"});
+    out.push({k:"words",t:"لا تقلّ عن "+toAr(g.words)+" كلمة"});
+    out.push({k:"own",t:"بكلماتك أنتِ لا نسخُ نصّ السؤال"});
+  }
+  return out;
+}
+// الهدف يُثبَّت لحظة الإرسال: writeScafRecord قد يُطفئ السقالة عند النجاح الثالث،
+// فتختفي البادئة وينخفض الهدف — فتُعرض عليها بعد الحكم أرقامٌ غير التي حُكمت بها.
+// (كُشف بالمراجعة قبل التشغيل لا بفشلٍ لاحق.)
+let writeGoalSnap=null;
+function writeGoalsNow(it){return (writeSubmitted&&writeGoalSnap)?writeGoalSnap:writeGoals(it)}
+function writeCritState(it,txt){
+  const g=writeGoalsNow(it),w=writeWordCount(txt),s=writeSentenceCount(txt);
+  return{g:g,w:w,s:s,
+    words:w>=g.words,
+    sentences:g.sentences?s>=g.sentences:true,
+    one:g.combine?(w>0&&s<=1):true,
+    own:w>0&&!writeIsCopy(txt,it&&it.prompt)};
+}
+function writeCritHTML(it,txt){
+  if(!it)return "";
+  const st=writeCritState(it,txt||"");
+  const rows=writeCriteria(it).map(function(c){
+    const on=!!st[c.k];
+    return `<div style="display:flex;gap:8px;align-items:flex-start;font-size:13px;line-height:1.85;color:${on?"#065F46":"#475569"}">
+      <span style="flex:0 0 auto;font-weight:800">${on?"✓":"○"}</span><span>${c.t}</span></div>`;
+  }).join("");
+  return `<div style="font-size:12px;font-weight:800;color:#0E7490;margin-bottom:6px">تنجحين إذا:</div>${rows}
+    <div style="font-size:12px;color:#64748B;margin-top:6px">كتبتِ ${toAr(st.w)} كلمة${st.g.sentences?" · "+toAr(st.s)+" جملة":""}</div>`;
+}
+// السلّم مسمّى ومحفوظ لا تعليمةٌ سائبة: POW من SRSD حرفياً (Pick / Organize / Write more)،
+// و«رتّبي» تأخذ محتواها من المهمّة نفسها — نقاطُ الرسالة أو أسئلة الوصف هي الخطّة.
+function writeSrsdHTML(it){
+  if(!it||!writeScafOn(it.lv))return "";
+  const g=writeGoals(it);
+  const org=g.combine?"حدّدي أداة الربط المطلوبة، وأيّ الجملتين تأتي أوّلاً"
+    :(g.points?"كلُّ نقطةٍ مطلوبةٍ أعلاه = جملة. عُدّيها قبل أن تبدئي"
+              :"فكّري في البداية والوسط والنهاية");
+  return `<div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:12px;padding:12px 14px;margin-bottom:12px">
+    <div style="font-size:12px;font-weight:800;color:#92400E;margin-bottom:6px">🪜 قبل أن تكتبي — ثلاث خطوات</div>
+    <div style="font-size:13px;color:#78350F;line-height:1.95">
+      <b>١) خطّطي</b> — اختاري فكرتك.<br>
+      <b>٢) رتّبي</b> — ${org}.<br>
+      <b>٣) اكتبي وزيدي</b> — اكتبي، ثم أضيفي تفصيلاً واحداً لكل جملة.
+    </div></div>`;
+}
+// التقاط المسوّدة قبل أي إعادة رسم: فتحُ المثال المحلول كان يُعيد الرسم فيمسح ما
+// كتبته حتى تلك اللحظة — عيبٌ قائمٌ قبل اليوم، ويصير أخطر مع بادئةٍ مكتوبة سلفاً.
+function writeCaptureDraft(){
+  const el=document.getElementById('writeIn');
+  if(el&&!writeSubmitted)writeTyped=el.value;
+}
+// تحديثٌ حيّ بلا إعادة رسمٍ كاملة — إعادة الرسم تُفقد موضع المؤشّر ولوحة المفاتيح
+function writeLive(){
+  const el=document.getElementById('writeIn'),box=document.getElementById('writeCrit');
+  if(!el||!box)return;
+  box.innerHTML=writeCritHTML(writeCur(),el.value);
+}
 let writeItems=[],writeIdx=0,writeDone=false,writeScore=0,writeShownAt=0,writeTyped="",
   writeSubmitted=false,writeBusy=false,writeFix=[],writeFixFail="",writeCount=0,writeLtDropped=0,writeLtJudged=0,
-  writeModelShown=false,writeModelViews=0,writeCopy=false;
+  writeModelShown=false,writeModelViews=0,writeCopy=false,writeSent=0;
 function startWrite(){
   writeItems=buildWritePlan();writeIdx=0;writeDone=false;writeScore=0;
   writeSubmitted=false;writeBusy=false;writeFix=[];writeFixFail="";writeTyped="";writeCount=0;
-  writeLtDropped=0;writeLtJudged=0;writeModelShown=false;writeModelViews=0;writeCopy=false;
+  writeLtDropped=0;writeLtJudged=0;writeModelShown=false;writeModelViews=0;writeCopy=false;writeSent=0;
   mode="write";writeShownAt=Date.now();window.scrollTo(0,0);render();
-  writeGenTopUp(profileOf().level||"A2");
+  // فتحُ الجلسة يُسجَّل — بلا هذا لا يُفرَّق بين «لم يدخل» و«دخل فخرج قبل أن يكتب».
+  // وهو بالضبط ما عجزتُ عن الحكم فيه اليوم: إلياس صفر محاولة، ولا سطر في السجلّ يقول
+  // أفتَح القسم أصلاً أم لا. صفٌّ بلا نتيجة (is_correct=null) كعُرف صفوف النظام، وكل
+  // حساب دقّةٍ في هذا المشروع يُصفّي `is_correct is not null` أصلاً فلا يتلوّث.
+  const lv0=profileOf().level||"A2";
+  try{logAnswer("write","start",null,lv0+" · "+writeItems.length+" عناصر",null,null,
+    {q_text:("بدء جلسة كتابة · المستوى "+lv0+" · سقالة:"+(writeScafOn(lv0)?"on":"off")
+      +" · نجاحات متتالية:"+writeScafWins(lv0)
+      +" · العناصر: "+writeItems.map(function(i){return i.id}).join(",")).slice(0,1200)})}catch(e){}
+  writeGenTopUp(lv0);
 }
 // نفس عُرف عدّاد إعادة الاستماع (listenPlays): لا يُمنع الزرّ ولا يُقفَل، ويُسجَّل عدده
 // فحسب — فيُقاس أثره لاحقاً (هل من يفتحه يبلغ الهدف أكثر ممّن لا يفتحه)
 function writeToggleModel(){
+  writeCaptureDraft();   // وإلا مُسحت مسوّدتها بإعادة الرسم
   writeModelShown=!writeModelShown;
   if(writeModelShown)writeModelViews++;
   render();
@@ -7074,7 +7224,13 @@ async function writeSubmit(){
   const txt=(el?el.value:"").trim();
   if(!txt)return;   // لا نحرق محاولة على حقلٍ فارغ — كنظيرتها في الأساسيات
   writeTyped=txt;writeCount=writeWordCount(txt);writeCopy=writeIsCopy(txt,it.prompt);
-  const lenOk=writeCount>=it.min;
+  // هدف المنتَج صار مركّباً لا عددَ كلماتٍ وحده (Writing Next: أثر ٠٫٧٠): الكلماتُ،
+  // ومعها تغطيةُ النقاط التي **تنصّ عليها التعليمة نفسها** حيث تنصّ عليها (رسائل A2
+  // بنقاطها الثلاث، وأسئلة A1 الموجَّهة) — لا رقمٌ أخترعه. وB1 كتابةٌ حرّة بلا نقاطٍ
+  // مفروضة فيبقى على الكلمات كما كان، فلا يُشدَّد على محمد بمعيارٍ لا تنصّ عليه مهمّته.
+  const goals=writeGoals(it);writeGoalSnap=goals;
+  writeSent=writeSentenceCount(txt);
+  const lenOk=writeCount>=goals.words&&(goals.sentences?writeSent>=goals.sentences:true);
   writeFix=[];writeFixFail="";writeLtDropped=0;writeLtJudged=0;
   // نسخٌ محض لا يستحقّ مراجعة نحوية: نصّ السؤال نفسه سليمٌ نحوياً حتماً، فطلبٌ للشبكة بلا فائدة
   if(!writeCopy){
@@ -7096,6 +7252,8 @@ async function writeSubmit(){
   // النجاح في الحالتين سواءً — نسخ جملةٍ مصدرٍ واحدة ليس دمجاً كما نسخ السؤال ليس إجابة
   const ok=writeCopy?false:(it.type==="combine"?(lenOk&&(writeFixFail?true:!writeFix.length)):lenOk);
   writeSrsUpdate(it.id,ok);
+  // السقالة تتلاشى بالنجاح وتعود كاملةً بالتعثّر — لا تُقاس بالزمن ولا تُطفأ يدوياً
+  writeScafRecord(it.lv,ok);
   if(ok)writeScore++;
   // «تعذّرت المراجعة» و«جملك سليمة» كانتا تُسجَّلان بالشكل نفسه (lt:٠/٠) فيستحيل
   // التفريق بينهما من السجلّ وحده لاحقاً — نفس درس «ما لا يُسجَّل الآن لا يُشخَّص
@@ -7106,7 +7264,11 @@ async function writeSubmit(){
   const ttr=writeTtr(txt),selfSim=writeSelfSim(txt),lfp=writeLfp(txt);
   // q_text وresponse كاملان — بلا هذين لا تشخيص، ونفس عُرف تسجيل الفرق/الشكل في بقية التطبيق
   logAnswer("write",it.lv,ok,txt,it.id,writeShownAt?Date.now()-writeShownAt:null,
-    {_sk:skOf(it),q_text:((it.ai?"[مولَّد] ":"")+it.prompt+" · الهدف "+it.min+" كلمة · كتبت "+writeCount+" · review:"+reviewState+" · lt:"+writeLtJudged+"/"+writeLtDropped+" · مثال:"+writeModelViews+" · نسخ:"+(writeCopy?1:0)+" · تنوّع:"+ttr+" · شبه سابق:"+selfSim+" · فوق K1:"+lfp.pct+"%").slice(0,1200)});
+    {_sk:skOf(it),q_text:((it.ai?"[مولَّد] ":"")+it.prompt+" · الهدف "+goals.words+" كلمة · كتبت "+writeCount
+      +(goals.sentences?(" · جمل "+writeSent+"/"+goals.sentences):"")
+      +" · بادئة:"+(goals.jointWords?1:0)+" · سقالة:"+(writeScafOn(it.lv)?1:0)
+      +" · review:"+reviewState+" · lt:"+writeLtJudged+"/"+writeLtDropped+" · مثال:"+writeModelViews
+      +" · نسخ:"+(writeCopy?1:0)+" · تنوّع:"+ttr+" · شبه سابق:"+selfSim+" · فوق K1:"+lfp.pct+"%").slice(0,1200)});
   // يُحفظ بعد التسجيل لا قبله — والنسخ المحض لا يدخل السجلّ فلا يصير أساساً يُقاس عليه
   if(!writeCopy)writePrevAdd(txt);
   // نفس مسار بطاقات تصحيح المحادثة بالضبط: بطاقةٌ مجدولة تعود عند حافّة النسيان،
@@ -7122,7 +7284,7 @@ function writeNext(){
   genPulseFor("write",profileOf().level||"A2",writeIdx);   // نبضةُ توليد أثناء الجلسة
 
   if(writeIdx+1>=writeItems.length){writeDone=true;window.scrollTo(0,0);render();return}
-  writeIdx++;writeSubmitted=false;writeBusy=false;writeFix=[];writeFixFail="";writeTyped="";writeCount=0;writeCopy=false;
+  writeIdx++;writeSubmitted=false;writeBusy=false;writeFix=[];writeFixFail="";writeTyped="";writeCount=0;writeCopy=false;writeSent=0;
   writeModelShown=false;writeModelViews=0;
   writeShownAt=Date.now();window.scrollTo(0,0);render();
 }
@@ -7135,13 +7297,18 @@ function renderWriteFeedback(it){
       <div class="explain-body">${copyMsg}</div></div>`;
   }
   const isCombine=it.type==="combine";
-  const lenOk=writeCount>=it.min;
+  const G=writeGoalsNow(it);
+  const wordsOk=writeCount>=G.words,ptsOk=G.sentences?writeSent>=G.sentences:true;
+  const lenOk=wordsOk&&ptsOk;
   // دمج الجمل: لا نحكم «سليم» قبل عودة فحص القواعد — عكس الكتابة الحرّة حيث الطول وحده يكفي
   const ok=isCombine?(lenOk&&!writeBusy&&(writeFixFail?true:!writeFix.length)):lenOk;
   const title=isCombine
     ?(writeBusy?"نراجع جملتك المدمَجة…":ok?"✓ جملة مدمَجة سليمة":lenOk?"الجملة تحتاج تصحيحاً":"ادمجي الجملتين في جملةٍ واحدة أطول")
-    :(ok?"✓ بلغتِ عدد الكلمات":"عدد الكلمات أقلّ من الهدف");
-  const body=isCombine?`دمجتِ الجملتين في ${toAr(writeCount)} كلمة.`:`كتبتِ ${toAr(writeCount)} كلمة، والهدف ${toAr(it.min)}.`;
+    :(ok?"✓ بلغتِ الهدف":!ptsOk&&wordsOk?"بقيت نقطةٌ لم تُغطَّ":"عدد الكلمات أقلّ من الهدف");
+  const body=isCombine
+    ?`دمجتِ الجملتين في ${toAr(writeCount)} كلمة.`
+    :`كتبتِ ${toAr(writeCount)} كلمة، والهدف ${toAr(G.words)}.`
+      +(G.sentences?` وكتبتِ ${toAr(writeSent)} جملة، والمطلوب ${toAr(G.sentences)} — جملةٌ لكل نقطة.`:"");
   const head=`<div class="explain"><div class="explain-title" style="color:${writeBusy&&isCombine?'#64748B':(ok?'#059669':'#B45309')}">${title}</div>
     <div class="explain-body">${body}</div></div>`;
   if(writeBusy)return head+`<div style="text-align:center;padding:10px"><div class="spin" style="width:28px;height:28px"></div><div style="font-size:13px;color:#64748B;margin-top:8px">نراجع جملك…</div></div>`;
@@ -7177,10 +7344,12 @@ function renderWrite(){
   <div class="card">
     <span class="tag" style="background:#ECFEFF;color:#0E7490">✍️ اكتبي</span>
     <div style="background:#F0FDFA;border:1px solid #99F6E4;border-radius:12px;padding:14px;margin:14px 0;font-size:16px;line-height:1.9;direction:ltr;text-align:left;font-family:Georgia,serif;color:#134E4A;white-space:pre-line">${esc(it.prompt)}</div>
+    <div id="writeCrit" style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:12px;padding:12px 14px;margin-bottom:12px">${writeCritHTML(it,writeSubmitted?writeTyped:(writeTyped||writeJointFor(it)))}</div>
+    ${writeSrsdHTML(it)}
     <button type="button" onclick="writeToggleModel()" style="background:none;border:none;color:#1D4ED8;font-size:13px;cursor:pointer;padding:0 0 12px;font-family:inherit;display:block">${writeModelShown?"▲ إخفاء المثال":"📘 شاهدي مثالاً محلولاً قبل أن تبدئي"}</button>
     ${writeModelShown?renderWriteModel(it.lv):""}
-    <textarea id="writeIn" rows="5" ${writeSubmitted?"disabled":""} style="width:100%;padding:14px;border-radius:12px;border:2px solid #E2E8F0;font-size:16px;direction:ltr;text-align:left;font-family:Georgia,serif;resize:vertical" placeholder="type your answer here" autocomplete="off" autocapitalize="sentences" spellcheck="true">${writeSubmitted?esc(writeTyped):""}</textarea>
-    <div style="font-size:12px;color:#94A3B8;margin-top:6px">${it.type==="combine"?"اكتبي جملةً واحدة مدمَجة، لا نسخ الجملتين منفصلتين":"الهدف: "+toAr(it.min)+" كلمة على الأقلّ"}</div>
+    ${(!writeSubmitted&&writeJointFor(it))?`<div style="font-size:12px;color:#0E7490;font-weight:700;margin-bottom:6px">✍️ الجملة الأولى مكتوبةٌ لكِ — أكملي من حيث توقّفت</div>`:""}
+    <textarea id="writeIn" rows="5" oninput="writeLive()" ${writeSubmitted?"disabled":""} style="width:100%;padding:14px;border-radius:12px;border:2px solid #E2E8F0;font-size:16px;direction:ltr;text-align:left;font-family:Georgia,serif;resize:vertical" placeholder="type your answer here" autocomplete="off" autocapitalize="sentences" spellcheck="true">${esc(writeSubmitted?writeTyped:(writeTyped||writeJointFor(it)))}</textarea>
     ${writeSubmitted?renderWriteFeedback(it):""}
   </div>
   ${writeSubmitted?`<button class="btn" style="background:#0E7490" onclick="writeNext()">${writeIdx+1>=writeItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`
