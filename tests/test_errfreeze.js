@@ -54,9 +54,17 @@ const TRAP=['u3_g1','u3_g2','u3_g3','u7_g3','u7_g4','u2_g1','u2_g2'];
     ok(r.lv==='A1','هيا A1');
     ok(r.leaked.length===0,'ولا عنصرَ B1 يعود في «أخطائي» — '+(r.leaked.join(',')||'نظيف'));
     ok(r.kept===TRAP.length,'وسجلّ الخطأ باقٍ كما هو — تجميدٌ لا محو ('+r.kept+')');
+    // errCollect تُستدعى من errCount في كل رسمةٍ للرئيسية (أربع مرّات في الرسمة)،
+    // فسطرٌ داخلها يُغرق السجلّ بصفوفٍ بلا حدث — كشفه test_log بثلاثة طلباتٍ حيث
+    // يُتوقَّع طلبان. الإحصاء لا يُسجّل، والجلسة وحدها تُسجّل.
+    await page.evaluate(()=>{errCount();errCount();home();render()});
+    await page.waitForTimeout(300);
+    ok(posted.filter(x=>x.qtype==='err_frozen').length===0,
+       'الإحصاء ورسمُ الرئيسية لا يُسجّلان شيئاً — '+posted.filter(x=>x.qtype==='err_frozen').length);
+    await page.evaluate(()=>startErrors());
     await page.waitForTimeout(300);
     const fr=posted.filter(x=>x.domain==='gen'&&x.qtype==='err_frozen');
-    ok(fr.length>=1,'ويُسجَّل التجميد ليُقاس — '+fr.length);
+    ok(fr.length===1,'وبدءُ الجلسة يُسجّل مرّةً واحدة — '+fr.length);
     ok(fr.length&&/u3_g1|u2_g1/.test(fr[0].response||''),'ومعه أيّ عناصر جُمّدت');
     await page.close();
   }

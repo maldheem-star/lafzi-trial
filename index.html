@@ -6112,6 +6112,8 @@ function fixCardGrade(k,ok){
   fixCardSave1(m);
 }
 // جمع المستحقّ من كل المصادر. كلٌّ منها ذاكرةٌ قائمة أصلاً — لا جدول جديد ولا تسجيل جديد.
+// اسمُ ما جُمِّد في آخر جمعٍ — يُسجَّل عند بدء الجلسة لا عند كل إحصاء
+let _errFrozenLast=[];
 function errCollect(){
   const today=srsToday(),out=[];
   const fc=fixCardLoad();
@@ -6143,9 +6145,11 @@ function errCollect(){
     if(engFrozen(it,lvNow)){frozen.push(id);return}
     out.push({kind:"item",key:id,it:engShuffleChoices(it)});
   });
-  if(frozen.length){try{logAnswer("gen","err_frozen",null,(lvNow||"A1")+" · "+frozen.join(","),null,null,
-    {q_text:("جُمِّد في «أخطائي» فوق المستوى بدرجتين ("+(lvNow||"A1")+"): "
-      +frozen.map(function(i){return i+"·"+(ENG_LESSON_LV[(POOL.filter(function(x){return x.id===i})[0]||{}).lesson]||"?")}).join(" | ")).slice(0,1200)})}catch(e){}}
+  // ولا يُسجَّل هنا: errCollect تُستدعى من errCount في **كل رسمةٍ للرئيسية** (أربع
+  // مرّات في الرسمة الواحدة)، فسطرٌ هنا يُغرق السجلّ بصفوفٍ مكرّرة بلا حدث حقيقي.
+  // كشفه test_log بثلاثة طلباتٍ حيث يُتوقَّع طلبان. فيُحفَظ الاسمُ ويُسجَّل عند بدء
+  // الجلسة وحدها — الحدث هو الجلسة لا الإحصاء.
+  _errFrozenLast=frozen;
   return out;
 }
 const ERR_SESSION_MAX=12;   // جلسة قصيرة: قائمةٌ لا تنتهي تُيئِس بدل أن تُعالج
@@ -6158,6 +6162,13 @@ let errItems=[],errIdx=0,errLocked=false,errOk=false,errPicked=null,errScore=0,e
 function errCur(){return errItems[errIdx]||null}
 function startErrors(){
   errItems=errDraw();errIdx=0;errLocked=false;errOk=false;errPicked=null;errScore=0;errDone=false;errTyped="";
+  // التجميد يُسجَّل مرّةً واحدة عند بدء الجلسة — الحدث هو الجلسة لا الإحصاء
+  if(_errFrozenLast.length){
+    const lvE=profileOf().level||"A1",POOLE=engPool();
+    try{logAnswer("gen","err_frozen",null,lvE+" · "+_errFrozenLast.join(","),null,null,
+      {q_text:("جُمِّد في «أخطائي» فوق المستوى بدرجتين ("+lvE+"): "
+        +_errFrozenLast.map(function(i){return i+"·"+(ENG_LESSON_LV[(POOLE.filter(function(x){return x.id===i})[0]||{}).lesson]||"?")}).join(" | ")).slice(0,1200)})}catch(e){}
+  }
   mode="errors";errShownAt=Date.now();wbReset();
   const c=errCur();if(c&&c.kind==="fix")wbStart(c.target);
   window.scrollTo(0,0);render();
