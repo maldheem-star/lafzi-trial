@@ -6124,12 +6124,28 @@ function errCollect(){
     const meta=DICTATION_A1.filter(function(x){return x.w.toLowerCase()===w})[0];
     out.push({kind:"word",key:w,w:(meta?meta.w:w),m:(meta?meta.m:""),last:de[w].last||""});
   });
-  const ie=itemErrLoad(),POOL=engPool();
+  const ie=itemErrLoad(),POOL=engPool(),lvNow=profileOf().level;
+  const frozen=[];
   Object.keys(ie).forEach(function(id){
     const it=POOL.filter(function(x){return x.id===id})[0];
     if(!it||!it.c)return;   // عناصر البناء والإملاء لها بابها، فلا تُكرَّر هنا
+    // ===== بوّابة التجميد تشمل «أخطائي» كذلك — ٢٤ أغسطس =====
+    // كانت موصولةً بـbuildDailyPlan وحدها، فبقي هذا الباب مفتوحاً على مصراعيه:
+    // بياناتٌ حيّة (هيا، A1) — «أخطائي» ١ من ١٢، وكلُّ عناصره تقريباً B1 (المضارع
+    // التامّ since/for، الكلام المنقول، الموصول which/who، الماضي البسيط). أي أنها
+    // تُعيد محتوًى فوق مستواها بدرجتين وترسب في أحد عشر من اثني عشر.
+    //
+    // وكان الاستثناء مقصوداً وموثَّقاً (١٩ أغسطس): عنصرٌ بسجلّ خطأٍ حقيقي يتجاوز
+    // البوّابة. والحجّة كانت أن البوّابة بُنيت لمنع محتوًى **بكرٍ** فوق المستوى، لا
+    // لحجب ما أخطأته فعلاً. وكذّبتها البيانات: إعادةُ عنصرٍ فوق المستوى بدرجتين ليست
+    // علاجاً بل تكرارٌ للفخّ نفسه — والدليل أن النسبة ٨٪، تحت التخمين من أربعة.
+    // والتجميد تعليقٌ لا محو: سجلّ الخطأ باقٍ، ويعود العنصر متى ارتفع مستواها المقاس.
+    if(engFrozen(it,lvNow)){frozen.push(id);return}
     out.push({kind:"item",key:id,it:engShuffleChoices(it)});
   });
+  if(frozen.length){try{logAnswer("gen","err_frozen",null,(lvNow||"A1")+" · "+frozen.join(","),null,null,
+    {q_text:("جُمِّد في «أخطائي» فوق المستوى بدرجتين ("+(lvNow||"A1")+"): "
+      +frozen.map(function(i){return i+"·"+(ENG_LESSON_LV[(POOL.filter(function(x){return x.id===i})[0]||{}).lesson]||"?")}).join(" | ")).slice(0,1200)})}catch(e){}}
   return out;
 }
 const ERR_SESSION_MAX=12;   // جلسة قصيرة: قائمةٌ لا تنتهي تُيئِس بدل أن تُعالج
@@ -7198,11 +7214,25 @@ function writeCaptureDraft(){
   const el=document.getElementById('writeIn');
   if(el&&!writeSubmitted)writeTyped=el.value;
 }
-// تحديثٌ حيّ بلا إعادة رسمٍ كاملة — إعادة الرسم تُفقد موضع المؤشّر ولوحة المفاتيح
+// ===== أكبر إدخالٍ دفعةً واحدة — قياسٌ لا علاج (٢٤ أغسطس) =====
+// نصوص هيا الليلة تحمل كلماتٍ عربيةً منطوقةً حوّلها المحرّك إلى إنجليزية مشوّهة
+// («double madrasi»، «sheetal watani»، «Tony taliba»)، وبلا ترقيمٍ ولا حروفٍ كبيرة.
+// والفرضيّة أنها تُملي بصوتها عبر ميكروفون لوحة المفاتيح بدل الكتابة — فيقيس القسمُ
+// دقّةَ تعرّفِ جهازها على الكلام لا كتابتَها هي.
+//
+// ولا يُدَّعى هذا حتى يُقاس: الكتابة بالأصابع تُدخِل حرفاً حرفاً (فرقٌ ١ في كل حدث)،
+// والإملاء الصوتي واللصق يُدخلان عبارةً كاملة دفعةً واحدة (٢٠-٦٠ حرفاً). فيُسجَّل
+// أكبر فرقٍ في حدثٍ واحد مع كل محاولة، ثم يُحكَم من التوزيع لا من الانطباع — نفس
+// نهج quizErrDelta: قياسٌ يسبق العلاج، وعتبةٌ تُسمّى من بياناتٍ حقيقية لا تُخترع.
+let writeMaxBurst=0,writePrevLen=0;
+function writeBurstReset(v){writeMaxBurst=0;writePrevLen=String(v||"").length}
 function writeLive(){
   const el=document.getElementById('writeIn'),box=document.getElementById('writeCrit');
-  if(!el||!box)return;
-  box.innerHTML=writeCritHTML(writeCur(),el.value);
+  if(!el)return;
+  const L=el.value.length,d=L-writePrevLen;
+  if(d>writeMaxBurst)writeMaxBurst=d;
+  writePrevLen=L;
+  if(box)box.innerHTML=writeCritHTML(writeCur(),el.value);
 }
 let writeItems=[],writeIdx=0,writeDone=false,writeScore=0,writeShownAt=0,writeTyped="",
   writeSubmitted=false,writeBusy=false,writeFix=[],writeFixFail="",writeCount=0,writeLtDropped=0,writeLtJudged=0,
@@ -7211,6 +7241,7 @@ function startWrite(){
   writeItems=buildWritePlan();writeIdx=0;writeDone=false;writeScore=0;
   writeSubmitted=false;writeBusy=false;writeFix=[];writeFixFail="";writeTyped="";writeCount=0;
   writeLtDropped=0;writeLtJudged=0;writeModelShown=false;writeModelViews=0;writeCopy=false;writeSent=0;
+  writeBurstReset(writeJointFor(writeItems[0]));
   mode="write";writeShownAt=Date.now();window.scrollTo(0,0);render();
   // فتحُ الجلسة يُسجَّل — بلا هذا لا يُفرَّق بين «لم يدخل» و«دخل فخرج قبل أن يكتب».
   // وهو بالضبط ما عجزتُ عن الحكم فيه اليوم: إلياس صفر محاولة، ولا سطر في السجلّ يقول
@@ -7287,7 +7318,7 @@ async function writeSubmit(){
   logAnswer("write",it.lv,ok,txt,it.id,writeShownAt?Date.now()-writeShownAt:null,
     {_sk:skOf(it),q_text:((it.ai?"[مولَّد] ":"")+it.prompt+" · الهدف "+goals.words+" كلمة · كتبت "+writeCount
       +(goals.sentences?(" · جمل "+writeSent+"/"+goals.sentences):"")
-      +" · بادئة:"+(goals.jointWords?1:0)+" · سقالة:"+(writeScafOn(it.lv)?1:0)
+      +" · بادئة:"+(goals.jointWords?1:0)+" · سقالة:"+(writeScafOn(it.lv)?1:0)+" · دفعة:"+writeMaxBurst
       +" · review:"+reviewState+" · lt:"+writeLtJudged+"/"+writeLtDropped+" · مثال:"+writeModelViews
       +" · نسخ:"+(writeCopy?1:0)+" · تنوّع:"+ttr+" · شبه سابق:"+selfSim+" · فوق K1:"+lfp.pct+"%").slice(0,1200)});
   // يُحفظ بعد التسجيل لا قبله — والنسخ المحض لا يدخل السجلّ فلا يصير أساساً يُقاس عليه
@@ -7306,6 +7337,7 @@ function writeNext(){
 
   if(writeIdx+1>=writeItems.length){writeDone=true;window.scrollTo(0,0);render();return}
   writeIdx++;writeSubmitted=false;writeBusy=false;writeFix=[];writeFixFail="";writeTyped="";writeCount=0;writeCopy=false;writeSent=0;
+  writeBurstReset(writeJointFor(writeItems[writeIdx]));
   writeModelShown=false;writeModelViews=0;
   writeShownAt=Date.now();window.scrollTo(0,0);render();
 }
@@ -7726,10 +7758,15 @@ function m_varExpr() {
 function m_function() {
   const k = rand(2, 5), c = rand(1, 9), x = rand(4, 12);
   const y = k * x + c;
-  return qz("math6",
+  const o = qz("math6",
     `دالةٌ قاعدتها: اضربي المُدخَل في ${toAr(k)} ثم أضيفي ${toAr(c)}. ما المُخرَج عندما يكون المُدخَل ${toAr(x)}؟`,
     y, [k * (x + c), x + k + c, k * x],
     `المُخرَج = ${toAr(k)} × ${toAr(x)} + ${toAr(c)} = ${toAr(y)}.`);
+  // الإجراء المكسور يُحاكى ويُسمّى، لا يُطابَق فرقُه: k×x ناتجُ من ضربت ثم توقّفت.
+  // تكرّر يومين متتاليين (٢٣ أغسطس: ×٢ ثم +٧ للمُدخَل ٥ ⇐ ١٠ · ٢٤ أغسطس: ×٢ ثم +١
+  // للمُدخَل ٤ ⇐ ٨) — وقاعدة المشروع أن تكرار الاسم يستحقّ بوّابة لا تنبيهاً.
+  o.bugs = { fn_rule_no_add: k * x };
+  return o;
 }
 
 // ٨-١ المعادلات
@@ -8007,16 +8044,23 @@ const M_UNITS = [
 ];
 function m_metric() {
   const u = pick(M_UNITS), n = rand(2, 40);
+  // خانةٌ واحدة خطأ في السلّم العشري — تكرّر يومين متتاليين (٢٣ أغسطس: ٢٧ كغم ⇐ ٢٧٠٠
+  // بضربٍ في ١٠٠ لا ١٠٠٠ · ٢٤ أغسطس: ٣٤٠٠٠ ملغم ⇐ ١٠٣٤). والإجراء المكسور نفسه في
+  // الاتجاهين: تستعمل ١٠٠ مكان ١٠٠٠، فيُسمّى بالمحاكاة لا بقرب الفرق.
   if (pick([0, 1])) {
     const val = n * u.k;
-    return qz("math6", `حوّلي: ${toAr(n)} ${u.big} = كم ${u.small}؟`, val,
+    const o = qz("math6", `حوّلي: ${toAr(n)} ${u.big} = كم ${u.small}؟`, val,
       [n * (u.k / 10), n + u.k, val * 10, n * (u.k * 10)],
       `الوحدة الأكبر ⇐ الأصغر: نضرب في ${toAr(u.k)}. ${toAr(n)} × ${toAr(u.k)} = ${toAr(val)} ${u.small}.`);
+    o.bugs = { metric_wrong_power: n * (u.k / 10) };
+    return o;
   }
   const big = n * u.k;
-  return qz("math6", `حوّلي: ${toAr(big)} ${u.small} = كم ${u.big}؟`, n,
+  const o2 = qz("math6", `حوّلي: ${toAr(big)} ${u.small} = كم ${u.big}؟`, n,
     [big / (u.k / 10), n * 10, big - u.k, n + u.k],
     `الوحدة الأصغر ⇐ الأكبر: نقسم على ${toAr(u.k)}. ${toAr(big)} ÷ ${toAr(u.k)} = ${toAr(n)} ${u.big}.`);
+  o2.bugs = { metric_wrong_power: big / (u.k / 10) };
+  return o2;
 }
 
 // ٣-٥ مهارة حل المسألة: استعمال مقياسٍ مرجعي — الوحدة المعقولة لا الحساب
@@ -8491,14 +8535,51 @@ function math6Setup(){
   const it=math6Items[math6Idx];secGateStart("math6",it?it.q:"");
 }
 function math6Cur(){return math6Items[math6Idx]}
+// ===== آليّتان مسمّاتان تكرّرتا يومين متتاليين — ٢٤ أغسطس =====
+// نفس بنية BUG_GATES في الأساسيات حرفياً: اسمٌ يُسجَّل، وتكرارٌ يُسلّح (SHAPE_ARM=2)،
+// وبوّابةٌ تمنع حتى تُقَرّ الخطوة الناقصة، وصوابٌ يحلّها. لا أداةٌ جديدة.
+const M6_BUGS={
+  fn_rule_no_add:{ar:"ضربتِ ثم توقّفتِ قبل الجمع",
+    rule:"قاعدة الدالّة **خطوتان**: اضربي أوّلاً، ثم أضيفي. الجواب بعد الضرب وحده ناقص."},
+  metric_wrong_power:{ar:"استعملتِ ١٠٠ مكان ١٠٠٠",
+    rule:"بين كيلوغرام/غرام، وغرام/مليغرام، ولتر/مليلتر: **ألفٌ** لا مئة."},
+};
+function m6BugOf(it,val){
+  if(!it||!it.bugs||!Number.isFinite(val))return null;
+  const ks=Object.keys(it.bugs);
+  for(let i=0;i<ks.length;i++)if(it.bugs[ks[i]]===val)return ks[i];
+  return null;
+}
+let m6BugOn="";
+function m6Arm(name){m6BugOn=name}
+function m6Clear(){m6BugOn=""}
+function m6Gated(){
+  if(!m6BugOn)return false;
+  const it=math6Cur();
+  return !!(it&&it.bugs&&it.bugs[m6BugOn]!==undefined)&&!math6Locked;
+}
+function m6BoxHTML(){
+  if(!m6Gated())return "";
+  const b=M6_BUGS[m6BugOn]||{};
+  return `<div style="background:#FEF3C7;border:1.5px solid #FCD34D;border-radius:12px;padding:14px 16px;margin-bottom:14px">
+    <div style="font-size:13px;font-weight:800;color:#92400E;margin-bottom:6px">⚠️ خطوةٌ ناقصة تتكرّر: ${b.ar||""}</div>
+    <div style="font-size:13px;color:#78350F;line-height:1.95;margin-bottom:10px">${b.rule||""}</div>
+    <button type="button" onclick="m6Clear();render()" style="background:#92400E;border:none;color:#fff;border-radius:11px;padding:9px 18px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">فهمتُ — أعيدي الخيارات</button>
+  </div>`;
+}
 function math6Choose(i){
   if(math6Locked||!gateOpen())return;      // نفس بوّابة التسرّع البنيوية
+  if(m6Gated())return;                     // ولا اختيار قبل إقرار الخطوة الناقصة
   math6Picked=i;math6Locked=true;
   const it=math6Cur(),ok=(i===it.a);
   it._ok=ok;it._picked=i;              // تفصيل النتيجة بالدرس يقرؤهما
   if(ok)math6Score++;
   math6SrsUpdate(it._l.id,ok);
-  logAnswer("math6",it._l.id,ok,it.c[i],it._l.id,Date.now()-math6ShownAt,
+  // الآلية تُسمّى بمحاكاة الإجراء المكسور لا بقرب الفرق — «شكل الخطأ لا وقوعه»
+  const bug=ok?null:m6BugOf(it,parseArNum(it.c[i]));
+  if(bug){shapeRecord(bug,true);if(shapeArmed(bug))m6Arm(bug)}
+  else if(ok&&it.bugs)Object.keys(it.bugs).forEach(function(k){shapeRecord(k,false)});
+  logAnswer("math6",it._l.id,ok,it.c[i]+(bug?" · "+bug+" ("+(M6_BUGS[bug]||{}).ar+")":""),it._l.id,Date.now()-math6ShownAt,
     {_sk:it._l.sk,
      q_text:(it._src?"["+it._src+"] ":"[مولَّد] ")+it.q+" · الخيارات: "+
        it.c.map(function(x,k){return (k+1)+") "+x+(k===it.a?" ✓":"")}).join(" | ")});
@@ -8528,7 +8609,8 @@ function renderMath6(){
     <span class="tag" style="background:#CCFBF1;color:#0F766E">🧮 ${esc(L.no)} · ${esc(L.t)}</span>
     ${it._src?`<div style="margin-top:8px;font-size:12px;color:#0F766E;background:#F0FDFA;border-radius:8px;padding:5px 10px;display:inline-block">📖 من الكتاب · ${esc(it._src)}</div>`:""}
     <div style="margin:14px 0 4px;font-size:17px;line-height:1.9;font-weight:600;color:#0F172A">${esc(it.q)}</div>
-    <div class="choices" style="margin-top:12px">${secGateHTML()}${choices}</div>
+    ${m6BoxHTML()}
+    <div class="choices" style="margin-top:12px">${secGateHTML()}${m6Gated()?"":choices}</div>
     ${why}
   </div>
   ${math6Locked?`<button class="btn" style="background:#0F766E" onclick="math6Next()">${math6Idx+1>=math6Items.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`:""}`;
