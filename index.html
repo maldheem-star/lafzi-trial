@@ -3981,7 +3981,7 @@ try{lessonSeedOnce()}catch(e){appError('lessonSeedOnce',e)}
 // (itemStuck/fixNeeded) مبنيّةٌ عليها خصّيصاً لتُعلّمها ما تعثّرت فيه فعلاً، لا لتمنعه. إخفاء
 // هذه العناصر كان سيُعطّل علاجاً قائماً يعمل لأجل مشكلةٍ بعينها اسمها. القيد هنا يمنع فقط
 // أن يُضاف إلى خطتها من الغد عنصرٌ جديدٌ لم تَرَه قط فوق مستواها بدرجتين — لا يمحو ماضياً.
-const ENG_LV_RANK={A1:0,A2:1,B1:2};
+const ENG_LV_RANK={A1:0,A2:1,B1:2,B2:3};
 const ENG_LESSON_LV={
   l_where:"A2",l_cond:"B1",l_few:"A2",l_pp_q:"B1",l_pp_vs:"B1",l_pastprog:"A2",
   l_rel:"B1",l_compadv:"A2",l_asas:"A2",l_future:"A2",l_maymight:"A2",
@@ -5895,6 +5895,20 @@ function wbHTML(){
 // بنك الجمل: مصدرٌ واحد لثلاثة أبواب — الإملاء (تُسمَع ثم تُبنى)، وخطة الإنجليزية
 // (تُطلب بالعربية ثم تُبنى)، ووضع أخطائي. والقواعد موسومة لتُربط بشرحها القائم.
 const ENG_BUILD=[
+ // ===== طبقة A1 — لم تكن موجودة إطلاقاً حتى ٢٥ أغسطس =====
+ // `engBuildFor("A1")` كانت تُعيد عناصر A2، فهيا (A1 مقاسة) لم تر جملةً في مستواها قطّ.
+ // وهذه بمعيار A1: مضارع بسيط، جملةٌ واحدة، أربع إلى سبع كلمات، بلا ماضٍ ولا مقارنة
+ // ولا تركيب — وبمحتوًى سعوديّ كبقيّة بنوك التطبيق.
+ {id:"b_a1_cat",s:"I have a small cat.",m:"عندي قطّة صغيرة.",lv:"A1"},
+ {id:"b_a1_school",s:"I go to school every day.",m:"أذهب إلى المدرسة كل يوم.",lv:"A1"},
+ {id:"b_a1_bag",s:"My bag is red.",m:"حقيبتي حمراء.",lv:"A1"},
+ {id:"b_a1_like",s:"I like apples and dates.",m:"أحبّ التفاح والتمر.",lv:"A1"},
+ {id:"b_a1_sister",s:"My sister is eight years old.",m:"أختي عمرها ثماني سنوات.",lv:"A1"},
+ {id:"b_a1_water",s:"I drink water in the morning.",m:"أشرب الماء في الصباح.",lv:"A1"},
+ {id:"b_a1_book",s:"This is my English book.",m:"هذا كتابي في الإنجليزية.",lv:"A1"},
+ {id:"b_a1_play",s:"We play football after school.",m:"نلعب كرة القدم بعد المدرسة.",lv:"A1"},
+ {id:"b_a1_riyadh",s:"My family lives in Riyadh.",m:"عائلتي تسكن في الرياض.",lv:"A1"},
+ {id:"b_a1_weather",s:"The weather is hot today.",m:"الطقس حارّ اليوم.",lv:"A1"},
  {id:"b_beach",s:"I went to the beach with my family.",m:"ذهبتُ إلى الشاطئ مع عائلتي.",lv:"A2"},
  {id:"b_bfast",s:"I ate eggs and bread for breakfast.",m:"أكلتُ بيضاً وخبزاً في الفطور.",lv:"A2"},
  {id:"b_tea",s:"I would like a cup of tea, please.",m:"أريد كوب شاي من فضلك.",lv:"A2"},
@@ -5910,11 +5924,15 @@ const ENG_BUILD=[
  // موسومة بقواعدها: الشرح موجود أصلاً، والبناء تدريبٌ عليه لا درسٌ جديد
  {id:"b_few",s:"There are a few books on the table.",m:"على الطاولة بضعة كتب.",lv:"A2",lesson:"l_few"},
  {id:"b_little",s:"There is a little water in the bottle.",m:"في الزجاجة قليل من الماء.",lv:"A2",lesson:"l_few"},
- {id:"b_rel",s:"This is the boy who won the prize.",m:"هذا هو الولد الذي فاز بالجائزة.",lv:"A2",lesson:"l_rel"},
- {id:"b_pass",s:"The letter was written by my sister.",m:"كُتبت الرسالة بواسطة أختي.",lv:"A2",lesson:"l_passive"},
- {id:"b_cond",s:"If it rains, we will stay at home.",m:"إذا أمطرت فسنبقى في البيت.",lv:"A2",lesson:"l_cond"},
- {id:"b_ppq",s:"Have you finished your homework yet?",m:"هل أنهيتَ واجبك بعد؟",lv:"A2",lesson:"l_pp_q"},
- {id:"b_ppa",s:"I have already eaten my breakfast.",m:"لقد أكلتُ فطوري بالفعل.",lv:"A2",lesson:"l_pp_q"},
+ // ===== خمسةٌ كانت موسومة A2 ودروسها B1 — درس ٢٥ أغسطس =====
+ // بيانات هيا اليوم: ٠ من ١١ في البناء، وثلاثةٌ من هذه الخمسة عُرضت عليها فعلاً
+ // (المبني للمجهول، الشرط، المضارع التامّ) — أي فوق مستواها المقاس بدرجتين. والوسم
+ // هنا كان يناقض `ENG_LESSON_LV` نفسه، وهو المعيار المعتمَد في المشروع.
+ {id:"b_rel",s:"This is the boy who won the prize.",m:"هذا هو الولد الذي فاز بالجائزة.",lv:"B1",lesson:"l_rel"},
+ {id:"b_pass",s:"The letter was written by my sister.",m:"كُتبت الرسالة بواسطة أختي.",lv:"B1",lesson:"l_passive"},
+ {id:"b_cond",s:"If it rains, we will stay at home.",m:"إذا أمطرت فسنبقى في البيت.",lv:"B1",lesson:"l_cond"},
+ {id:"b_ppq",s:"Have you finished your homework yet?",m:"هل أنهيتَ واجبك بعد؟",lv:"B1",lesson:"l_pp_q"},
+ {id:"b_ppa",s:"I have already eaten my breakfast.",m:"لقد أكلتُ فطوري بالفعل.",lv:"B1",lesson:"l_pp_q"},
  {id:"b_prog",s:"We were playing football when it started to rain.",m:"كنّا نلعب كرة القدم حين بدأ المطر.",lv:"A2",lesson:"l_pastprog"},
  {id:"b_since",s:"She has lived here since two thousand nineteen.",m:"سكنت هنا منذ ٢٠١٩.",lv:"B1",lesson:"l_pp_vs"},
  // درجة أعلى لمحمد (B1): تظهر في وضع أخطائي وفي بنك المحادثة لا في خطة هيا
@@ -5922,9 +5940,21 @@ const ENG_BUILD=[
  {id:"b_told",s:"She told me that she was tired.",m:"أخبرتني أنها كانت متعبة.",lv:"B1"},
  {id:"b_friday",s:"I need to finish this work before Friday.",m:"عليّ إنهاء هذا العمل قبل الجمعة.",lv:"B1"},
 ];
+// المستوى الفعلي لجملة البناء: الأعلى بين وسمها ودرجة درسها في `ENG_LESSON_LV`.
+// والأخذ بالأعلى بنيويّ لا تجميلٌ لبيانات اليوم: وسمٌ خاطئ في عنصرٍ يُضاف غداً لا يسرّب
+// شيئاً ما دام درسه مصنَّفاً — وهذا ما فشل فيه الوسم اليدوي وحده (خمسةٌ من عشرين).
+function engBuildLv(x){
+  const tag=x&&x.lv||"A2",les=x&&x.lesson?ENG_LESSON_LV[x.lesson]:null;
+  if(!les)return tag;
+  return (ENG_LV_RANK[les]||0)>(ENG_LV_RANK[tag]||0)?les:tag;
+}
+// نفس قاعدة i+1 المعتمَدة في `engLevelOk` (١٩ أغسطس): مستواها ودرجةٌ واحدة أعلى،
+// ودرجتان فأكثر ممنوعتان — لا `مطابقة` كبنوك الاستماع/القراءة، لأن هذا مسار الخطّة
+// نفسه الذي اختير له i+1 هناك.
 function engBuildFor(level){
-  const L=String(level||"A2");
-  return ENG_BUILD.filter(function(x){return (L==="A1"||L==="A2")?x.lv==="A2":true});
+  const L=String(level||"A2"),cap=(ENG_LV_RANK[L]==null?0:ENG_LV_RANK[L])+1;
+  const out=ENG_BUILD.filter(function(x){return (ENG_LV_RANK[engBuildLv(x)]||0)<=cap});
+  return out.length?out:ENG_BUILD.filter(function(x){return engBuildLv(x)===L});
 }
 
 // ===== إملاء إنجليزي: تستمع للكلمة بصوت أمريكي ثم تكتبها (مستوى A1) =====
@@ -6647,7 +6677,13 @@ const LISTEN_BANK=[
 // systemGen، لكن بنكَي إلياس ومحمد المحليَّين كانا عند GEN_BANK_MAX=15 بالفعل، فبقيا
 // يُقدّمان عناصر [مولَّد] عربية القديمة إلى ما لا نهاية — genTopUp لا يطلب توليداً
 // جديداً أصلاً وقد بلغ البنك سقفه. مفتاحٌ ثالث يهجر المخزَّن العربي القديم بالآلية نفسها.
-const GEN_BANK_KEY_LISTEN="mawhiba_listen_aibank_v3";
+// _v4: نفس الدرس ثالثةً (٢٥ أغسطس) — نُشرت قيود الأسماء والأماكن والثقافة السعودية في
+// الخادم (نسخة ٢٨)، والقيود لا تمسّ ما وُلِّد قبلها. وبيانات اليوم تُثبته: عناصرُ
+// «Leo/Sam/Tom» مولَّدةٌ ٢٠-٢٢ أغسطس ظهرت في جلسات اليوم فعلاً (فُكَّت طوابعها الزمنية
+// من معرّفاتها). فالبنك المحلّي يبقى أجنبيّ الأسماء ما بقي مفتاحه — والمفتاح الجديد
+// يهجره كما هجر السابقان التلوّثَ العربي والتكرار. **وبقيّة البنوك المولَّدة رُفعت معه**
+// (قراءة، كتابة، قواعد، STEP، فيديو، وجمل أزواج الاستماع) للسبب نفسه، لا هذا وحده.
+const GEN_BANK_KEY_LISTEN="mawhiba_listen_aibank_v4";
 function listenBankFor(level){
   const L=String(level||"A2");
   const ai=genBankLoad(GEN_BANK_KEY_LISTEN).filter(function(x){return x.lv===L});
@@ -6792,7 +6828,7 @@ const READ_BANK=[
   {id:"rd_b2_8",lv:"B2",sk:"الفكرة الرئيسية",passage:"Supporters of the four-day week point to trials showing stable output and happier staff. Critics reply that the trials were run by companies that volunteered, staffed by people who wanted it to succeed. Both observations can be true at once, which is precisely why a larger and less self-selecting trial is needed before anyone draws firm conclusions.",q:"What does the writer conclude?",c:["The four-day week has already been proven to work","A broader trial is needed because current evidence is self-selecting","The critics have disproved the trials"],a:1},
 ];
 // _v3: نفس سبب GEN_BANK_KEY_LISTEN أعلاه — عناصر [مولَّد] عربية قديمة عند السقف
-const GEN_BANK_KEY_READ="mawhiba_read_aibank_v3";
+const GEN_BANK_KEY_READ="mawhiba_read_aibank_v4";
 function readBankFor(level){
   const L=String(level||"A2");
   const ai=genBankLoad(GEN_BANK_KEY_READ).filter(function(x){return x.lv===L});
@@ -6984,7 +7020,7 @@ function writeModelFor(lv){return WRITE_MODEL[lv]||WRITE_MODEL.A2}
 // ١٧ أغسطس: WRITE_BANK ثابتٌ (٦-٨ للمستوى) بلا أي نموّ، خلافاً للاستماع/المقروء —
 // وجلسةٌ واحدة يومياً (WRITE_N=٣) كافيةٌ لاستنفاده خلال أسبوعين. نفس آلية genTopUp
 // المستعملة أصلاً لهما بالضبط (genBankLoad/genBankAdd/GEN_BANK_MAX): لا بنية جديدة.
-const GEN_BANK_KEY_WRITE="mawhiba_write_aibank_v1";
+const GEN_BANK_KEY_WRITE="mawhiba_write_aibank_v2";
 function writeBankFor(level){
   const L=String(level||"A2");
   const ai=genBankLoad(GEN_BANK_KEY_WRITE).filter(function(x){return x.lv===L});
@@ -7693,7 +7729,7 @@ const GRAM_BANK=[
 ];
 // مولَّد GRAM ينضمّ لبنك المستوى المؤلَّف — ١٥٪ تمايز فقط عند إلياس (٢٠ أغسطس، ٣٣
 // إجابة على ٥ جملٍ ثابتة) لأن هذا القسم وحده بلا توليدٍ إطلاقاً خلافاً لبقية الأقسام
-const GEN_BANK_KEY_GRAM="mawhiba_gram_aibank_v1";
+const GEN_BANK_KEY_GRAM="mawhiba_gram_aibank_v2";
 function gramBankFor(level){
   const L=String(level||"A2");
   let exact=GRAM_BANK.filter(function(x){return x.lv===L});
@@ -7759,8 +7795,15 @@ function gramChoose(i){
   if(ok)gramScore++;
   const elapsed=Date.now()-gramShownAt;
   gramSrsUpdate(it.id,ok);
-  logAnswer("gram","sentence",ok,it.c[i].t,it.id,elapsed,
-    {_sk:skOf(it),q_text:it.c.map(function(x,k){return (k+1)+") "+x.t+(x.ok?" ✓":"")}).join(" | ")});
+  // ===== الخيارات تُسجَّل بترتيب العرض لا بترتيب البنك — درس ٢٥ أغسطس =====
+  // `gramSetupRound` يخلط العرض فعلاً، لكن السطر كان يُبنى من `it.c` بترتيبه الأصلي —
+  // فظهر الصواب في الموضع «٢» في خمسة عناصر متتالية لهيا (٠ من ٥) لأن هكذا كُتب البنك
+  // لا لأنها رأته هناك. أي أن انحياز الموضع كان **غير قابل للقياس** في القسم الذي
+  // نالت فيه صفراً — وهو نقضٌ لعُرف المشروع نفسه: «تُسجَّل بموضعها لا بشيفرتها».
+  const shown=gramOrder.map(function(wi,k){return (k+1)+") "+it.c[wi].t+(it.c[wi].ok?" ✓":"")}).join(" | ");
+  const pickPos=gramOrder.indexOf(i)+1;
+  logAnswer("gram","sentence",ok,"موضع "+toAr(pickPos)+" · "+it.c[i].t,it.id,elapsed,
+    {_sk:skOf(it),q_text:shown});
   render();
 }
 function gramNext(){
@@ -8969,7 +9012,7 @@ const STEP_BANK=[
 ];
 // مولَّد STEP يقتصر على نوع pick وحده — مطابقٌ عمداً لشكل GRAM (الرقابة الآلية على
 // gap/order أصعب من التحقّق من GJT بسيطة، نفس مبدأ "الرقابة بحسب الخطر")
-const GEN_BANK_KEY_STEP="mawhiba_step_aibank_v1";
+const GEN_BANK_KEY_STEP="mawhiba_step_aibank_v2";
 function stepBankFor(level){
   const L=String(level||"A2");
   const ai=genBankLoad(GEN_BANK_KEY_STEP).filter(function(x){return x.lv===L});
@@ -9041,21 +9084,31 @@ function stepSetupRound(){
   stepOrder=shuffle([0,1,2,3]);
   // ترتيبُ عرضٍ مخلوط لعناصر الترتيب — وإلا ظهرت الجمل مرتّبةً أصلاً فلا سؤال
   stepSeq=it&&it.type==="order"?shuffle(it.s.map(function(_,i){return i})):[];
+  // ===== بوّابة التسرّع تصل STEP — درس ٢٥ أغسطس =====
+  // كانت موصولةً بستّة أقسام و`step` ليس منها. وهيا اليوم: ٠ من ٦، ومنها عنصرُ حروفٍ
+  // كبيرة بأربع جملٍ كاملة أُجيب في **١٫٣٧ ثانية** وآخرُ في ٢٫٠ — وهو بعينه شكلُ النقر
+  // الأعمى الذي بُنيت له البوّابة في ٢٢ أغسطس. والأرضيّة تُحسب من طول ما يجب أن يُقرأ:
+  // جمل الاختيار، أو نصّ الفراغ، أو جمل الفقرة في عناصر الترتيب.
+  secGateStart("step",it?(it.type==="order"?(it.s||[]).join(" ")
+    :((it.q||"")+" "+(it.c||[]).map(function(x){return x.t}).join(" "))):"",
+    "step:"+((it&&it.type)||"pick"));
 }
 function stepCur(){return stepItems[stepIdx]}
 function stepChoose(i){
-  if(stepLocked)return;
+  if(stepLocked||!gateOpen())return;   // بوّابة بنيوية: لا اختيار قبل قراءة الجمل
   const it=stepCur();if(!it||it.type==="order")return;
   stepPicked=i;stepLocked=true;
   const ok=!!it.c[i].ok;
   if(ok)stepScore++;
   stepSrsUpdate(it.id,ok);
-  logAnswer("step",it.type,ok,it.c[i].t,it.id,Date.now()-stepShownAt,
-    {_sk:skOf(it),q_text:((it.tag?"["+it.tag+"] ":"")+(it.q?it.q+" · ":"")
-      +it.c.map(function(x,k){return (k+1)+") "+x.t+(x.ok?" ✓":"")}).join(" | ")).slice(0,1200)});
+  // بترتيب العرض لا البنك — نفس تصحيح `gram` أعلاه، والعلّة هنا نفسها حرفياً
+  const shown=stepOrder.map(function(wi,k){return (k+1)+") "+it.c[wi].t+(it.c[wi].ok?" ✓":"")}).join(" | ");
+  const pickPos=stepOrder.indexOf(i)+1;
+  logAnswer("step",it.type,ok,"موضع "+toAr(pickPos)+" · "+it.c[i].t,it.id,Date.now()-stepShownAt,
+    {_sk:skOf(it),q_text:((it.tag?"["+it.tag+"] ":"")+(it.q?it.q+" · ":"")+shown).slice(0,1200)});
   render();
 }
-function stepSeqPick(i){if(stepLocked||stepSeqPicked.indexOf(i)>=0)return;stepSeqPicked.push(i);render()}
+function stepSeqPick(i){if(stepLocked||!gateOpen()||stepSeqPicked.indexOf(i)>=0)return;stepSeqPicked.push(i);render()}
 function stepSeqUnpick(k){if(stepLocked)return;stepSeqPicked.splice(k,1);render()}
 function stepSeqSubmit(){
   if(stepLocked)return;
@@ -9105,7 +9158,8 @@ function renderStep(){
       </div>`:"";
     body=`<div style="font-size:13px;color:#64748B;margin-bottom:10px">${m?"رتّب الجمل لتصير فقرةً مترابطة":"رتّبي الجمل لتصير فقرةً مترابطة"}</div>
       <div style="background:#FFFBEB;border:2px dashed #FCD34D;border-radius:12px;padding:10px;min-height:56px;margin-bottom:12px">${chosen}</div>
-      ${stepLocked?"":tiles}
+      ${secGateHTML()}
+      ${(stepLocked||!gateOpen())?"":tiles}
       ${(!stepLocked&&stepSeqPicked.length>=it.s.length)?`<button class="btn" style="background:#B45309;margin-top:6px" onclick="stepSeqSubmit()">تحقّق من الترتيب</button>`:""}
       ${fix}`;
   }else{
@@ -9114,11 +9168,11 @@ function renderStep(){
       let bg="#fff",bd="#E2E8F0",col="#0F172A";
       if(stepLocked){if(opt.ok){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(wi===stepPicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}
       const why=stepLocked?`<div style="margin-top:5px;font-size:12px;color:${opt.ok?'#059669':'#B45309'}">${opt.ok?"✓ ":"✗ "}${esc(opt.why)}</div>`:"";
-      return `<button class="choice" style="background:${bg};border-color:${bd};color:${col};direction:ltr;text-align:left;font-family:Georgia,serif;display:block" onclick="stepChoose(${wi})" ${stepLocked?"disabled":""}>${esc(opt.t)}${why}</button>`;
+      return `<button class="choice" style="background:${bg};border-color:${bd};color:${col};direction:ltr;text-align:left;font-family:Georgia,serif;display:block" onclick="stepChoose(${wi})" ${gateOpen()?"":"disabled style=\"opacity:.45;pointer-events:none\""} ${stepLocked?"disabled":""}>${esc(opt.t)}${why}</button>`;
     }).join("");
     const stem=it.q?`<div style="direction:ltr;text-align:left;font-family:Georgia,serif;font-size:17px;color:#0F172A;margin-bottom:12px">${esc(it.q)}</div>`
       :`<div style="font-size:13px;color:#64748B;margin-bottom:10px">${m?"أيّ جملةٍ صحيحة تماماً؟":"أيّ جملةٍ صحيحة تماماً؟"}</div>`;
-    body=stem+`<div class="choices">${choices}</div>`;
+    body=stem+`<div class="choices">${secGateHTML()}${choices}</div>`;
   }
   app.innerHTML=`
   <button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
@@ -10147,7 +10201,7 @@ function minpairSrsUpdate(id,ok){
 // أزواج جديدة بالتوليد كان سيُخاطر بتعليم تقابلٍ صوتيٍّ خاطئ. فالأزواج تبقى مؤلَّفةً
 // ومُراجَعة يدوياً (MINPAIR_BANK)، والمحرّك يُنشئ فقط جملة تعليمية إضافية لكلمةٍ صحّتها
 // مضمونة سلفاً — خطرٌ أدنى بكثير، وقابلٌ للتحقّق آلياً (هل الكلمة نفسها داخل الجملة).
-const MINPAIR_EXTRA_KEY="mawhiba_minpair_extra_v1";
+const MINPAIR_EXTRA_KEY="mawhiba_minpair_extra_v2";
 const MINPAIR_EXTRA_MAX=3; // ثلاث جملٍ إضافية على الأكثر لكل كلمة — تنويعٌ لا إغراق طلبات
 function minpairExtraLoad(){try{return JSON.parse(lsGet(MINPAIR_EXTRA_KEY)||"{}")}catch(e){return{}}}
 function minpairExtraSave(o){try{lsSet(MINPAIR_EXTRA_KEY,JSON.stringify(o))}catch(e){}}
@@ -10329,7 +10383,7 @@ const VIDEO_BANK=[
 ];
 // مولَّدٌ الآن (٢٠ أغسطس) — كان بلا توليدٍ يوم شُحن (١٩ أغسطس)، وبنيته (N=٥ من بنك ٦)
 // كانت مطابقةً لشكل gram المتكرّر تماماً، فوُصل بنفس الآلية قبل أن تتكرّر الشكوى فعلاً
-const GEN_BANK_KEY_VIDEO="mawhiba_video_aibank_v1";
+const GEN_BANK_KEY_VIDEO="mawhiba_video_aibank_v2";
 function videoBankFor(level){
   const L=String(level||"A2");
   const ai=genBankLoad(GEN_BANK_KEY_VIDEO).filter(function(x){return x.lv===L});
@@ -10980,6 +11034,7 @@ async function speakStart(){
   try{
     speakStream=await navigator.mediaDevices.getUserMedia({audio:true});
     speakChunks=[];
+    wavTapStart(speakStream); // مأخذ Azure الموازي — فشله لا يمنع التسجيل
     speakRec=new MediaRecorder(speakStream);
     speakRec.ondataavailable=(e)=>{if(e.data&&e.data.size>0)speakChunks.push(e.data)};
     speakRec.onstop=()=>{speakFinish()};
@@ -10996,15 +11051,39 @@ function speakStop(){
   try{if(speakRec&&speakRec.state!=="inactive")speakRec.stop();else{speakBusy=false}}catch(e){speakBusy=false}
   render();
 }
+// ===== الجملة تُقاس بالفونيمات كما تُقاس الكلمة — درس ٢٥ أغسطس =====
+// كان قسم الكلمات المفردة يُقيَّم بـAzure (٧٨-٩٨٪ لهيا) والجملُ بتفريغ Whisper وحده
+// (`engine` فارغٌ في كل صفوف `speaking`)، فالمسطرتان مختلفتان على المتعلّمة نفسها في
+// الدقيقة نفسها. وسجلّ الكلمات أظهر لماذا يهمّ: «pass»⇐base و«That wasn't»⇐They went —
+// أي /p/⇐/b/ و/ð/⇐/d/، أشهر خطأين موثَّقين لمتعلّمي العربية. ونصُّ Whisper لا يفصل
+// «نطقتها خطأً» عن «سمعها المفرّغ خطأً»، والفونيمات تفصلهما.
+//
+// وهذا لا ينقض قرار «لا prompt»: ذاك عن تلقين Whisper الجملةَ المستهدفة فيُعيدها نصّاً
+// فيقع «نجاح كاذب». وAzure يُصحّح الصوت على النصّ المرجعي — يُعطي صفراً لمن لم ينطق،
+// فلا يمكن أن يُصدّق نجاحاً لم يقع. و`azureTry` عامّةٌ تقبل أيّ نصّ مرجعي أصلاً، فالوصل
+// استعمالٌ لما هو قائم لا بناء: نفس السقوط إلى Groq عند أيّ تعثّر، ونفس حقول التسجيل.
 async function speakFinish(){
   const it=speakCur();const target=it?it.en:"";
   if(speakStream){try{speakStream.getTracks().forEach(t=>t.stop())}catch(e){}speakStream=null}
+  wavTapStop(); // يُوقَف قبل القراءة لا بعدها — `wavBlob` يقرأ المخزون و`wavTapStart` وحده يمسحه
   // محاولة مُهمَلة: لا تُحتسب خطأً ولا تُكتب في التباعد — الجملة تبقى كما هي لتعيدها
   if(speakElapsed*1000<PRON_MIN_MS){
     speakResult={heard:"",discarded:true,why:"short"};speakBusy=false;
     logAnswer("speaking","discarded",false,"[too_short]",it?it.id:null,Math.round(speakElapsed*1000),{is_new:!!(it&&it._isNew),srs_box:it?it._box:null,q_text:speakLogText(target,null)});
     render();return;
   }
+  const az=await azureTry(target);
+  if(az.data){
+    const sc=azureToScore(target,az.data);
+    speakTries++;
+    speakResult={heard:az.data.heard||az.data.lexical||"",ok:sc.ok,sc,note:"",engine:"azure"};
+    logAnswer("speaking","stage"+speakStage,sc.ok,az.data.heard||"",it.id,Math.round(speakElapsed*1000),
+      {score_pct:sc.pct,engine:"azure",is_new:!!it._isNew,srs_box:it._box,judged_by:sc.by,
+       accuracy_pct:num0(sc.accuracy),fluency_pct:num0(sc.fluency),completeness_pct:num0(sc.completeness),
+       weak_phonemes:weakPhonemeStr(sc.weak),repeats:sc.repeats||0,q_text:speakLogText(target,sc)});
+    speakBusy=false;render();return;
+  }
+  azureLastFail=az.fail||"";
   try{
     const blob=new Blob(speakChunks,{type:(speakRec&&speakRec.mimeType)||"audio/webm"});
     const b64=await blobToBase64(blob);
@@ -11017,8 +11096,10 @@ async function speakFinish(){
     }else if(data&&data.ok){
       const sc=pronScoreOf(target,data.heard,data.judged);
       speakTries++;
-      speakResult={heard:data.heard,ok:sc.ok,sc,note:data.note||""};
-      logAnswer("speaking","stage"+speakStage,sc.ok,data.heard,it.id,Math.round(speakElapsed*1000),{score_pct:sc.pct,is_new:!!it._isNew,srs_box:it._box,judged_by:sc.by,q_text:speakLogText(target,sc)});
+      speakResult={heard:data.heard,ok:sc.ok,sc,note:data.note||"",engine:"groq"};
+      // سببُ السقوط يدخل السطر: بلا هذا لا يُفرَّق «تعثّر Azure» عن «لم يُنادَ أصلاً» — وهو
+      // بعينه ما أضاع تشخيص اليوم حين كان الحقل فارغاً في كل صفوف القسم
+      logAnswer("speaking","stage"+speakStage,sc.ok,data.heard,it.id,Math.round(speakElapsed*1000),{score_pct:sc.pct,engine:"groq",is_new:!!it._isNew,srs_box:it._box,judged_by:sc.by,azure_fail:azureLastFail||null,q_text:speakLogText(target,sc)});
     }else{
       speakResult={heard:"",error:true,notConfigured:!!(data&&data.error==="not_configured")};
       logAnswer("speaking","stage"+speakStage,false,"[transcription_error]",it.id,null,{q_text:speakLogText(target,null)});
@@ -11213,20 +11294,31 @@ function gateOpen(){return gateSecs===0||gateLeft<=0}
 // والأرضيّات مشتقّةٌ من زمنها المقاس حين تنخرط فعلاً لا مخترَعة: نصف الزمن الوسيط
 // التاريخي لكل قسم (استماع ٤٫٨ث، قراءة ٨٫٧ث، قواعد ٧٫٨ث، أزواج ٢٫٢ث، فيديو ١٠٫٥ث) —
 // فتمنع النقر ولا تُعاقب إجابةً سريعةً صادقة. والطول يُحسب فوقها بنفس GATE_WPM.
-const SEC_GATE_FLOOR={listen:3,read:5,gram:4,minpair:2,video:4,math6:3};
+// ===== وأرضيّات STEP بأنواعه الثلاثة — ٢٥ أغسطس =====
+// نوعٌ واحد لا يكفي هنا: الأزمنة المقاسة تُفرّق الأنواع فعلاً (وسيط المنخرطَين معاً)
+// — `pick` أربع جملٍ كاملة ٢١٫٠/١٨٫١ث، و`gap` جملةٌ قصيرة ٤٫٠/١٢٫١ث، و`order` فقرةٌ
+// ١٦٫١/١٨٫٠ث. والقاعدة كما وُضعت أصلاً: الأرضيّة نصف **أدنى** وسيطٍ منخرط لا متوسّطه،
+// فلا تُحبَس أسرعُ إجابةٍ صادقة قطّ. و`pick` مطابقٌ عمداً لشكل `gram` (مذكورٌ في ملفّ
+// المشروع)، فيأخذ أرقامه المُجرَّبة نفسها لا رقماً جديداً.
+const SEC_GATE_FLOOR={listen:3,read:5,gram:4,minpair:2,video:4,math6:3,
+  "step:pick":4,"step:gap":2,"step:order":4};
 // **وسقفٌ لكل قسم عند زمنها المقاس حين تنخرط فعلاً** — تصحيحٌ لعيبٍ في أوّل تصميمٍ لي:
 // حساب الطول وحده أعطى ١٨-٢٥ ثانية لعنصر قواعد (أربع جملٍ متشابهة تُجمَع كلماتها)،
 // وزمنها الوسيط المنخرط ٧٫٨ ثانية. فبوّابةٌ فوق ذلك تحبسها وهي تعمل بجدّ — والبوّابة
 // بُنيت لتمنع النقر لا لتُعاقب الاجتهاد. ومقارنة أربع جملٍ متقاربة ليست قراءة اثنتين
 // وثلاثين كلمة جديدة: تُمسح الفروق لا تُقرأ الجمل كاملةً.
-const SEC_GATE_MAX={listen:5,read:9,gram:8,minpair:3,video:11,math6:12};
-function secGateStart(domain,text){
-  const floor=SEC_GATE_FLOOR[domain]||0;
+const SEC_GATE_MAX={listen:5,read:9,gram:8,minpair:3,video:11,math6:12,
+  "step:pick":8,"step:gap":5,"step:order":11};
+// `key` يفصل مفتاح الجدول عن اسم القسم المعروض: STEP يحتاج أرضيّةً لكل نوع، ونصُّ
+// الشريط يبقى واحداً باسم القسم. وغيابه يعني المفتاح هو القسم نفسه كما كان.
+function secGateStart(domain,text,key){
+  const k=key||domain;
+  const floor=SEC_GATE_FLOOR[k]||0;
   if(!floor){gateStop();gateSecs=0;gateLeft=0;return}
   const w=String(text||"").trim().split(/\s+/).filter(Boolean).length;
   const byLen=Math.round(w/GATE_WPM*60);
   gateStop();gateKind=domain;
-  const cap=SEC_GATE_MAX[domain]||GATE_MAX_S;
+  const cap=SEC_GATE_MAX[k]||GATE_MAX_S;
   gateSecs=Math.min(cap,Math.max(floor,byLen));gateLeft=gateSecs;
   gateTimer=setInterval(function(){gateLeft--;if(gateLeft<=0){gateLeft=0;gateStop()}render()},1000);
 }
