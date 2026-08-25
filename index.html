@@ -9177,14 +9177,18 @@ const MINPAIR_BANK=[
   {id:"mp_b1_19",lv:"B1",sk:"صامت البداية",w:["thought","taught"],ph:["θɔːt","tɔːt"],m:["فكرة / ظنّ","درّس"],s:["That is an interesting thought.","She taught us maths last year."]},
   {id:"mp_b1_20",lv:"B1",sk:"جودة الحركة",w:["formally","formerly"],ph:["ˈfɔːrməli","ˈfɔːrmərli"],m:["رسمياً","سابقاً"],s:["The agreement was formally signed.","He was formerly a teacher."]},
   // ============ B2 — امتدادُ محمد ============
-  // تقابلاتٌ لا يفصلها إلا موضعُ النبر أو حركةٌ واحدة، وكلّها أزواج يخلطها متعلّمو
-  // B2 فعلاً في الاستعمال الأكاديمي — مؤلَّفةٌ بشرياً كبقيّة البنك، لا تُولَّد.
-  {id:"mp_b2_1",lv:"B2",sk:"موضع النبر",w:["ˈconduct","conˈduct"],ph:["ˈkɑːndʌkt","kənˈdʌkt"],m:["سلوك (اسم)","يُجري (فعل)"],s:["His conduct at the meeting was professional.","They will conduct the experiment tomorrow."]},
-  {id:"mp_b2_2",lv:"B2",sk:"موضع النبر",w:["ˈcontract","conˈtract"],ph:["ˈkɑːntrækt","kənˈtrækt"],m:["عقد (اسم)","ينكمش (فعل)"],s:["She signed the contract yesterday.","Metals contract when they cool."]},
-  {id:"mp_b2_3",lv:"B2",sk:"صوت ساكن",w:["advice","advise"],ph:["ədˈvaɪs","ədˈvaɪz"],m:["نصيحة (اسم)","ينصح (فعل)"],s:["That was excellent advice.","I advise you to apply early."]},
-  {id:"mp_b2_4",lv:"B2",sk:"جودة الحركة",w:["accept","except"],ph:["əkˈsept","ɪkˈsept"],m:["يقبل","ما عدا"],s:["We accept applications until Friday.","Everyone came except Omar."]},
-  {id:"mp_b2_5",lv:"B2",sk:"جودة الحركة",w:["affect","effect"],ph:["əˈfekt","ɪˈfekt"],m:["يؤثّر في (فعل)","أثر (اسم)"],s:["The delay did not affect the results.","The new rule had little effect."]},
-  {id:"mp_b2_6",lv:"B2",sk:"صوت ساكن",w:["precede","proceed"],ph:["prɪˈsiːd","prəˈsiːd"],m:["يسبق","يمضي قُدُماً"],s:["A short introduction will precede the talk.","Please proceed to the next section."]},
+  // شرطان يحكمان هذا البنك ولا يجوز خرقهما: الزوج **مختلف الإملاء** (وإلا ظهر زرّان
+  // متطابقان فاستحال الاختيار)، و**مسموع الفرق** (وإلا صار تمييزاً بصرياً لا صوتياً).
+  // ولهذا استُبعدت أزواجُ النبر (ˈconduct/conˈduct) رغم كونها تقابلاً حقيقياً في
+  // النطق: إملاؤها واحد. واستُبعدت المتجانسات (principal/principle،
+  // stationary/stationery) لأنها تُنطق سواءً فلا يفصلها سمعٌ أصلاً.
+  // والمعنى العربي مع كلٍّ كعُرف البنك منذ ١٧ أغسطس.
+  {id:"mp_b2_1",lv:"B2",sk:"جودة الحركة",w:["adapt","adopt"],ph:["əˈdæpt","əˈdɑːpt"],m:["يتكيّف/يُكيّف","يتبنّى"],s:["Species adapt slowly to a warmer climate.","The council will adopt the new policy in June."]},
+  {id:"mp_b2_2",lv:"B2",sk:"موضع النبر",w:["access","excess"],ph:["ˈækses","ɪkˈses"],m:["وصول/إتاحة","فائض/إفراط"],s:["Students need access to the library at night.","Any excess water drains into the tank."]},
+  {id:"mp_b2_3",lv:"B2",sk:"صوت ساكن",w:["assure","ensure"],ph:["əˈʃʊr","ɪnˈʃʊr"],m:["يطمئن شخصاً","يضمن حدوث أمر"],s:["I assure you the data is correct.","Please ensure the door is locked."]},
+  {id:"mp_b2_4",lv:"B2",sk:"لاحقة الصفة",w:["economic","economical"],ph:["ˌekəˈnɑːmɪk","ˌekəˈnɑːmɪkl"],m:["اقتصادي (يخصّ الاقتصاد)","موفِّر/قليل التكلفة"],s:["The country faces serious economic problems.","This car is very economical on fuel."]},
+  {id:"mp_b2_5",lv:"B2",sk:"لاحقة الصفة",w:["sensible","sensitive"],ph:["ˈsensəbl","ˈsensətɪv"],m:["عاقل/حكيم","حسّاس"],s:["That was a sensible decision.","She is sensitive to criticism."]},
+  {id:"mp_b2_6",lv:"B2",sk:"موضع النبر",w:["moral","morale"],ph:["ˈmɔːrəl","məˈræl"],m:["أخلاقي/العِبرة","الروح المعنوية"],s:["The story has a clear moral.","Team morale improved after the win."]}
 ];
 function minpairBankFor(level){
   const L=String(level||"A2");

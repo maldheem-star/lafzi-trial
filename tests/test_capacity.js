@@ -146,8 +146,15 @@ async function mk(browser,q){
       out.skills=Object.keys(MINPAIR_BANK.reduce(function(a,x){a[x.sk]=1;return a},{})).length;
       return out;
     });
-    ok(r.total===60,'ستّون زوجاً لا ثلاثون — '+r.total);
+    // العددُ الكلّي كان مُثبَّتاً بـ٦٠، فكسرته إضافةُ مستوًى مشروعة (B2، ٢٥ أغسطس)
+    // ولم يقل أيُّ مستوًى تغيّر — درس «الأعداد المكتوبة في الاختبارات فخّ صامت».
+    // فيُثبَّت المعنى: عشرون لكل مستوًى من الثلاثة الأصلية، وبنكٌ كافٍ لأيّ مستوًى
+    // يُضاف، والمجموع يساوي مجموع المستويات (فلا يضيع عنصرٌ بلا مستوى).
     ok(r.byLv.A1===20&&r.byLv.A2===20&&r.byLv.B1===20,'عشرون لكل مستوى — '+JSON.stringify(r.byLv));
+    ok(Object.keys(r.byLv).every(function(k){return r.byLv[k]>=5}),
+       'وكل مستوًى في البنك له عددٌ كافٍ لجلسة — '+JSON.stringify(r.byLv));
+    ok(r.total===Object.keys(r.byLv).reduce(function(a,k){return a+r.byLv[k]},0),
+       'والمجموع يساوي مجموع المستويات — '+r.total);
     ok(r.dupW.length===0,'لا زوجَ مكرّر — '+r.dupW.join(','));
     ok(r.badFields.length===0,'كل زوجٍ كامل الحقول وجملته تحوي كلمتها — '+r.badFields.join(','));
     ok(r.sameSpelling.length===0,'لا زوجَ بإملاءٍ واحد (يستحيل اختياره بصرياً)');
