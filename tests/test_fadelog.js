@@ -101,11 +101,29 @@ for(const topic of ['logic','reading']){
   ok(await page.evaluate(()=>fadeRush)>=2,'  والعدّاد يعدّ (فلو غيّرنا رأينا فالبيانات موجودة)');
 }
 
-console.log('\n١١) ولا تُنصَّب قبل مرحلة الاستقلال');
-await page.evaluate(()=>{startFade('percent');fadeStage=2;fadeRush=5;fadeNew()});
-ok(await page.evaluate(()=>fadeGateOn)===false,'المرحلة ٢ بلا بوّابة — الدعم فيها معروض أصلاً');
-await page.evaluate(()=>{startFade('percent');fadeStage=3;fadeRush=5;fadeNew()});
-ok(await page.evaluate(()=>fadeGateOn)===false,'وكذلك ٣');
+// ٢٢ أغسطس: كانت البوّابة تُنصَّب في المرحلة ٤ وحدها، فأجابت هيا في المرحلة ٢ بـ١٫١ث
+// و١٫٣ث خطأً بلا مانع. والاعتراض القديم («الدعم معروض») صحيحٌ جزئياً: المرحلة ٢ تعرض
+// **القاعدة** لا الجواب، فمن يحفظها قد يُجيب بسرعةٍ صادقة. فالحلّ يُجيب الاعتراض بدل
+// تجاهله: في ٢-٣ لا تُحسب السرعة تسرّعاً إلا إذا اقترنت بخطأ؛ وفي ٤ السرعة وحدها تكفي.
+console.log('\n١١) في المرحلتين ٢-٣: السرعة وحدها لا تكفي — لا بدّ أن تقترن بخطأ');
+await page.evaluate(()=>{startFade('percent');fadeStage=2;fadeRush=0;fadeNew();
+  fadeShownAt=Date.now()-200;fadeChoose(fadeCur.ai);          // سريعةٌ ومصيبة
+  fadeNew();fadeShownAt=Date.now()-200;fadeChoose(fadeCur.ai);});
+ok(await page.evaluate(()=>fadeRush)===0,'سريعةٌ مصيبةٌ مرّتين لا تُراكم تسرّعاً');
+ok(await page.evaluate(()=>fadeGateOn)===false,'ولا تُنصَّب البوّابة عليها');
+// المرحلة ٣ كذلك: يُبنى العدّاد بإجاباتٍ حقيقية لا بفرض fadeRush=5، وإلا لم يُفحص
+// الشرط الجديد أصلاً (السرعة مع الخطأ) بل قُفز فوقه.
+await page.evaluate(()=>{startFade('percent');fadeStage=3;fadeRush=0;fadeNew();
+  fadeShownAt=Date.now()-200;fadeChoose(fadeCur.ai);
+  fadeNew();fadeShownAt=Date.now()-200;fadeChoose(fadeCur.ai);});
+ok(await page.evaluate(()=>fadeGateOn)===false,'وكذلك ٣ ما دامت الإجابة صحيحة');
+// أمّا السريعة المخطئة فتُراكم وتُنصَّب — وهي حال هيا بالضبط
+await page.evaluate(()=>{startFade('percent');fadeStage=2;fadeRush=0;fadeNew();
+  const wrong=function(){const w=(fadeCur.ai+1)%fadeCur.opts.length;
+    fadeShownAt=Date.now()-200;fadeLocked=false;fadeChoose(w)};
+  wrong();fadeNew();wrong();fadeNew();});
+ok(await page.evaluate(()=>fadeRush)>=2,'وسريعةٌ مخطئةٌ مرّتين تُراكم — '+await page.evaluate(()=>fadeRush));
+ok(await page.evaluate(()=>fadeGateOn)===true,'فتُنصَّب البوّابة في المرحلة ٢');
 
 console.log('\n١٢) الخروج يُوقف المؤقّت');
 await page.evaluate(()=>{startFade('percent');fadeStage=4;fadeRush=5;fadeNew()});

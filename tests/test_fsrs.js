@@ -1,8 +1,14 @@
 const {chromium}=require('/opt/node22/lib/node_modules/playwright');
-const path='/tmp/claude-0/-home-user-lafzi-trial/d5a80363-f01b-5f26-ba42-6a7c646126c1/scratchpad/package/dist/index.cjs';
+// المكتبة المرجعية كانت تُحمَّل من مسارٍ في مجلّد المسوّدات يحمل **معرّف الجلسة نفسه** —
+// فيسقط بارتداد الحاوية (وقع فعلاً ٢٤ أغسطس) ولا يعمل في حاويةٍ أخرى إطلاقاً. تُجرَّب
+// الآن node_modules أوّلاً (`npm install ts-fsrs@5.4.1`)، ثم المسار القديم للتوافق.
+const CANDIDATES=[
+  '/home/user/lafzi-trial/node_modules/ts-fsrs/dist/index.cjs',
+  '/tmp/claude-0/-home-user-lafzi-trial/d5a80363-f01b-5f26-ba42-6a7c646126c1/scratchpad/package/dist/index.cjs',
+];
 let fails=0;const ok=(c,m)=>{console.log((c?'  ✓ ':'  ✗ FAIL ')+m);if(!c)fails++};
 (async()=>{
-let ref=null;try{ref=require(path)}catch(e){}
+let ref=null;for(const p of CANDIDATES){try{ref=require(p);break}catch(e){}}
 const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium'});
 const page=await b.newPage({viewport:{width:420,height:900}});
 page.on('pageerror',e=>{console.log('  ✗ PAGEERROR '+e.message);fails++});

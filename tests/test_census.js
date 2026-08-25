@@ -68,6 +68,21 @@ for(const [fn,md] of [["startPronunciation()",'pron'],["startSpeaking()",'speak'
   ok(!r.err&&r.m===md,`${fn} → ${r.err||r.m}`);
 }
 ok((await page.evaluate(()=>window.__ERRS.length))===0,'ولا خطأ سُجّل');
+
+console.log('\n٦) لا اسمَ دالّةٍ مكرّرٌ في الملفّ — التعارض في الاسم لا يكشفه شيءٌ آخر');
+// ٢٤ أغسطس: عُرِّفت arCount مرّتين بتوقيعين مختلفين ((n,one,two,many) و(n,few,many)).
+// ولا خطأ ولا تحذير: التعريف **الأخير يفوز** فيُبطل الأوّل كلّياً، فظهرت معايير
+// النجاح «٣ جملةً» بدل «٣ جملٍ». ولم يمسكه فحصٌ واحد — لا census (الدالّة معرَّفة
+// فعلاً) ولا الفحوص الوظيفية (لم تُطابق النصّ). وهو درس «التعارض يقع في الاسم لا في
+// المنطق، وgit لا يكشفه» (١٨ أغسطس) واقعاً داخل ملفٍّ واحد لا بين جلستين.
+{
+  const fs=require('fs');
+  const src=fs.readFileSync(__dirname+'/../index.html','utf8');
+  const seen={},dups=[];
+  const re=/^\s*function\s+([A-Za-z_$][\w$]*)\s*\(/gm;
+  let m;while((m=re.exec(src))){const n=m[1];if(seen[n]&&dups.indexOf(n)<0)dups.push(n);seen[n]=1}
+  ok(dups.length===0,'لا اسمَ دالّةٍ معرَّفٌ مرّتين — '+(dups.join(', ')||'نظيف'));
+}
 await b.close();
 console.log(fails?`\n=== ${fails} فشل ===`:'\n=== كل الاختبارات نجحت ===');
 process.exit(fails?1:0);

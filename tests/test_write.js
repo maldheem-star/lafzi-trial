@@ -45,10 +45,12 @@ const shape=await page.evaluate(()=>WRITE_BANK.every(x=>x.prompt&&x.min>0));
 ok(shape,'وكل عنصر بشكل سليم (سؤالٌ وهدف كلماتٍ)');
 const rising=await page.evaluate(()=>{
   // دمج الجمل (type:"combine") هدفٌ قصير عمداً (جملة واحدة لا فقرة) — يُستثنى من
-  // ترتيب الطول الصاعد، فهو معيارٌ مختلف (نظافة نحوية) لا امتداد الكتابة الحرّة
-  const a1=Math.max(...writeBankFor('A1').map(x=>x.min));
-  const a2=Math.min(...writeBankFor('A2').map(x=>x.min));
-  const b1=Math.min(...writeBankFor('B1').filter(x=>x.type!=="combine").map(x=>x.min));
+  // ترتيب الطول الصاعد في المستويات الثلاثة كلّها (٢٤ أغسطس: بلغ A1/A2 أيضاً، لا
+  // B1 وحده)، فهو معيارٌ مختلف (نظافة نحوية) لا امتداد الكتابة الحرّة.
+  const free=lv=>writeBankFor(lv).filter(x=>x.type!=="combine").map(x=>x.min);
+  const a1=Math.max(...free('A1'));
+  const a2=Math.min(...free('A2'));
+  const b1=Math.min(...free('B1'));
   return a1<a2&&a2<b1;
 });
 ok(rising,'وهدف الكلمات يرتفع مع المستوى — A1 < A2 < B1 (بلا دمج الجمل)');
@@ -174,7 +176,9 @@ await page.click('button[onclick="writeSubmit()"]');
 await page.waitForTimeout(400);
 t=await page.textContent('#app');
 ok(t.includes('تعذّرت مراجعة القواعد'),'يُقال بصراحة');
-ok(t.includes('بلغتِ عدد الكلمات'),'ودرجة عدد الكلمات سليمة رغم ذلك');
+// «بلغتِ عدد الكلمات» صارت «بلغتِ الهدف» بعد أن صار الهدف مركّباً (كلماتٌ+نقاط) —
+// ٢٤ أغسطس. النصّ تغيّر لا المعنى: تعذّرُ المراجعة لا يمنع الحكم على الطول.
+ok(t.includes('بلغتِ الهدف'),'ودرجة الهدف سليمة رغم ذلك');
 ok(await page.evaluate(()=>writeScore)===1,'واحتُسبت في النتيجة');
 const failRow=logs.find(l=>l.domain==='write'&&l.qtype!=='fix');
 ok(failRow&&failRow.q_text.includes('review:fail:network'),`والفشل نفسه صريحٌ في السجلّ الآن — لا يبدو كسلامةٍ نحوية (${failRow&&failRow.q_text})`);
@@ -197,8 +201,16 @@ t=await page.textContent('#app');
 ok(/جلسة أخرى/.test(t),'وتُعرض شاشة النتيجة');
 
 console.log('\n١٠ب) دمج الجمل (type:"combine") — النجاح نظافة نحوية لا طولٌ فقط');
-const combineShape=await page.evaluate(()=>WRITE_BANK.filter(x=>x.type==='combine').every(x=>x.lv==='B1'&&x.prompt.includes('1)')&&x.prompt.includes('2)')));
-ok(combineShape,'كل عناصر الدمج من B1، وفيها جملتان مرقّمتان للدمج');
+// كانت محجوزةً لـB1 وحده، فبلغت A1/A2 كذلك (٢٤ أغسطس: صفر محاولة كتابة لإلياس،
+// وهيا توقّفت بعد يومٍ واحد — «الجملة قبل الفقرة» أثرها ٠٫٥٠ في Writing Next
+// ولا داعي لحجبه عن المبتدئَين تحديداً حيث الحاجة إليه أشدّ).
+const combineShape=await page.evaluate(()=>{
+  const c=WRITE_BANK.filter(x=>x.type==='combine');
+  return{wellFormed:c.every(x=>x.prompt.includes('1)')&&x.prompt.includes('2)')),
+    levels:Array.from(new Set(c.map(x=>x.lv)))};
+});
+ok(combineShape.wellFormed,'كل عناصر الدمج فيها جملتان مرقّمتان للدمج');
+ok(['A1','A2','B1'].every(lv=>combineShape.levels.indexOf(lv)>=0),'وبلغت المستويات الثلاثة — كانت B1 وحدها');
 const combineCount=await page.evaluate(()=>WRITE_BANK.filter(x=>x.type==='combine').length);
 ok(combineCount>=5,`وعددٌ كافٍ منها (${combineCount})`);
 
@@ -329,12 +341,16 @@ ok(genParse.badAr===null,'وتلوّثٌ عربي يُرفض رغم شكلٍ س�
 ok(genParse.missing===null,'ونصٌّ بلا وسم PROMT/MIN يُرفض');
 await page.evaluate(()=>{try{lsDel('mawhiba_write_aibank_v1')}catch(e){}});
 calls=[];
+// التوقّع يُحسب من حجم البنك الفعلي قبل التوليد لا من صفر — البنك المؤلَّف ليس فارغاً
+const wantWrite=await page.evaluate(()=>genCallsFor(writeBankFor('A1').length,WRITE_N));
 await page.evaluate(level=>writeGenTopUp(level),'A1');
 await page.waitForTimeout(300);
 const genCall=calls.find(c=>c.mode==='gen'&&c.domain==='write');
 ok(!!genCall&&genCall.level==='A1','writeGenTopUp يطلب توليداً بمستواها');
 const aiBank=await page.evaluate(()=>genBankLoad('mawhiba_write_aibank_v1'));
-ok(aiBank.length===1&&aiBank[0].lv==='A1'&&aiBank[0].ai===true,'والعنصر المقبول يدخل بنك التوليد المحلّي');
+// العدد مُشتقٌّ من genCallsFor لا مثبَّت — الدفعة صارت متعدّدة (درس «الأعداد المكتوبة فخّ صامت»)
+ok(aiBank.length===wantWrite&&aiBank.every(x=>x.lv==='A1'&&x.ai===true),
+  `والعناصر المقبولة تدخل بنك التوليد المحلّي (${aiBank.length} من ${wantWrite})`);
 const mergedBank=await page.evaluate(()=>writeBankFor('A1'));
 ok(mergedBank.some(x=>x.ai===true),'ويظهر ضمن writeBankFor مع البنك المؤلَّف — لا بديلاً عنه');
 ok(mergedBank.some(x=>!x.ai),'والبنك المؤلَّف الأصلي يبقى حاضراً كذلك');

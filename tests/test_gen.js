@@ -3,6 +3,9 @@
 // نفس نمط fetchGemini للفظي/العلمي: بنكٌ مؤلَّف قاعٌ فوري، والتوليد يُخصّب الجلسة القادمة
 // في الخلفية بلا شاشة انتظار، حتى سقفٍ (GEN_BANK_MAX) ثم يتوقّف. ووضع "gen" في دالّة
 // tutor نفسها — لا دالّة ثانية.
+// بوّابة التسرّع (٢٢ أغسطس) تمنع النقر قبل زمنٍ أدنى، وهذه الاختبارات تنقر فوراً.
+// فتُنهي العدّ أوّلاً — كما ينتظر المتعلّم — ثم تختار: gateLeft=0;gateStop().
+// وهذا لا يُعطّل البوّابة ولا يُخفي انحدارها؛ فحصها نفسه في tests/test_rapidgate.js.
 const {chromium}=require('/opt/node22/lib/node_modules/playwright');
 let fails=0;const ok=(c,m)=>{console.log((c?'  ✓ ':'  ✗ FAIL ')+m);if(!c)fails++};
 (async()=>{
@@ -163,7 +166,7 @@ console.log('\n١١) التسجيل: العنصر المولَّد يُسجَّ�
 logs=[];
 await page.evaluate(item=>{
   mode='listen';listenItems=[item];listenIdx=0;listenPicked=-1;listenLocked=false;listenPlays=1;listenShownAt=Date.now();
-  listenChoose(item.a);
+  gateLeft=0;gateStop();listenChoose(item.a);
 },{id:'ai_listen_test1',lv:'B1',q:'سؤال تجريبي',c:['واحد','اثنان','ثلاثة'],a:1,ai:true,audio:'A short test passage.'});
 await page.waitForTimeout(300);
 const row=logs.find(l=>l.domain==='listen');
@@ -178,7 +181,7 @@ logs=[];
 await page.evaluate(()=>{
   mode='read';readItems=[{id:'rd_a1_1',lv:'A1',passage:'p',q:'ثابت',c:['a','b','c'],a:0}];
   readIdx=0;readPicked=-1;readLocked=false;readShownAt=Date.now();
-  readChoose(0);
+  gateLeft=0;gateStop();readChoose(0);
 });
 await page.waitForTimeout(300);
 const row2=logs.find(l=>l.domain==='read');

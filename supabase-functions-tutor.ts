@@ -331,6 +331,7 @@ function systemGenGram(level: string): string {
     "of the same mistake.",
     "",
     "OUTPUT EXACTLY in this shape, nothing else, no markdown, no extra commentary:",
+    `TAG: <the ONE grammar point you chose, IN ARABIC, 1-3 words, e.g. «المضارع التامّ» or «حروف الزمن»>`,
     "S1: <sentence 1, in ENGLISH>",
     "S1_OK: <yes or no>",
     "S1_WHY: <one short reason IN ARABIC — why this version is right or wrong>",
@@ -351,6 +352,8 @@ function systemGenGram(level: string): string {
     "3. Exactly ONE of S1_OK..S4_OK is 'yes'; the other three must be 'no'.",
     "4. The four sentences must all be different from each other, not just punctuation changes.",
     "5. Keep content appropriate for a school-age learner: no violence, romance, politics or unsafe topics.",
+    "6. TAG names the single grammar point tested — it is how mastery is tracked per skill,",
+    "   so it must be the specific point, not the level and not a general word like «قواعد».",
   ].join("\n");
 }
 // ===== STEP، نوع pick وحده: مطابقٌ عمداً لشكل GRAM_BANK لكن بمهارات STEP — ترتيب
@@ -370,10 +373,39 @@ function systemGenStep(level: string): string {
     "الحروف الكبيرة": "correct capitalization: sentence start, 'I', days/months, proper nouns, vs. common nouns that should NOT be capitalized",
     "علامات الترقيم": "correct punctuation: commas in a list, comma splices vs. semicolons, or sentence-ending punctuation",
   };
+  // ===== آليةٌ فرعية تُفرَض داخل الوسم — ٢٢ أغسطس =====
+  // بياناتٌ حيّة (محمد، ٢٢ أغسطس): عنصران مولَّدان في الترقيم كلاهما «قائمةٌ بفواصل» —
+  // نفس الوسم يعني عملياً نفس السؤال. فالآلية تُختار وتُفرَض كما يُفرَض GEN_TOPICS
+  // أصلاً لتنويع الاستماع/القراءة — إجبارٌ بنيوي لا تعليمةٌ مرجوّة من نموذجٍ بلا ذاكرة.
+  const subByTag: Record<string, string[]> = {
+    "ترتيب الكلمات": [
+      "placement of a frequency adverb (always/usually/never) relative to the main verb",
+      "placement of an object directly after the verb, not separated from it",
+      "placement of a manner adverb (quickly/carefully) — not between verb and object",
+      "order inside a question (auxiliary + subject + main verb)",
+    ],
+    "الحروف الكبيرة": [
+      "days of the week and months capitalized, seasons not",
+      "the pronoun I always capitalized",
+      "proper nouns (names of people, cities, schools) vs. the same word as a common noun",
+      "sentence-initial capital after a full stop",
+    ],
+    "علامات الترقيم": [
+      "comma splice vs. semicolon joining two independent clauses",
+      "a conjunctive adverb (however/therefore) needs a semicolon or full stop before it, not a comma",
+      "no comma between the subject and its verb",
+      "comma after an introductory subordinate clause (Because .../ When ..., ...)",
+      "question mark vs. full stop at the end of a direct question",
+    ],
+  };
+  const subs = subByTag[tag] || subByTag["علامات الترقيم"];
+  const sub = subs[Math.floor(Math.random() * subs.length)];
   const topic = GEN_TOPICS[Math.floor(Math.random() * GEN_TOPICS.length)];
   return [
     `Write ONE Grammaticality Judgment Task item for a CEFR ${level} English learner, testing`,
     `${focusByTag[tag]}.`,
+    `THE ONE MECHANISM THIS ITEM MUST TEST: ${sub}. Build all three wrong versions around this`,
+    "mechanism — do NOT default to a list-with-commas item every time.",
     `CONTEXT/TOPIC: ${topic}. Invent your own names/details. Do NOT reuse a stock example.`,
     "",
     "Produce FOUR versions of THE SAME underlying sentence: exactly ONE fully correct, and THREE",
@@ -401,6 +433,17 @@ function systemGenStep(level: string): string {
     "3. Exactly ONE of S1_OK..S4_OK is 'yes'; the other three must be 'no'.",
     "4. The four sentences must all be different from each other, not just punctuation changes.",
     "5. Keep content appropriate for a school-age learner: no violence, romance, politics or unsafe topics.",
+    // البياناتُ الحيّة أوجبت هاتين: محمد اختار «Because the signal was broken the train
+    // arrived late.» فحُسب خطأً وهو ترتيبٌ سليم تماماً، واختار حذف فاصلة أكسفورد فحُسب خطأً وهو
+    // ترقيمٌ بريطانيّ صحيح. فالمولّد يُمنَع صراحةً من جعل ما يقبله الاستعمالُ خطأً.
+    "6. EVERY wrong version must be UNAMBIGUOUSLY wrong — a mistake no careful writer would defend.",
+    "   If a version is merely a different but ACCEPTABLE way of saying it, it is NOT a wrong answer:",
+    "   rewrite it until it is a real error. There must be exactly ONE defensible version.",
+    "7. NEVER build the item on a STYLE PREFERENCE that both British and American usage allow:",
+    "   • the serial (Oxford) comma — «a, b, and c» and «a, b and c» are BOTH correct, never contrast them;",
+    "   • fronting a subordinate clause — «Because X, Y.» and «Y because X.» are BOTH correct word orders;",
+    "   • single vs. double quotation marks; -ise vs. -ize spellings.",
+    "   Test only rules that are wrong in EVERY variety of English.",
   ].join("\n");
 }
 // ===== فيديو تعليمي: قصّة قصيرة بعدّة مشاهد، ثم سؤال فهمٍ — نفس صيغة listen/read
@@ -425,6 +468,8 @@ function systemGenVideo(level: string): string {
     `TOPIC: ${topic}. Invent your own names/details. Do NOT reuse a stock textbook example.`,
     "",
     "OUTPUT EXACTLY in this shape, nothing else, no markdown, no extra commentary:",
+    "TAG: <the comprehension sub-skill your question tests, IN ARABIC, EXACTLY one of:",
+    "      «تفصيل محدَّد» «الفكرة الرئيسية» «سببٌ وعلاقة» «استنتاج» «تسلسل الأحداث»>",
     "TITLE: <a short 2 to 4 word English title>",
     ...sceneLines,
     "Q: <a comprehension question about the whole story, in ENGLISH>",
@@ -456,6 +501,28 @@ function systemGen(domain: string, level: string, word: string) {
   };
   const lv = styleByLevel[level] || styleByLevel.A2;
   const topic = GEN_TOPICS[Math.floor(Math.random() * GEN_TOPICS.length)];
+  // ===== قالبُ السؤال يُفرَض كما يُفرَض الموضوع — ٢٣ أغسطس =====
+  // بياناتٌ حيّة (هيا، A1): ثلاثةٌ من أخطائها الخمسة في الاستماع بصيغةٍ واحدة —
+  // «When does X … on <day>?» بمواضيع مختلفة تماماً (طبيب، كرة قدم، جبل). أي أن
+  // GEN_TOPICS نجحت في تنويع **الموضوع** وبقي **السؤال** يقع على الزمن/اليوم كل مرّة،
+  // فصار القسم يقيس مفردةً واحدة (أيّام الأسبوع) بدل الفهم — ومنعُ التوائم لا يمسك هذا
+  // لأنه يقارن الفقرات (itemText يقرأ audio/passage) لا نصوص الأسئلة.
+  //
+  // ووسمُ المهارة (TAG) كان معروضاً على النموذج ليختار منه بحرّيته، فاستقرّ على
+  // «تفصيل محدَّد» عملياً. فيُختار هنا ويُفرَض — نفس ما فُعل بـsubByTag في systemGenStep
+  // بعد تكرار «قائمةٍ بفواصل»، وبـGEN_TOPICS نفسها قبله: إجبارٌ بنيوي لا تعليمةٌ مرجوّة
+  // من نموذجٍ بلا ذاكرة بين النداءات.
+  const SKILLS = level === "A1"
+    ? ["تفصيل محدَّد", "الفكرة الرئيسية", "سببٌ وعلاقة"]
+    : ["تفصيل محدَّد", "الفكرة الرئيسية", "سببٌ وعلاقة", "استنتاج", "تسلسل الأحداث"];
+  const skill = SKILLS[Math.floor(Math.random() * SKILLS.length)];
+  const ASK: Record<string, string> = {
+    "تفصيل محدَّد": "a WHAT/WHO/WHERE/HOW MANY question about one concrete detail",
+    "الفكرة الرئيسية": "a question about what the text is mainly about, as a whole",
+    "سببٌ وعلاقة": "a WHY question whose answer is stated as a reason in the text",
+    "استنتاج": "a question whose answer follows from the text without being stated word-for-word",
+    "تسلسل الأحداث": "a question about what happened FIRST / NEXT / LAST",
+  };
   return [
     `Write ONE short English ${isListen ? "listening" : "reading"} comprehension item for a CEFR ${level} English learner.`,
     `TEXT STYLE (CEFR ${level}): ${lv}`,
@@ -463,7 +530,13 @@ function systemGen(domain: string, level: string, word: string) {
     "invented names, numbers and details. Do NOT reuse a generic textbook example you have seen before",
     "(for instance, do not default to a library-at-three-o'clock meeting dialogue).",
     "",
+    `THE QUESTION FOR THIS ITEM MUST BE: ${ASK[skill]}.`,
+    "This is fixed for this item — do NOT substitute a different kind of question.",
+    "Do NOT ask about a day of the week or a clock time unless the required question type",
+    "above genuinely calls for it; those have been over-used and now test vocabulary, not comprehension.",
+    "",
     "OUTPUT EXACTLY in this shape, nothing else, no numbering, no markdown, no extra commentary:",
+    `TAG: ${skill}`,
     "TEXT: <the English passage, on one line>",
     "Q: <a comprehension question about it, written in ENGLISH>",
     "A: <choice 1, in ENGLISH>",
@@ -555,6 +628,41 @@ async function ltJudge(reply: string): Promise<{ text: string; dropped: number; 
     out.push(ln);
   }
   return { text: out.join("\n"), dropped, judged };
+}
+
+
+// ===== حَكَمٌ على مموّهات GJT المولَّدة: مموّهٌ نظيفٌ لغوياً مشكوكٌ فيه — ٢٢ أغسطس =====
+// بياناتٌ حيّة (محمد): عنصرُ قواعدٍ مولَّد عرض مموّهاً «The new phone was bought **from**
+// my brother yesterday.» — وهي جملةٌ إنجليزية صحيحة تماماً (معناها مختلف لا خطؤها)،
+// فصار للسؤال جوابان. وgjtDefect عند العميل يكشف فاصلة أكسفورد وتقديم الجملة الفرعية
+// وازدواج الصواب المعلَن — لا «تبديل حرف جرٍّ يُنتج جملةً صحيحة أخرى».
+//
+// وLanguageTool موجودٌ في هذا الملفّ أصلاً حَكَماً على تصحيحات المراجعة، فيُستعمل هنا
+// للغرض نفسه: كل جملةٍ **موسومةٍ خاطئة** تُعرض عليه، فإن عادت **نظيفة** فهي مشكوكٌ فيها.
+//
+// **وحدُّه يُقال لا يُخفى**: مدقّقٌ بقواعد لا يكشف كل خطأ — «is bought … yesterday» خطأُ
+// زمنٍ قد يمرّ عنده نظيفاً، فيُرفع عَلَمٌ على عنصرٍ سليم. ولهذا **رايةٌ تُسجَّل لا رفضٌ
+// تلقائي**: يُقاس معدّل إصابتها أوّلاً، ثم يُقرَّر هل تصير رفضاً. وتعذّرُ الوصول إليه
+// لا يرفع رايةً ولا يُسقط شيئاً — كما هو حاله في المراجعة تماماً.
+async function ltFlagDistractors(reply: string): Promise<{ suspect: string[]; judged: number }> {
+  const lines = String(reply || "").split(/\n/);
+  const sent: Record<string, string> = {}, isWrong: Record<string, boolean> = {};
+  for (const ln of lines) {
+    let m = /^\s*S([1-4])\s*:\s*(.+)$/.exec(ln);
+    if (m) { sent[m[1]] = m[2].trim(); continue; }
+    m = /^\s*S([1-4])_OK\s*:\s*(.+)$/i.exec(ln);
+    if (m) isWrong[m[1]] = !/^\s*yes/i.test(m[2]);
+  }
+  const suspect: string[] = [];
+  let judged = 0;
+  for (const k of Object.keys(sent)) {
+    if (!isWrong[k]) continue;
+    const n = await ltErrors(sent[k]);
+    if (n === null) continue;          // تعذّر الحكم ⇒ لا راية
+    judged++;
+    if (n === 0) suspect.push(k + ":" + sent[k].slice(0, 80));
+  }
+  return { suspect, judged };
 }
 
 // ===== تجريد تفكير النموذج قبل أن يصل إليها =====
@@ -787,6 +895,13 @@ Deno.serve(async (req) => {
         const j2 = await ltJudge(text);
         return jsonOut({ ok: true, engine: provider, model, keyName, reply: j2.text,
           ltDropped: j2.dropped, ltJudged: j2.judged, turns: 1 });
+      }
+      // القواعد وSTEP وحدهما: أربع جملٍ إحداها صحيحة، فالمموّه النظيف مشكوكٌ فيه.
+      // ولا يُغيَّر الردّ ولا يُحجب — رايةٌ تُضاف ليقيسها العميل ويُسجّلها.
+      if (gen && (clip(b.domain, 20) === "gram" || clip(b.domain, 20) === "step")) {
+        const fl = await ltFlagDistractors(text);
+        return jsonOut({ ok: true, engine: provider, model, keyName, reply: text,
+          ltSuspect: fl.suspect, ltJudged: fl.judged, turns: 1 });
       }
       return jsonOut({ ok: true, engine: provider, model, keyName, reply: text,
         turns: history.length ? Math.floor(history.length / 2) + 1 : 1 });

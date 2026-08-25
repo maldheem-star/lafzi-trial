@@ -2,6 +2,9 @@
 // بعد لقطة شاشة من تطبيقٍ آخر: يسمع كلمة، يختار من كلمتين متشابهتي النطق، ثم يرى
 // الكلمة الصحيحة داخل جملة تشرح معناها. نفس بنية الاستماع/القراءة بالضبط — بنكٌ
 // بمستويات + fsrsUpdate للتباعد، لا آلية جديدة.
+// بوّابة التسرّع (٢٢ أغسطس) تمنع النقر قبل زمنٍ أدنى، وهذه الاختبارات تنقر فوراً.
+// فتُنهي العدّ أوّلاً — كما ينتظر المتعلّم — ثم تختار: gateLeft=0;gateStop().
+// وهذا لا يُعطّل البوّابة ولا يُخفي انحدارها؛ فحصها نفسه في tests/test_rapidgate.js.
 const {chromium}=require('/opt/node22/lib/node_modules/playwright');
 let fails=0;const ok=(c,m)=>{console.log((c?'  ✓ ':'  ✗ FAIL ')+m);if(!c)fails++};
 (async()=>{
@@ -66,7 +69,7 @@ ok(spoken.plays===1,'وعدّاد الاستماعات زاد');
 console.log('\n٤) اختيار صحيح يُحتسب، وتظهر الجملة الشارحة والمعنى العربي بعد القفل');
 await page.evaluate(()=>startMinpair());
 let r=await page.evaluate(()=>{
-  const it=minpairCur();minpairChoose(minpairTarget);
+  const it=minpairCur();gateLeft=0;gateStop();minpairChoose(minpairTarget);
   return{picked:minpairPicked,locked:minpairLocked,ok:minpairPicked===minpairTarget,score:minpairScore,
     sentence:it.s[minpairTarget],meaning:it.m[minpairTarget],word:it.w[minpairTarget]};
 });
@@ -79,7 +82,7 @@ ok(t.includes('سمعتِها صح'),'ورسالة النجاح ظاهرة');
 console.log('\n٥) اختيار خاطئ لا يُحتسب، والصحيحة تلوّن بالأخضر');
 await page.evaluate(()=>startMinpair());
 const wrong=await page.evaluate(()=>{
-  const other=1-minpairTarget;minpairChoose(other);
+  const other=1-minpairTarget;gateLeft=0;gateStop();minpairChoose(other);
   return{score:minpairScore,ok:minpairPicked===minpairTarget};
 });
 ok(wrong.score===0&&!wrong.ok,'الإجابة الخاطئة لا تُحتسب');
@@ -87,12 +90,12 @@ t=await page.textContent('#app');
 ok(t.includes('الصحيحة بالأخضر'),'ورسالة التصحيح ظاهرة');
 
 console.log('\n٦) القفل يمنع تغيير الاختيار');
-const locked2=await page.evaluate(()=>{const before=minpairPicked;minpairChoose(minpairTarget);return{before,after:minpairPicked}});
+const locked2=await page.evaluate(()=>{const before=minpairPicked;gateLeft=0;gateStop();minpairChoose(minpairTarget);return{before,after:minpairPicked}});
 ok(locked2.before===locked2.after,'لا تغيير بعد القفل');
 
 console.log('\n٧) التسجيل: نصّ السؤال والهدف وعدد الاستماعات، والإجابة النصّية');
 logs=[];
-await page.evaluate(()=>{startMinpair();minpairChoose(minpairTarget)});
+await page.evaluate(()=>{startMinpair();gateLeft=0;gateStop();minpairChoose(minpairTarget)});
 await page.waitForTimeout(300);
 const row=logs.find(l=>l.domain==='minpair');
 ok(!!row,'سطرٌ وصل الخادم');
@@ -124,7 +127,7 @@ console.log('\n٩) جلسة كاملة، ثم النتيجة');
 async function step(){
   const it=await page.evaluate(()=>minpairCur());
   if(!it)return;
-  await page.evaluate(()=>minpairChoose(minpairTarget));
+  await page.evaluate(()=>{gateLeft=0;gateStop();minpairChoose(minpairTarget)});
   await page.evaluate(()=>minpairNext());
 }
 await page.evaluate(()=>startMinpair());
