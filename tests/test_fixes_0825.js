@@ -231,6 +231,6 @@ console.log('\n٧) وسلوكاً لا نصّاً: ردٌّ حقيقي من asse
 }
 
 await b.close();
-console.log(fails?('\n✗ '+fails+' فشل'):'\n✓ الكل نجح');
+console.log(fails?`\n=== ${fails} فشل ===`:'\n=== كل الاختبارات نجحت ===');
 process.exit(fails?1:0);
 })();
