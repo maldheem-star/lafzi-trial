@@ -339,7 +339,7 @@ ok(!!genParse.ok&&genParse.ok.min===20&&/hobby/.test(genParse.ok.prompt)&&genPar
 ok(genParse.badMin===null,'وحدٌّ أدنى ضعيف (٢ كلمة) يُرفض');
 ok(genParse.badAr===null,'وتلوّثٌ عربي يُرفض رغم شكلٍ سليم ظاهرياً');
 ok(genParse.missing===null,'ونصٌّ بلا وسم PROMT/MIN يُرفض');
-await page.evaluate(()=>{try{lsDel('mawhiba_write_aibank_v1')}catch(e){}});
+await page.evaluate(()=>{try{lsDel(GEN_BANK_KEY_WRITE)}catch(e){}});
 calls=[];
 // التوقّع يُحسب من حجم البنك الفعلي قبل التوليد لا من صفر — البنك المؤلَّف ليس فارغاً
 const wantWrite=await page.evaluate(()=>genCallsFor(writeBankFor('A1').length,WRITE_N));
@@ -347,7 +347,7 @@ await page.evaluate(level=>writeGenTopUp(level),'A1');
 await page.waitForTimeout(300);
 const genCall=calls.find(c=>c.mode==='gen'&&c.domain==='write');
 ok(!!genCall&&genCall.level==='A1','writeGenTopUp يطلب توليداً بمستواها');
-const aiBank=await page.evaluate(()=>genBankLoad('mawhiba_write_aibank_v1'));
+const aiBank=await page.evaluate(()=>genBankLoad(GEN_BANK_KEY_WRITE));
 // العدد مُشتقٌّ من genCallsFor لا مثبَّت — الدفعة صارت متعدّدة (درس «الأعداد المكتوبة فخّ صامت»)
 ok(aiBank.length===wantWrite&&aiBank.every(x=>x.lv==='A1'&&x.ai===true),
   `والعناصر المقبولة تدخل بنك التوليد المحلّي (${aiBank.length} من ${wantWrite})`);
@@ -357,7 +357,7 @@ ok(mergedBank.some(x=>!x.ai),'والبنك المؤلَّف الأصلي يبق�
 
 console.log('\n١٣د) العنصر المولَّد يُسجَّل موسوماً «[مولَّد]» — لا يختلط بالمؤلَّف عند التشخيص');
 logs=[];
-await page.evaluate(()=>{startWrite();writeItems[0]=genBankLoad('mawhiba_write_aibank_v1')[0];writeIdx=0;render()});
+await page.evaluate(()=>{startWrite();writeItems[0]=genBankLoad(GEN_BANK_KEY_WRITE)[0];writeIdx=0;render()});
 await page.fill('#writeIn','This is a real answer with more than twenty words written to reach the minimum target for this generated writing prompt about hobbies today.');
 await page.click('button[onclick="writeSubmit()"]');
 await page.waitForTimeout(300);

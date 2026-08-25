@@ -70,7 +70,7 @@ for(let i=0;i<12;i++){
 ok(hasOrder===12,`كل جلسة تحوي عنصر ترتيب (${hasOrder}/12) — لا يغيب أثقل الأنواع بحكم الاحتمال`);
 
 console.log('\n٤) الاختيار: الصحيح يُحتسب، والشرح يظهر لكل الخيارات الأربعة بعد الإجابة');
-await page.evaluate(()=>{startStep();stepItems=[STEP_BANK.find(x=>x.id==='st_a1_3')];stepIdx=0;stepScore=0;stepSetupRound();render()});
+await page.evaluate(()=>{startStep();stepItems=[STEP_BANK.find(x=>x.id==='st_a1_3')];stepIdx=0;stepScore=0;stepSetupRound();gateLeft=0;gateStop();render()});
 let t=await page.textContent('#app');
 ok(!t.includes('نضيف -s للفعل'),'الشرح مخفيٌّ قبل الإجابة — لا يُكشف الجواب مسبقاً');
 const rightIdx=await page.evaluate(()=>stepCur().c.findIndex(o=>o.ok));
@@ -82,7 +82,7 @@ const whys=await page.evaluate(()=>stepCur().c.map(o=>o.why));
 ok(whys.every(w=>t.includes(w)),'وشرحُ كل خيارٍ من الأربعة ظاهر — لا الصحيح وحده');
 
 console.log('\n٥) الخطأ لا يُحتسب، ويُعرض الصواب مع سببه');
-await page.evaluate(()=>{startStep();stepItems=[STEP_BANK.find(x=>x.id==='st_b1_5')];stepIdx=0;stepScore=0;stepSetupRound();render()});
+await page.evaluate(()=>{startStep();stepItems=[STEP_BANK.find(x=>x.id==='st_b1_5')];stepIdx=0;stepScore=0;stepSetupRound();gateLeft=0;gateStop();render()});
 const wrongIdx=await page.evaluate(()=>stepCur().c.findIndex(o=>!o.ok));
 await page.evaluate(i=>stepChoose(i),wrongIdx);
 ok(await page.evaluate(()=>stepScore)===0,'الخطأ لا يُحتسب');
@@ -94,24 +94,24 @@ const lk=await page.evaluate(()=>{const before=stepPicked;stepChoose((stepPicked
 ok(lk.before===lk.after,'لا تغيير بعد القفل');
 
 console.log('\n٧) ترتيب الجمل: تُعرض مخلوطةً، وتُبنى بالضغط، ولا تُحرَق ناقصةً');
-await page.evaluate(()=>{startStep();stepItems=[STEP_BANK.find(x=>x.type==='order'&&x.lv==='A1')];stepIdx=0;stepScore=0;stepSetupRound();render()});
+await page.evaluate(()=>{startStep();stepItems=[STEP_BANK.find(x=>x.type==='order'&&x.lv==='A1')];stepIdx=0;stepScore=0;stepSetupRound();gateLeft=0;gateStop();render()});
 const shuf=await page.evaluate(()=>({seq:stepSeq.slice(),n:stepCur().s.length}));
 ok(shuf.seq.length===shuf.n,'كل الجمل معروضة');
 let shuffledOnce=0;
 for(let i=0;i<15;i++){
-  const s=await page.evaluate(()=>{stepSetupRound();return stepSeq.slice()});
+  const s=await page.evaluate(()=>{stepSetupRound();gateLeft=0;gateStop();return stepSeq.slice()});
   if(s.some((v,k)=>v!==k))shuffledOnce++;
 }
 ok(shuffledOnce>0,'وترتيب العرض مخلوطٌ فعلاً — لا تظهر مرتّبةً أصلاً');
-await page.evaluate(()=>{stepSetupRound();stepSeqSubmit()});
+await page.evaluate(()=>{stepSetupRound();gateLeft=0;gateStop();stepSeqSubmit()});
 ok(await page.evaluate(()=>stepLocked)===false,'الإرسال بترتيبٍ ناقص لا يُحرق العنصر');
 
 console.log('\n٨) الترتيب الصحيح يُحتسب، والخاطئ يُعرض معه الصواب ومنهجُ الحلّ');
-await page.evaluate(()=>{stepSetupRound();stepCur().s.forEach((_,k)=>stepSeqPick(k));stepSeqSubmit()});
+await page.evaluate(()=>{stepSetupRound();gateLeft=0;gateStop();stepCur().s.forEach((_,k)=>stepSeqPick(k));stepSeqSubmit()});
 ok(await page.evaluate(()=>stepScore)===1,'الترتيب الصحيح يُحتسب');
 t=await page.textContent('#app');
 ok(t.includes('الترتيب صحيح'),'ويُقال ذلك صراحةً');
-await page.evaluate(()=>{stepScore=0;stepSetupRound();const n=stepCur().s.length;
+await page.evaluate(()=>{stepScore=0;stepSetupRound();gateLeft=0;gateStop();const n=stepCur().s.length;
   [...Array(n).keys()].reverse().forEach(k=>stepSeqPick(k));stepSeqSubmit()});
 ok(await page.evaluate(()=>stepScore)===0,'والترتيب المعكوس لا يُحتسب');
 t=await page.textContent('#app');
@@ -121,17 +121,19 @@ ok(t.includes(w),'ومعه منهج الحلّ (رأس الفقرة وكلمات
 
 console.log('\n٩) التسجيل: q_text وresponse كاملان — بلا هذين لا تشخيص');
 logs=[];
-await page.evaluate(()=>{startStep();stepItems=[STEP_BANK.find(x=>x.id==='st_a2_4')];stepIdx=0;stepSetupRound();render();
+await page.evaluate(()=>{startStep();stepItems=[STEP_BANK.find(x=>x.id==='st_a2_4')];stepIdx=0;stepSetupRound();gateLeft=0;gateStop();render();
   stepChoose(stepCur().c.findIndex(o=>o.ok))});
 await page.waitForTimeout(300);
 let row=logs.find(l=>l.domain==='step');
 ok(!!row,'سطرٌ وصل الخادم');
-ok(row&&row.response==='went','وإجابته النصّية مسجَّلة');
+// ٢٥ أغسطس: الإجابة صارت تحمل **موضعها المعروض** قبل نصّها، كعُرف بقيّة الأقسام
+// («موضع ١ · الصواب موضع ٣») — كان السطر يُبنى بترتيب البنك فيستحيل قياس انحياز الموضع.
+ok(row&&/^موضع [١٢٣٤] · went$/.test(row.response||''),'وإجابته النصّية مسجَّلة ومعها موضعها المعروض — '+(row&&row.response));
 ok(row&&/✓/.test(row.q_text)&&/1\)/.test(row.q_text),'والخيارات كلّها مع موضع الصواب موسوماً');
 ok(row&&row.q_text.includes('[الماضي البسيط]'),'ونوع المهارة موسومٌ — فتُقاس كل مهارة على حدة');
 ok(row&&row.qtype==='gap','ونوع السؤال في qtype');
 logs=[];
-await page.evaluate(()=>{startStep();stepItems=[STEP_BANK.find(x=>x.type==='order'&&x.lv==='A1')];stepIdx=0;stepSetupRound();render();
+await page.evaluate(()=>{startStep();stepItems=[STEP_BANK.find(x=>x.type==='order'&&x.lv==='A1')];stepIdx=0;stepSetupRound();gateLeft=0;gateStop();render();
   stepCur().s.forEach((_,k)=>stepSeqPick(k));stepSeqSubmit()});
 await page.waitForTimeout(300);
 row=logs.find(l=>l.domain==='step'&&l.qtype==='order');
@@ -225,12 +227,12 @@ ok(sp.good.c.filter(c=>c.ok).length===1,'وصحيحةٌ واحدة بالضبط'
 ok(!!sp.badTag&&sp.badTag.tag==='ترتيب الكلمات','ووسمٌ غير معروف يُستبدَل بأوّل وسمٍ صالح لا يُرفَض العنصر كلّه');
 ok(sp.arContam===null,'وتلوّثٌ عربي في جملة يُرفض');
 ok(sp.missing===null,'ونصٌّ بلا وسم S1..S4 يُرفض');
-await page.evaluate(()=>{try{lsDel('mawhiba_step_aibank_v1')}catch(e){}});
+await page.evaluate(()=>{try{lsDel(GEN_BANK_KEY_STEP)}catch(e){}});
 genCalls=[];genReply=GOOD_STEP_GEN;
 await page.evaluate(level=>stepGenTopUp(level),'A1');
 await page.waitForTimeout(300);
 ok(genCalls.some(c=>c.mode==='gen'&&c.domain==='step'&&c.level==='A1'),'stepGenTopUp يطلب توليداً بمستواها');
-const stepAiBank=await page.evaluate(()=>genBankLoad('mawhiba_step_aibank_v1'));
+const stepAiBank=await page.evaluate(()=>genBankLoad(GEN_BANK_KEY_STEP));
 ok(stepAiBank.length>=1&&stepAiBank[0].type==='pick'&&stepAiBank[0].ai===true,'والعنصر المقبول (pick) يدخل بنك التوليد المحلّي');
 const stepMerged=await page.evaluate(()=>stepBankFor('A1'));
 ok(stepMerged.some(x=>x.ai===true)&&stepMerged.some(x=>!x.ai),'ويظهر ضمن stepBankFor مع البنك المؤلَّف');

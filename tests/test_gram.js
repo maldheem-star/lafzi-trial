@@ -250,9 +250,22 @@ const plan=await page.evaluate(()=>{
 });
 const badFresh=plan.filter(i=>i.isNew&&i.lesson&&NEVER_SEEN_B1_LESSONS.includes(i.lesson));
 ok(badFresh.length===0,badFresh.length?`محتوًى B1 بكرٌ دخل كجديد: ${badFresh.map(i=>i.id).join(',')}`:'ولا عنصر B1 بكرٌ (بلا أي بذرة) دخل الخطة كجديد (خطة كاملة، لا حالة معزولة)');
-// وتأكيدٌ أن المسار الآخر (إعادة تدريس اللدرس الضعيف) ما زال يعمل كما صُمّم أصلاً — لم يُعطَّل بالخطأ
-const passiveInPlan=plan.some(i=>i.lesson==='l_passive');
-ok(passiveInPlan,'ودرسٌ ضعيفٌ فعلاً (المبني للمجهول، من LESSON_SEED) ما زال يصل عبر إعادة التدريس — لم تُعطَّل الآلية القائمة');
+// وتأكيدٌ أن المسار الآخر (إعادة تدريس الدرس الضعيف) ما زال يعمل كما صُمّم أصلاً — لم يُعطَّل بالخطأ.
+// ===== ولماذا تغيّر الدرس المُختبَر من l_passive — ٢٥ أغسطس =====
+// كان هذا السطر ينجح بجملة البناء `b_pass` وحدها: عنصر القواعد `u1_g2` (l_passive، B1)
+// كان يُجمَّد فعلاً حتى في إعادة التدريس — أي أن **البوّابة تسبق إعادةَ التدريس في القواعد
+// منذ ٢٢ أغسطس**، والبناء وحده كان يفلت لأن `engLevelOk` لم تكن تشمله. فدخولُ البناء
+// البوّابةَ اليوم ليس تعطيلاً للآلية بل إتمامٌ لاتّساقها.
+// وبيانات ٢٥ أغسطس هي التي أوجبته: هيا ٠ من ١١ في البناء، ومنها المبني للمجهول والشرط
+// والمضارع التامّ — فوق A1 بدرجتين. فالمُختبَر الآن درسٌ ضعيفٌ **في مستواها** (l_few، A2،
+// من LESSON_SEED نفسها) — نفس الآلية بالضبط، بلا تثبيت محتوًى كذّبته البيانات.
+const WEAK_AT_LEVEL=['l_few','l_pastprog']; // كلاهما A2 وفي LESSON_SEED: مسموحان لـA1 بـi+1
+const reteachInPlan=plan.some(i=>i.lesson&&WEAK_AT_LEVEL.includes(i.lesson));
+ok(reteachInPlan,'ودرسٌ ضعيفٌ في مستواها (a few / a little) ما زال يصل عبر إعادة التدريس — لم تُعطَّل الآلية القائمة');
+// وفوق-المستوى-بدرجتين لا يصل حتى عبر إعادة التدريس — لا فرق بين قاعدةٍ وبناء
+const twoAbove=plan.filter(i=>i.lesson&&['l_passive','l_cond','l_pp_q','l_rel','l_pp_vs'].includes(i.lesson));
+ok(twoAbove.length===0,twoAbove.length?`B1 وصل لـA1 عبر إعادة التدريس: ${twoAbove.map(i=>i.id).join(',')}`
+  :'ولا درسَ B1 يصل A1 عبر أيّ مسار — القواعد والبناء سواء');
 
 console.log('\n١٢) التوليد الآلي لـgram (٢٠ أغسطس) — علاج شكوى إلياس: ١٥٪ تمايز فقط بلا توليد');
 page=await mk();
@@ -269,12 +282,12 @@ ok(gp.wrongCount===null,'وصفر أو صواب مزدوج (هنا: صواب م�
 ok(gp.arContam===null,'وتلوّثٌ عربي في جملة يُرفض رغم شكلٍ سليم ظاهرياً');
 ok(gp.dup===null,'وجملتان متطابقتان تُرفضان — لا مموّهاً حقيقياً');
 ok(gp.missing===null,'ونصٌّ بلا وسم S1..S4 يُرفض');
-await page.evaluate(()=>{try{lsDel('mawhiba_gram_aibank_v1')}catch(e){}});
+await page.evaluate(()=>{try{lsDel(GEN_BANK_KEY_GRAM)}catch(e){}});
 genCalls=[];genReply=GOOD_GRAM_GEN;
 await page.evaluate(level=>gramGenTopUp(level),'A1');
 await page.waitForTimeout(300);
 ok(genCalls.some(c=>c.mode==='gen'&&c.domain==='gram'&&c.level==='A1'),'gramGenTopUp يطلب توليداً بمستواها');
-const gramAiBank=await page.evaluate(()=>genBankLoad('mawhiba_gram_aibank_v1'));
+const gramAiBank=await page.evaluate(()=>genBankLoad(GEN_BANK_KEY_GRAM));
 ok(gramAiBank.length>=1&&gramAiBank[0].lv==='A1'&&gramAiBank[0].ai===true,'والعنصر المقبول يدخل بنك التوليد المحلّي');
 const gramMerged=await page.evaluate(()=>gramBankFor('A1'));
 ok(gramMerged.some(x=>x.ai===true)&&gramMerged.some(x=>!x.ai),'ويظهر ضمن gramBankFor مع البنك المؤلَّف — لا بديلاً عنه');

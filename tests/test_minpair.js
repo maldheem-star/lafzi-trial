@@ -149,7 +149,7 @@ ok(sentParse.badAr===null,'وتلوّثٌ عربي يُرفض');
 ok(sentParse.missing===null,'ونصٌّ بلا وسم SENT يُرفض');
 
 calls=[];
-await page.evaluate(()=>{try{lsDel('mawhiba_minpair_extra_v1')}catch(e){}});
+await page.evaluate(()=>{try{lsDel(MINPAIR_EXTRA_KEY)}catch(e){}});
 await page.evaluate(()=>minpairGenTopUp('A1'));
 await page.waitForTimeout(300);
 // نداءان لا واحد (٢٠ أغسطس، رفع معدّل التوليد — ٥١٪ تكرار عند إلياس رغم وجود التوليد):

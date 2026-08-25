@@ -3995,10 +3995,17 @@ const ENG_LESSON_LV={
   // وهو B1 بمعيار English Profile نفسه المعتمَد في بقيّة الجدول.
   l_passive:"B1",
 };
-// المفردات والبناء بلا تصنيف نحوي فلا تُقاس بهذا المعيار — القاعدة هي ما يحمل مستوًى حقيقياً
+// المفردات بلا تصنيف نحوي فلا تُقاس بهذا المعيار — القاعدة والبناء يحملان مستوًى حقيقياً.
+// ===== والبناء دخل البوّابة ٢٥ أغسطس =====
+// كان مستثنًى بلا سبب معلن، وبيانات هيا كشفت الثمن: ٠ من ١١ في `build1`، وثلاثةٌ ممّا
+// عُرض عليها فوق مستواها بدرجتين (المبني للمجهول، الشرط، المضارع التامّ). والقياس نفسه
+// الذي بُنيت له البوّابة ينطبق حرفياً: «المشكلة ليست نسياناً بل غيابَ أساسٍ لم يُدرَّس».
+// **ويشمل إعادةَ تدريس الدرس الضعيف كما يشملها في القواعد أصلاً** — التنقية عند
+// `chosen` تسري على المسارات الثلاثة معاً، فلا يبقى البناء وحده خارجها.
 function engLevelOk(item,studentLv){
-  if(item.t!=="grammar"||!item.lesson)return true;
-  const lessonLv=ENG_LESSON_LV[item.lesson];if(!lessonLv)return true;
+  if(!item||(item.t!=="grammar"&&item.t!=="build"))return true;
+  const lessonLv=item.t==="build"?engBuildLv(item):(item.lesson?ENG_LESSON_LV[item.lesson]:null);
+  if(!lessonLv)return true;
   return ENG_LV_RANK[lessonLv]<=ENG_LV_RANK[studentLv||"A1"]+1;
 }
 // ===== التجميد: البوّابة تشمل المستحقّ لا الجديد وحده — ٢٢ أغسطس =====
@@ -4023,8 +4030,12 @@ function engPool(){
   _engPool=[...ENG_ITEMS]; // ENG_ITEMS يضمّ عناصر dict الحقيقية أصلاً؛ DICTATION_A1 صار نفس الكلمات بالضبط (مصدر واحد) فلا داعي لدمجها مرتين
   // جمل البناء تدخل المخزون بمعرّفاتها، فتجدولها FSRS كسائر العناصر: التأليف مهارة
   // تُنسى كغيرها، وإخراجها من التباعد يعني تدريباً بلا استرجاع
-  engBuildFor(profileOf().level).forEach(function(x){
-    _engPool.push({id:x.id,t:"build",s:x.s,m:x.m,lesson:x.lesson||null});
+  // المخزون يضمّ جمل البناء **كلَّها**، والاستبعاد بالتجميد لا بالحذف من المخزون:
+  // الحذف يُخفي العنصر عن كل مسار (المستحقّ، وإعادة تدريس الدرس الضعيف) ولا يُسجَّل،
+  // والتجميد يمرّ على `engLevelOk` نفسها فيُسجَّل في `eng_plan/frozen` ويعود متى ارتفع
+  // مستواها. وهذا ما تفعله `ENG_ITEMS` أصلاً — فرقٌ كان يجعل البناء استثناءً بلا سبب.
+  ENG_BUILD.forEach(function(x){
+    _engPool.push({id:x.id,t:"build",s:x.s,m:x.m,lesson:x.lesson||null,lv:x.lv});
   });
   return _engPool;
 }
