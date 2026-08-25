@@ -372,7 +372,7 @@ function gMedian(){const mid=rand(4,20),sum=5*mid;
   const o=qz("quant",`مجموع خمسة أعداد صحيحة متتالية يساوي ${toAr(sum)}. أوجد وسيطها.`,mid,[mid+1,mid-1,Math.round(sum/4)],`الوسيط = المجموع ÷ العدد = ${toAr(sum)} ÷ ٥ = ${toAr(mid)}.`);
   o.seq=[mid-2,mid-1,mid,mid+1,mid+2];o.want="mid";return o}
 function gCube(){const s=rand(2,5),v=s*s*s,nv=(2*s)**3;return qz("quant",`مكعّب حجمه ${toAr(v)} سم³. إذا ضاعفنا طول ضلعه، فما حجمه الجديد؟`,nv,[v*2,v*4,v*6],`مضاعفة الضلع تضاعف الحجم ٨ مرّات: ${toAr(v)} × ٨ = ${toAr(nv)} سم³.`)}
-function gPercent(){const rentP=pick([30,40,50]),expP=pick([20,30]),leftP=100-rentP-expP;if(leftP<=0)return gPercent();const salary=pick([6000,8000,9000,10000,12000]);const left=salary*leftP/100;if(!Number.isInteger(left))return gPercent();const onePercent=left/leftP;return qz("quant",`دفع سالم ${toAr(rentP)}% من راتبه إيجاراً و${toAr(expP)}% مصروفات، وتبقّى له ${toAr(left)} ريال. كم راتبه؟`,salary,[salary+1000,salary-1000,left*2],`المتبقّي = ${toAr(leftP)}% من الراتب = ${toAr(left)} ريال. قيمة ١% واحد = ${toAr(left)} ÷ ${toAr(leftP)} = ${toAr(onePercent)} ريال. الراتب الكامل = ${toAr(onePercent)} × ١٠٠ = ${toAr(salary)} ريال.`)}
+function gPercent(){const rentP=pick([30,40,50]),expP=pick([20,30]),leftP=100-rentP-expP;if(leftP<=0)return gPercent();const salary=pick([6000,8000,9000,10000,12000]);const left=salary*leftP/100;if(!Number.isInteger(left))return gPercent();const onePercent=left/leftP;return qz("quant",`دفع مسفر ${toAr(rentP)}% من راتبه إيجاراً و${toAr(expP)}% مصروفات، وتبقّى له ${toAr(left)} ريال. كم راتبه؟`,salary,[salary+1000,salary-1000,left*2],`المتبقّي = ${toAr(leftP)}% من الراتب = ${toAr(left)} ريال. قيمة ١% واحد = ${toAr(left)} ÷ ${toAr(leftP)} = ${toAr(onePercent)} ريال. الراتب الكامل = ${toAr(onePercent)} × ١٠٠ = ${toAr(salary)} ريال.`)}
 function gPaths(){const p=rand(2,4),q=rand(2,4);return qz("quant",`عدد الطرق من (أ) إلى (ب) ${toAr(p)}، ومن (ب) إلى (ج) ${toAr(q)}. كم عدد الطرق من (أ) إلى (ج)؟`,p*q,[p+q,p*q+1,p*q-1],`نضرب: ${toAr(p)} × ${toAr(q)} = ${toAr(p*q)} طريقاً.`)}
 
 // ===== مولّدات المرونة والأنماط =====
@@ -673,7 +673,7 @@ function gBills(){
     `لو كانت الأوراق ${toAr(T)} كلها من فئة ${toAr(b)} لصار المجموع ${toAr(b*T)} ريالاً. الفرق عن الحقيقي = ${toAr(b*T)} − ${toAr(S)} = ${toAr(b*T-S)}. وكل ورقة من فئة ${toAr(a)} تُنقص المجموع ${toAr(b-a)} ريالاً، إذن عددها = ${toAr(b*T-S)} ÷ ${toAr(b-a)} = ${toAr(x)} ورقة.`);
 }
 // سلسلة مقارنات أعمار متتابعة — نبدأ من المعلوم ونعود للخلف
-const AGE_NAMES=["مهند","أحمد","أحلام","هند","سارة","خالد","نورة","فيصل","ريم","بدر"];
+const AGE_NAMES=["هيا","حنان","مسفر","حسن","محمد","إلياس"];
 function gAgeChain(){
   const [A,B,C,D]=shuffle(AGE_NAMES).slice(0,4);
   const p=rand(2,5),q=rand(2,6),r=rand(3,8),dAge=rand(18,30);
@@ -939,7 +939,7 @@ function tmplKey(it){
 }
 // ===== ذاكرة أخطاء بنك موهبة =====
 // خطة الإنجليزية تحفظ كل خطأ وتُعيد العنصر وتفتح بوّابة تصحيح. والبنك لا يحفظ شيئاً:
-// «دفع سالم ٥٠٪ من راتبه…» عُرض ثلاث مرّات في أسبوع، وصفر صواب في الثلاث. والسؤال
+// «دفع مسفر ٥٠٪ من راتبه…» عُرض ثلاث مرّات في أسبوع، وصفر صواب في الثلاث. والسؤال
 // نفسه يعود أسبوعاً بعد أسبوع بلا علاج. الذاكرة على القالب (بنزع الأرقام) لا على نصّ
 // السؤال، فمسألة الراتب بأرقام جديدة هي هي.
 const QZ_ERR_KEY="mawhiba_quiz_err_v1";
@@ -1007,7 +1007,7 @@ function spreadTemplates(list){
 // شرحٍ ثانٍ، القالب المتكرّر يُربَط بموضوع التقوية الجاهز إن وُجد — سطرٌ في جدول، لا
 // آلية جديدة، تماماً كعُرف BUG_GATES. والقالب يُشتقّ من مولّده نفسه (tmplKey على ناتج
 // نداءٍ حقيقي) لا نصّاً مكرَّراً يدوياً، فيبقى صحيحاً تلقائياً لو تغيّرت صياغة السؤال.
-// وgPercent هو نفسه «دفع سالم ٪ من راتبه» الموثَّق سابقاً (صفر من ثلاث) — علاجه المخطَّط
+// وgPercent هو نفسه «دفع مسفر ٪ من راتبه» الموثَّق سابقاً (صفر من ثلاث) — علاجه المخطَّط
 // له أصلاً كان «بطاقة الباقي=١٠٠٪−المدفوع بمثال محلول»، وهي موجودة في fade "percent"
 // بالفعل؛ الربط هنا يُنفّذه لا يخترعه. والقائمة تُوسَّع بسطر واحد كلّما تأكّد قالبٌ آخر.
 const QZ_CARD_FADE_LINK={};
@@ -1202,7 +1202,7 @@ function fadeMakePercent(){
     steps:[`نسبة المتبقّي = ١٠٠٪ − ${toAr(rentP)}٪ − ${toAr(expP)}٪ = ${toAr(leftP)}٪ من الراتب`,`إذن ${toAr(leftP)}٪ من الراتب = ${toAr(left)} ريال، فقيمة ١٪ واحد = ${toAr(left)} ÷ ${toAr(leftP)} = ${toAr(onePercent)} ريال`,`الراتب الكامل = ١٠٠٪ = ${toAr(onePercent)} × ١٠٠ = ${toAr(salary)} ريال`],
     ruleTxt:`أوجدي قيمة ١٪ واحد من الكل أولاً (بقسمة الجزء المعروف على رقم نسبته)، ثم اضربيها في ١٠٠ لتحصلي على الكل كاملاً`,
     distractors:[salary+1000,salary-1000,left*2],
-    q:`دفع سالم ${toAr(rentP)}٪ من راتبه إيجاراً و${toAr(expP)}٪ مصروفات، وتبقّى له ${toAr(left)} ريال. كم راتبه؟`};
+    q:`دفع مسفر ${toAr(rentP)}٪ من راتبه إيجاراً و${toAr(expP)}٪ مصروفات، وتبقّى له ${toAr(left)} ريال. كم راتبه؟`};
 }
 function fadeMakeCube(){
   const s=rand(2,5),v=s*s*s,ns=2*s,nv=ns*ns*ns,ans=nv;
@@ -1332,7 +1332,10 @@ function fadeMakeLogicSyll(){
     passage:`${s.p1}<br>${s.p2}`,
     q:`بناءً على العبارتين أعلاه، ما النتيجة الصحيحة؟`};
 }
-const LOGIC_NAMES=["سارة","نورة","ليلى","مها","هند","ريم"];
+// أسماء العائلة نفسها — يرى الثلاثة أنفسهم في المسائل. والقوالب هنا محايدة الجنس
+// («أطول من»، «أصغر من») فالخلط بين المذكّر والمؤنّث سليمٌ نحوياً. وستّة أسماء
+// تكفي أكبر طلبٍ في المولّدات (أربعة متمايزة).
+const LOGIC_NAMES=["هيا","حنان","مسفر","حسن","محمد","إلياس"];
 const LOGIC_RELS=[
   {more:"أطول",less:"أقصر",most:"الأطول",least:"الأقصر"},
   {more:"أكبر",less:"أصغر",most:"الأكبر",least:"الأصغر"},
@@ -1433,9 +1436,9 @@ const READING_ITEMS=[
   q:"ما سبب بقاء السَّمُر أخضر في الصيف؟",ans:"جذوره الممتدّة عميقاً تصل إلى الماء",
   d:["أوراقه الصغيرة تخزّن الماء","ينمو في الظل دائماً","يحتاج ماءً قليلاً جداً"],
   key:"بجذور تمتدّ عشرات الأمتار تحت الأرض بحثاً عن الماء"},
- {t:"زار ثلاثة طلاب المتحف: نورة قبل سارة، وسارة قبل ريم. ولم يذكر السجلّ في أي يوم زار كل منهم.",
+ {t:"زار ثلاثة طلاب المتحف: حنان قبل هيا، وهيا قبل حسن. ولم يذكر السجلّ في أي يوم زار كل منهم.",
   q:"ما الذي لا يمكن معرفته من النص؟",ans:"يوم الزيارة لكل طالب",
-  d:["ترتيب زيارة نورة","من زار قبل ريم","عدد الطلاب الزائرين"],
+  d:["ترتيب زيارة حنان","من زار قبل حسن","عدد الطلاب الزائرين"],
   key:"ولم يذكر السجلّ في أي يوم زار كل منهم"},
  {t:"يستطيع الدلفين أن ينام بنصف دماغه فقط بينما يبقى النصف الآخر مستيقظاً. وهذا يسمح له بالصعود للتنفّس والانتباه للخطر أثناء نومه.",
   q:"ما فائدة نوم نصف الدماغ للدلفين؟",ans:"يتنفّس وينتبه للخطر وهو نائم",
@@ -3766,7 +3769,7 @@ const ENG_ITEMS=[
  {id:"u3_d1",t:"dict",w:"concert",m:"حفل موسيقي"},
  {id:"u3_d2",t:"dict",w:"prize",m:"جائزة"},
  {id:"u3_d3",t:"dict",w:"chess",m:"شطرنج"},
- {id:"u3_r1",t:"reading",passage:"Layla has played the oud since she was seven. She has already won two prizes, but she has never played in a big festival yet.",q:"ماذا لم تفعله ليلى حتى الآن؟",c:["لم تعزف في مهرجان كبير","لم تفز بأي جائزة","لم تتعلّم العود","لم تشترِ آلة"],a:0,w:'النص يقول "has never played in a big festival yet".'},
+ {id:"u3_r1",t:"reading",passage:"Hanan has played the oud since she was seven. She has already won two prizes, but she has never played in a big festival yet.",q:"ماذا لم تفعله حنان حتى الآن؟",c:["لم تعزف في مهرجان كبير","لم تفز بأي جائزة","لم تتعلّم العود","لم تشترِ آلة"],a:0,w:'النص يقول "has never played in a big festival yet".'},
  // ===== U4: Professions =====
  {id:"u4_v1",t:"vocab",q:'ما ترجمة "astronaut"؟',c:["رائد فضاء","طيار","عالم","مهندس"],a:0,w:'"astronaut" رائد فضاء.',listen:"astronaut"},
  {id:"u4_v2",t:"vocab",q:'ما معنى "artificial intelligence"؟',c:["الذكاء الاصطناعي","الذكاء الطبيعي","علم الفلك","هندسة المباني"],a:0,w:'"artificial intelligence" الذكاء الاصطناعي.',listen:"artificial intelligence"},
@@ -3851,7 +3854,7 @@ const ENG_ITEMS=[
  {id:"u8_d1",t:"dict",w:"exams",m:"اختبارات"},
  {id:"u8_d2",t:"dict",w:"improve",m:"يُحسّن"},
  {id:"u8_d3",t:"dict",w:"invent",m:"يخترع"},
- {id:"u8_r1",t:"reading",passage:"Sara has just finished her exams. She has already applied for a scholarship, but she hasn't received an answer yet. Her teacher told her to keep studying.",q:"ما الذي لم يحدث بعد؟",c:["لم تصلها الإجابة عن المنحة","لم تنهِ اختباراتها","لم تتقدّم للمنحة","لم تقابل معلمتها"],a:0,w:'النص يقول "she hasn\'t received an answer yet".'},
+ {id:"u8_r1",t:"reading",passage:"Haya has just finished her exams. She has already applied for a scholarship, but she hasn't received an answer yet. Her teacher told her to keep studying.",q:"ما الذي لم يحدث بعد؟",c:["لم تصلها الإجابة عن المنحة","لم تنهِ اختباراتها","لم تتقدّم للمنحة","لم تقابل معلمتها"],a:0,w:'النص يقول "she hasn\'t received an answer yet".'},
 ];
 // ===== محرّك التباعد المتمدّد =====
 const SRS_KEY="mawhiba_eng_srs";
@@ -3983,6 +3986,14 @@ const ENG_LESSON_LV={
   l_where:"A2",l_cond:"B1",l_few:"A2",l_pp_q:"B1",l_pp_vs:"B1",l_pastprog:"A2",
   l_rel:"B1",l_compadv:"A2",l_asas:"A2",l_future:"A2",l_maymight:"A2",
   l_reported:"B1",l_repq:"B1",l_pp_adv:"B1",l_modals:"A2",
+  // ===== الثقب الذي سرّب أهمّ عنصر — ٢٥ أغسطس =====
+  // l_passive لم يكن في هذا الجدول إطلاقاً، وengLevelOk تُمرّر كلَّ درسٍ غير مصنَّف
+  // (`if(!lessonLv)return true`). والمفارقة أن **المبني للمجهول في الوحدة الأولى هو
+  // المثال الذي بُنيت هذه البوّابة لأجله أصلاً** وموثَّقٌ في ملفّ المشروع بهذا الوصف —
+  // فكان الفخّ الأوّل هو الوحيد الذي يفلت منها. وبيانات ١٣:٥٥ اليوم تُثبته: جُمِّد
+  // أحد عشر عنصر B1 فعلاً، ومرّ u1_g2 (المبني للمجهول) وأخطأته.
+  // وهو B1 بمعيار English Profile نفسه المعتمَد في بقيّة الجدول.
+  l_passive:"B1",
 };
 // المفردات والبناء بلا تصنيف نحوي فلا تُقاس بهذا المعيار — القاعدة هي ما يحمل مستوًى حقيقياً
 function engLevelOk(item,studentLv){
@@ -6588,9 +6599,9 @@ function parseGenVideoBlock(text){
 // A1 المبتدئة) طُرح وقُرِّر تجاوزه صراحةً — قرار صاحب المشروع، لا حدسي.
 const LISTEN_BANK=[
   // A1 — عبارة واحدة أو عبارتان قصيرتان، حقيقة واحدة ملموسة (اسم/عمر/لون/عدد/يوم)
-  {id:"ls_a1_1",lv:"A1",sk:"تفصيل محدَّد",audio:"My name is Lina. I am ten years old.",q:"How old is Lina?",c:["Nine","Ten","Eleven"],a:1},
+  {id:"ls_a1_1",lv:"A1",sk:"تفصيل محدَّد",audio:"My name is Haya. I am ten years old.",q:"How old is Haya?",c:["Nine","Ten","Eleven"],a:1},
   {id:"ls_a1_2",lv:"A1",sk:"تفصيل محدَّد",audio:"I have a red bag.",q:"What colour is the bag?",c:["Red","Blue","Green"],a:0},
-  {id:"ls_a1_3",lv:"A1",sk:"تفصيل محدَّد",audio:"This is my brother. His name is Sami.",q:"What is the brother's name?",c:["Saad","Sami","Salem"],a:1},
+  {id:"ls_a1_3",lv:"A1",sk:"تفصيل محدَّد",audio:"This is my brother. His name is Elias.",q:"What is the brother's name?",c:["Musfir","Elias","Hasan"],a:1},
   {id:"ls_a1_4",lv:"A1",sk:"تفصيل محدَّد",audio:"I have two cats and one dog.",q:"How many cats are there?",c:["One","Two","Three"],a:1},
   {id:"ls_a1_5",lv:"A1",sk:"تفصيل محدَّد",audio:"It is Monday today.",q:"What day is it today?",c:["Sunday","Monday","Tuesday"],a:1},
   {id:"ls_a1_6",lv:"A1",sk:"تفصيل محدَّد",audio:"My favourite colour is green.",q:"What is her favourite colour?",c:["Green","Yellow","Purple"],a:0},
@@ -6624,7 +6635,7 @@ const LISTEN_BANK=[
   {id:"ls_b2_2",lv:"B2",sk:"سببٌ وعلاقة",audio:"The council claims the new bus lane has cut journey times by fifteen per cent. Local shop owners disagree — they say the figure only holds at rush hour, and that deliveries now take twice as long. Both sides are using real data; they are simply measuring different things.",q:"Why do the two sides disagree?",c:["One side is inventing its figures","They measure different things, so both figures can be true","The council refuses to release any data"],a:1},
   {id:"ls_b2_3",lv:"B2",sk:"الفكرة الرئيسية",audio:"People often assume that working from home saves time because there's no commute. In practice, many report working longer hours, not fewer, because the boundary between the office and the living room disappears. The saving is real, but it rarely turns into free time.",q:"What is the speaker's main point?",c:["Working from home is always worse than an office","The time saved on commuting is usually absorbed by longer hours","Nobody actually saves time working from home"],a:1},
   {id:"ls_b2_4",lv:"B2",sk:"استنتاج",audio:"A: So, did you get the job? B: They said they were very impressed, and that they'd keep my details on file. A: Ah. B: Exactly. I've heard that one before.",q:"What does B mean?",c:["B has been offered the job","B understands this as a polite refusal","B is still waiting for a first interview"],a:1},
-  {id:"ls_b2_5",lv:"B2",sk:"تسلسل الأحداث",audio:"The restaurant had been struggling for a year before Mariam took over. She kept the same menu at first, which surprised everyone, and only changed the supplier. Once the reviews began improving, she reduced the menu to eight dishes. The expansion to a second branch came much later.",q:"What did Mariam do first after taking over?",c:["She changed the supplier","She cut the menu to eight dishes","She opened a second branch"],a:0},
+  {id:"ls_b2_5",lv:"B2",sk:"تسلسل الأحداث",audio:"The restaurant had been struggling for a year before Hanan took over. She kept the same menu at first, which surprised everyone, and only changed the supplier. Once the reviews began improving, she reduced the menu to eight dishes. The expansion to a second branch came much later.",q:"What did Hanan do first after taking over?",c:["She changed the supplier","She cut the menu to eight dishes","She opened a second branch"],a:0},
   {id:"ls_b2_6",lv:"B2",sk:"تفصيل محدَّد",audio:"To qualify for the scholarship you need a grade average above eighty-five, two academic references, and proof of community work. The community work requirement is often overlooked — applicants assume good grades alone will carry them, and every year strong candidates are rejected for exactly that reason.",q:"Why are strong candidates often rejected?",c:["Their grades are below eighty-five","They miss the community work requirement","They submit only one reference"],a:1},
   {id:"ls_b2_7",lv:"B2",sk:"سببٌ وعلاقة",audio:"Critics of the new stadium argue it will cost the city too much. Supporters counter that the construction jobs alone justify it. What neither side mentions is the running cost once it opens, which is where similar projects in other cities have run into trouble.",q:"What is the speaker's criticism of the debate?",c:["Both sides ignore the cost of running the stadium","Supporters have invented the job figures","Critics have exaggerated the construction cost"],a:0},
   {id:"ls_b2_8",lv:"B2",sk:"الفكرة الرئيسية",audio:"Learning a language as an adult isn't harder than as a child — it's harder to find the conditions. Children get thousands of hours of input and nobody laughs at their mistakes. Adults get an hour twice a week and are embarrassed to speak. Change the conditions and the gap narrows considerably.",q:"What is the speaker arguing?",c:["Adults cannot learn languages well","The difficulty is in the conditions, not adult ability","Children learn faster because of their brains"],a:1},
@@ -6740,11 +6751,11 @@ function renderListenResult(){
 // الأسئلة والخيارات بالإنجليزية للثلاثة سواءً — نفس السبب المذكور أعلى LISTEN_BANK
 const READ_BANK=[
   // A1 — جملة أو جملتان، حقيقة واحدة ملموسة، يبقى النصّ أمامها فتُعيد النظر إليه
-  {id:"rd_a1_1",lv:"A1",sk:"تفصيل محدَّد",passage:"This is Omar. He is nine years old. He has a black cat.",q:"How old is Omar?",c:["Eight","Nine","Ten"],a:1},
+  {id:"rd_a1_1",lv:"A1",sk:"تفصيل محدَّد",passage:"This is Musfir. He is nine years old. He has a black cat.",q:"How old is Musfir?",c:["Eight","Nine","Ten"],a:1},
   {id:"rd_a1_2",lv:"A1",sk:"تفصيل محدَّد",passage:"My school bag is blue. My pencil case is yellow.",q:"What colour is the school bag?",c:["Yellow","Blue","Green"],a:1},
   {id:"rd_a1_3",lv:"A1",sk:"تفصيل محدَّد",passage:"Today is Friday. Tomorrow is Saturday.",q:"What day is it tomorrow?",c:["Thursday","Friday","Saturday"],a:2},
   {id:"rd_a1_4",lv:"A1",sk:"تفصيل محدَّد",passage:"I have four brothers and one sister.",q:"How many sisters does he have?",c:["One","Two","None"],a:0},
-  {id:"rd_a1_5",lv:"A1",sk:"تفصيل محدَّد",passage:"Sara likes apples. She does not like bananas.",q:"What does Sara not like?",c:["Apples","Bananas","Grapes"],a:1},
+  {id:"rd_a1_5",lv:"A1",sk:"تفصيل محدَّد",passage:"Haya likes apples. She does not like bananas.",q:"What does Haya not like?",c:["Apples","Bananas","Grapes"],a:1},
   {id:"rd_a1_6",lv:"A1",sk:"تفصيل محدَّد",passage:"Our classroom has twenty desks and one board.",q:"How many desks are in the classroom?",c:["Ten","Fifteen","Twenty"],a:2},
   {id:"rd_a1_7",lv:"A1",sk:"تفصيل محدَّد",passage:"My father works in a hospital. He is a doctor.",q:"Where does the father work?",c:["A school","A hospital","A restaurant"],a:1},
   {id:"rd_a1_8",lv:"A1",sk:"تفصيل محدَّد",passage:"The small dog is under the table.",q:"Where is the dog?",c:["On the table","Under the table","Next to the door"],a:1},
@@ -6752,7 +6763,7 @@ const READ_BANK=[
   {id:"rd_a1_10",lv:"A1",sk:"تفصيل محدَّد",passage:"Her favourite fruit is orange, not grapes.",q:"What is her favourite fruit?",c:["Orange","Grapes","Bananas"],a:0},
   // A2 — رسالة أو إعلان قصير من جملتين إلى ثلاث، والسؤال عن تفصيل واحد
   {id:"rd_a2_1",lv:"A2",sk:"تفصيل محدَّد",passage:"Notice: The library closes at 4pm on Thursdays, but stays open until 6pm on other days.",q:"When does the library close on Wednesdays?",c:["Four o'clock","Six o'clock","It doesn't close"],a:1},
-  {id:"rd_a2_2",lv:"A2",sk:"سببٌ وعلاقة",passage:"Hi Sam, I can't come to the party on Saturday because I have a family trip. See you next week!",q:"Why won't he come to the party?",c:["He is sick","A family trip","He forgot the date"],a:1},
+  {id:"rd_a2_2",lv:"A2",sk:"سببٌ وعلاقة",passage:"Hi Elias, I can't come to the party on Saturday because I have a family trip. See you next week!",q:"Why won't he come to the party?",c:["He is sick","A family trip","He forgot the date"],a:1},
   {id:"rd_a2_3",lv:"A2",sk:"تفصيل محدَّد",passage:"Sale this weekend! All shoes 20% off, but shirts are not included in the offer.",q:"What is not included in the offer?",c:["Shoes","Shirts","Both"],a:1},
   {id:"rd_a2_4",lv:"A2",sk:"تفصيل محدَّد",passage:"The bus to the museum leaves every hour, but the last one today is at 5pm.",q:"When is the last bus today?",c:["Four o'clock","Five o'clock","Six o'clock"],a:1},
   {id:"rd_a2_5",lv:"A2",sk:"تفصيل محدَّد",passage:"Reminder: bring your sports shoes tomorrow — we have PE class in the morning, not the afternoon.",q:"When is PE class tomorrow?",c:["Morning","Afternoon","Evening"],a:0},
@@ -6893,8 +6904,8 @@ const WRITE_BANK=[
   {id:"wr_a1_7",lv:"A1",sk:"وصف موجَّه",min:10,joint:"My favourite food is",prompt:"Write about your favourite food.\n1) What food is it?\n2) When do you eat it?"},
   {id:"wr_a1_8",lv:"A1",sk:"وصف موجَّه",min:10,joint:"I have a",prompt:"Write about a pet you have or want.\n1) What animal is it?\n2) Why do you like it?"},
   // A2 — كما A2 Key Part 6: رسالة قصيرة بثلاث نقاط محتوى مفروضة، ٢٥-٣٥ كلمة
-  {id:"wr_a2_1",lv:"A2",sk:"رسالة قصيرة",min:25,joint:"Hi Sara,\nThank you so much for",prompt:"Your friend invited you to their birthday party this weekend. Write a message to your friend.\nSay:\n• thank them for the invitation\n• what you will bring\n• what time you will arrive\nWrite 25–35 words."},
-  {id:"wr_a2_2",lv:"A2",sk:"رسالة قصيرة",min:25,joint:"Hi Tom,\nLast Saturday I",prompt:"Your English pen friend wants to know about your weekend. Write them an email.\nSay:\n• what you did on Saturday\n• who you were with\n• how you felt\nWrite 25–35 words."},
+  {id:"wr_a2_1",lv:"A2",sk:"رسالة قصيرة",min:25,joint:"Hi Haya,\nThank you so much for",prompt:"Your friend invited you to their birthday party this weekend. Write a message to your friend.\nSay:\n• thank them for the invitation\n• what you will bring\n• what time you will arrive\nWrite 25–35 words."},
+  {id:"wr_a2_2",lv:"A2",sk:"رسالة قصيرة",min:25,joint:"Hi Hasan,\nLast Saturday I",prompt:"Your English pen friend wants to know about your weekend. Write them an email.\nSay:\n• what you did on Saturday\n• who you were with\n• how you felt\nWrite 25–35 words."},
   {id:"wr_a2_3",lv:"A2",sk:"رسالة قصيرة",min:25,joint:"Dear Coach,\nI am sorry, but I cannot come tomorrow because",prompt:"You cannot go to football practice tomorrow. Write a message to your coach.\nSay:\n• why you cannot come\n• when you can come next\n• say sorry\nWrite 25–35 words."},
   {id:"wr_a2_4",lv:"A2",sk:"رسالة قصيرة",min:25,joint:"Hi and welcome!\nMy name is",prompt:"A new student is joining your class next week. Write a message to welcome them.\nSay:\n• your name\n• one thing about the school\n• one question for them\nWrite 25–35 words."},
   {id:"wr_a2_5",lv:"A2",sk:"رسالة قصيرة",min:25,joint:"Hi,\nI am really sorry that",prompt:"You borrowed a book from a friend and it is late. Write them a message.\nSay:\n• say sorry\n• when you will return it\n• thank them for lending it\nWrite 25–35 words."},
@@ -6902,7 +6913,7 @@ const WRITE_BANK=[
   {id:"wr_a2_7",lv:"A2",sk:"رسالة قصيرة",min:25,joint:"Hi,\nWould you like to",prompt:"You want to invite a friend to the cinema this weekend. Write them a message.\nSay:\n• which film\n• what day and time\n• ask them to reply\nWrite 25–35 words."},
   {id:"wr_a2_8",lv:"A2",sk:"رسالة قصيرة",min:25,joint:"LOST: I lost my",prompt:"You lost your bag at school yesterday. Write a notice for the noticeboard.\nSay:\n• what you lost\n• where you think you lost it\n• how to contact you\nWrite 25–35 words."},
   // B1 — كما B1 Preliminary Part 2: قصّة قصيرة أو رسالة، بلا نقاط محتوى مفروضة، ٨٠-١٠٠ كلمة
-  {id:"wr_b1_1",lv:"B1",sk:"قصّة قصيرة",min:70,prompt:"Write a short story that begins with this sentence:\n“It was raining when Sam left the house.”\nWrite about 80–100 words."},
+  {id:"wr_b1_1",lv:"B1",sk:"قصّة قصيرة",min:70,prompt:"Write a short story that begins with this sentence:\n“It was raining when Elias left the house.”\nWrite about 80–100 words."},
   {id:"wr_b1_2",lv:"B1",sk:"رسالة سردية",min:70,prompt:"Write an email to a friend describing a trip you took recently.\nInclude: where you went, what you did, and whether you would go again.\nWrite about 80–100 words."},
   {id:"wr_b1_3",lv:"B1",sk:"قصّة قصيرة",min:70,prompt:"Write a short story that ends with this sentence:\n“...and that is how I learned my lesson.”\nWrite about 80–100 words."},
   {id:"wr_b1_4",lv:"B1",sk:"رسالة سردية",min:70,prompt:"Write an email to a friend about a part-time job or hobby you have.\nInclude: what you do, why you like it, and one challenge.\nWrite about 80–100 words."},
@@ -6965,9 +6976,9 @@ const WRITE_MODEL={
   A1:{prompt:"Write about your weekend.\n1) What did you do on Friday?\n2) Who were you with?",
     text:"On Friday I went to my grandmother's house. I was with my mother and my little brother."},
   A2:{prompt:"Your neighbour helped you carry your heavy bags yesterday. Write them a short message.\nSay:\n• thank them\n• say what they helped with\n• invite them for tea\nWrite 25–35 words.",
-    text:"Hi Mr Ahmed, Thank you so much for helping me carry my bags yesterday, it was very kind of you. Would you like to come for tea on Friday? Sara"},
+    text:"Hi Mr Mohammed, Thank you so much for helping me carry my bags yesterday, it was very kind of you. Would you like to come for tea on Friday? Haya"},
   B1:{prompt:"Write a short story that begins with this sentence:\n“The bus was late again.”\nWrite about 80–100 words.",
-    text:"The bus was late again. Ali stood at the stop, checking his watch every few minutes. He was already ten minutes late for his job interview, and his hands felt cold with worry. Finally, the bus appeared around the corner. He jumped on, found a seat near the front, and tried to calm his breathing. When he arrived at the office, the receptionist smiled and said the interviewer was running late too. Ali laughed with relief. Sometimes the things we worry about most turn out fine in the end."},
+    text:"The bus was late again. Hasan stood at the stop, checking his watch every few minutes. He was already ten minutes late for his job interview, and his hands felt cold with worry. Finally, the bus appeared around the corner. He jumped on, found a seat near the front, and tried to calm his breathing. When he arrived at the office, the receptionist smiled and said the interviewer was running late too. Hasan laughed with relief. Sometimes the things we worry about most turn out fine in the end."},
 };
 function writeModelFor(lv){return WRITE_MODEL[lv]||WRITE_MODEL.A2}
 // ١٧ أغسطس: WRITE_BANK ثابتٌ (٦-٨ للمستوى) بلا أي نموّ، خلافاً للاستماع/المقروء —
@@ -7284,14 +7295,33 @@ function writeCaptureDraft(){
 // والإملاء الصوتي واللصق يُدخلان عبارةً كاملة دفعةً واحدة (٢٠-٦٠ حرفاً). فيُسجَّل
 // أكبر فرقٍ في حدثٍ واحد مع كل محاولة، ثم يُحكَم من التوزيع لا من الانطباع — نفس
 // نهج quizErrDelta: قياسٌ يسبق العلاج، وعتبةٌ تُسمّى من بياناتٍ حقيقية لا تُخترع.
-let writeMaxBurst=0,writePrevLen=0;
-function writeBurstReset(v){writeMaxBurst=0;writePrevLen=String(v||"").length}
-function writeLive(){
+// ===== كيف يُعرَف الإملاء الصوتي: بالإشارة المعياريّة لا بعدد الأحرف =====
+// جرّبتُ أوّلاً حدّاً على «أكبر إدخالٍ دفعةً» (عشرون حرفاً)، فكشف اختباري نفسه أنه
+// **يُخطئ على من يكتب فعلاً**: كتابةٌ سريعة بالأصابع دمج المتصفّحُ أحداثها فبلغت
+// الدفعة ٢٣ حرفاً — أي فوق الحدّ. وإسقاطُ تصحيحاتِ من كتب بيده أسوأ من تمرير
+// إملاءٍ صوتي: الأوّل يمحو عملاً حقيقياً، والثاني يُبقي بطاقةً زائدة.
+//
+// والإشارة المعياريّة موجودةٌ في المواصفة نفسها ولا تحتاج اختراعاً: حقل
+// InputEvent.inputType يُصرّح بمصدر الإدخال — insertFromPaste للّصق،
+// وinsertReplacementText وinsertCompositionText للإملاء الصوتي ومحرّرات التركيب.
+// فهو ما يُبنى عليه الحكم، والدفعةُ تبقى **رقماً يُسجَّل ولا يحكم** (نفس نهج
+// quizErrDelta: قياسٌ يسبق العلاج، وعتبةٌ تُسمّى من بياناتٍ حقيقية إن لزمت لاحقاً).
+const WRITE_DICTATE_TYPES=["insertFromPaste","insertFromDrop","insertReplacementText",
+                           "insertCompositionText","insertFromComposition"];
+let writeMaxBurst=0,writePrevLen=0,writeDictated=false,writeInputTypes="";
+function writeBurstReset(v){writeMaxBurst=0;writePrevLen=String(v||"").length;
+  writeDictated=false;writeInputTypes=""}
+function writeLive(ev){
   const el=document.getElementById('writeIn'),box=document.getElementById('writeCrit');
   if(!el)return;
   const L=el.value.length,d=L-writePrevLen;
   if(d>writeMaxBurst)writeMaxBurst=d;
   writePrevLen=L;
+  const t=ev&&ev.inputType;
+  if(t){
+    if(writeInputTypes.indexOf(t)<0)writeInputTypes+=(writeInputTypes?"|":"")+t;
+    if(WRITE_DICTATE_TYPES.indexOf(t)>=0)writeDictated=true;
+  }
   if(box)box.innerHTML=writeCritHTML(writeCur(),el.value);
 }
 let writeItems=[],writeIdx=0,writeDone=false,writeScore=0,writeShownAt=0,writeTyped="",
@@ -7378,14 +7408,29 @@ async function writeSubmit(){
   logAnswer("write",it.lv,ok,txt,it.id,writeShownAt?Date.now()-writeShownAt:null,
     {_sk:skOf(it),q_text:((it.ai?"[مولَّد] ":"")+it.prompt+" · الهدف "+goals.words+" كلمة · كتبت "+writeCount
       +(goals.sentences?(" · جمل "+writeSent+"/"+goals.sentences):"")
-      +" · بادئة:"+(goals.jointWords?1:0)+" · سقالة:"+(writeScafOn(it.lv)?1:0)+" · دفعة:"+writeMaxBurst
+      +" · بادئة:"+(goals.jointWords?1:0)+" · سقالة:"+(writeScafOn(it.lv)?1:0)+" · دفعة:"+writeMaxBurst+" · إدخال:"+(writeInputTypes||"?")
       +" · review:"+reviewState+" · lt:"+writeLtJudged+"/"+writeLtDropped+" · مثال:"+writeModelViews
       +" · نسخ:"+(writeCopy?1:0)+" · تنوّع:"+ttr+" · شبه سابق:"+selfSim+" · فوق K1:"+lfp.pct+"%").slice(0,1200)});
   // يُحفظ بعد التسجيل لا قبله — والنسخ المحض لا يدخل السجلّ فلا يصير أساساً يُقاس عليه
   if(!writeCopy)writePrevAdd(txt);
   // نفس مسار بطاقات تصحيح المحادثة بالضبط: بطاقةٌ مجدولة تعود عند حافّة النسيان،
-  // ووضع «أخطائي» يُدرّبها بنائياً — لا مسار ثانٍ
-  writeFix.forEach(function(f){fixCardSave(f)});
+  // ووضع «أخطائي» يُدرّبها بنائياً — لا مسار ثانٍ.
+  //
+  // ===== إلّا ما لم تكتبه هي — ٢٥ أغسطس =====
+  // بياناتٌ حيّة: بنك الكلمات صفرٌ من أحد عشر عند هيا، وأهدافه جملٌ مثل
+  // «My best friend is from Monroe, Illinois.» — وهي **تصحيحُ نصٍّ أملته بصوتها**
+  // فحوّله محرّك جهازها إلى إنجليزيةٍ مشوّهة («double madrasi»، «Tony taliba»).
+  // أي أن fixCardSave حفظ تصحيحاً لجملةٍ لم تُنتجها، فصارت تُدرَّب على إعادة بناء
+  // جملٍ ليست جملها، ودخلت مكاناً واحداً مع أخطائها الحقيقية فأفسدت تشخيصه.
+  //
+  // والحدُّ يُعلَّق على القياس القائم لا على حدس: دفعةٌ كبيرة في حدث إدخالٍ واحد تعني
+  // إملاءً صوتياً أو لصقاً لا كتابةً بالأصابع (مُقاسٌ باختبار: ١ حرف مقابل ٤٩).
+  // والتصحيح يبقى **معروضاً لها على الشاشة** كما هو — إنما لا يدخل بنك الأخطاء،
+  // لأن ما يدخله يُدرَّب لاحقاً ويُقاس، وتدريبُ ما لم تقله لا يُصلح شيئاً.
+  if(!writeDictated)writeFix.forEach(function(f){fixCardSave(f)});
+  else{try{logAnswer("gen","write_dictated",null,writeInputTypes+" · دفعة:"+writeMaxBurst+" · أُسقطت "+writeFix.length+" بطاقة",it.id,null,
+    {q_text:("نصٌّ لم يُكتَب بالأصابع (inputType: "+writeInputTypes+"، أكبر دفعة "+writeMaxBurst
+      +" حرفاً) — إملاءٌ صوتي أو لصق، فلم تدخل تصحيحاته بنك الأخطاء: "+txt).slice(0,1200)})}catch(e){}}
   writeFix.forEach(function(f){
     logAnswer("write","fix",null,(f.said+" ⇐ "+f.fix).slice(0,300),it.id,null,
       {q_text:String(f.why||"").slice(0,200)});
@@ -7462,7 +7507,7 @@ function renderWrite(){
     <button type="button" onclick="writeToggleModel()" style="background:none;border:none;color:#1D4ED8;font-size:13px;cursor:pointer;padding:0 0 12px;font-family:inherit;display:block">${writeModelShown?"▲ إخفاء المثال":"📘 شاهدي مثالاً محلولاً قبل أن تبدئي"}</button>
     ${writeModelShown?renderWriteModel(it.lv):""}
     ${(!writeSubmitted&&writeJointFor(it))?`<div style="font-size:12px;color:#0E7490;font-weight:700;margin-bottom:6px">✍️ الجملة الأولى مكتوبةٌ لكِ — أكملي من حيث توقّفت</div>`:""}
-    <textarea id="writeIn" rows="5" oninput="writeLive()" ${writeSubmitted?"disabled":""} style="width:100%;padding:14px;border-radius:12px;border:2px solid #E2E8F0;font-size:16px;direction:ltr;text-align:left;font-family:Georgia,serif;resize:vertical" placeholder="type your answer here" autocomplete="off" autocapitalize="sentences" spellcheck="true">${esc(writeSubmitted?writeTyped:(writeTyped||writeJointFor(it)))}</textarea>
+    <textarea id="writeIn" rows="5" oninput="writeLive(event)" ${writeSubmitted?"disabled":""} style="width:100%;padding:14px;border-radius:12px;border:2px solid #E2E8F0;font-size:16px;direction:ltr;text-align:left;font-family:Georgia,serif;resize:vertical" placeholder="type your answer here" autocomplete="off" autocapitalize="sentences" spellcheck="true">${esc(writeSubmitted?writeTyped:(writeTyped||writeJointFor(it)))}</textarea>
     ${writeSubmitted?renderWriteFeedback(it):""}
   </div>
   ${writeSubmitted?`<button class="btn" style="background:#0E7490" onclick="writeNext()">${writeIdx+1>=writeItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`
@@ -8374,8 +8419,10 @@ function m_patternTable() {
 
 // ---- ١-١ الخطوات الأربع: مسألةُ فرقٍ بجدولٍ فيه معلوماتٌ زائدة (مثال ١ ومسألة ٤) ----
 // أسماءٌ مفصولةٌ بالجنس: «سميرة يمشي» خطأٌ لا يكشفه فاحصٌ حسابيّ ويكشفه أوّل قارئ.
-const NAMES_M = ["ناصر", "سلطان", "سعيد", "فهد", "خالد", "سليمان", "نواف", "بلال", "وليد"];
-const NAMES_F = ["سميرة", "منيرة", "لطيفة", "نورة", "ريم", "أمل"];
+// مفصولان بالجنس لأن المولّد يختار بحسبه (male ? pick(NAMES_M) : pick(NAMES_F))،
+// ومجموعهما ستّة يكفي أكبر طلب (خمسة متمايزة في مسألة الترتيب).
+const NAMES_M = ["مسفر", "حسن", "محمد", "إلياس"];
+const NAMES_F = ["هيا", "حنان"];
 // تمييز العدد بالعربية: ٣-١٠ جمعٌ مجرور («٩ أيام»)، وما فوقها مفردٌ منصوب («١٣ يوماً»).
 function arCount(n, few, many) {
   const t = n % 100;
@@ -8786,7 +8833,7 @@ const STEP_BANK=[
     {t:"the",ok:false,why:"the للمعرفة، والجملة تُعرّف شيئاً لأوّل مرّة"},
     {t:"some",ok:false,why:"some للجمع أو غير المعدود لا للمفرد"}]},
   {id:"st_a1_6",lv:"A1",type:"order",tag:"ترتيب الجمل",
-    s:["Maha wanted to make a cake.",
+    s:["Haya wanted to make a cake.",
        "First, she put the eggs and the sugar in a bowl.",
        "Then she baked it for thirty minutes.",
        "Finally, she ate the cake with her family."],
@@ -8829,7 +8876,7 @@ const STEP_BANK=[
     {t:"Is",ok:false,why:"Is تحتاج playing لا play"},
     {t:"Are",ok:false,why:"Are للجمع أو you، والفاعل هنا مفرد"}]},
   {id:"st_a2_8",lv:"A2",type:"order",tag:"ترتيب الجمل",
-    s:["Omar decided to fix his old bicycle.",
+    s:["Musfir decided to fix his old bicycle.",
        "To start, he cleaned the chain and checked the tyres.",
        "Then he replaced the broken brake with a new one.",
        "After that, he painted the frame blue.",
@@ -8873,7 +8920,7 @@ const STEP_BANK=[
     {t:"whose",ok:false,why:"whose للملكية ويأتي بعدها اسم"},
     {t:"where",ok:false,why:"where للمكان لا للأشخاص"}]},
   {id:"st_b1_8",lv:"B1",type:"order",tag:"ترتيب الجمل",
-    s:["Nora wanted to improve her English writing.",
+    s:["Hanan wanted to improve her English writing.",
        "To begin with, she started keeping a short diary in English every night.",
        "She then asked a teacher to mark her mistakes once a week.",
        "After a few months, she noticed that her sentences had become longer and clearer.",
@@ -8908,10 +8955,10 @@ const STEP_BANK=[
     {t:"can be",ok:false,why:"can لا تُستعمل للاستنتاج المُثبَت، بل للإمكان العامّ"},
     {t:"should be",ok:false,why:"should توقّعٌ أو واجب لا استنتاجٌ من دليل"}]},
   {id:"st_b2_6",lv:"B2",type:"pick",tag:"الحروف الكبيرة",c:[
-    {t:"She studied Arabic Literature at a University in Cairo last Autumn.",ok:false,why:"University هنا اسمُ جنسٍ لا عَلَم، والفصول (autumn) لا تُكبَّر"},
-    {t:"She studied arabic literature at a university in Cairo last autumn.",ok:false,why:"Arabic صفةٌ مشتقّة من اسم عَلَم فتُكبَّر دائماً"},
-    {t:"She studied Arabic literature at a university in Cairo last autumn.",ok:true,why:"صحيحة — Arabic وCairo عَلَمان يُكبَّران، وuniversity وautumn لا"},
-    {t:"She studied Arabic literature at a University in cairo last autumn.",ok:false,why:"Cairo اسمُ مدينةٍ يُكبَّر، وUniversity هنا لا"}]},
+    {t:"She studied Arabic Literature at a University in Riyadh last Autumn.",ok:false,why:"University هنا اسمُ جنسٍ لا عَلَم، والفصول (autumn) لا تُكبَّر"},
+    {t:"She studied arabic literature at a university in Riyadh last autumn.",ok:false,why:"Arabic صفةٌ مشتقّة من اسم عَلَم فتُكبَّر دائماً"},
+    {t:"She studied Arabic literature at a university in Riyadh last autumn.",ok:true,why:"صحيحة — Arabic وRiyadh عَلَمان يُكبَّران، وuniversity وautumn لا"},
+    {t:"She studied Arabic literature at a University in cairo last autumn.",ok:false,why:"Riyadh اسمُ مدينةٍ يُكبَّر، وUniversity هنا لا"}]},
   {id:"st_b2_7",lv:"B2",type:"order",tag:"ترتيب الجمل",
     s:["For years, the museum struggled to attract younger visitors.",
        "Its first response was to lower ticket prices, which changed very little.",
@@ -10026,7 +10073,7 @@ const MINPAIR_BANK=[
   {id:"mp_b1_2",lv:"B1",sk:"جهر النهاية",w:["lose","loose"],ph:["luːz","luːs"],m:["يخسر / يفقد","فضفاض"],s:["Don't lose your keys again.","These trousers are too loose for me."]},
   {id:"mp_b1_3",lv:"B1",sk:"اسم/فعل",w:["advice","advise"],ph:["ədˈvaɪs","ədˈvaɪz"],m:["نصيحة (اسم)","ينصح (فعل)"],s:["Can you give me some advice?","I advise you to study every day."]},
   {id:"mp_b1_4",lv:"B1",sk:"نبر الكلمة",w:["desert","dessert"],ph:["ˈdezərt","dɪˈzɜːrt"],m:["صحراء","حلوى / تحلية"],s:["The camel walked across the desert.","We had ice cream for dessert."]},
-  {id:"mp_b1_5",lv:"B1",sk:"جودة الحركة",w:["accept","except"],ph:["əkˈsept","ɪkˈsept"],m:["يقبل","ما عدا"],s:["I accept your apology.","Everyone came except Sara."]},
+  {id:"mp_b1_5",lv:"B1",sk:"جودة الحركة",w:["accept","except"],ph:["əkˈsept","ɪkˈsept"],m:["يقبل","ما عدا"],s:["I accept your apology.","Everyone came except Haya."]},
   {id:"mp_b1_6",lv:"B1",sk:"جودة الحركة",w:["affect","effect"],ph:["əˈfekt","ɪˈfekt"],m:["يؤثّر في (فعل)","تأثير / أثر (اسم)"],s:["Loud noise can affect your focus.","The medicine had a strong effect."]},
   {id:"mp_b1_7",lv:"B1",sk:"صامتٌ أو مقطعٌ زائد",w:["quiet","quite"],ph:["ˈkwaɪət","kwaɪt"],m:["هادئ","تماماً / إلى حدٍّ ما"],s:["The library is very quiet.","I am quite tired after school."]},
   {id:"mp_b1_8",lv:"B1",sk:"جودة الحركة",w:["collar","colour"],ph:["ˈkɒlər","ˈkʌlər"],m:["ياقة","لون"],s:["His shirt collar was too tight.","What is your favourite colour?"]},
@@ -10048,7 +10095,7 @@ const MINPAIR_BANK=[
   {id:"mp_a1_20",lv:"A1",sk:"حركة طويلة/قصيرة",w:["green","grin"],ph:["ɡriːn","ɡrɪn"],m:["أخضر","ابتسامة عريضة"],s:["The grass is green.","He had a big grin on his face."]},
   {id:"mp_a2_11",lv:"A2",sk:"جودة الحركة",w:["bought","boat"],ph:["bɔːt","boʊt"],m:["اشترى","قارب"],s:["I bought a new jacket yesterday.","We went out on a small boat."]},
   {id:"mp_a2_12",lv:"A2",sk:"جودة الحركة",w:["hear","hair"],ph:["hɪr","her"],m:["يسمع","شعر"],s:["I can hear the music from here.","She has long dark hair."]},
-  {id:"mp_a2_13",lv:"A2",sk:"جودة الحركة",w:["bear","beer"],ph:["ber","bɪr"],m:["دبّ","جِعة"],s:["We saw a brown bear at the zoo.","The shop does not sell beer."]},
+  {id:"mp_a2_13",lv:"A2",sk:"جودة الحركة",w:["chair","cheer"],ph:["tʃer","tʃɪr"],m:["كرسي","يهتف/يشجّع"],s:["Please sit on this chair.","The fans cheer for their team."]},
   {id:"mp_a2_14",lv:"A2",sk:"حركة طويلة/قصيرة",w:["cheap","chip"],ph:["tʃiːp","tʃɪp"],m:["رخيص","شريحة / رقاقة"],s:["This shirt was very cheap.","There is a chip in my cup."]},
   {id:"mp_a2_15",lv:"A2",sk:"جهر النهاية",w:["rice","rise"],ph:["raɪs","raɪz"],m:["أرز","يرتفع"],s:["We eat rice with chicken.","Prices rise every year."]},
   {id:"mp_a2_16",lv:"A2",sk:"جهر النهاية",w:["ice","eyes"],ph:["aɪs","aɪz"],m:["ثلج","عيون"],s:["Put some ice in the water.","Her eyes are light brown."]},
@@ -10273,12 +10320,12 @@ const VIDEO_BANK=[
   {id:"vd_b1_6",lv:"B1",sk:"سببٌ وعلاقة",t:"Helping a Neighbour",sc:[["👴","Our elderly neighbour lives alone since his children moved abroad."],["🛒","Every week, I help him carry his shopping bags home."],["☕","Sometimes we sit and he tells me stories about his youth."],["😊","I always leave feeling like I learned something new."]],q:"Why does the neighbour live alone?",c:["His children moved abroad","He prefers being alone","He is new to the area"],a:0},
   // ============ B2 — امتدادُ محمد ============
   // خمسة مشاهد لا أربعة، والسؤال عن **الاستنتاج أو الموقف** لا عن حدثٍ مذكور صراحةً.
-  {id:"vd_b2_1",lv:"B2",sk:"استنتاج",t:"The Quiet Resignation",sc:[["\uD83D\uDCBC","Karim had been the most reliable engineer on the team for six years."],["\uD83D\uDCC8","When the department expanded, three new managers were hired from outside."],["\uD83E\uDD10","He stopped volunteering for the difficult projects, though he never complained."],["\uD83D\uDCC4","In March he handed in his notice, citing 'personal reasons'."],["\uD83D\uDCAD","His manager was surprised. Nobody had asked him why he had gone quiet."]],q:"What does the story suggest about why Karim left?",c:["He had been unhappy since being passed over, though he never said so","He was offered a much higher salary elsewhere","He had personal family problems unrelated to work"],a:0},
+  {id:"vd_b2_1",lv:"B2",sk:"استنتاج",t:"The Quiet Resignation",sc:[["\uD83D\uDCBC","Mohammed had been the most reliable engineer on the team for six years."],["\uD83D\uDCC8","When the department expanded, three new managers were hired from outside."],["\uD83E\uDD10","He stopped volunteering for the difficult projects, though he never complained."],["\uD83D\uDCC4","In March he handed in his notice, citing 'personal reasons'."],["\uD83D\uDCAD","His manager was surprised. Nobody had asked him why he had gone quiet."]],q:"What does the story suggest about why Mohammed left?",c:["He had been unhappy since being passed over, though he never said so","He was offered a much higher salary elsewhere","He had personal family problems unrelated to work"],a:0},
   {id:"vd_b2_2",lv:"B2",sk:"سببٌ وعلاقة",t:"The Empty Bus Lane",sc:[["\uD83D\uDE8C","The city painted a new bus lane along the main road in April."],["\uD83D\uDE97","Drivers complained that the remaining lanes were now permanently jammed."],["\u23F1\uFE0F","Yet bus journey times fell by nearly a third within two months."],["\uD83D\uDC65","More commuters left their cars at home and took the bus instead."],["\u2705","By September, total traffic on the road was lower than before."]],q:"Why did total traffic eventually fall?",c:["The city banned cars from the road entirely","Faster buses persuaded drivers to switch, reducing car numbers","Fewer people needed to travel in September"],a:1},
   {id:"vd_b2_3",lv:"B2",sk:"موقف المتحدّث",t:"A Review of the Cafe",sc:[["\u2615","The coffee was, I admit, among the best I have had this year."],["\uD83D\uDD5B","It arrived forty minutes after we ordered it."],["\uD83D\uDCB7","The bill came to twice what I expected."],["\uD83D\uDE10","The staff were charming about all of it."],["\uD83D\uDCDD","Would I go back? Only if somebody else were paying and I had a free afternoon."]],q:"What is the reviewer's overall verdict?",c:["Excellent coffee, but not worth the wait and the price","The cafe was terrible in every way","The cafe was good value and quick"],a:0},
   {id:"vd_b2_4",lv:"B2",sk:"استنتاج",t:"The Missing Data",sc:[["\uD83D\uDCCA","The study reported that the new teaching method raised test scores sharply."],["\uD83C\uDFEB","It had been trialled in four schools, all of which had applied to take part."],["\u2753","Schools that declined the trial were not measured at all."],["\uD83D\uDD0D","A second study, using randomly chosen schools, found a much smaller effect."],["\uD83E\uDDEA","The method may still work — but not as well as the first study implied."]],q:"What was the problem with the first study?",c:["Its schools had volunteered, so they were not representative","It measured the wrong test scores","It used too few students to measure anything"],a:0},
   {id:"vd_b2_5",lv:"B2",sk:"تسلسل الأحداث",t:"Rebuilding the Bakery",sc:[["\uD83D\uDD25","A fire destroyed the family bakery two days before Ramadan."],["\uD83E\uDD1D","Neighbours lent them an empty shop on the same street within a week."],["\uD83E\uDDC1","They baked there for eight months while the original was rebuilt."],["\uD83C\uDFEA","When they finally reopened, they kept the second shop as well."],["\uD83D\uDCC8","Today the borrowed shop earns more than the original one."]],q:"What happened immediately after the fire?",c:["They reopened the original bakery","Neighbours lent them an empty shop nearby","They opened a second branch on purpose"],a:1},
-  {id:"vd_b2_6",lv:"B2",sk:"الفكرة الرئيسية",t:"Learning to Say No",sc:[["\uD83D\uDCDA","Layla said yes to every extra task in her first year at the company."],["\u2B50","She was praised constantly for her willingness to help."],["\uD83D\uDE29","By December she was missing deadlines on her own projects."],["\uD83D\uDEAB","Her mentor advised her to decline three requests that month."],["\uD83D\uDC4D","Her reviews improved — not despite refusing work, but because of it."]],q:"What is the main point of the story?",c:["Refusing some work improved the quality of her real work","Helping colleagues is always a mistake","Her mentor wanted her to work fewer hours"],a:0},
+  {id:"vd_b2_6",lv:"B2",sk:"الفكرة الرئيسية",t:"Learning to Say No",sc:[["\uD83D\uDCDA","Hanan said yes to every extra task in her first year at the company."],["\u2B50","She was praised constantly for her willingness to help."],["\uD83D\uDE29","By December she was missing deadlines on her own projects."],["\uD83D\uDEAB","Her mentor advised her to decline three requests that month."],["\uD83D\uDC4D","Her reviews improved — not despite refusing work, but because of it."]],q:"What is the main point of the story?",c:["Refusing some work improved the quality of her real work","Helping colleagues is always a mistake","Her mentor wanted her to work fewer hours"],a:0},
 ];
 // مولَّدٌ الآن (٢٠ أغسطس) — كان بلا توليدٍ يوم شُحن (١٩ أغسطس)، وبنيته (N=٥ من بنك ٦)
 // كانت مطابقةً لشكل gram المتكرّر تماماً، فوُصل بنفس الآلية قبل أن تتكرّر الشكوى فعلاً
@@ -10865,7 +10912,7 @@ const SPEAK_ITEMS=[
  {id:"sp_go_away",en:"Go away!",ar:"ابتعد!"},
  {id:"sp_i_agree",en:"I agree!",ar:"أوافق!"},
  {id:"sp_if_you_want",en:"OK, if you want!",ar:"حسناً، إذا أردت!"},
- {id:"sp_thanks",en:"Thanks, Bud!",ar:"شكراً يا بَد!"},
+ {id:"sp_thanks",en:"Thanks, Hasan!",ar:"شكراً يا بَد!"},
  {id:"sp_i_can_try",en:"I can try that.",ar:"أستطيع تجربة ذلك."},
  {id:"sp_that_was_great",en:"That was great!",ar:"كان ذلك رائعاً!"},
  // جمل قصيرة (٤-٦ كلمات)
@@ -10886,7 +10933,6 @@ const SPEAK_ITEMS=[
  {id:"sp_stressed",en:"I'm just stressed at the moment.",ar:"أنا متوتّر في هذه اللحظة فقط."},
  {id:"sp_last_name",en:"I can't remember the teacher's last name.",ar:"لا أتذكّر اسم عائلة المعلّمة."},
  {id:"sp_friendlier",en:"Can I help you to be a bit friendlier?",ar:"هل أساعدك لتكون أكثر ودّاً؟"},
- {id:"sp_instead_of",en:"Instead of Go away, you can say In a minute.",ar:"بدل «ابتعد» تستطيع أن تقول «بعد دقيقة»."},
 ];
 const SPEAK_SRS_KEY="mawhiba_speak_srs",SPEAK_STAGE_KEY="mawhiba_speak_stage";
 const SPEAK_REQ=2,SPEAK_BACK=2,SPEAK_NEW_CAP=6,SPEAK_LEN=8;

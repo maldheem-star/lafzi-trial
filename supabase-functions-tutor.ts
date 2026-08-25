@@ -226,6 +226,20 @@ function systemReview(male: boolean, name: string, age: number, level: string) {
 // 3 o'clock. B: I'll meet you there at 3:30." أربع مرّات متتالية عند إلياس (١٦ أغسطس،
 // بيانات حيّة). فالموضوع يُختار هنا عشوائياً كل نداء ويُفرَض في الطلب — لا يُترك لتنويعٍ
 // ذاتي غير موثوق من نموذج عديم الذاكرة بين النداءات.
+// ===== الأسماء والأماكن والثقافة سعودية في كل ما يُولَّد — ٢٥ أغسطس =====
+// البنوك المؤلَّفة عُرِّبت بأسماء العائلة نفسها، لكن أكثر ما يراه الثلاثة مولَّدٌ لا
+// مؤلَّف (وهو ما بُني أصلاً لمحاربة التكرار). فبلا هذا القيد يبقى المولّد يخترع
+// Leo وSam وMaple Park فينقض التعريب من حيث لا يُرى في البنك.
+// والأسماء هي أسماء العائلة نفسها بطلب صاحب المشروع، لا أسماء عربية عامّة.
+const GEN_PEOPLE = "Haya or Hanan for girls/women, and Musfir, Hasan, Mohammed or Elias for boys/men";
+const GEN_PLACES = "Saudi Arabia only — Riyadh, Jeddah, Dammam, Abha, Taif, Madinah, Makkah, Al-Ahsa, Tabuk, AlUla, Khobar, Yanbu, Hail, Qassim, Jazan";
+const GEN_CULTURE = [
+  `NAMES: use ONLY these names for people: ${GEN_PEOPLE}. Never use Western names.`,
+  `PLACES: any city, place or country you name must be in ${GEN_PLACES}. Never name a Western city or country.`,
+  "CULTURE: the setting is a Saudi Arabian family and school. Keep everyday details consistent with that",
+  "  (family visits, school, the souq or a mall, desert or Red Sea trips, Ramadan and Eid, Arabic coffee and dates).",
+  "  Never mention alcohol, pork, dogs kept as house pets, dating or boyfriends/girlfriends, Christmas or church.",
+].join("\n");
 const GEN_TOPICS = [
   "a birthday party", "a school trip", "a lost pet", "a rainy day", "a football match",
   "cooking a meal", "a doctor's visit", "moving to a new house", "a music class",
@@ -268,6 +282,7 @@ function systemGenWrite(level: string) {
     shape[level] || shape.A2,
     `TOPIC FOR THIS ITEM: ${topic}. Build the prompt around this topic specifically. Do NOT`,
     "reuse a stock textbook example you have seen before.",
+    GEN_CULTURE,
     "",
     "OUTPUT EXACTLY in this shape, nothing else, no markdown, no extra commentary:",
     "PROMPT: <the full prompt text, with line breaks written as the two characters \\n>",
@@ -292,6 +307,7 @@ function systemGenMinpair(level: string, word: string) {
     `Write ONE natural, simple English sentence for a CEFR ${level} school-age learner`,
     `that uses the word "${word}" clearly in context, so the meaning can be guessed from`,
     "the sentence alone. 5 to 14 words. Do NOT reuse a stock textbook example.",
+    GEN_CULTURE,
     "",
     "OUTPUT EXACTLY in this shape, nothing else, no markdown, no extra commentary:",
     "SENT: <the sentence, one line, ending with . ! or ?>",
@@ -322,7 +338,8 @@ function systemGenGram(level: string): string {
   return [
     `Write ONE Grammaticality Judgment Task item for a CEFR ${level} English learner.`,
     `GRAMMAR FOCUS for this item: pick ONE specific point from this list: ${focus}.`,
-    `CONTEXT/TOPIC for the sentence: ${topic}. Invent your own names/details. Do NOT reuse a`,
+    `CONTEXT/TOPIC for the sentence: ${topic}. Invent your own details. Do NOT reuse a`,
+    GEN_CULTURE,
     "stock textbook example you have seen before.",
     "",
     "Produce FOUR versions of THE SAME underlying sentence: exactly ONE grammatically correct,",
@@ -406,7 +423,8 @@ function systemGenStep(level: string): string {
     `${focusByTag[tag]}.`,
     `THE ONE MECHANISM THIS ITEM MUST TEST: ${sub}. Build all three wrong versions around this`,
     "mechanism — do NOT default to a list-with-commas item every time.",
-    `CONTEXT/TOPIC: ${topic}. Invent your own names/details. Do NOT reuse a stock example.`,
+    `CONTEXT/TOPIC: ${topic}. Invent your own details. Do NOT reuse a stock example.`,
+    GEN_CULTURE,
     "",
     "Produce FOUR versions of THE SAME underlying sentence: exactly ONE fully correct, and THREE",
     "incorrect, each isolating a DIFFERENT specific mistake of the kind described above — not",
@@ -465,7 +483,8 @@ function systemGenVideo(level: string): string {
   }
   return [
     `Write ONE short animated-story ("video") item for a CEFR ${level} English learner: ${lv}.`,
-    `TOPIC: ${topic}. Invent your own names/details. Do NOT reuse a stock textbook example.`,
+    `TOPIC: ${topic}. Invent your own details. Do NOT reuse a stock textbook example.`,
+    GEN_CULTURE,
     "",
     "OUTPUT EXACTLY in this shape, nothing else, no markdown, no extra commentary:",
     "TAG: <the comprehension sub-skill your question tests, IN ARABIC, EXACTLY one of:",
@@ -527,7 +546,8 @@ function systemGen(domain: string, level: string, word: string) {
     `Write ONE short English ${isListen ? "listening" : "reading"} comprehension item for a CEFR ${level} English learner.`,
     `TEXT STYLE (CEFR ${level}): ${lv}`,
     `TOPIC FOR THIS ITEM: ${topic}. Build TEXT around this topic specifically, with your own`,
-    "invented names, numbers and details. Do NOT reuse a generic textbook example you have seen before",
+    "invented numbers and details. Do NOT reuse a generic textbook example you have seen before",
+    GEN_CULTURE,
     "(for instance, do not default to a library-at-three-o'clock meeting dialogue).",
     "",
     `THE QUESTION FOR THIS ITEM MUST BE: ${ASK[skill]}.`,
