@@ -330,10 +330,43 @@ function planNoTwins(out,POOL,N,domain){
     {q_text:"أُسقط لتشابهه في الجلسة: "+gone.map(function(d){return itemText(d).slice(0,60)}).join(" | ")})}catch(e){}}
   return out2;
 }
-function topUpPlan(out,POOL,N){
+// ===== الحشو يُرتَّب بالأحدثيّة لا بالعشوائية — ٢٥ أغسطس =====
+// `topUpPlan` هي مصدر التكرار الحقيقي: حين يفرغ المستحقّ+الجديد تملأ الجلسة **عشوائياً**
+// من البنك كلّه، فيعود ما عُرض قبل ساعة بنفس احتمال ما لم يُعرض قطّ. وهذا ما أنتج ٨٥
+// عرضاً على ١٧ عنصراً عند إلياس.
+// والترتيب هنا لا يُقصي أحداً — يقدّم ما لم يُرَ قطّ، ثم الأقدم عهداً، ثم المحجوب —
+// فتبقى قاعدة «الجلسة لا تنقص عن حدّها» (١٨ أغسطس) قائمةً بحرفها.
+function topUpPlan(out,POOL,N,domain){
   if(out.length>=N)return out;
   const have=new Set(out.map(function(i){return i.id}));
-  return out.concat(shuffle(POOL.filter(function(i){return !have.has(i.id)}))).slice(0,N);
+  const seen=seenLoad(),today=seenDay();
+  const cand=POOL.filter(function(i){return !have.has(i.id)});
+  const rank=function(i){
+    const r=seen[String(i.id)];
+    if(!r)return -1;                       // لم يُعرض قطّ: الأوّل دائماً
+    if(r.last===today)return 1e9;          // عُرض اليوم: الأخير دائماً — لا يجدوله FSRS أصلاً
+    return seenBlockedFor(r)>0?1e6-(today-r.last):(today-r.last)*-1+1e3;
+  };
+  const sorted=shuffle(cand).sort(function(a,b){return rank(a)-rank(b)});
+  const filled=out.concat(sorted).slice(0,N);
+  try{planSeenReport(filled,cand,N,domain)}catch(e){}
+  return filled;
+}
+// تقريرُ استنفادٍ صريح: حين لا يبقى في البنك ما لم يُعرض خلال مدّة التهدئة، تُبنى الجلسة
+// (لا تخوى) **ويُسجَّل** أن حشوها جاء من محجوب — فيُعرف أن البنك استُنفد بالرقم لا بالشكوى.
+// وفي `domain='gen'` لا في سجلّ القسم: ما يفعله النظامُ بالعنصر يُفصَل عمّا تفعله هي بالسؤال.
+let _seenExhausted={};
+function planSeenReport(filled,cand,N,domain){
+  if(!domain)return;
+  const seen=seenLoad();
+  const blocked=filled.filter(function(i){return seenBlockedFor(seen[String(i.id)])>0});
+  const freshLeft=cand.filter(function(i){return !seen[String(i.id)]}).length;
+  _seenExhausted[domain]={blocked:blocked.length,n:filled.length,freshLeft:freshLeft};
+  if(!blocked.length)return;
+  logAnswer("gen","exhausted",null,domain+" · محجوب "+blocked.length+" من "+filled.length,null,null,
+    {q_text:"بنك "+domain+" استُنفد: لا بديل غير محجوبٍ لـ"+blocked.length+" عنصراً "
+      +"(بقي بلا عرضٍ سابق: "+freshLeft+"). المعروض رغم التهدئة: "
+      +blocked.map(function(i){return i.id}).join(",")});
 }
 const toAr=n=>String(n).replace(/[0-9]/g,d=>"٠١٢٣٤٥٦٧٨٩"[d]);
 function arSeq(a){return a.map(toAr).join(" ، ")}
@@ -2884,7 +2917,68 @@ function logAnswer(domain,qtype,isCorrect,response,itemId,elapsedMs,extra){
   const full=Object.assign({},base,clean);
   try{accRecord(domain,isCorrect)}catch(e){}   // بوّابة التمدّد: وصلٌ واحد يخدم كل قسم
   try{bktRecord(domain,ex._sk||qtype,isCorrect)}catch(e){}   // الإتقان بالمهارة لا بالنوع
+  try{seenRecord(itemId,isCorrect)}catch(e){}   // سجلّ العرض الشخصي: نفس نقطة الوصل
   try{logSend(full,base)}catch(e){}
+}
+// ===== سجلّ العرض الشخصي: منعُ تكرار العنصر نفسه للابن نفسه — ٢٥ أغسطس =====
+// **القياس أوّلاً**: التشابه النصّي داخل البنوك **صفرٌ** في أربعة عشر بنكاً (w-shingles
+// k=3، ١٣٤٨٣ مقارنة، أعلى قيمة ٠٫٣٩ ولم تبلغ عتبة ٠٫٥ مرّة واحدة). فالشكوى لم تكن عن
+// بنوكٍ متشابهة المحتوى إطلاقاً، بل عن **تكرار العرض**: العنصر نفسه يعود لأن البنك أصغر
+// من معدّل الاستعمال. وأرقام سبعة أيام: إلياس ٨٥ عرضاً على ١٧ عنصر minpair (أحدها عشر
+// مرّات)، وهيا ٤٣٩ عرضاً على ١٠٦ عناصر eng_plan (أحدها ٤٤ مرّة).
+// ولا يقيس هذا أيُّ مقياس تشابهٍ نصّي، لأن العنصر مطابقٌ لنفسه لا شبيهٌ بغيره.
+//
+// **والوصل عند `logAnswer` وحدها** — نقطةٌ يمرّ بها كل قسم في التطبيق، فتغييرٌ واحد
+// يخدم البانيات العشر. نفس ما فعله طابور إعادة التسجيل وبوّابة التمدّد وBKT قبله.
+// والمخزون محلّي بـ`lsGet` فينفصل بين الأبناء تلقائياً (`pkey`)، ولا يحتاج شبكةً عند
+// بناء الجلسة — والشبكة تُستعمل للبذر عند الإقلاع فقط (`seenSeed`).
+const SEEN_KEY="mawhiba_seen_v1";
+const SEEN_COOLDOWN_D=7;   // لا يعود العنصر خلال سبعة أيام — طلب صاحب المشروع صراحةً
+const SEEN_WRONG_D=3;      // وما أخطأته يعود بعد ثلاثة للتثبيت
+function seenDay(){return Math.floor(Date.now()/86400000)}
+function seenLoad(){try{const o=JSON.parse(lsGet(SEEN_KEY)||"{}");return o&&typeof o==="object"?o:{}}catch(e){return{}}}
+function seenSave(o){try{lsSet(SEEN_KEY,JSON.stringify(o))}catch(e){}}
+function seenRecord(itemId,isCorrect){
+  if(!itemId||isCorrect==null)return;          // صفوف النظام لا تُعدّ عرضاً
+  const o=seenLoad(),k=String(itemId),r=o[k]||{n:0};
+  r.last=seenDay();r.n=(r.n|0)+1;
+  if(isCorrect)r.ok=(r.ok|0)+1;else r.bad=(r.bad|0)+1;
+  o[k]=r;seenSave(o);
+}
+// كم يوماً يجب أن يمرّ قبل أن يعود هذا العنصر لهذا الابن
+function seenBlockedFor(rec){
+  if(!rec||rec.last==null)return 0;
+  const wrongLast=(rec.bad|0)>0&&!(rec.ok|0);
+  const need=wrongLast?SEEN_WRONG_D:SEEN_COOLDOWN_D;
+  return Math.max(0,need-(seenDay()-rec.last));
+}
+function seenBlocked(id){return seenBlockedFor(seenLoad()[String(id)])>0}
+function seenNever(id){return !seenLoad()[String(id)]}
+// بذرُ السجلّ من الخادم عند الإقلاع: جهازٌ جديد (أو ثانٍ) يبدأ بلا ذاكرةٍ محلّية فيُعيد
+// ما عُرض أمس. والقراءة **دمجٌ لا استبدال** — المحلّي أحدث دائماً لأنه يُكتب لحظةَ العرض.
+// وفشلها لا يُعطّل شيئاً: التهدئة تعمل بالمحلّي وحده كما كانت، بنفس فلسفة `tutor`.
+let _seenSeeded=false;
+async function seenSeed(){
+  if(_seenSeeded)return false;_seenSeeded=true;
+  try{
+    const since=new Date(Date.now()-SEEN_COOLDOWN_D*86400000).toISOString();
+    const url=`${SB_URL}/rest/v1/${TBL_LOG}?student_alias=eq.${encodeURIComponent(alias())}`+
+      `&created_at=gte.${encodeURIComponent(since)}&item_id=not.is.null&is_correct=not.is.null`+
+      `&select=item_id,is_correct,created_at&order=created_at.desc&limit=3000`;
+    const res=await fetch(url,{headers:{"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`}});
+    if(!res.ok)return false;
+    const rows=await res.json(),o=seenLoad();
+    (rows||[]).forEach(function(r){
+      const k=String(r.item_id||"");if(!k)return;
+      const d=Math.floor(new Date(r.created_at).getTime()/86400000);
+      const rec=o[k]||{n:0};
+      if(rec.last==null||d>rec.last)rec.last=d;
+      rec.n=(rec.n|0)+1;
+      if(r.is_correct)rec.ok=(rec.ok|0)+1;else rec.bad=(rec.bad|0)+1;
+      o[k]=rec;
+    });
+    seenSave(o);return true;
+  }catch(e){return false}
 }
 // ===== بوّابة التمدّد: قاعدة الـ٨٥٪ — ٢١ أغسطس =====
 // بوّابة i+1 (١٩ أغسطس) تمنع ما هو أصعب من اللازم، ولا شيء كان يرفع الصعوبة حين تكون
@@ -6719,7 +6813,7 @@ function buildListenPlan(){
   // بنكٌ ثابتٌ صغير (١٠/مستوى) يُستنفَد بجلسةٍ أو جلستين فتُقفَل «الاستماع» بلا سبب —
   // نفس ما تحلّه buildSpeakSession أصلاً: مراجعة حرّة من البنك كلّه بدل شاشة فارغة.
   // ونقصٌ لا خواءٌ تامّ (سؤالٌ واحد مستحقّ) يُكمَّل كذلك — topUpPlan لا حالة خاصّة.
-  return planNoTwins(topUpPlan(out,POOL,LISTEN_N),POOL,LISTEN_N,"listen");
+  return planNoTwins(topUpPlan(out,POOL,LISTEN_N,"listen"),POOL,LISTEN_N,"listen");
 }
 // مرّتان معياريٌّ للمستويات الثلاثة سواءً — YLE وA2 Key وB1 Preliminary كلّها تنصّ
 // حرفياً «You hear each recording twice» (دليل كل مستوى). كانت هذه الدالّة تُفرّق B1
@@ -6861,7 +6955,7 @@ function buildReadPlan(){
   const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
   const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
   let out=due.concat(fresh).slice(0,READ_N);
-  return planNoTwins(topUpPlan(out,POOL,READ_N),POOL,READ_N,"read");   // مراجعة حرّة إن استُنفد المستحقّ+الجديد، ثم لا توأمان في الجلسة
+  return planNoTwins(topUpPlan(out,POOL,READ_N,"read"),POOL,READ_N,"read");   // مراجعة حرّة إن استُنفد المستحقّ+الجديد، ثم لا توأمان في الجلسة
 }
 let readItems=[],readIdx=0,readPicked=-1,readLocked=false,readScore=0,readShownAt=0,readDone=false;
 function startRead(){
@@ -7091,7 +7185,7 @@ function buildWritePlan(){
   const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
   const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
   let out=due.concat(fresh).slice(0,WRITE_N);
-  return planNoTwins(topUpPlan(out,POOL,WRITE_N),POOL,WRITE_N,"write");   // مراجعة حرّة إن استُنفد المستحقّ+الجديد، ثم لا توأمان
+  return planNoTwins(topUpPlan(out,POOL,WRITE_N,"write"),POOL,WRITE_N,"write");   // مراجعة حرّة إن استُنفد المستحقّ+الجديد، ثم لا توأمان
 }
 function writeWordCount(t){const m=String(t||"").trim().match(/[A-Za-z']+/g);return m?m.length:0}
 // ١٧ أغسطس: أوّل ثلاث محاولات كتابة على الإطلاق (بيانات حيّة) كانت الثلاث نسخاً لنصّ
@@ -7788,7 +7882,7 @@ function buildGramPlan(){
   const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
   const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
   let out=due.concat(fresh).slice(0,GRAM_N);
-  return planNoTwins(topUpPlan(out,POOL,GRAM_N),POOL,GRAM_N,"gram");
+  return planNoTwins(topUpPlan(out,POOL,GRAM_N,"gram"),POOL,GRAM_N,"gram");
 }
 let gramItems=[],gramIdx=0,gramOrder=[0,1,2,3],gramPicked=-1,gramLocked=false,gramScore=0,gramShownAt=0,gramDone=false;
 function startGram(){
@@ -8723,7 +8817,7 @@ function buildMath6Plan(){
   const due=shuffle(POOL.filter(function(l){return st[l.id]&&st[l.id].due<=today}));
   const fresh=shuffle(POOL.filter(function(l){return !st[l.id]}));
   let out=due.concat(fresh).slice(0,MATH6_N);
-  return topUpPlan(out,POOL,MATH6_N);   // نقصٌ لا خواء — درس ١٨ أغسطس
+  return topUpPlan(out,POOL,MATH6_N,"math6");   // نقصٌ لا خواء — درس ١٨ أغسطس
 }
 let math6Lessons_=[],math6Items=[],math6Idx=0,math6Picked=-1,math6Locked=false,
     math6Score=0,math6ShownAt=0,math6Done=false;
@@ -9072,7 +9166,7 @@ function buildStepPlan(){
   const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
   const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
   let out=due.concat(fresh).slice(0,STEP_N);
-  out=topUpPlan(out,POOL,STEP_N);   // البنك مستنفَد أو ناقصٌ: مراجعة حرّة لا جلسةٌ منقوصة
+  out=topUpPlan(out,POOL,STEP_N,"step");   // البنك مستنفَد أو ناقصٌ: مراجعة حرّة لا جلسةٌ منقوصة
   // إسقاطُ التوائم **قبل** ضمان عنصر الترتيب لا بعده: عكسُه قد يُسقط العنصر المضمون
   // نفسه، وهو أثقل الأنواع وأقلّها عدداً فلولا الضمان لغاب بحكم الاحتمال وحده.
   out=planNoTwins(out,POOL,STEP_N,"step");
@@ -9995,7 +10089,7 @@ function buildStatPlan(){
   const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
   const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
   let out=due.concat(fresh).slice(0,STAT_N);
-  out=topUpPlan(out,POOL,STAT_N);
+  out=topUpPlan(out,POOL,STAT_N,"stat");
   return shuffle(out);
 }
 let statItems=[],statIdx=0,statOrder=[0,1,2,3],statPicked=-1,statLocked=false,statScore=0,
@@ -10269,7 +10363,7 @@ function buildMinpairPlan(){
   const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
   const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
   let out=due.concat(fresh).slice(0,MINPAIR_N);
-  return topUpPlan(out,POOL,MINPAIR_N);
+  return topUpPlan(out,POOL,MINPAIR_N,"minpair");
 }
 let minpairItems=[],minpairIdx=0,minpairTarget=0,minpairOrder=[0,1],minpairPicked=-1,minpairLocked=false,
   minpairScore=0,minpairPlays=0,minpairShownAt=0,minpairDone=false,minpairShowSent="";
@@ -10436,7 +10530,7 @@ function buildVideoPlan(){
   const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
   const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
   let out=due.concat(fresh).slice(0,VIDEO_N);
-  return planNoTwins(topUpPlan(out,POOL,VIDEO_N),POOL,VIDEO_N,"video");   // مراجعة حرّة عند الاستنفاد، ثم لا توأمان
+  return planNoTwins(topUpPlan(out,POOL,VIDEO_N,"video"),POOL,VIDEO_N,"video");   // مراجعة حرّة عند الاستنفاد، ثم لا توأمان
 }
 let videoItems=[],videoIdx=0,videoScene=0,videoQOn=false,videoPicked=-1,videoLocked=false,videoScore=0,videoPlays=0,videoShownAt=0,videoDone=false;
 function startVideo(){
@@ -12366,6 +12460,9 @@ function renderProgress(){
 
 genderizeInit();
 logQueueFlush();
+// بذرُ سجلّ العرض من الخادم — صامتٌ وغير حاجب: الجلسة تُبنى بالمحلّي فوراً كما كانت،
+// وما يصل من الخادم يُخصّب الجلسة القادمة. نفس نمط `genTopUp` المعتمَد أصلاً.
+try{seenSeed()}catch(e){}
 render();
 
 </script>
