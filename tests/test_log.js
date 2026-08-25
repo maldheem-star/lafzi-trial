@@ -15,6 +15,12 @@ const mk=async(known)=>{
   // نُسجّل في Node مباشرةً: العبور بالصفحة كان يستدعي page.evaluate من داخل معترض
   // قد يبقى طائراً بعد إغلاق الصفحة، فينهار الطقم عند التفكيك لا عند عطل حقيقي
   await page.route('**/rest/v1/**',async r=>{
+    // ٢٥ أغسطس: يُعدّ الكتابةَ وحدها. صار للتطبيق قراءةٌ واحدة عند الإقلاع
+    // (`seenSeed` تبذر سجلّ العرض من الخادم)، وعدُّها مع الكتابات كان يزيد كلَّ
+    // رقمٍ في هذا الملفّ واحداً ويُدخل صفّاً وهمياً بلا domain. والمقصود هنا
+    // «كم طلبَ تسجيلٍ أُرسل» لا «كم مرّة لُمس REST».
+    if(r.request().method()!=='POST')
+      return r.fulfill({status:200,contentType:'application/json',body:'[]'});
     let body={};try{body=JSON.parse(r.request().postData()||'{}')}catch(e){}
     const bad=Object.keys(body).filter(k=>known.indexOf(k)<0);
     seen.push({keys:Object.keys(body),bad,domain:body.domain});
