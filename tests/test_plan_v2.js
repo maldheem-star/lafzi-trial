@@ -114,15 +114,20 @@ async function mk(browser,q){
       stretchOn('listen');
       const wide=bankStretched('listen','A2',listenBankFor);
       const lvls={};wide.forEach(x=>lvls[x.lv]=(lvls[x.lv]||0)+1);
-      // B1 أعلى مستوى: لا تمدّد فوقه
+      // B1 صار له ما فوقه (B2، ٢٥ أغسطس): بُني محتوى B2 وفُتح مدخلٌ في LV_NEXT،
+      // فبوّابة التمدّد لم تعد عاطلةً بنيوياً عند القمّة كما كانت. والمعنى المفحوص
+      // هو نفسه لم يتغيّر — «التمدّد إضافةٌ لا استبدال» — لكن على المستوى التالي.
       for(let i=0;i<10;i++)accRecord('read',true);stretchOn('read');
-      const b1=bankStretched('read','B1',readBankFor).length,b1plain=readBankFor('B1').length;
-      return{base:base,wide:wide.length,lvls:lvls,b1:b1,b1plain:b1plain};
+      const b1w=bankStretched('read','B1',readBankFor);
+      const b1lv={};b1w.forEach(x=>b1lv[x.lv]=(b1lv[x.lv]||0)+1);
+      return{base:base,wide:wide.length,lvls:lvls,
+             b1:b1w.length,b1plain:readBankFor('B1').length,b1lv:b1lv};
     });
     ok(bank.wide>bank.base,'البوّابة مفتوحة ⇒ البنك يتّسع ('+bank.base+'⇐'+bank.wide+')');
     ok(!bank.lvls.A1,'لا يتسرّب A1 من احتياط البانية — '+JSON.stringify(bank.lvls));
     ok(!!bank.lvls.A2&&!!bank.lvls.B1,'المستوى الحالي يبقى ويُضاف الأعلى');
-    ok(bank.b1===bank.b1plain,'B1 أعلى مستوى: لا تمدّد فوقه');
+    ok(bank.b1>bank.b1plain,'وB1 يتمدّد إلى B2 كذلك — لم تعد القمّة عاطلة ('+bank.b1plain+'⇐'+bank.b1+')');
+    ok(!!bank.b1lv.B1&&!!bank.b1lv.B2,'وبنك B1 باقٍ معه — إضافةٌ لا استبدال — '+JSON.stringify(bank.b1lv));
     await page.close();
   }
   {
