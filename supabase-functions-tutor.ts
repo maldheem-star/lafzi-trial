@@ -254,7 +254,19 @@ const GEN_TOPICS = [
 // وخطّته الأصلية اعتمدت على التباعد وحده ليخفّف الاستنفاد، لكن جلسةً واحدة (WRITE_N=٣)
 // يومياً كافيةٌ لاستنفاده خلال أسبوعين. الصيغة نفسها المعتمَدة في الشيفرة الثابتة —
 // Movers/Flyers (A1)، A2 Key Part 6 (A2)، B1 Preliminary Part 2 (B1) — لا صيغة جديدة.
-function systemGenWrite(level: string) {
+// ===== بذرةُ الموضوع تأتي من العميل فلا تتصادم الدفعة — ٢٦ أغسطس =====
+// كان كل نداءٍ يختار موضوعه عشوائياً وحده، وأربع نداءات متوازية على ٢٩ موضوعاً تتصادم
+// في نحو ١٩٪ من الدفعات (مسألة أعياد الميلاد). وبياناتُ إلياس أثبتته: عنصران مولَّدان
+// بالموضوع نفسه («poster about AlUla» و«model of AlUla») أُسقطا توأمين وقت الجلسة،
+// فامتلأ مكانهما من البنك المؤلَّف الصغير — وهذا هو تكرارُه الذي اشتكى منه.
+// فالعميل يمرّر `topicIdx` مميّزاً لكل نداءٍ في الدفعة، والخادم يحترمه إن وصل.
+function pickTopic(idx?: number): string {
+  const n = GEN_TOPICS.length;
+  if (typeof idx === "number" && isFinite(idx) && idx >= 0) return GEN_TOPICS[Math.floor(idx) % n];
+  return GEN_TOPICS[Math.floor(Math.random() * n)];
+}
+
+function systemGenWrite(level: string, topicIdx?: number) {
   const shape: Record<string, string> = {
     A1: [
       "Write ONE guided-writing prompt for a CEFR A1 learner, in the style of Cambridge",
@@ -277,7 +289,7 @@ function systemGenWrite(level: string) {
       "MIN must be 70.",
     ].join(" "),
   };
-  const topic = GEN_TOPICS[Math.floor(Math.random() * GEN_TOPICS.length)];
+  const topic = pickTopic(topicIdx);
   return [
     shape[level] || shape.A2,
     `TOPIC FOR THIS ITEM: ${topic}. Build the prompt around this topic specifically. Do NOT`,
@@ -332,9 +344,9 @@ const GRAM_FOCUS: Record<string, string> = {
   A2: "irregular past tense, comparatives (-er/more), time prepositions (on/at/in), much/many, question formation with Do/Does",
   B1: "present perfect vs past simple, passive voice, first conditional (if+present, will), relative clauses (who/which), used to",
 };
-function systemGenGram(level: string): string {
+function systemGenGram(level: string, topicIdx?: number): string {
   const focus = GRAM_FOCUS[level] || GRAM_FOCUS.A2;
-  const topic = GEN_TOPICS[Math.floor(Math.random() * GEN_TOPICS.length)];
+  const topic = pickTopic(topicIdx);
   return [
     `Write ONE Grammaticality Judgment Task item for a CEFR ${level} English learner.`,
     `GRAMMAR FOCUS for this item: pick ONE specific point from this list: ${focus}.`,
@@ -382,7 +394,7 @@ const STEP_TAGS: Record<string, string[]> = {
   A2: ["ترتيب الكلمات", "الحروف الكبيرة", "علامات الترقيم"],
   B1: ["ترتيب الكلمات", "علامات الترقيم"],
 };
-function systemGenStep(level: string): string {
+function systemGenStep(level: string, topicIdx?: number): string {
   const tags = STEP_TAGS[level] || STEP_TAGS.A2;
   const tag = tags[Math.floor(Math.random() * tags.length)];
   const focusByTag: Record<string, string> = {
@@ -417,7 +429,7 @@ function systemGenStep(level: string): string {
   };
   const subs = subByTag[tag] || subByTag["علامات الترقيم"];
   const sub = subs[Math.floor(Math.random() * subs.length)];
-  const topic = GEN_TOPICS[Math.floor(Math.random() * GEN_TOPICS.length)];
+  const topic = pickTopic(topicIdx);
   return [
     `Write ONE Grammaticality Judgment Task item for a CEFR ${level} English learner, testing`,
     `${focusByTag[tag]}.`,
@@ -467,7 +479,7 @@ function systemGenStep(level: string): string {
 // ===== فيديو تعليمي: قصّة قصيرة بعدّة مشاهد، ثم سؤال فهمٍ — نفس صيغة listen/read
 // (نصٌّ ثم فهم) لكن مقسَّمة مشاهد بدل فقرةٍ واحدة، لأن هذا فرقها الوحيد عن الفيديو
 // الحقيقي (تتابعٌ زمني) لا اجتهاداً، كما وثّق CLAUDE.md عند شحن القسم نفسه =====
-function systemGenVideo(level: string): string {
+function systemGenVideo(level: string, topicIdx?: number): string {
   const styleByLevel: Record<string, string> = {
     A1: "an everyday routine or one concrete fact, told as THREE short scenes, present tense, very simple words a young beginner already knows",
     A2: "a short narrative with a clear before/after sequence, told as THREE scenes, past or present tense, one clear detail per scene",
@@ -475,7 +487,7 @@ function systemGenVideo(level: string): string {
   };
   const nScenes = level === "B1" ? 4 : 3;
   const lv = styleByLevel[level] || styleByLevel.A2;
-  const topic = GEN_TOPICS[Math.floor(Math.random() * GEN_TOPICS.length)];
+  const topic = pickTopic(topicIdx);
   const sceneLines: string[] = [];
   for (let i = 1; i <= nScenes; i++) {
     sceneLines.push(`SCENE${i}_EMOJI: <ONE single emoji that represents this scene, nothing else on the line>`);
@@ -506,12 +518,12 @@ function systemGenVideo(level: string): string {
   ].join("\n");
 }
 
-function systemGen(domain: string, level: string, word: string) {
-  if (domain === "write") return systemGenWrite(level);
+function systemGen(domain: string, level: string, word: string, topicIdx?: number) {
+  if (domain === "write") return systemGenWrite(level, topicIdx);
   if (domain === "minpair") return systemGenMinpair(level, word);
-  if (domain === "gram") return systemGenGram(level);
-  if (domain === "step") return systemGenStep(level);
-  if (domain === "video") return systemGenVideo(level);
+  if (domain === "gram") return systemGenGram(level, topicIdx);
+  if (domain === "step") return systemGenStep(level, topicIdx);
+  if (domain === "video") return systemGenVideo(level, topicIdx);
   const isListen = domain === "listen";
   const styleByLevel: Record<string, string> = {
     A1: "ONE or TWO very short sentences. One single concrete fact (a name, age, colour, number, or day of the week). Simple present tense only. Very common words a young beginner already knows.",
@@ -519,7 +531,7 @@ function systemGen(domain: string, level: string, word: string) {
     B1: "A short paragraph of 4 to 6 sentences narrating a personal experience or explaining an everyday situation. The question should be about the main idea or a detail that needs tracking across more than one sentence.",
   };
   const lv = styleByLevel[level] || styleByLevel.A2;
-  const topic = GEN_TOPICS[Math.floor(Math.random() * GEN_TOPICS.length)];
+  const topic = pickTopic(topicIdx);
   // ===== قالبُ السؤال يُفرَض كما يُفرَض الموضوع — ٢٣ أغسطس =====
   // بياناتٌ حيّة (هيا، A1): ثلاثةٌ من أخطائها الخمسة في الاستماع بصيغةٍ واحدة —
   // «When does X … on <day>?» بمواضيع مختلفة تماماً (طبيب، كرة قدم، جبل). أي أن
@@ -770,7 +782,8 @@ Deno.serve(async (req) => {
           clip(b.focus, 200) || "Be warm and polite. Model good manners in English.",
           !!b.styleTip, male, lname, !!b.easy, !!b.suggest, !!b.openTurn, lrAge)
       : gen
-      ? systemGen(clip(b.domain, 20) || "read", clip(b.level, 10) || "A2", clip(b.word, 40))
+      ? systemGen(clip(b.domain, 20) || "read", clip(b.level, 10) || "A2", clip(b.word, 40),
+          Number.isFinite(Number(b.topicIdx)) ? Number(b.topicIdx) : undefined)
       : systemFor(subject, lrAge, male, lname);
 
     // تاريخ الحوار يصل من العميل ويعود إليه: الدالة بلا ذاكرة عمداً، فلا حالة تُدار هنا

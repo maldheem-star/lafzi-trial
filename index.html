@@ -4201,6 +4201,28 @@ function buildDailyPlan(){
   }
   // تشبيك: توزيع الأنواع بالتناوب بدل تجميع كل نوع معاً
   const byType={};chosen.forEach(i=>(byType[i.t]=byType[i.t]||[]).push(i));
+  // ===== ما في مستواها يسبق ما فوقه — درس ٢٦ أغسطس =====
+  // بياناتها: ٠ من ٩ في البناء ثاني يومٍ على التوالي، **والتسعة كلّها A2 مستحقّة**،
+  // بينما عناصر A1 العشرة التي أُضيفت لها أمس **لم يظهر منها ولا واحد**. وفحصُ البانية
+  // بحالتها الحقيقية أثبت السبب: العناصر تدخل الخطّة فعلاً (أربعةٌ منها) لكن **بعد
+  // خمسة عشر عنصر A2 مستحقّاً**، فلا تبلغها الجلسة أصلاً.
+  // فالعيب ترتيبٌ لا إقصاء: i+1 سقفٌ لا أرضية، ومراجعةُ ما فوق مستواها لا تُقدَّم على
+  // أوّل لقاءٍ بما في مستواها. والترتيب ثابتٌ داخل كل نطاق، فيبقى المستحقّ قبل الجديد
+  // كما كان — لا يُلغى تباعد FSRS، يُعاد ترتيب من يسبق من وحسب.
+  {
+    const sLv=ENG_LV_RANK[profileOf().level||"A1"];
+    const band=function(it){
+      const lv=(it.t==="build")?engBuildLv(it):(it.t==="grammar"&&it.lesson?ENG_LESSON_LV[it.lesson]:null);
+      if(!lv)return 0;                                  // بلا تصنيفٍ نحوي: لا يُقاس بهذا
+      return (ENG_LV_RANK[lv]|0)>sLv?1:0;               // فوق مستواها ⇒ متأخّر
+    };
+    Object.keys(byType).forEach(function(t){
+      const q=byType[t];
+      const keyed=q.map(function(it,i){return{it:it,b:band(it),i:i}});
+      keyed.sort(function(a,c){return a.b-c.b||a.i-c.i});   // ثابتٌ داخل النطاق
+      byType[t]=keyed.map(function(x){return x.it});
+    });
+  }
   // "build" مذكورٌ هنا لأن غيابه كان يُسقط العنصر إسقاطاً صامتاً: التوزيع يبني woven
   // من هذه الأنواع وحدها، فعنصرُ بناءِ جملةٍ يُختار ثم لا يصل الشاشة أبداً — رغم أن
   // renderEngPlan يعرفه ويرسمه (it.t==="build"). كُشف عرَضاً عند إصلاح تشابك الاختيار.
@@ -6462,9 +6484,30 @@ function renderErrors(){
 const GEN_BANK_MAX=80;
 function genBankLoad(key){try{const a=JSON.parse(lsGet(key)||"[]");return Array.isArray(a)?a:[]}catch(e){return[]}}
 function genBankSave(key,arr){try{lsSet(key,JSON.stringify(arr))}catch(e){}}
+// ===== التوأم يُرفَض عند التخزين لا عند العرض — درس ٢٦ أغسطس =====
+// شكا إلياس التكرار، والسجلّ كشف السبب: **عنصران مولَّدان بالموضوع نفسه في دفعةٍ واحدة**
+// («Haya and Musfir are making a poster about AlUla» و«Hanan and Musfir are making a
+// model of AlUla»). فيُسقطهما `planNoTwins` وقت الجلسة، فيمتلئ مكانهما من البنك المؤلَّف
+// الصغير — أي أن التوليد يعمل ولا يصل. وبياناتُ اليوم تُثبته بالرقم: **عنصران مولَّدان
+// فقط** وصلا الثلاثة جميعاً، والباقي مؤلَّف.
+//
+// والسبب في الخادم: `GEN_TOPICS[Math.random()...]` لكل نداء على حدة، وأربع نداءات
+// متوازية على ٢٩ موضوعاً تتصادم في نحو ١٩٪ من الدفعات (مسألة أعياد الميلاد) — والتصادم
+// يتراكم في البنك عبر الجلسات.
+//
+// **والرقابة عند العميل هي الحاسمة** (عُرفٌ مقرَّر في المشروع: تعمل مهما كان النموذج):
+// يُرفَض العنصر إن كان توأماً لما في البنك أصلاً، بنفس `twinSim`/`GEN_TWIN` المستعملة
+// في الجلسة — لا مقياس جديد. فالبنك يحمل عناصر متمايزة، ولا يُهدر مكانٌ على توأم.
 function genBankAdd(key,item){
   const arr=genBankLoad(key);
   if(arr.some(function(x){return x.id===item.id}))return arr;
+  const t=itemText(item);
+  const twin=arr.find(function(x){return twinSim(itemText(x),t)>=GEN_TWIN});
+  if(twin){
+    try{logAnswer("gen","twin_reject",null,key+" · "+item.id,null,null,
+      {q_text:"رُفض عند التخزين لتوأمته لـ"+twin.id+": "+String(t).slice(0,90)})}catch(e){}
+    return arr;
+  }
   arr.push(item);genBankSave(key,arr);return arr;
 }
 // يفكّك ردّ المحرّك بصيغة TEXT/Q/A/B/C/CORRECT — أسطرٌ موسومة كما SAY:/FIX: القائمتين،
@@ -6502,11 +6545,20 @@ function parseGenBlock(text,domain){
 }
 // نداءٌ واحدٌ صامت — يفشل بهدوء (شبكة/مفتاح غائب) كما تفعل كل نداءات tutor الأخرى هنا،
 // فغياب التوليد ليس عطلاً: يبقى البنك المؤلَّف يعمل وحده كما كان قبل هذه الميزة.
-async function fetchTutorGen(domain,level){
+// ===== بذرةُ موضوعٍ مميّزة لكل نداءٍ في الدفعة — ٢٦ أغسطس =====
+// الخادم كان يختار الموضوع عشوائياً لكل نداءٍ على حدة، فتتصادم الدفعة المتوازية
+// (٤ نداءات على ٢٩ موضوعاً ⇐ نحو ١٩٪ تصادم)، فيُنتَج توأمان يُسقطهما `planNoTwins`
+// وقت الجلسة ويمتلئ مكانهما من البنك المؤلَّف الصغير — وهو تكرارُ إلياس بعينه.
+// و`genSeed` عدّادٌ متزايد: نداءات الدفعة الواحدة تأخذ مواضع متتالية في القائمة،
+// فلا تتصادم بنيوياً لا احتمالياً. وخادمٌ قديم لا يعرف الحقل يتجاهله بلا ضرر.
+let genSeed=Math.floor(Math.random()*1000);
+function genNextTopicIdx(){genSeed=(genSeed+1)>>>0;return genSeed}
+async function fetchTutorGen(domain,level,topicIdx){
   try{
     const res=await fetchTimeout(TUTOR_FN_URL,{method:"POST",
       headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},
-      body:JSON.stringify({mode:"gen",domain,level})},15000);
+      body:JSON.stringify({mode:"gen",domain,level,
+        topicIdx:(topicIdx==null?genNextTopicIdx():topicIdx)})},15000);
     if(!res||!res.ok)return null;
     const data=await res.json();
     if(!data||!data.ok||!data.reply)return null;
@@ -7151,7 +7203,7 @@ async function fetchTutorGenWrite(level){
   try{
     const res=await fetchTimeout(TUTOR_FN_URL,{method:"POST",
       headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},
-      body:JSON.stringify({mode:"gen",domain:"write",level})},15000);
+      body:JSON.stringify({mode:"gen",domain:"write",level,topicIdx:genNextTopicIdx()})},15000);
     if(!res||!res.ok)return null;
     const data=await res.json();
     if(!data||!data.ok||!data.reply)return null;
@@ -7859,7 +7911,7 @@ async function fetchTutorGenGram(level){
   try{
     const res=await fetchTimeout(TUTOR_FN_URL,{method:"POST",
       headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},
-      body:JSON.stringify({mode:"gen",domain:"gram",level})},15000);
+      body:JSON.stringify({mode:"gen",domain:"gram",level,topicIdx:genNextTopicIdx()})},15000);
     if(!res||!res.ok)return null;
     const data=await res.json();
     if(!data||!data.ok||!data.reply)return null;
@@ -9137,7 +9189,7 @@ async function fetchTutorGenStep(level){
   try{
     const res=await fetchTimeout(TUTOR_FN_URL,{method:"POST",
       headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},
-      body:JSON.stringify({mode:"gen",domain:"step",level})},15000);
+      body:JSON.stringify({mode:"gen",domain:"step",level,topicIdx:genNextTopicIdx()})},15000);
     if(!res||!res.ok)return null;
     const data=await res.json();
     if(!data||!data.ok||!data.reply)return null;
@@ -10508,7 +10560,7 @@ async function fetchTutorGenVideo(level){
   try{
     const res=await fetchTimeout(TUTOR_FN_URL,{method:"POST",
       headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},
-      body:JSON.stringify({mode:"gen",domain:"video",level})},15000);
+      body:JSON.stringify({mode:"gen",domain:"video",level,topicIdx:genNextTopicIdx()})},15000);
     if(!res||!res.ok)return null;
     const data=await res.json();
     if(!data||!data.ok||!data.reply)return null;
@@ -10853,6 +10905,16 @@ function azureToScore(target,data){
     pct=Math.round(100*wGot/wTot); // كما في مسار Groq
   }
   return{pct,hit,words:t,got:hit.filter(Boolean).length,total:t.length,weights:w,ok:pct>=PRON_PASS,by:"azure",
+    // ===== تعارضٌ يُقاس لا يُبتلَع — درس ٢٦ أغسطس =====
+    // صفٌّ حقيقي لهيا: الدرجة ٩٣٪ بينما دقّة Azure ٤٧٪ واكتماله **٢٩٪** — أي أن
+    // المسطرتين تقولان شيئين متناقضين على التسجيل نفسه. والسبب أن `aligned` كانت
+    // false (عدد كلمات Azure خالف عدد كلمات الهدف، غالباً بسبب الاختصارات:
+    // «can't» كلمةٌ عنده و«can not» كلمتان عندنا)، فسقط الحساب إلى **مطابقة النصّ**
+    // — وهي بالضبط المسطرة الضعيفة التي وُصل Azure للخلاص منها.
+    // ولا تُغيَّر الدرجة اليوم: تُوسَم الحالة ويُقاس تكرارها أوّلاً، بنفس نهج
+    // `quizErrDelta` — عتبةٌ تُسمّى من توزيعٍ حقيقي لا تُخترع الآن.
+    aligned:aligned,
+    disagree:(!aligned&&typeof data.completeness==="number"&&data.completeness<60&&pct>=PRON_PASS),
     repeats:repeats,accuracy:data.accuracy,fluency:data.fluency,completeness:data.completeness,weak:data.weak||[]};
 }
 // الأصوات الضعيفة في سطر واحد للسجلّ: «t:45,s:52» — يجعل سؤال «أي صوت تُخطئ فيه دائماً؟»
@@ -11184,6 +11246,8 @@ async function speakFinish(){
     speakResult={heard:az.data.heard||az.data.lexical||"",ok:sc.ok,sc,note:"",engine:"azure"};
     logAnswer("speaking","stage"+speakStage,sc.ok,az.data.heard||"",it.id,Math.round(speakElapsed*1000),
       {score_pct:sc.pct,engine:"azure",is_new:!!it._isNew,srs_box:it._box,judged_by:sc.by,
+       // الوسم يدخل عمود azure_fail لأنه العمود القائم لحال «Azure عمل ولم يُحسم به»
+       azure_fail:(sc.disagree?"misaligned_pass":(sc.aligned?null:"misaligned")),
        accuracy_pct:num0(sc.accuracy),fluency_pct:num0(sc.fluency),completeness_pct:num0(sc.completeness),
        weak_phonemes:weakPhonemeStr(sc.weak),repeats:sc.repeats||0,q_text:speakLogText(target,sc)});
     speakBusy=false;render();return;
