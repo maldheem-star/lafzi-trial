@@ -231,8 +231,8 @@ function systemReview(male: boolean, name: string, age: number, level: string) {
 // مؤلَّف (وهو ما بُني أصلاً لمحاربة التكرار). فبلا هذا القيد يبقى المولّد يخترع
 // Leo وSam وMaple Park فينقض التعريب من حيث لا يُرى في البنك.
 // والأسماء هي أسماء العائلة نفسها بطلب صاحب المشروع، لا أسماء عربية عامّة.
-const GEN_PEOPLE = "Haya or Hanan for girls/women, and Musfir, Hasan, Mohammed or Elias for boys/men";
-const GEN_PLACES = "Saudi Arabia only — Riyadh, Jeddah, Dammam, Abha, Taif, Madinah, Makkah, Al-Ahsa, Tabuk, AlUla, Khobar, Yanbu, Hail, Qassim, Jazan";
+const GEN_PEOPLE = "Haya or Hanan for girls/women, and Misfer, Hasan, Mohammed or Elias for boys/men";
+const GEN_PLACES = "Saudi Arabia only — Riyadh, Jeddah, Dammam, Abha, Taif, Madinah, Makkah, Al-Ahsa, Tabuk, AlUla, Khobar, Yanbu, Hail, Qassim, Jazan, Al-Aflaj, Alhamar";
 const GEN_CULTURE = [
   `NAMES: use ONLY these names for people: ${GEN_PEOPLE}. Never use Western names.`,
   `PLACES: any city, place or country you name must be in ${GEN_PLACES}. Never name a Western city or country.`,

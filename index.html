@@ -3000,7 +3000,7 @@ async function seenSeed(){
 const LV_NEXT={A1:"A2",A2:"B1",B1:"B2"};
 const ACC_KEY="mawhiba_acc_v1",ACC_WINDOW=12,ACC_MIN=8,ACC_ON=0.85,ACC_OFF=0.70;
 // الأقسام المبنيّة بمستويات CEFR وحدها — البقيّة (الأساسيات، موهبة…) بلا تدرّج مستوى
-const ACC_DOMAINS=["listen","read","gram","step","minpair","video","write"];
+const ACC_DOMAINS=["listen","read","gram","step","minpair","video","write","build"];
 function accLoad(){try{return JSON.parse(lsGet(ACC_KEY)||"{}")}catch(e){return{}}}
 function accSave(o){try{lsSet(ACC_KEY,JSON.stringify(o))}catch(e){}}
 function accRecord(domain,ok){
@@ -5421,7 +5421,7 @@ const MASC_W={
   "تعيديه":"تعيده","تختاري":"تختار","ناقشيني":"ناقشني","احملي":"احمل","اسمحي":"اسمح",
   "انسي":"انسَ","توقّفي":"توقّف","انظري":"انظر","تنظري":"تنظر","احفظي":"احفظ","تبدئي":"تبدأ",
   "أضيفي":"أضِف","تجمعي":"تجمع","تعدّي":"تعدّ","تُطوّلي":"تُطوّل","استخدمي":"استخدم",
-  "استنتجي":"استنتج","اعملي":"اعمل","أنهي":"أنهِ","تتكلّمين":"تتكلّم","تتكلّمي":"تتكلّم",
+  "استنتجي":"استنتج","اعملي":"اعمل","أنهي":"أنهِ","تتكلّمين":"تتكلّم","تنجحين":"تنجح","تتكلّمي":"تتكلّم",
   "عدّلي":"عدّل","اسحبي":"اسحب","ارسمي":"ارسم","أكّدي":"أكّد","توقّعي":"توقّع","صحّحي":"صحّح",
   // المضارع للمخاطبة
   "تحتاجين":"تحتاج","تستطيعين":"تستطيع","تقولين":"تقول","تقولينها":"تقولها","تسمعينها":"تسمعها",
@@ -6486,7 +6486,7 @@ function genBankLoad(key){try{const a=JSON.parse(lsGet(key)||"[]");return Array.
 function genBankSave(key,arr){try{lsSet(key,JSON.stringify(arr))}catch(e){}}
 // ===== التوأم يُرفَض عند التخزين لا عند العرض — درس ٢٦ أغسطس =====
 // شكا إلياس التكرار، والسجلّ كشف السبب: **عنصران مولَّدان بالموضوع نفسه في دفعةٍ واحدة**
-// («Haya and Musfir are making a poster about AlUla» و«Hanan and Musfir are making a
+// («Haya and Misfer are making a poster about AlUla» و«Hanan and Misfer are making a
 // model of AlUla»). فيُسقطهما `planNoTwins` وقت الجلسة، فيمتلئ مكانهما من البنك المؤلَّف
 // الصغير — أي أن التوليد يعمل ولا يصل. وبياناتُ اليوم تُثبته بالرقم: **عنصران مولَّدان
 // فقط** وصلا الثلاثة جميعاً، والباقي مؤلَّف.
@@ -6788,7 +6788,7 @@ const LISTEN_BANK=[
   // A1 — عبارة واحدة أو عبارتان قصيرتان، حقيقة واحدة ملموسة (اسم/عمر/لون/عدد/يوم)
   {id:"ls_a1_1",lv:"A1",sk:"تفصيل محدَّد",audio:"My name is Haya. I am ten years old.",q:"How old is Haya?",c:["Nine","Ten","Eleven"],a:1},
   {id:"ls_a1_2",lv:"A1",sk:"تفصيل محدَّد",audio:"I have a red bag.",q:"What colour is the bag?",c:["Red","Blue","Green"],a:0},
-  {id:"ls_a1_3",lv:"A1",sk:"تفصيل محدَّد",audio:"This is my brother. His name is Elias.",q:"What is the brother's name?",c:["Musfir","Elias","Hasan"],a:1},
+  {id:"ls_a1_3",lv:"A1",sk:"تفصيل محدَّد",audio:"This is my brother. His name is Elias.",q:"What is the brother's name?",c:["Misfer","Elias","Hasan"],a:1},
   {id:"ls_a1_4",lv:"A1",sk:"تفصيل محدَّد",audio:"I have two cats and one dog.",q:"How many cats are there?",c:["One","Two","Three"],a:1},
   {id:"ls_a1_5",lv:"A1",sk:"تفصيل محدَّد",audio:"It is Monday today.",q:"What day is it today?",c:["Sunday","Monday","Tuesday"],a:1},
   {id:"ls_a1_6",lv:"A1",sk:"تفصيل محدَّد",audio:"My favourite colour is green.",q:"What is her favourite colour?",c:["Green","Yellow","Purple"],a:0},
@@ -6944,7 +6944,7 @@ function renderListenResult(){
 // الأسئلة والخيارات بالإنجليزية للثلاثة سواءً — نفس السبب المذكور أعلى LISTEN_BANK
 const READ_BANK=[
   // A1 — جملة أو جملتان، حقيقة واحدة ملموسة، يبقى النصّ أمامها فتُعيد النظر إليه
-  {id:"rd_a1_1",lv:"A1",sk:"تفصيل محدَّد",passage:"This is Musfir. He is nine years old. He has a black cat.",q:"How old is Musfir?",c:["Eight","Nine","Ten"],a:1},
+  {id:"rd_a1_1",lv:"A1",sk:"تفصيل محدَّد",passage:"This is Misfer. He is nine years old. He has a black cat.",q:"How old is Misfer?",c:["Eight","Nine","Ten"],a:1},
   {id:"rd_a1_2",lv:"A1",sk:"تفصيل محدَّد",passage:"My school bag is blue. My pencil case is yellow.",q:"What colour is the school bag?",c:["Yellow","Blue","Green"],a:1},
   {id:"rd_a1_3",lv:"A1",sk:"تفصيل محدَّد",passage:"Today is Friday. Tomorrow is Saturday.",q:"What day is it tomorrow?",c:["Thursday","Friday","Saturday"],a:2},
   {id:"rd_a1_4",lv:"A1",sk:"تفصيل محدَّد",passage:"I have four brothers and one sister.",q:"How many sisters does he have?",c:["One","Two","None"],a:0},
@@ -8002,6 +8002,97 @@ function renderGramResult(){
   </div>`;
 }
 
+
+// ===== بنك الكلمات قسماً مستقلّاً للأخوين — ٢٦ أغسطس =====
+// كان محبوساً داخل خطّة الإنجليزية (`eng_plan`)، والخطّة مبنيّةٌ على منهج الصف السادس
+// فلا تُعرَض على محمد (١٩) وإلياس (١٨) أصلاً (`only:"coach"`). لكن **بنك الكلمات نفسه
+// ليس من المنهج**: جمله عامّة (`ENG_BUILD`)، وترتيبُ جملةٍ مبعثرة مهارةُ إنتاجٍ يحتاجها
+// الأخوان — وإلياس (A2) خاصّةً.
+//
+// **وفائدةٌ قياسيّة ثانية**: هيا ٠ من ٢٠ فيه، وزمنها الوسيط ٥٫٣ث لجملةٍ من ثماني كلمات.
+// أهو تسرّعٌ أم عجز؟ لا يُحسم بلا زمنٍ مرجعيّ لمنخرطٍ **في هذا القسم بعينه**، ولم يكن
+// موجوداً لأن أحداً غيرها لا يستعمله. فبإخراجه للأخوين يصير الاشتقاق ممكناً بالقياس
+// لا بالاختراع — وهو شرطٌ لبوّابة تسرّعٍ عليه لاحقاً.
+//
+// **موصولٌ لا مبنيّ من جديد**: نفس مكوّن `wb*` بسلّمه الثلاثي، ونفس `ENG_BUILD`
+// و`engBuildFor` بقيد i+1، ونفس `fsrsUpdate` للتباعد، ونفس `topUpPlan` عند النقص.
+const BUILD_N=6;
+const BUILD_SRS_KEY="mawhiba_build_srs";
+function buildSrsLoad(){try{return JSON.parse(lsGet(BUILD_SRS_KEY)||"{}")}catch(e){return{}}}
+function buildSrsSave(o){try{lsSet(BUILD_SRS_KEY,JSON.stringify(o))}catch(e){}}
+function buildSrsUpdate(id,ok){
+  const st=buildSrsLoad(),r=st[id]||{box:0,seen:0};
+  const n=fsrsUpdate(r,ok,srsToday());
+  r.box=n.box;r.due=n.due;r.seen=n.seen;r.s=n.s;r.d=n.d;r.last=n.last;
+  st[id]=r;buildSrsSave(st);
+}
+function buildBankFor(level){return engBuildFor(level)}
+function buildSecPlan(){
+  const st=buildSrsLoad(),today=srsToday(),POOL=bankStretched("build",profileOf().level,buildBankFor);
+  const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
+  const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
+  let out=due.concat(fresh).slice(0,BUILD_N);
+  return planNoTwins(topUpPlan(out,POOL,BUILD_N,"build"),POOL,BUILD_N,"build");
+}
+let buildItems=[],buildIdx=0,buildScore=0,buildDone=false,buildShownAt=0;
+function startBuildSec(){
+  buildItems=buildSecPlan();buildIdx=0;buildScore=0;buildDone=false;
+  mode="build";buildSetupRound();window.scrollTo(0,0);render();
+}
+function buildCur(){return buildItems[buildIdx]}
+function buildSetupRound(){
+  const it=buildCur();if(!it)return;
+  buildShownAt=Date.now();
+  wbStart(it.s);
+}
+function buildCheck(){
+  if(!wbOn||wbLocked)return;
+  const it=buildCur();if(!it)return;
+  const ok=wbCheck();
+  if(ok)buildScore++;
+  buildSrsUpdate(it.id,ok);
+  logAnswer("build","stage"+wbStage,ok,wbTyped,it.id,Date.now()-buildShownAt,
+    {q_text:it.s+" · المعنى: "+(it.m||"")+" · الدرجة "+toAr(wbStage)});
+  render();
+}
+function buildNext(){
+  wbReset();
+  if(buildIdx+1>=buildItems.length){buildDone=true;render();return}
+  buildIdx++;buildSetupRound();window.scrollTo(0,0);render();
+}
+function renderBuild(){
+  if(buildDone)return renderBuildResult();
+  const it=buildCur();
+  if(!it){buildDone=true;return renderBuildResult()}
+  const prog=`<div class="progress">${buildItems.map(function(_,i){
+    return `<div class="seg" style="background:${i<buildIdx?'#10B981':i===buildIdx?'#0E7490':'#E2E8F0'}"></div>`}).join("")}</div>`;
+  app.innerHTML=`
+  <button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
+  ${prog}
+  <div class="meta"><span>${toAr(buildIdx+1)} من ${toAr(buildItems.length)}</span><span>بناء الجملة · ${it.lv||""}</span></div>
+  <div class="card">
+    <span class="tag" style="background:#FCE7F3;color:#9D174D">🧩 رتّب الكلمات</span>
+    <div style="margin-top:10px;font-size:15px;color:#0F172A;line-height:1.9">${esc(it.m||"")}</div>
+    <div style="margin-top:12px">${wbHTML()}</div>
+    ${wbLocked?`<div style="margin-top:12px;background:${wbOk?'#ECFDF5':'#FEF2F2'};border-radius:12px;padding:12px">
+        <div style="font-weight:800;color:${wbOk?'#065F46':'#991B1B'};margin-bottom:6px">${wbOk?"✓ صحيح":"✗ الصواب:"}</div>
+        ${wbOk?"":`<div style="direction:ltr;text-align:left;font-family:Georgia,serif;font-size:15px;color:#0F172A">${esc(it.s)}</div>`}
+      </div>`:""}
+  </div>
+  ${wbLocked
+    ? `<button class="btn" style="background:#9D174D" onclick="buildNext()">${buildIdx+1>=buildItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`
+    : `<button class="btn" style="background:#9D174D" onclick="buildCheck()" ${wbReady()?"":"disabled"}>${wbReady()?"تحقّق":"بقي "+toAr(wbLeft())+" كلمة"}</button>`}`;
+}
+function renderBuildResult(){
+  const pct=buildItems.length?Math.round(buildScore/buildItems.length*100):0;
+  app.innerHTML=`
+  <div class="card">
+    <div class="score-row"><span class="score-big" style="color:${pct>=70?'#059669':pct>=50?'#D97706':'#DC2626'}">${toAr(buildScore)}</span><span class="score-total">/ ${toAr(buildItems.length)}</span><span class="score-pct">${toAr(pct)}%</span></div>
+    <div style="color:#64748B;font-size:15px;margin-bottom:14px">${pct>=85?"ترتيبٌ متقن! 🌟":pct>=60?"جيّد — والباقي يعود للمراجعة 💪":"لا بأس — الترتيب يُتقَن بالتكرار 🌱"}</div>
+    <button class="btn" style="background:#9D174D" onclick="startBuildSec()">🔁 جلسة أخرى</button>
+    <button class="link-btn" onclick="home()">→ الرئيسية</button>
+  </div>`;
+}
 
 // ===== الرياضيات — الصف السادس الابتدائي (هيا) =====
 // الفهرس مأخوذٌ حرفياً من كتاب الوزارة (ien.edu.sa، ٢٠٥ صفحة): خمسة فصول، وكل درسٍ
@@ -9076,7 +9167,7 @@ const STEP_BANK=[
     {t:"Is",ok:false,why:"Is تحتاج playing لا play"},
     {t:"Are",ok:false,why:"Are للجمع أو you، والفاعل هنا مفرد"}]},
   {id:"st_a2_8",lv:"A2",type:"order",tag:"ترتيب الجمل",
-    s:["Musfir decided to fix his old bicycle.",
+    s:["Misfer decided to fix his old bicycle.",
        "To start, he cleaned the chain and checked the tyres.",
        "Then he replaced the broken brake with a new one.",
        "After that, he painted the frame blue.",
@@ -12314,7 +12405,7 @@ function renderKpi(){
 }
 
 // ===== العرض =====
-function render(){if(mode==="mock")return renderMock();if(mode==="seq")return renderSeq();if(mode==="kpi")return renderKpi();if(mode==="home")return renderHome();if(mode==="listen")return renderListen();if(mode==="read")return renderRead();if(mode==="write")return renderWrite();if(mode==="gram")return renderGram();if(mode==="math6")return renderMath6();if(mode==="step")return renderStep();if(mode==="statMenu")return renderStatMenu();if(mode==="stat")return renderStat();if(mode==="minpair")return renderMinpair();if(mode==="video")return renderVideo();if(mode==="errors")return renderErrors();if(mode==="engplan")return renderEngPlan();if(mode==="factplan")return renderFactPlan();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="speak")return renderSpeak();if(mode==="coach")return renderCoach();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
+function render(){if(mode==="mock")return renderMock();if(mode==="seq")return renderSeq();if(mode==="kpi")return renderKpi();if(mode==="home")return renderHome();if(mode==="listen")return renderListen();if(mode==="read")return renderRead();if(mode==="write")return renderWrite();if(mode==="gram")return renderGram();if(mode==="build")return renderBuild();if(mode==="math6")return renderMath6();if(mode==="step")return renderStep();if(mode==="statMenu")return renderStatMenu();if(mode==="stat")return renderStat();if(mode==="minpair")return renderMinpair();if(mode==="video")return renderVideo();if(mode==="errors")return renderErrors();if(mode==="engplan")return renderEngPlan();if(mode==="factplan")return renderFactPlan();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="speak")return renderSpeak();if(mode==="coach")return renderCoach();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
 
 // صفحة الأخوين قسمٌ واحد: المحادثة. بقيّة الأقسام بُنيت على أخطائها هي — بنك
 // أسئلتها، وتباعدها، ومنهج صفّها السادس — فوضعها أمام ولدٍ آخر يُشغله بما ليس له.
@@ -12334,6 +12425,7 @@ function renderHomeCoachOnly(){
     <button class="mode full" style="background:#7C3AED;border-color:#7C3AED" onclick="startRead()"><span class="m-name">📖 فهم المقروء</span><div class="m-sub">اقرأ نصّاً قصيراً، وأجب عن معناه — مستوى ${p.level||"A2"}</div></button>
     <button class="mode full" style="background:#059669;border-color:#059669" onclick="startWrite()"><span class="m-name">📝 الكتابة</span><div class="m-sub">اكتب نصّاً حرّاً عن سؤالٍ نموذجي — تصحيح نحوي فوري يغذّي «أخطائي» — مستوى ${p.level||"A2"}</div></button>
     <button class="mode full" style="background:#9333EA;border-color:#9333EA" onclick="startGram()"><span class="m-name">✍️ دقّة القواعد</span><div class="m-sub">أربع جملٍ، صحيحةٌ واحدة — اختر ثم اقرأ لماذا كل خيار صحيح أو خاطئ</div></button>
+    <button class="mode full" style="background:#9D174D;border-color:#9D174D" onclick="startBuildSec()"><span class="m-name">🧩 بناء الجملة</span><div class="m-sub">كلماتٌ مبعثرة ترتّبها جملةً صحيحة — ثلاث درجات: بالعدد، ثمّ بكلماتٍ دخيلة، ثمّ بلا بنك</div></button>
     <button class="mode full" style="background:#B45309;border-color:#B45309" onclick="startStep()"><span class="m-name">📋 نمط اختبار STEP</span><div class="m-sub">أسئلة الاختبار نفسها: ترتيب الكلمات، الفراغات، الترقيم والكبتلة، وترتيب فقرة — مع شرح كل خيار بعد الإجابة</div></button>
     <button class="mode full" style="background:#0891B2;border-color:#0891B2" onclick="startMinpair()"><span class="m-name">👂 لعبة الاستماع</span><div class="m-sub">كلمتان متشابهتا النطق (chose/choose) — أيّهما سمعت؟ ثم مثالٌ يشرح معناها</div></button>
     ${seqCardHTML()}
