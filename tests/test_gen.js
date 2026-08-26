@@ -22,7 +22,11 @@ const mk=async()=>{
     let x={};try{x=JSON.parse(r.request().postData()||'{}')}catch(e){}
     tutorCalls.push(x);
     if(tutorReply===null){r.fulfill({status:500,contentType:'application/json',body:'{}'});return}
-    r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,reply:tutorReply})});
+    // ٢٦ أغسطس: صار للبنك رفضُ توأمٍ عند التخزين، فردٌّ ثابتٌ لكل النداءات يعني
+    // عناصر متطابقة — وهي في الواقع خطأُ مولّدٍ يُرفَض بحقّ. فيتغيّر الردّ لكل نداء
+    // كما يتغيّر فعلاً، ويبقى اختبار «التوأم يُرفَض» في test_fixes_0826 على حدة.
+    const rep=typeof tutorReply==='function'?tutorReply(tutorCalls.length):tutorReply;
+    r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,reply:rep})});
   });
   await page.goto('http://127.0.0.1:8931/index.html');
   await page.waitForFunction(()=>typeof parseGenBlock==='function');
@@ -133,7 +137,13 @@ console.log('\n٨) genTopUp: يطلب حسب genCallsFor لا نداءً واح�
 // تحسب العدد فعلياً بدل رقمٍ مكتوب هنا يفلت من الاختبار عند تغييره (نفس درس ١٨ أغسطس:
 // "الأعداد المكتوبة في الاختبارات فخّ صامت")
 await page.evaluate(()=>{try{lsDel(GEN_BANK_KEY_READ)}catch(e){}});
-tutorReply=['TEXT: A short test passage for read top-up.','Q: A question?','A: a','B: b','C: c','CORRECT: C'].join('\n');
+tutorReply=function(n){return ['TEXT: '+['Hanan visits the souq in Abha and buys fresh dates for her family.',
+  'The bus to Yanbu leaves at seven and arrives before noon on Tuesday.',
+  'Misfer helps his father repair the garden gate after school in Hail.',
+  'A science club in Tabuk built a small solar oven from a cardboard box.',
+  'Haya wrote a report about the old wells of Al-Aflaj for her class.',
+  'The football final in Qassim ended with a late goal from the youngest player.'][n%6],
+  'Q: A question?','A: a','B: b','C: c','CORRECT: C'].join('\n')};
 tutorCalls=[];
 const expectCalls=await page.evaluate(()=>genCallsFor(readBankFor('A1').length,READ_N));
 ok(expectCalls>=1,`البنك دون السقف فيحتاج توليداً (متوقَّعٌ ${expectCalls} نداء)`);

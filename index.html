@@ -6484,6 +6484,24 @@ function renderErrors(){
 const GEN_BANK_MAX=80;
 function genBankLoad(key){try{const a=JSON.parse(lsGet(key)||"[]");return Array.isArray(a)?a:[]}catch(e){return[]}}
 function genBankSave(key,arr){try{lsSet(key,JSON.stringify(arr))}catch(e){}}
+// ===== عتبة التخزين تُشتقّ من توزيعٍ مقاس لا تُساوى بعتبة الجلسة — ٢٦ أغسطس =====
+// أوّل تنفيذٍ استعمل `GEN_TWIN` (٠٫٠٢) نفسها للتخزين، وكادت تخنق البنوك بدل أن تُنقّيها.
+// والقياس على البنوك المؤلَّفة (أزواج **متمايزة يقيناً** داخل المستوى الواحد) حسم الأمر:
+//   listen/read/gram/step: صفرٌ من الأزواج يتجاوز ٠٫٠٢ (أعلى تشابهٍ = ٠)
+//   video: ٣٪ (أعلى ٠٫٠٣١)
+//   write: **٣١٪** (أعلى ٠٫٣٤٨) — لأن نصوص الكتابة تتشارك قالب الامتحان نفسه
+//          («Say:»، «Write 25–35 words.»)، فالتشابه النصّي لا يُميّز فيها التوأم.
+// فعتبةٌ واحدة كانت سترفض ثلث ما يُولَّد للكتابة — وهو بالضبط البنك الذي يحتاج نموّاً.
+//
+// والعتبتان أدناه فوق أرضيّة الضجيج المقاسة لكل بنك لا مختارتان: ٠٫١٥ لبنوكٍ أرضيّتها
+// صفر (أي نحو خمسة أضعاف أعلى تشابهٍ مشروع رُصد فيها)، و٠٫٦٠ للكتابة والأزواج فوق
+// أعلى تشابهٍ مشروعٍ رُصد فيهما. والتوأم الحقيقي المرصود (عنصرا AlUla) بلغ ٠٫٣٧٥،
+// فيُمسَك في البنوك الأولى بفارقٍ واسع.
+const STORE_TWIN_DEFAULT=0.15, STORE_TWIN_LOOSE=0.60;
+function storeTwinThr(key){
+  const k=String(key||"");
+  return (/write|minpair/.test(k))?STORE_TWIN_LOOSE:STORE_TWIN_DEFAULT;
+}
 // ===== التوأم يُرفَض عند التخزين لا عند العرض — درس ٢٦ أغسطس =====
 // شكا إلياس التكرار، والسجلّ كشف السبب: **عنصران مولَّدان بالموضوع نفسه في دفعةٍ واحدة**
 // («Haya and Misfer are making a poster about AlUla» و«Hanan and Misfer are making a
@@ -6502,7 +6520,7 @@ function genBankAdd(key,item){
   const arr=genBankLoad(key);
   if(arr.some(function(x){return x.id===item.id}))return arr;
   const t=itemText(item);
-  const twin=arr.find(function(x){return twinSim(itemText(x),t)>=GEN_TWIN});
+  const twin=arr.find(function(x){return twinSim(itemText(x),t)>=storeTwinThr(key)});
   if(twin){
     try{logAnswer("gen","twin_reject",null,key+" · "+item.id,null,null,
       {q_text:"رُفض عند التخزين لتوأمته لـ"+twin.id+": "+String(t).slice(0,90)})}catch(e){}

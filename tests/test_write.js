@@ -11,7 +11,15 @@ const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium'});
 let logs=[],calls=[];
 let review={ok:true,ltJudged:1,ltDropped:0,reply:"FIX: I go school every day | I go to school every day. | تحتاج حرف جرّ to قبل school"};
 let reviewFail=false;
+let genN=0;
 let genReply="PROMPT: Describe your favourite hobby and why you enjoy it.\nMIN: 20";
+const WRITE_GEN_VARY=function(n){return "PROMPT: "+[
+  "Describe your favourite hobby and why you enjoy it.",
+  "Write about a day you spent with your family in Abha.",
+  "Tell your friend about a book you finished last week.",
+  "Describe the market near your house and what people sell there.",
+  "Write about a school trip to Al-Aflaj and what you saw.",
+  "Tell us about a meal you helped cook at home."][n%6]+"\nMIN: 20"};
 const mk=async(f)=>{
   const page=await b.newPage({viewport:{width:420,height:900}});
   page.on('pageerror',e=>{console.log('  ✗ PAGEERROR '+e.message);fails++});
@@ -23,7 +31,13 @@ const mk=async(f)=>{
     let x={};try{x=JSON.parse(r.request().postData()||'{}')}catch(e){}
     calls.push(x);
     if(reviewFail)return r.abort();
-    if(x.mode==='gen')return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,reply:genReply})});
+    // ٢٦ أغسطس: البنك صار يرفض التوأم عند التخزين، فردٌّ ثابتٌ يعني عناصر متطابقة.
+    // ونصوص الكتابة تتشارك قالب الامتحان أصلاً (قِيس: ٣١٪ من الأزواج المتمايزة فوق
+    // عتبة الجلسة)، فعتبةُ تخزينها أعلى — والمتطابق يُرفَض بحقّ. فيتنوّع الردّ هنا.
+    if(x.mode==='gen'){
+      const rep=typeof genReply==='function'?genReply(genN++):genReply;
+      return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,reply:rep})});
+    }
     r.fulfill({status:200,contentType:'application/json',body:JSON.stringify(review)});
   });
   await page.goto('http://127.0.0.1:8931/'+(f||'index.html'));
@@ -340,7 +354,7 @@ ok(genParse.badMin===null,'وحدٌّ أدنى ضعيف (٢ كلمة) يُرفض
 ok(genParse.badAr===null,'وتلوّثٌ عربي يُرفض رغم شكلٍ سليم ظاهرياً');
 ok(genParse.missing===null,'ونصٌّ بلا وسم PROMT/MIN يُرفض');
 await page.evaluate(()=>{try{lsDel(GEN_BANK_KEY_WRITE)}catch(e){}});
-calls=[];
+calls=[];genN=0;genReply=WRITE_GEN_VARY;
 // التوقّع يُحسب من حجم البنك الفعلي قبل التوليد لا من صفر — البنك المؤلَّف ليس فارغاً
 const wantWrite=await page.evaluate(()=>genCallsFor(writeBankFor('A1').length,WRITE_N));
 await page.evaluate(level=>writeGenTopUp(level),'A1');
