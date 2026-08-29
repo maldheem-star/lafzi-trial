@@ -7697,11 +7697,11 @@ const WRITE_BANK=[
   // الحرّ (١٧ أغسطس): جملته تنهار عند أقصى تعقيدٍ يحاوله لا قبله. موصولٌ بنفس مسار
   // الكتابة الحرّ بالكامل (type:"combine" وحدها الفارق) — نفس textarea، نفس مراجعة
   // LanguageTool، نفس FSRS؛ فقط معيار النجاح يختلف: نظافة نحوية لا عدد كلمات فقط.
-  {id:"wr_b1_sc1",lv:"B1",sk:"دمج جمل",min:8,type:"combine",prompt:"Combine these two sentences into ONE sentence using a joining word (when, because, so, although...):\n1) It started raining.\n2) We went home early."},
-  {id:"wr_b1_sc2",lv:"B1",sk:"دمج جمل",min:10,type:"combine",prompt:"Combine these two sentences into ONE sentence using a joining word (so that, because...):\n1) She works every weekend.\n2) She can save money for university."},
-  {id:"wr_b1_sc3",lv:"B1",sk:"دمج جمل",min:10,type:"combine",prompt:"Combine these two sentences into ONE sentence using a joining word (although, but...):\n1) The museum is very old.\n2) Thousands of people visit it every year."},
-  {id:"wr_b1_sc4",lv:"B1",sk:"دمج جمل",min:8,type:"combine",prompt:"Combine these two sentences into ONE sentence using a joining word (after, before...):\n1) He finished his homework.\n2) He watched a movie."},
-  {id:"wr_b1_sc5",lv:"B1",sk:"دمج جمل",min:10,type:"combine",prompt:"Combine these two sentences into ONE sentence using 'which' (a relative clause):\n1) The bridge was built in 1990.\n2) It connects the two islands."},
+  {id:"wr_b1_sc1",lv:"B1",sk:"دمج جمل",min:8,type:"combine",req:"join",prompt:"Combine these two sentences into ONE sentence using a joining word (when, because, so, although...):\n1) It started raining.\n2) We went home early."},
+  {id:"wr_b1_sc2",lv:"B1",sk:"دمج جمل",min:10,type:"combine",req:"join",prompt:"Combine these two sentences into ONE sentence using a joining word (so that, because...):\n1) She works every weekend.\n2) She can save money for university."},
+  {id:"wr_b1_sc3",lv:"B1",sk:"دمج جمل",min:10,type:"combine",req:"join",prompt:"Combine these two sentences into ONE sentence using a joining word (although, but...):\n1) The museum is very old.\n2) Thousands of people visit it every year."},
+  {id:"wr_b1_sc4",lv:"B1",sk:"دمج جمل",min:8,type:"combine",req:"join",prompt:"Combine these two sentences into ONE sentence using a joining word (after, before...):\n1) He finished his homework.\n2) He watched a movie."},
+  {id:"wr_b1_sc5",lv:"B1",sk:"دمج جمل",min:10,type:"combine",req:["which"],prompt:"Combine these two sentences into ONE sentence using 'which' (a relative clause):\n1) The bridge was built in 1990.\n2) It connects the two islands."},
   // ===== الجملة قبل الفقرة لِA1/A2 — ٢٤ أغسطس =====
   // دمج الجمل ثالثُ أقوى عنصرٍ عمليّ في Writing Next (أثر ٠٫٥٠، Graham & Perin 2007)
   // وتوصي به What Works Clearinghouse صراحةً، وهو قلبُ طريقة Hochman («الجملة قبل
@@ -7721,24 +7721,24 @@ const WRITE_BANK=[
   {id:"wr_b2_5",lv:"B2",sk:"رسالة رسمية",min:130,joint:"Dear Sir or Madam,\nI am writing with regard to the summer training programme advertised on your website.",prompt:"You have seen an advertisement for a summer training programme abroad. Write a formal letter of application.\nInclude:\n\u2022 why you are suitable\n\u2022 what you hope to gain\n\u2022 one question about the programme\nWrite 140\u2013190 words."},
   {id:"wr_b2_6",lv:"B2",sk:"مقالة حِجاجية",min:130,joint:"The claim sounds reasonable at first, but it does not survive a closer look.",prompt:"'Working from home is better for everyone.'\nWrite an essay saying how far you agree with this statement.\nInclude these points:\n\u2022 effects on the worker\n\u2022 effects on the company\n\u2022 one point of your own\nWrite 140\u2013190 words."},
   // ودمجُ الجمل عند B2 على تراكيبه هو: الحال، والقلب، والوصل بحرف جرّ، والتنازل.
-  {id:"wr_b2_sc1",lv:"B2",sk:"دمج جمل",min:9,type:"combine",prompt:"Combine these two sentences into ONE sentence using a participle clause (Having...):\n1) She had finished the report.\n2) She went home early."},
-  {id:"wr_b2_sc2",lv:"B2",sk:"دمج جمل",min:10,type:"combine",prompt:"Combine these two sentences into ONE sentence using \"despite\":\n1) The evidence was weak.\n2) The committee approved the plan."},
-  {id:"wr_b2_sc3",lv:"B2",sk:"دمج جمل",min:10,type:"combine",prompt:"Combine these two sentences into ONE sentence using a relative clause with a preposition (for whom / about which...):\n1) I interviewed a researcher last week.\n2) I had read her book years ago."},
-  {id:"wr_b2_sc4",lv:"B2",sk:"دمج جمل",min:10,type:"combine",prompt:"Combine these two sentences into ONE sentence beginning with \"Not only\":\n1) The design was cheaper.\n2) The design was also faster to build."},
-  {id:"wr_b2_sc5",lv:"B2",sk:"دمج جمل",min:10,type:"combine",prompt:"Combine these two sentences into ONE sentence using \"which\" to refer to the whole first idea:\n1) The train was cancelled without warning.\n2) This made everyone late for the conference."},
-  {id:"wr_b2_sc6",lv:"B2",sk:"دمج جمل",min:9,type:"combine",prompt:"Combine these two sentences into ONE sentence using \"whereas\":\n1) The first method is accurate but slow.\n2) The second method is fast but rough."},
-  {id:"wr_a1_sc1",lv:"A1",sk:"دمج جمل",min:7,type:"combine",prompt:"Join these two sentences into ONE sentence with \"because\":\n1) I like summer.\n2) I can swim every day."},
-  {id:"wr_a1_sc2",lv:"A1",sk:"دمج جمل",min:7,type:"combine",prompt:"Join these two sentences into ONE sentence with \"and\":\n1) My brother plays football.\n2) My sister plays tennis."},
-  {id:"wr_a1_sc3",lv:"A1",sk:"دمج جمل",min:7,type:"combine",prompt:"Join these two sentences into ONE sentence with \"but\":\n1) The cat is small.\n2) It is very fast."},
-  {id:"wr_a1_sc4",lv:"A1",sk:"دمج جمل",min:7,type:"combine",prompt:"Join these two sentences into ONE sentence with \"so\":\n1) It was cold.\n2) I wore my coat."},
-  {id:"wr_a1_sc5",lv:"A1",sk:"دمج جمل",min:7,type:"combine",prompt:"Join these two sentences into ONE sentence with \"because\":\n1) I was happy.\n2) My friend came to my house."},
-  {id:"wr_a1_sc6",lv:"A1",sk:"دمج جمل",min:7,type:"combine",prompt:"Join these two sentences into ONE sentence with \"and\":\n1) I opened my book.\n2) I started reading."},
-  {id:"wr_a2_sc1",lv:"A2",sk:"دمج جمل",min:8,type:"combine",prompt:"Combine these two sentences into ONE sentence using \"when\":\n1) I was walking home.\n2) It started to rain."},
-  {id:"wr_a2_sc2",lv:"A2",sk:"دمج جمل",min:8,type:"combine",prompt:"Combine these two sentences into ONE sentence using \"because\":\n1) We stayed at home.\n2) The weather was very bad."},
-  {id:"wr_a2_sc3",lv:"A2",sk:"دمج جمل",min:8,type:"combine",prompt:"Combine these two sentences into ONE sentence using \"but\":\n1) I wanted to buy the shoes.\n2) They were too expensive."},
-  {id:"wr_a2_sc4",lv:"A2",sk:"دمج جمل",min:8,type:"combine",prompt:"Combine these two sentences into ONE sentence using \"after\":\n1) We finished our dinner.\n2) We watched a film together."},
-  {id:"wr_a2_sc5",lv:"A2",sk:"دمج جمل",min:8,type:"combine",prompt:"Combine these two sentences into ONE sentence using \"so\":\n1) The bus was very late.\n2) I walked to school."},
-  {id:"wr_a2_sc6",lv:"A2",sk:"دمج جمل",min:9,type:"combine",prompt:"Combine these two sentences into ONE sentence using \"who\":\n1) I have a friend.\n2) She lives in Riyadh."},
+  {id:"wr_b2_sc1",lv:"B2",sk:"دمج جمل",min:9,type:"combine",req:["Having"],prompt:"Combine these two sentences into ONE sentence using a participle clause (Having...):\n1) She had finished the report.\n2) She went home early."},
+  {id:"wr_b2_sc2",lv:"B2",sk:"دمج جمل",min:10,type:"combine",req:["despite"],prompt:"Combine these two sentences into ONE sentence using \"despite\":\n1) The evidence was weak.\n2) The committee approved the plan."},
+  {id:"wr_b2_sc3",lv:"B2",sk:"دمج جمل",min:10,type:"combine",req:["whom","which"],prompt:"Combine these two sentences into ONE sentence using a relative clause with a preposition (for whom / about which...):\n1) I interviewed a researcher last week.\n2) I had read her book years ago."},
+  {id:"wr_b2_sc4",lv:"B2",sk:"دمج جمل",min:10,type:"combine",req:["Not only"],prompt:"Combine these two sentences into ONE sentence beginning with \"Not only\":\n1) The design was cheaper.\n2) The design was also faster to build."},
+  {id:"wr_b2_sc5",lv:"B2",sk:"دمج جمل",min:10,type:"combine",req:["which"],prompt:"Combine these two sentences into ONE sentence using \"which\" to refer to the whole first idea:\n1) The train was cancelled without warning.\n2) This made everyone late for the conference."},
+  {id:"wr_b2_sc6",lv:"B2",sk:"دمج جمل",min:9,type:"combine",req:["whereas"],prompt:"Combine these two sentences into ONE sentence using \"whereas\":\n1) The first method is accurate but slow.\n2) The second method is fast but rough."},
+  {id:"wr_a1_sc1",lv:"A1",sk:"دمج جمل",min:7,type:"combine",req:["because"],prompt:"Join these two sentences into ONE sentence with \"because\":\n1) I like summer.\n2) I can swim every day."},
+  {id:"wr_a1_sc2",lv:"A1",sk:"دمج جمل",min:7,type:"combine",req:["and"],prompt:"Join these two sentences into ONE sentence with \"and\":\n1) My brother plays football.\n2) My sister plays tennis."},
+  {id:"wr_a1_sc3",lv:"A1",sk:"دمج جمل",min:7,type:"combine",req:["but"],prompt:"Join these two sentences into ONE sentence with \"but\":\n1) The cat is small.\n2) It is very fast."},
+  {id:"wr_a1_sc4",lv:"A1",sk:"دمج جمل",min:7,type:"combine",req:["so"],prompt:"Join these two sentences into ONE sentence with \"so\":\n1) It was cold.\n2) I wore my coat."},
+  {id:"wr_a1_sc5",lv:"A1",sk:"دمج جمل",min:7,type:"combine",req:["because"],prompt:"Join these two sentences into ONE sentence with \"because\":\n1) I was happy.\n2) My friend came to my house."},
+  {id:"wr_a1_sc6",lv:"A1",sk:"دمج جمل",min:7,type:"combine",req:["and"],prompt:"Join these two sentences into ONE sentence with \"and\":\n1) I opened my book.\n2) I started reading."},
+  {id:"wr_a2_sc1",lv:"A2",sk:"دمج جمل",min:8,type:"combine",req:["when"],prompt:"Combine these two sentences into ONE sentence using \"when\":\n1) I was walking home.\n2) It started to rain."},
+  {id:"wr_a2_sc2",lv:"A2",sk:"دمج جمل",min:8,type:"combine",req:["because"],prompt:"Combine these two sentences into ONE sentence using \"because\":\n1) We stayed at home.\n2) The weather was very bad."},
+  {id:"wr_a2_sc3",lv:"A2",sk:"دمج جمل",min:8,type:"combine",req:["but"],prompt:"Combine these two sentences into ONE sentence using \"but\":\n1) I wanted to buy the shoes.\n2) They were too expensive."},
+  {id:"wr_a2_sc4",lv:"A2",sk:"دمج جمل",min:8,type:"combine",req:["after"],prompt:"Combine these two sentences into ONE sentence using \"after\":\n1) We finished our dinner.\n2) We watched a film together."},
+  {id:"wr_a2_sc5",lv:"A2",sk:"دمج جمل",min:8,type:"combine",req:["so"],prompt:"Combine these two sentences into ONE sentence using \"so\":\n1) The bus was very late.\n2) I walked to school."},
+  {id:"wr_a2_sc6",lv:"A2",sk:"دمج جمل",min:9,type:"combine",req:["who"],prompt:"Combine these two sentences into ONE sentence using \"who\":\n1) I have a friend.\n2) She lives in Riyadh."},
 ];
 // مثالٌ محلول واحد لكل مستوى — نفس مبدأ "السلّم المتلاشي" (worked examples) المعتمد
 // أصلاً في وضع التقوية (fadeStage===1)، لا ميزة جديدة. وعمداً لموضوعٍ آخر غير سؤالها
@@ -7926,10 +7926,13 @@ function writeLfp(t){
 // تُقسَّم الفقرة إلى جملٍ مرقّمة — نفس شكل رسائل المحادثة إلى المراجعة (coachReview)،
 // فالنموذج مُدرَّب على "You will receive their sentences, numbered" لا فقرةً واحدة خام
 function writeSentences(t){
-  const parts=String(t||"").split(/([.!?]+)/),out=[];
+  // النقطة بين رقمين ليست نهاية جملة («3.5 riyals») — تُحمى قبل الفصل ثم تُعاد.
+  // وهذا لزم حين صار عدُّ الجمل **يحكم** لا يعرض وحده (٢٩ أغسطس): كان يعدّ
+  // «The trip cost 3.5 riyals» جملتين، فتسقط إجابةٌ سليمة بشرط «جملةٌ واحدة».
+  const parts=String(t||"").replace(/(\d)[.](\d)/g,"$1$2").split(/([.!?]+)/),out=[];
   for(let i=0;i<parts.length;i+=2){
     const s=(parts[i]||"").trim(),p=parts[i+1]||"";
-    if(s)out.push((s+p).trim());
+    if(s)out.push((s+p).replace(//g,".").trim());
   }
   return out.length?out.slice(0,10):(String(t||"").trim()?[String(t).trim()]:[]);
 }
@@ -7996,10 +7999,54 @@ function writeGoals(it){
 // «٣ جملٍ». وهذا حرفياً درس «التعارض يقع في الاسم لا في المنطق، وgit لا يكشفه»
 // (١٨ أغسطس). فاسمٌ خاصّ لا مشترك.
 function arSentCount(n,one,two,many){return n===1?one:n===2?two:toAr(n)+" "+many}
+// ===== المعيارُ المعروض يُفحَص، وإلّا فهو زينة — درس ٢٩ أغسطس (ليلاً) =====
+// بياناتٌ حيّة: مهمّة إلياس «ادمج مستعملاً "who"» فكتب «I have a friend **and** she
+// lives in Riyadh. She likes the beach…» — بلا "who"، ثلاث جمل، ٣٤ كلمة لهدفٍ من ٩.
+// وسقط **لا لهذا** بل لفاصلةٍ عارضة. والمعيار كان `lenOk && !writeFix.length`:
+// عددُ كلماتٍ ونظافةٌ نحوية — بينما الشرطان المعروضان له («جملةٌ واحدة… لا جملتان»)
+// لا يُفحصان إطلاقاً. وقياسُ السجلّ: عشر محاولاتٍ بكلمةٍ مطلوبة صريحة، **خمسٌ**
+// أُغفلت فيها الكلمة، **وواحدةٌ منها مرّت ناجحة** — جواب هيا «What kind of Jimmy
+// today what hello okay comedy» سُجّل صواباً (ثماني كلماتٍ فوق الحدّ، وبلا تصحيح).
+// فالسقوط كان يقع بسببٍ غير سببه، والنجاح يقع بلا سبب — نقضٌ لـ«شكل الخطأ لا وقوعه».
+//
+// والطبقة المغلقة لأدوات الربط الإنجليزية نحوٌ مقرَّر لا قائمةٌ من عندي: التنسيقية
+// السبع (FANBOYS) والخافضة الشائعة والموصولة — تُستعمل حيث يقول السؤال «a joining
+// word (…)» بأمثلةٍ مفتوحة، فلا يُرفض ربطٌ صحيح لأنه خارج الأمثلة المذكورة.
+const JOIN_WORDS=["for","and","nor","but","or","yet","so",
+  "after","although","as","because","before","if","once","since","so that","than",
+  "that","though","unless","until","when","whenever","where","whereas","wherever","while",
+  "who","whom","whose","which"];
+function hasWordPhrase(txt,w){
+  const esc=String(w).replace(/[.*+?^${}()|[\]\\]/g,"\\$&").replace(/\s+/g,"\\s+");
+  try{return new RegExp("\\b"+esc+"\\b","i").test(String(txt||""))}catch(e){return false}
+}
+// الكلمة المطلوبة غائبة ⇒ تُعاد القائمة المطلوبة؛ حاضرةٌ أو لا شرط ⇒ null
+function writeReqMissing(it,txt){
+  const req=it&&it.req;if(!req)return null;
+  const list=req==="join"?JOIN_WORDS:req;
+  if(!list||!list.length)return null;
+  for(const w of list)if(hasWordPhrase(txt,w))return null;
+  return req==="join"?["كلمة ربط"]:list;
+}
+// و«جملةٌ واحدة» تُقاس بـ`writeSentenceCount` القائمة أصلاً — وهي نفسها التي تُشغّل
+// علامة ✓ المعروضة. ولا دالّةَ ثانية لمعنًى موجود: درس «التعارض يقع في الاسم لا في
+// المنطق» (١٨ أغسطس)، وقد كدتُ أُعيده هنا بدالّةٍ موازية تعدّ الجمل عدّاً آخر.
+// عيبان يخصّان الدمج وحده، في دالّةٍ واحدة يستعملها الحكمُ والعرض معاً — كانا
+// يُحسبان في موضعين مستقلّين (`writeFinish` و`renderWriteFeedback`) فيتباعدان.
+function writeCombineFaults(it,txt){
+  if(!it||it.type!=="combine")return{req:null,many:false};
+  return{req:writeReqMissing(it,txt),many:writeSentenceCount(txt)>1};
+}
+function writeReqLabel(it){
+  const req=it&&it.req;if(!req)return "";
+  if(req==="join")return "كلمة ربط";
+  return req.map(function(w){return "«"+w+"»"}).join(" أو ");
+}
 function writeCriteria(it){
   const g=writeGoals(it),out=[];
   if(g.combine){
     out.push({k:"one",t:"جملةٌ واحدة تجمع الجملتين — لا جملتان"});
+    if(it&&it.req)out.push({k:"req",t:"تستعملين "+writeReqLabel(it)+" كما يطلب السؤال"});
     out.push({k:"words",t:"لا تقلّ عن "+toAr(g.words)+" كلمة"});
     out.push({k:"own",t:"بكلماتك أنتِ لا نسخُ نصّ السؤال"});
   }else{
@@ -8023,6 +8070,9 @@ function writeCritState(it,txt){
     words:w>=g.words,
     sentences:g.sentences?s>=g.sentences:true,
     one:g.combine?(w>0&&s<=1):true,
+    // الشرطُ المعروض تُشغَّل علامتُه بنفس الدالّة التي يحكم بها الاختبار — وإلّا
+    // بقيت ○ فوق جملةٍ تحوي الكلمة فعلاً، فيُقرأ الإرشاد كذباً (كشفته لقطة شاشة)
+    req:(it&&it.req)?(w>0&&!writeReqMissing(it,txt)):true,
     own:w>0&&!writeIsCopy(txt,it&&it.prompt)};
 }
 function writeCritHTML(it,txt){
@@ -8195,7 +8245,10 @@ async function writeSubmit(){
   // وهذا معكوس: النسخُ يُسقط النجاح أصلاً (`writeCopy`) لأن نسخ السؤال ليس إجابة،
   // ولصقُ نصٍّ من مكانٍ آخر ليس أقلّ من ذلك — بل هو الحالة التي بُني القسم لقياسها.
   // ونصُّ اللصق يبقى **معروضاً ومصحَّحاً على الشاشة** كما هو: المنع للدرجة لا للتعلّم.
-  const ok=(writeCopy||writePasted)?false:(it.type==="combine"?(lenOk&&(writeFixFail?true:!writeFix.length)):lenOk);
+  // والمهمّةُ المنصوصة تُفحَص قبل النحو: كلمةُ الربط المطلوبة، وجملةٌ واحدة (٢٩ أغسطس)
+  const cf=writeCombineFaults(it,txt);
+  const ok=(writeCopy||writePasted)?false
+    :(it.type==="combine"?(lenOk&&!cf.req&&!cf.many&&(writeFixFail?true:!writeFix.length)):lenOk);
   writeSrsUpdate(it.id,ok);
   // السقالة تتلاشى بالنجاح وتعود كاملةً بالتعثّر — لا تُقاس بالزمن ولا تُطفأ يدوياً
   writeScafRecord(it.lv,ok);
@@ -8213,7 +8266,10 @@ async function writeSubmit(){
       +(goals.sentences?(" · جمل "+writeSent+"/"+goals.sentences):"")
       +" · بادئة:"+(goals.jointWords?1:0)+" · سقالة:"+(writeScafOn(it.lv)?1:0)+" · دفعة:"+writeMaxBurst+" · إدخال:"+(writeInputTypes||"?")
       +" · review:"+reviewState+" · lt:"+writeLtJudged+"/"+writeLtDropped+" · مثال:"+writeModelViews
-      +" · نسخ:"+(writeCopy?1:0)+" · لصق:"+(writePasted?1:0)+" · تنوّع:"+ttr+" · شبه سابق:"+selfSim+" · فوق K1:"+lfp.pct+"%").slice(0,1200)});
+      +" · نسخ:"+(writeCopy?1:0)+" · لصق:"+(writePasted?1:0)+" · تنوّع:"+ttr+" · شبه سابق:"+selfSim+" · فوق K1:"+lfp.pct+"%"
+      // سببُ السقوط يُسمّى بدل أن يُبتلع في «فرق نحوي» — عُرف «شكل الخطأ لا وقوعه»
+      +(it.type==="combine"?(" · دمج:"+([cf.req?"missing_connector":"",cf.many?"not_one_sentence":""].filter(Boolean).join("+")||"ok")
+        +(cf.req?("("+(it.req==="join"?"join":it.req.join("/"))+")"):"")+" · جمل:"+writeSentenceCount(txt)):"")).slice(0,1200)});
   // يُحفظ بعد التسجيل لا قبله — والنسخ المحض لا يدخل السجلّ فلا يصير أساساً يُقاس عليه
   if(!writeCopy)writePrevAdd(txt);
   // نفس مسار بطاقات تصحيح المحادثة بالضبط: بطاقةٌ مجدولة تعود عند حافّة النسيان،
@@ -8263,12 +8319,19 @@ function renderWriteFeedback(it){
   const wordsOk=writeCount>=G.words,ptsOk=G.sentences?writeSent>=G.sentences:true;
   const lenOk=wordsOk&&ptsOk;
   // دمج الجمل: لا نحكم «سليم» قبل عودة فحص القواعد — عكس الكتابة الحرّة حيث الطول وحده يكفي
-  const ok=isCombine?(lenOk&&!writeBusy&&(writeFixFail?true:!writeFix.length)):lenOk;
+  // نفس دالّة العيوب التي يحكم بها writeFinish — لا حسابٌ ثانٍ يتباعد عنه
+  const cf=writeCombineFaults(it,writeTyped);
+  const ok=isCombine?(lenOk&&!cf.req&&!cf.many&&!writeBusy&&(writeFixFail?true:!writeFix.length)):lenOk;
   const title=isCombine
-    ?(writeBusy?"نراجع جملتك المدمَجة…":ok?"✓ جملة مدمَجة سليمة":lenOk?"الجملة تحتاج تصحيحاً":"ادمجي الجملتين في جملةٍ واحدة أطول")
+    ?(writeBusy?"نراجع جملتك المدمَجة…":ok?"✓ جملة مدمَجة سليمة"
+      :cf.req?("المهمّة تطلب "+writeReqLabel(it))
+      :cf.many?"هاتان جملتان لا جملةٌ واحدة"
+      :lenOk?"الجملة تحتاج تصحيحاً":"ادمجي الجملتين في جملةٍ واحدة أطول")
     :(ok?"✓ بلغتِ الهدف":!ptsOk&&wordsOk?"بقيت نقطةٌ لم تُغطَّ":"عدد الكلمات أقلّ من الهدف");
   const body=isCombine
-    ?`دمجتِ الجملتين في ${toAr(writeCount)} كلمة.`
+    ?(cf.req?`لم تظهر ${writeReqLabel(it)} في جملتك — وهي المطلوبة في هذا التمرين، فأعيدي الدمج بها.`
+      :cf.many?`كتبتِ ${arSentCount(writeSentenceCount(writeTyped),"جملةً","جملتين","جملٍ")}، والمطلوب جملةٌ واحدة تجمع الجملتين معاً.`
+      :`دمجتِ الجملتين في ${toAr(writeCount)} كلمة.`)
     :`كتبتِ ${toAr(writeCount)} كلمة، والهدف ${toAr(G.words)}.`
       +(G.sentences?` وكتبتِ ${toAr(writeSent)} جملة، والمطلوب ${toAr(G.sentences)} — جملةٌ لكل نقطة.`:"");
   const head=`<div class="explain"><div class="explain-title" style="color:${writeBusy&&isCombine?'#64748B':(ok?'#059669':'#B45309')}">${title}</div>
