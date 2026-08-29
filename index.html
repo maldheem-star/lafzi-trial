@@ -3711,32 +3711,60 @@ function pickEnglishVoice(voices){
 }
 // هل نحن داخل لمسةٍ حقيقية؟ نداءُ `speak()` خارجها يُتجاهَل بصمت على المحمول،
 // وهذا فرقٌ يجب أن يدخل السجلّ لا أن يُخمَّن لاحقاً.
-let ttsGesture=false;
+let ttsGesture=false,ttsArmed=null;
+// يُسلَّح ردٌّ واحد يُنفَّذ داخل أوّل لمسةٍ قادمة ثم يُنزَع — فلا يتراكم ولا يتكرّر
+function ttsArmGesture(fn){ttsArmed=fn}
 try{["pointerdown","touchstart","click","keydown"].forEach(function(t){
-  document.addEventListener(t,function(){ttsGesture=true;setTimeout(function(){ttsGesture=false},1200)},true)})}catch(e){}
+  document.addEventListener(t,function(){
+    ttsGesture=true;setTimeout(function(){ttsGesture=false},1200);
+    if(ttsArmed){const f=ttsArmed;ttsArmed=null;try{f()}catch(e){}}
+  },true)})}catch(e){}
 function speakEnglish(text,onDone){
   try{
     if(!text||!('speechSynthesis' in window)){const i={ok:false,reason:'unsupported'};ttsMark(false,i);if(onDone)onDone(i);return}
     const synth=window.speechSynthesis;
-    let triedFallback=false,started=false,retried=false;
+    let triedFallback=false,started=false,retried=false,gestureRetried=false;
+    // المُستدعي يُبلَّغ مرّةً واحدة مهما تعدّدت المحاولات — وإلّا زاد عدّاد الاستماع
+    // مرّتين على نطقةٍ واحدة (وهو عدّادٌ نحكم به على المستوى، فكذبُه يفسد الحكم).
+    let doneCalled=false;
+    const fire=function(i){if(doneCalled)return;doneCalled=true;if(onDone)onDone(i)};
     const attempt=(forceNoLang)=>{
       // إلغاء ما قبله فقط عند وجود نطق جارٍ فعلاً — استدعاء cancel() دائماً قبل speak() يبتلع النطق الجديد على iOS
-      try{if(synth.speaking||synth.pending)synth.cancel()}catch(e){}
+      // ===== سباقُ cancel/speak — عيبٌ موثَّق في Chrome =====
+      // نداءُ `speak()` مباشرةً بعد `cancel()` يُقتَل أحياناً مع ما أُلغي، فلا يبدأ
+      // ولا يُخطئ — وهو بالضبط شكلُ ما ترصده مهلة الصمت. ويقع كثيراً حين يبقى في
+      // الطابور طلبٌ سابقٌ عالق (`pending` لا ينظّف نفسه على بعض المتصفحات).
+      // فإن اضطُررنا إلى الإلغاء **أخّرنا النطق نبضةً واحدة** بدل أن نُلصقه به.
+      let didCancel=false;
+      try{if(synth.speaking||synth.pending){synth.cancel();didCancel=true}}catch(e){}
       const u=new SpeechSynthesisUtterance(text);
       const voices=synth.getVoices();
       const usVoice=pickEnglishVoice(voices);
       if(!forceNoLang){u.lang='en-US';u.rate=0.85;try{if(usVoice)u.voice=usVoice}catch(e){}}
       else{u.rate=0.85} // لا نفرض لغة/صوتاً غير متوفرين على الجهاز، نترك المتصفح يختار افتراضياً
-      u.onstart=()=>{started=true;seal();ttsMark(true);if(onDone)onDone({ok:true,voicesCount:voices.length,hasEnVoice:!!usVoice,voiceName:usVoice&&usVoice.name,fallback:!!forceNoLang})};
+      u.onstart=()=>{started=true;seal();ttsMark(true);fire({ok:true,voicesCount:voices.length,hasEnVoice:!!usVoice,voiceName:usVoice&&usVoice.name,fallback:!!forceNoLang})};
       u.onerror=(e)=>{
         if(!forceNoLang&&!triedFallback){triedFallback=true;attempt(true);return}
         seal();
         const i={ok:false,reason:'speak_error',errorType:e&&e.error,voicesCount:voices.length,hasEnVoice:!!usVoice,voiceName:usVoice&&usVoice.name,fallback:!!forceNoLang};
-        ttsMark(false,i);if(onDone)onDone(i);
+        ttsMark(false,i);fire(i);
       };
       synth.resume();
-      synth.speak(u);
+      if(didCancel)setTimeout(function(){try{synth.resume();synth.speak(u)}catch(e){}},90);
+      else synth.speak(u);
     };
+    // ===== وإن لم يبدأ النطق، تُعاد المحاولة داخل أوّل لمسةٍ حقيقية =====
+    // بعض المتصفحات تقبل `speak()` خارج اللمسة وتبتلعه، وتنفّذه داخلها. فبدل أن
+    // تبقى الشاشة صامتةً حتى تضغط الزرّ بنفسها (وقد ضغطت ولم تسمع لأن الطابور
+    // كان عالقاً)، يُلتقط أوّل لمسةٍ على الصفحة فيُعاد الطلب داخلها — مرّةً واحدة.
+    // **وتمرّ على `attempt` نفسها** لا على نطقٍ عارٍ: لو نجحت المحاولة العارية لبقيت
+    // راية «لا صوت» مرفوعةً كذباً — لأن `onstart` وحده هو ما يخفضها، والنطق العاري
+    // بلا معالجاتٍ ولا صوتٍ مختار.
+    ttsArmGesture(function(){
+      if(started||gestureRetried)return false;
+      gestureRetried=true;attempt(!!triedFallback);
+      return true;
+    });
     // ننطق فوراً وبشكل متزامن داخل لمسة المستخدم. التأجيل لانتظار قائمة الأصوات (voiceschanged/setTimeout)
     // يُخرج الاستدعاء من سياق اللمسة، فتتجاهله المتصفحات بصمت — وهذا سبب عدم خروج أي صوت على الجهاز.
     const voicesReady=synth.getVoices().length>0;
