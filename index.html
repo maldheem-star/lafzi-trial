@@ -320,7 +320,11 @@ function itemText(it){
   if(it.passage)return it.passage;
   if(it.prompt)return it.prompt;
   if(it.sc)return (it.sc.map(function(s){return s[1]}).join(" ")+" "+(it.t||""));
-  if(it.c&&it.c.length&&typeof it.c[0]==="object")return it.c.map(function(x){return x.t||""}).join(" ");
+  // نصّ السؤال يسبق الخيارات حين يوجد — درس ٢٩ أغسطس: عنصرا فراغٍ في حروف الجرّ
+  // خياراتُهما كلمةٌ واحدة من مجموعةٍ صغيرة (in/at/on/to)، فبلا نصّ السؤال يبدوان
+  // توأمين (٠٫١٦٧) وهما سؤالان مختلفان تماماً. كشفه فحصُ البنك لا الاستعمال.
+  if(it.c&&it.c.length&&typeof it.c[0]==="object")
+    return (it.q?String(it.q)+" ":"")+it.c.map(function(x){return x.t||""}).join(" ");
   return String(it.q||it.s||"");
 }
 // يُسقَط اللاحق المشابه لسابقٍ مُبقًى، ثم يُكمَل النقص من المخزون — الجلسة لا تنقص
@@ -7109,6 +7113,16 @@ const LISTEN_BANK=[
   {id:"ls_b1_3",lv:"B1",sk:"سببٌ وعلاقة",audio:"Our college is planning a new library. It will have more computers and a quiet study area on the second floor. Students are excited because the old library was always full and noisy.",q:"Why are the students excited?",c:["A new, quieter and bigger library","A new holiday","A new sports building"],a:0},
   {id:"ls_b1_4",lv:"B1",sk:"سببٌ وعلاقة",audio:"I work part-time at a coffee shop on weekends to help pay for my phone and transportation. It's tiring sometimes, especially in the morning shift, but I like meeting new people every day.",q:"Why does he work part-time?",c:["To help with his expenses","Because his family asked him to","Because he only likes coffee"],a:0},
   {id:"ls_b1_5",lv:"B1",sk:"استنتاج",audio:"The weather this week has been unusual — very hot on Sunday, then suddenly rainy on Wednesday. People are saying it might rain again this weekend, which is rare for this time of year.",q:"What is unusual?",c:["The heat alone","Rain at this time of year","Extreme cold"],a:1},
+  // ===== توسعةُ B1 — درس ٢٩ أغسطس: البنك كان **أصغر من جلسةٍ واحدة** =====
+  // القياس: `LISTEN_N=8` وبنك B1 خمسةٌ — أي أن محمداً لا يستطيع ملء جلسةٍ من البنك
+  // المؤلَّف أصلاً، فيلجأ `topUpPlan` إلى مراجعةٍ حرّة من أوّل يوم. وهي أسوأ نسبةٍ في
+  // التطبيق كلّه (٠٫٦ مقابل ١٫٣ عند الأصغرَين). ويعمل التوليد هنا فعلاً (وصلته ثمانية
+  // عناصر في ثلاثة أيام) فلم يظهر العطل، لكن البنك المؤلَّف قاعٌ لا يجوز أن يكون تحت الجلسة.
+  {id:"ls_b1_6",lv:"B1",sk:"استنتاج",audio:"I signed up for the evening course thinking it would be mostly lectures. In fact, we spend nearly every session working in small groups on real cases. It is harder than I expected, but I am learning far more than I would from listening alone.",q:"How does the speaker feel about the course?",c:["Disappointed it is not lectures","It is harder but more useful than expected","It is easier than expected"],a:1},
+  {id:"ls_b1_7",lv:"B1",sk:"تفصيل محدَّد",audio:"The train to Dammam leaves at a quarter past six, but the station asks passengers to arrive thirty minutes early because of the security check. If you miss it, the next one is not until half past nine.",q:"What time should passengers arrive?",c:["A quarter past six","A quarter to six","Half past nine"],a:1},
+  {id:"ls_b1_8",lv:"B1",sk:"سببٌ ونتيجة",audio:"We moved the meeting from Monday to Thursday because two of the engineers were travelling. That gave everyone more time to read the report, so the discussion was much shorter than usual.",q:"Why was the discussion shorter?",c:["Fewer people attended","Everyone had time to read the report first","The meeting started late"],a:1},
+  {id:"ls_b1_9",lv:"B1",sk:"موقف المتحدّث",audio:"My brother keeps telling me to buy a car, but I live ten minutes from work and the bus passes every quarter of an hour. I would rather spend that money on travelling in the summer.",q:"Why does the speaker not want a car?",c:["He cannot drive","He lives close to work and prefers to save the money","Cars are not available"],a:1},
+  {id:"ls_b1_10",lv:"B1",sk:"استنتاج",audio:"When I started the job, I answered every email the moment it arrived. Now I check twice a day and finish far more work. Nobody has ever complained about waiting a few hours for a reply.",q:"What did the speaker learn?",c:["Replying immediately is best","Checking email less often makes him more productive","Emails should be ignored"],a:1},
   // ============ B2 — امتدادُ محمد ============
   // ما يميّز B2 عن B1 في وصف CEFR ليس طولَ النصّ بل **نوع المطلوب**: تتبّعُ حجّةٍ لها
   // وجهان، واستخلاصُ موقف المتحدّث من نبرته لا من تصريحه، ومعنًى ضمنيّ لا يُنتزَع من
@@ -7267,6 +7281,12 @@ const READ_BANK=[
   {id:"rd_b1_3",lv:"B1",sk:"سببٌ وعلاقة",passage:"The school is introducing a new cafeteria menu next month, with more fruit and vegetable options and less fried food. The change came after a survey showed that many students wanted healthier choices. Prices will stay the same, but some popular items, like fries, will only be available twice a week instead of daily.",q:"Why did the menu change?",c:["A budget shortage","A survey asked for healthier options","A government decision"],a:1},
   {id:"rd_b1_4",lv:"B1",sk:"تفصيل محدَّد",passage:"Working part-time while studying can teach useful skills like managing time and money, but it can also be tiring if the hours are too long. Career advisors usually suggest students limit part-time work to around ten or fifteen hours a week during term time, so studies don't suffer.",q:"What do career advisors recommend?",c:["Not working at all while studying","Limiting work to 10-15 hours a week","Working full-time, but only on holidays"],a:1},
   {id:"rd_b1_5",lv:"B1",sk:"استنتاج",passage:"Our neighbourhood used to have only one small grocery store, so people often drove to the next town for shopping. Last year, a larger supermarket opened just two streets away. Now most residents shop locally, which has also brought more people to the small cafes and shops nearby.",q:"What changed in the neighbourhood?",c:["All the shops closed","A new supermarket made shopping closer and boosted nearby shops","Most residents moved to another town"],a:1},
+  // توسعةُ B1 — نفس سبب بنك الاستماع أعلاه: `READ_N=8` وبنكه كان خمسةً.
+  {id:"rd_b1_6",lv:"B1",sk:"سببٌ ونتيجة",passage:"The library used to close at four in the afternoon, which meant most students could not use it after school. When the university extended the hours until nine, the number of visitors doubled within a month. The staff now say the busiest period is between six and eight in the evening.",q:"Why did visitor numbers rise?",c:["The library bought more books","The opening hours were extended into the evening","The library moved to a new building"],a:1},
+  {id:"rd_b1_7",lv:"B1",sk:"استنتاج",passage:"Hasan had planned to study medicine because his whole family expected it. During his last year at school he volunteered at a small design studio and found that he looked forward to those afternoons far more than to his biology classes. In the end he applied to study design, and his father, though surprised, supported him.",q:"What made Hasan change his mind?",c:["He failed his biology classes","He enjoyed his time at the design studio","His father told him to change"],a:1},
+  {id:"rd_b1_8",lv:"B1",sk:"موقف الكاتب",passage:"Many people say that reading on a screen is no different from reading on paper. In my experience it is: on a screen I skim, jump between paragraphs, and rarely finish a long article. With a printed book I read slowly and remember much more of what I read.",q:"What is the writer's opinion?",c:["Screens and paper are the same","He reads and remembers better on paper","He reads faster on paper"],a:1},
+  {id:"rd_b1_9",lv:"B1",sk:"تفصيل محدَّد",passage:"The company offers three delivery options. Standard delivery is free but takes five working days. Express costs twenty riyals and arrives the next day. Same-day delivery is available only inside Riyadh and must be ordered before eleven in the morning.",q:"What is required for same-day delivery?",c:["Paying twenty riyals","Ordering before eleven and being inside Riyadh","Waiting five working days"],a:1},
+  {id:"rd_b1_10",lv:"B1",sk:"استنتاج",passage:"When the school started its recycling project, only two classes joined. The teachers did not force anyone; instead they put the weekly results on a board in the hall. Within a term almost every class was taking part, and several students asked to run the project themselves.",q:"What made more classes join?",c:["The teachers made it compulsory","Seeing the results displayed publicly","The project became easier"],a:1},
   // ============ B2 — امتدادُ محمد ============
   // نصوص B2 تعرض **موقفاً** لا معلومةً: رأيٌ ومقابله، أو تحفّظٌ يقلب ظاهر الجملة.
   // والمموّه الأخطر هنا هو ما يلتقط جملةً واحدة صحيحة من النصّ ويُقدّمها جواباً — وهو
@@ -8072,6 +8092,70 @@ const GRAM_BANK=[
     {t:"This is my brother's book.",ok:true,why:"صحيحة — 's تدلّ على الملكية"},
     {t:"This is my brothers book.",ok:false,why:"هذه جمعٌ (brothers) لا ملكية (brother's)"},
     {t:"This is book of my brother.",ok:false,why:"تُحذف أداة التعريف the، والأصح 's لا of مع الأشخاص"}]},
+  // ===== توسعةُ بنك A1 — درس ٢٩ أغسطس =====
+  // قياسٌ على هيا (٢٦-٢٨ أغسطس): بنك A1 خمسةُ عناصر و`GRAM_N=5`، فترى **البنك كلّه
+  // في كل جلسة** — تكرارُ عرضٍ ٨٠٪ ودقّةٌ ٠-٤٠٪ (والتخمين من أربعة ٢٥٪). وأزمنتها
+  // ٩٫٦-١١ث فالبوّابة تعمل والمشكلة ليست تسرّعاً بل مادّةً مستهلَكة.
+  // والتراكيب من English Profile لدرجة A1، ومموّهاتها من أخطاء متعلّمي العربية
+  // الموثَّقة (الأداة، هناك/there، الملكية بـof، ترتيب الصفة، نفيُ الغائب) — كلُّ
+  // مموّهٍ يعزل آليةً واحدة كعُرف البنك الأصلي، وصوابٌ واحد بالضبط في كل عنصر.
+  {id:"gr_a1_6",lv:"A1",sk:"أداة التنكير",c:[
+    {t:"I eat a apple every morning.",ok:false,why:"قبل صوت العلّة (a) نستعمل an لا a"},
+    {t:"I eat an apple every morning.",ok:true,why:"صحيحة — an قبل الكلمة التي تبدأ بصوت علّة"},
+    {t:"I eat apple every morning.",ok:false,why:"الاسم المفرد المعدود يحتاج أداة (a/an/the)"},
+    {t:"I eat an apples every morning.",ok:false,why:"an للمفرد، وapples جمع"}]},
+  {id:"gr_a1_7",lv:"A1",sk:"اسم الإشارة",c:[
+    {t:"This books are new.",ok:false,why:"this للمفرد، والاسم هنا جمع (books)"},
+    {t:"These books are new.",ok:true,why:"صحيحة — these للجمع، وare مع الجمع"},
+    {t:"These books is new.",ok:false,why:"الفاعل جمع فيحتاج are لا is"},
+    {t:"These book are new.",ok:false,why:"these للجمع، والاسم هنا مفرد (book)"}]},
+  {id:"gr_a1_8",lv:"A1",sk:"there is / there are",c:[
+    {t:"There is four chairs in the room.",ok:false,why:"مع الجمع نستعمل there are لا there is"},
+    {t:"There are four chairs in the room.",ok:true,why:"صحيحة — there are مع الجمع"},
+    {t:"There are four chair in the room.",ok:false,why:"بعد عددٍ أكبر من واحد يأخذ الاسم -s"},
+    {t:"There have four chairs in the room.",ok:false,why:"«هناك» تُترجَم there is/are لا there have"}]},
+  {id:"gr_a1_9",lv:"A1",sk:"النفي في المضارع",c:[
+    {t:"Hasan do not like cold weather.",ok:false,why:"مع الغائب المفرد نستعمل does not لا do not"},
+    {t:"Hasan does not like cold weather.",ok:true,why:"صحيحة — does not مع he/she/it، والفعل يبقى مجرّداً"},
+    {t:"Hasan not like cold weather.",ok:false,why:"النفي يحتاج فعلاً مساعداً (does)"},
+    {t:"Hasan does not likes cold weather.",ok:false,why:"بعد does يبقى الفعل بلا -s"}]},
+  {id:"gr_a1_10",lv:"A1",sk:"صيغة السؤال",c:[
+    {t:"Where your brother works?",ok:false,why:"السؤال يحتاج فعلاً مساعداً (does) قبل الفاعل"},
+    {t:"Where does your brother work?",ok:true,why:"صحيحة — does قبل الفاعل، والفعل مجرّد بعده"},
+    {t:"Where does your brother works?",ok:false,why:"بعد does يبقى الفعل بلا -s"},
+    {t:"Where do your brother work?",ok:false,why:"الفاعل مفرد غائب فيأخذ does لا do"}]},
+  {id:"gr_a1_11",lv:"A1",sk:"حروف جرّ الزمن",c:[
+    {t:"We go to the park in Friday.",ok:false,why:"مع أيام الأسبوع نستعمل on لا in"},
+    {t:"We go to the park on Friday.",ok:true,why:"صحيحة — on مع اليوم"},
+    {t:"We go to the park at Friday.",ok:false,why:"at للساعة (at seven) لا لليوم"},
+    {t:"We go to the park to Friday.",ok:false,why:"to للاتّجاه لا للزمن"}]},
+  {id:"gr_a1_12",lv:"A1",sk:"المضارع المستمرّ",c:[
+    {t:"Hanan reading a book now.",ok:false,why:"المستمرّ يحتاج فعل be (is) قبل الفعل"},
+    {t:"Hanan is reading a book now.",ok:true,why:"صحيحة — is + الفعل بـ-ing للحدث الجاري الآن"},
+    {t:"Hanan is read a book now.",ok:false,why:"بعد is يأتي الفعل بـ-ing لا مجرّداً"},
+    {t:"Hanan are reading a book now.",ok:false,why:"الفاعل مفرد فيأخذ is لا are"}]},
+  {id:"gr_a1_13",lv:"A1",sk:"can",c:[
+    {t:"Misfer cans swim very well.",ok:false,why:"can فعلٌ ناقص لا يأخذ -s أبداً"},
+    {t:"Misfer can swim very well.",ok:true,why:"صحيحة — can ثم الفعل مجرّداً بلا to"},
+    {t:"Misfer can swims very well.",ok:false,why:"بعد can يبقى الفعل مجرّداً"},
+    {t:"Misfer can to swim very well.",ok:false,why:"لا نضع to بعد can"}]},
+  // (كان هذا العنصر «ترتيب صفتين» بجملة I have a … car فتشابه مع gr_a1_4 بمقياس
+  // المشروع ٠٫٢٠٨ — فوق عتبة توأم الجلسة، فيُسقط أحدهما ويضيع مقعد. كشفه فحصُ البنك
+  // قبل الشحن لا الاستعمال، فبُدِّل تركيبُه ومفرداته معاً.)
+  // وأوّل بديلٍ كتبتُه كان «حروف جرّ المكان» بمموّهات in/at/under — وكلّها جملٌ
+  // **إنجليزية صحيحة** تختلف معنًى لا نحواً. وهذا بعينه العيب الذي يرفضه `gjtDefect`
+  // في المولَّد (مموّهٌ نظيفٌ لغوياً)، فلا يجوز أن أكتبه بيدي في البنك المؤلَّف.
+  // فالتركيب الآن كلُّ مموّهاته غير نحوية فعلاً.
+  {id:"gr_a1_14",lv:"A1",sk:"How many + الجمع",c:[
+    {t:"How many book do you have?",ok:false,why:"بعد how many يأتي الاسم جمعاً"},
+    {t:"How many books do you have?",ok:true,why:"صحيحة — how many + جمع + do you"},
+    {t:"How much books do you have?",ok:false,why:"how much لما لا يُعدّ، والكتب تُعدّ"},
+    {t:"How many books you have?",ok:false,why:"السؤال يحتاج الفعل المساعد do قبل الفاعل"}]},
+  {id:"gr_a1_15",lv:"A1",sk:"ضمير المفعول",c:[
+    {t:"My mother called I yesterday.",ok:false,why:"بعد الفعل نستعمل ضمير المفعول me لا I"},
+    {t:"My mother called me yesterday.",ok:true,why:"صحيحة — me ضمير مفعول بعد الفعل"},
+    {t:"My mother called my yesterday.",ok:false,why:"my ملكيةٌ تسبق اسماً، وليست ضمير مفعول"},
+    {t:"My mother called mine yesterday.",ok:false,why:"mine تحلّ محلّ اسمٍ مملوك لا محلّ الشخص"}]},
   // A2 — الماضي الشاذّ، المقارنة، حروف جرّ الوقت، much/many، صيغة السؤال
   {id:"gr_a2_1",lv:"A2",sk:"الماضي الشاذّ",c:[
     {t:"Yesterday I go to the beach with my friends.",ok:false,why:"الفعل بلا تصريفٍ للماضي"},
@@ -8098,6 +8182,34 @@ const GRAM_BANK=[
     {t:"Do you like coffee or tea?",ok:true,why:"صحيحة — Do في بداية السؤال"},
     {t:"Do you likes coffee or tea?",ok:false,why:"بعد Do يعود الفعل لصورته الأساسية بلا -s"},
     {t:"Like you coffee or tea?",ok:false,why:"الفعل الأساسي لا يتقدّم على الفاعل هكذا"}]},
+  // ===== وبنك A2 كان خمسةً كذلك و`GRAM_N=5` — نفس عطل A1 بعينه =====
+  // إلياس: تكرار عرضٍ ١٨٪ بعد الإصلاح، ودقّة ٤٠-٦٧٪. والتراكيب من English Profile
+  // لدرجة A2 وأخطاء متعلّمي العربية الموثَّقة عندها.
+  {id:"gr_a2_6",lv:"A2",sk:"المستقبل بـgoing to",c:[
+    {t:"Next week I going to visit my uncle.",ok:false,why:"‏going to تحتاج فعل be (am) قبلها"},
+    {t:"Next week I am going to visit my uncle.",ok:true,why:"صحيحة — am going to + الفعل مجرّداً للخطّة المستقبلية"},
+    {t:"Next week I am going to visiting my uncle.",ok:false,why:"بعد to يأتي الفعل مجرّداً لا بـ-ing"},
+    {t:"Next week I am go to visit my uncle.",ok:false,why:"الصيغة going to لا go to هنا"}]},
+  {id:"gr_a2_7",lv:"A2",sk:"المقارنة بالتفضيل",c:[
+    {t:"This is the most tall building in the city.",ok:false,why:"الصفة القصيرة تأخذ -est لا most"},
+    {t:"This is the tallest building in the city.",ok:true,why:"صحيحة — tall صفةٌ قصيرة فتفضيلها tallest مع the"},
+    {t:"This is tallest building in the city.",ok:false,why:"صيغة التفضيل تحتاج the قبلها"},
+    {t:"This is the tallest buildings in the city.",ok:false,why:"التفضيل هنا لواحدٍ بعينه فالاسم مفرد"}]},
+  {id:"gr_a2_8",lv:"A2",sk:"الماضي المستمرّ",c:[
+    {t:"While I studied, my brother was watching TV.",ok:false,why:"الحدثان متزامنان فالأول يحتاج الماضي المستمرّ"},
+    {t:"While I was studying, my brother was watching TV.",ok:true,why:"صحيحة — حدثان متزامنان في الماضي، كلاهما مستمرّ"},
+    {t:"While I was study, my brother was watching TV.",ok:false,why:"بعد was يأتي الفعل بـ-ing"},
+    {t:"While I were studying, my brother was watching TV.",ok:false,why:"‏I تأخذ was لا were"}]},
+  {id:"gr_a2_9",lv:"A2",sk:"يجب / لا يجب",c:[
+    {t:"You must to wear a seatbelt in the car.",ok:false,why:"‏must فعلٌ ناقص فلا نضع to بعده"},
+    {t:"You must wear a seatbelt in the car.",ok:true,why:"صحيحة — must + الفعل مجرّداً بلا to"},
+    {t:"You must wearing a seatbelt in the car.",ok:false,why:"بعد must يبقى الفعل مجرّداً لا بـ-ing"},
+    {t:"You musts wear a seatbelt in the car.",ok:false,why:"‏must لا يأخذ -s أبداً"}]},
+  {id:"gr_a2_10",lv:"A2",sk:"some / any",c:[
+    {t:"I did not buy some bread from the shop.",ok:false,why:"في النفي نستعمل any لا some"},
+    {t:"I did not buy any bread from the shop.",ok:true,why:"صحيحة — any مع النفي"},
+    {t:"I did not bought any bread from the shop.",ok:false,why:"بعد did يعود الفعل مجرّداً"},
+    {t:"I not did buy any bread from the shop.",ok:false,why:"ترتيب النفي: did not قبل الفعل"}]},
   // B1 — المضارع التامّ، المبني للمجهول، جملة الشرط الأولى، الموصول، used to
   {id:"gr_b1_1",lv:"B1",sk:"المضارع التامّ",c:[
     {t:"I work at this company since three years.",ok:false,why:"لا زمن تامّ هنا، وsince تحتاج نقطة زمن لا مدّة"},
@@ -9445,6 +9557,51 @@ const STEP_BANK=[
        "Then she baked it for thirty minutes.",
        "Finally, she ate the cake with her family."],
     why:"الجملة الأولى تقول ماذا أرادت — وهي رأس الفقرة. ثم الترتيب من كلمات الإشارة نفسها: First ثم Then ثم Finally."},
+  // ===== توسعةُ A1 — درس ٢٩ أغسطس: `STEP_N=6` وبنكها ستّة، فتراه كلّه كل جلسة =====
+  // ودقّتها ١-٢ من ٦ على ثلاثة أيام. والأنواع الثلاثة تبقى ممثَّلة كما يخلطها الاختبار،
+  // وبمفرداتها هي لا بمفردات الاختبار الجامعي (قرار ١٨ أغسطس).
+  {id:"st_a1_7",lv:"A1",type:"pick",tag:"علامات الترقيم",c:[
+    {t:"Where is my bag.",ok:false,why:"الجملة سؤالٌ فتنتهي بعلامة استفهام لا بنقطة"},
+    {t:"Where is my bag?",ok:true,why:"صحيحة — سؤالٌ ينتهي بعلامة استفهام"},
+    {t:"Where is my bag,",ok:false,why:"الفاصلة لا تُنهي جملة"},
+    {t:"Where is my bag",ok:false,why:"الجملة بلا علامة إنهاء"}]},
+  {id:"st_a1_8",lv:"A1",type:"pick",tag:"الحروف الكبيرة",c:[
+    {t:"my family lives in riyadh.",ok:false,why:"أوّل الجملة واسم المدينة يُكتبان بحرفٍ كبير"},
+    {t:"My family lives in Riyadh.",ok:true,why:"صحيحة — أوّل الجملة كبير، وRiyadh اسم علمٍ لمدينة"},
+    {t:"My Family lives in Riyadh.",ok:false,why:"family اسمٌ عامّ فلا يُكبَّر في وسط الجملة"},
+    {t:"my family lives in Riyadh.",ok:false,why:"أوّل الجملة يبدأ بحرفٍ كبير"}]},
+  {id:"st_a1_9",lv:"A1",type:"gap",tag:"حروف الجرّ",q:"We arrive ......... school at seven.",c:[
+    {t:"at",ok:true,why:"صحيحة — arrive at للأماكن المحدّدة كالمدرسة"},
+    {t:"to",ok:false,why:"نقول go to لكن arrive at بلا to"},
+    {t:"on",ok:false,why:"on للأسطح والأيّام لا للوصول إلى مكان"},
+    {t:"of",ok:false,why:"of للملكية أو الجزء من الكلّ"}]},
+  {id:"st_a1_10",lv:"A1",type:"gap",tag:"أدوات الربط",q:"I like tea ......... I do not like coffee.",c:[
+    {t:"but",ok:true,why:"صحيحة — but تربط بين أمرين متضادّين"},
+    {t:"and",ok:false,why:"and تجمع بين متشابهين لا متضادّين"},
+    {t:"because",ok:false,why:"because تعطي سبباً، ولا سببَ هنا"},
+    {t:"so",ok:false,why:"so تعطي نتيجةً، والجملة الثانية ليست نتيجة"}]},
+  {id:"st_a1_11",lv:"A1",type:"gap",tag:"المضارع البسيط",q:"Hanan and her sister ......... in the garden.",c:[
+    {t:"play",ok:true,why:"صحيحة — الفاعل جمع (Hanan and her sister) فالفعل بلا -s"},
+    {t:"plays",ok:false,why:"‏-s للمفرد الغائب، والفاعل هنا اثنان"},
+    {t:"playing",ok:false,why:"playing تحتاج are قبلها"},
+    {t:"is play",ok:false,why:"لا نجمع is مع الفعل المجرّد"}]},
+  {id:"st_a1_12",lv:"A1",type:"gap",tag:"الماضي البسيط",q:"Yesterday my father ......... a new car.",c:[
+    {t:"bought",ok:true,why:"صحيحة — yesterday تدلّ على الماضي، وماضي buy هو bought"},
+    {t:"buys",ok:false,why:"‏buys مضارع، وyesterday ماضٍ"},
+    {t:"buyed",ok:false,why:"‏buy فعلٌ شاذّ، ماضيه bought لا buyed"},
+    {t:"buy",ok:false,why:"الفعل بلا تصريفٍ للماضي"}]},
+  {id:"st_a1_13",lv:"A1",type:"order",tag:"ترتيب الجمل",
+    s:["Hasan lost his pen at school.",
+       "First, he looked inside his bag.",
+       "Then he asked his teacher about it.",
+       "Finally, he found it under his chair."],
+    why:"الجملة الأولى تقول ماذا وقع — وهي رأس الفقرة لأنها لا تشير إلى ما قبلها ولا تحمل كلمة تسلسل. ثم الترتيب من كلمات الإشارة: First ثم Then ثم Finally."},
+  {id:"st_a1_14",lv:"A1",type:"order",tag:"ترتيب الجمل",
+    s:["My family went to the beach on Friday.",
+       "First, we put our things under a big umbrella.",
+       "Then my brother and I swam in the sea.",
+       "Finally, we ate lunch and went home."],
+    why:"ابحثي عن الجملة التي لا تشير إلى ما قبلها ولا تحمل كلمة تسلسل — هي رأس الفقرة. ثم رتّبي بكلمات الإشارة: First ثم Then ثم Finally."},
 
   // ============ A2 — إلياس ============
   {id:"st_a2_1",lv:"A2",type:"pick",tag:"ترتيب الكلمات",c:[
@@ -9489,6 +9646,29 @@ const STEP_BANK=[
        "After that, he painted the frame blue.",
        "In the end, the bicycle looked almost new."],
     why:"الجملة الأولى تُعلن الموضوع (قرّر أن يُصلح) — رأس الفقرة، ولا كلمة إشارة فيها. والباقي يترتّب بكلمات الإشارة نفسها: To start ثم Then ثم After that ثم In the end."},
+  // توسعةُ A2 — ٢٩ أغسطس: `STEP_N=6` وبنكه ثمانية (نسبة ١٫٣)، فأكثر الجلسة معادٌ.
+  {id:"st_a2_9",lv:"A2",type:"pick",tag:"علامات الترقيم",c:[
+    {t:"After we finished the exam we went to the cafe.",ok:false,why:"الجملة الفرعية المتقدّمة تُفصَل بفاصلة قبل الجملة الرئيسة"},
+    {t:"After we finished the exam, we went to the cafe.",ok:true,why:"صحيحة — فاصلة بعد الجملة الفرعية المتقدّمة"},
+    {t:"After, we finished the exam we went to the cafe.",ok:false,why:"الفاصلة وُضعت بعد أداة الربط لا بعد الجملة الفرعية"},
+    {t:"After we finished, the exam we went to the cafe.",ok:false,why:"الفاصلة قطعت الجملة الفرعية في منتصفها فاختلّ المعنى"}]},
+  {id:"st_a2_10",lv:"A2",type:"gap",tag:"أدوات الربط",q:"He studied all night, ......... he still felt tired in the exam.",c:[
+    {t:"so",ok:true,why:"صحيحة — so تربط سبباً بنتيجة، والتعب نتيجة السهر"},
+    {t:"but",ok:false,why:"‏but للتضادّ، والتعب لا يناقض السهر بل ينتج عنه"},
+    {t:"because",ok:false,why:"‏because تسبق السبب، والسبب مذكورٌ في الجملة الأولى"},
+    {t:"although",ok:false,why:"‏although للتنازل، ولا تنازل هنا"}]},
+  // (كان سؤالَ حروف جرٍّ ثانياً فتشابه مع st_a2_5 — خياراتُهما من مجموعةٍ صغيرة واحدة.
+  //  بُدّل تركيبه لا صياغته، فالتشابه كان في العائلة النحوية نفسها.)
+  {id:"st_a2_11",lv:"A2",type:"gap",tag:"العدد والكمّ",q:"There were ......... people at the match that we could not find a seat.",c:[
+    {t:"so many",ok:true,why:"صحيحة — so many + معدود، وتُتبَع بـthat للنتيجة"},
+    {t:"so much",ok:false,why:"‏so much لما لا يُعدّ، والناس معدودون"},
+    {t:"too many",ok:false,why:"‏too many لا تُتبَع بـthat بل بـto + فعل"},
+    {t:"such many",ok:false,why:"‏such تسبق اسماً بأداة أو صفةً، ولا تُجمَع مع many هكذا"}]},
+  {id:"st_a2_12",lv:"A2",type:"pick",tag:"ترتيب الكلمات",c:[
+    {t:"Never I have seen such a big fish.",ok:false,why:"بعد never المتقدّمة يتقدّم الفعل المساعد على الفاعل"},
+    {t:"Never have I seen such a big fish.",ok:true,why:"صحيحة — تقديم never يوجب قلب الفاعل والمساعد"},
+    {t:"Never seen I have such a big fish.",ok:false,why:"التصريف الثالث لا يتقدّم على الفاعل والمساعد"},
+    {t:"I never have seen such a big fish.",ok:false,why:"‏never تقع بعد المساعد لا قبله"}]},
 
   // ============ B1 — محمد (الأقرب لصعوبة STEP الحقيقية) ============
   {id:"st_b1_1",lv:"B1",type:"pick",tag:"ترتيب الكلمات",c:[
@@ -9533,6 +9713,27 @@ const STEP_BANK=[
        "After a few months, she noticed that her sentences had become longer and clearer.",
        "Eventually, she was able to write a full essay without any help."],
     why:"ابحث أوّلاً عن الجملة التي لا تشير إلى ما قبلها ولا تحمل كلمة تسلسل — وهي رأس الفقرة (أرادت أن تُحسّن). ثم رتّب بكلمات الإشارة: To begin with ثم then ثم After a few months ثم Eventually."},
+  // توسعةُ B1 — نفس نسبة A2 (١٫٣)، ومحمد يرى هذا البنك مع B2 معاً.
+  {id:"st_b1_9",lv:"B1",type:"pick",tag:"علامات الترقيم",c:[
+    {t:"The report was late, the committee refused to read it.",ok:false,why:"فاصلةُ لصق: جملتان مستقلّتان لا تُوصَلان بفاصلة وحدها"},
+    {t:"The report was late, so the committee refused to read it.",ok:true,why:"صحيحة — فاصلة مع أداة ربط (so) تصل جملتين مستقلّتين"},
+    {t:"The report was late so, the committee refused to read it.",ok:false,why:"الفاصلة تسبق أداة الربط لا تليها"},
+    {t:"The report was late; so the committee refused to read it.",ok:false,why:"الفاصلة المنقوطة تصل جملتين بلا أداة ربط تنسيقية"}]},
+  {id:"st_b1_10",lv:"B1",type:"gap",tag:"المضارع التامّ",q:"They ......... in this house since 2015.",c:[
+    {t:"have lived",ok:true,why:"صحيحة — since مع المضارع التامّ لحدثٍ بدأ ولم ينتهِ"},
+    {t:"live",ok:false,why:"المضارع البسيط لا يصف مدّةً ممتدّة مع since"},
+    {t:"lived",ok:false,why:"الماضي البسيط يقطع الصلة بالحاضر، وsince تصلها"},
+    {t:"are living",ok:false,why:"المستمرّ للحظة الجارية لا للمدّة الممتدّة مع since"}]},
+  {id:"st_b1_11",lv:"B1",type:"gap",tag:"أدوات الربط",q:"......... the heavy traffic, we reached the airport on time.",c:[
+    {t:"Despite",ok:true,why:"صحيحة — despite + اسم، وتفيد التنازل"},
+    {t:"Although",ok:false,why:"‏although تتبعها جملة كاملة لا اسم"},
+    {t:"Because of",ok:false,why:"تفيد السبب، والزحام ليس سبب الوصول في الوقت"},
+    {t:"However",ok:false,why:"‏however تبدأ جملةً مستقلّة بعد نقطة أو فاصلة منقوطة"}]},
+  {id:"st_b1_12",lv:"B1",type:"pick",tag:"ترتيب الكلمات",c:[
+    {t:"I asked him where was the nearest pharmacy.",ok:false,why:"السؤال المضمَّن يعود إلى ترتيب الخبر: فاعل ثم فعل"},
+    {t:"I asked him where the nearest pharmacy was.",ok:true,why:"صحيحة — السؤال المضمَّن بترتيب الجملة الخبرية"},
+    {t:"I asked him where did the nearest pharmacy be.",ok:false,why:"لا فعل مساعد did في السؤال المضمَّن"},
+    {t:"I asked him was where the nearest pharmacy.",ok:false,why:"ترتيبٌ مختلّ: الفعل قبل أداة الاستفهام"}]},
   // ============ B2 — امتدادُ محمد ============
   // مهارات القسم نفسها (ترتيب/ترقيم/كبتلة) على تراكيب B2: القلب، والجملة الاعتراضية،
   // والفاصلة المنقوطة بين جملتين مستقلّتين، وحال المصدر — لا مفرداتٌ أصعب فحسب.
@@ -10920,8 +11121,19 @@ const VIDEO_BANK=[
   {id:"vd_a1_2",lv:"A1",sk:"تفصيل محدَّد",t:"My Pet",sc:[["🐱","This is my cat. Her name is Mishmish."],["🥛","She drinks milk every morning."],["😴","She sleeps under my bed."]],q:"What is the cat's name?",c:["Mishmish","Simsim","Haboob"],a:0},
   {id:"vd_a1_3",lv:"A1",sk:"تفصيل محدَّد",t:"At the Park",sc:[["🌳","We go to the park on Friday."],["⚽","My brother plays football there."],["🍦","After that, we eat ice cream."]],q:"When do they go to the park?",c:["Friday","Saturday","Sunday"],a:0},
   {id:"vd_a1_4",lv:"A1",sk:"تفصيل محدَّد",t:"My Room",sc:[["🛏️","My room is small and blue."],["📚","I have five books on my shelf."],["🧸","My favourite toy is a brown bear."]],q:"How many books are on the shelf?",c:["Four","Five","Six"],a:1},
-  {id:"vd_a1_5",lv:"A1",sk:"تفصيل محدَّد",t:"Shopping",sc:[["🛒","My mother and I go to the shop."],["🍎","We buy apples and bread."],["💰","It costs ten riyals."]],q:"What do they buy?",c:["Apples and bread","Milk and eggs","Rice and meat"],a:0},
+  {id:"vd_a1_5",lv:"A1",sk:"تفصيل محدَّد",t:"Shopping",sc:[["🛒","My mother takes me with her to the shop."],["🍎","We buy apples and bread."],["💰","It costs ten riyals."]],q:"What do they buy?",c:["Apples and bread","Milk and eggs","Rice and meat"],a:0},
   {id:"vd_a1_6",lv:"A1",sk:"تفصيل محدَّد",t:"The Weather",sc:[["☀️","It is sunny today."],["🧢","I wear a cap and go outside."],["🚲","I ride my bicycle in the street."]],q:"What is the weather like today?",c:["Rainy","Sunny","Cold"],a:1},
+  // توسعةُ A1 — ٢٩ أغسطس: `VIDEO_N=5` وبنكها ستّة، فتُستنفَد بجلسةٍ واحدة ودقّتها
+  // ٢٠-٤٠٪ على ثلاثة أيام. نفس الشكل بالضبط: ثلاثة مشاهد، جملةٌ قصيرة، حقيقةٌ ملموسة.
+  {id:"vd_a1_7",lv:"A1",sk:"تفصيل محدَّد",t:"My Grandmother",sc:[["👵","My grandmother lives in Jeddah."],["🍰","She makes a big cake on Friday."],["📞","I call her every evening."]],q:"Where does the grandmother live?",c:["Riyadh","Jeddah","Dammam"],a:1},
+  {id:"vd_a1_8",lv:"A1",sk:"تفصيل محدَّد",t:"The New Book",sc:[["📕","My father gave me a new book."],["🌙","I read it before I sleep."],["🐘","The book is about elephants."]],q:"What is the book about?",c:["Cars","Elephants","The sea"],a:1},
+  // (كان هذا العنصر «At the Market» بمطلع «We go to the … on …» فتشابه مع vd_a1_3
+  //  بمقياس المشروع ٠٫٠٥٦ — فوق عتبة توأم الجلسة. كشفه فحصُ البنك قبل الشحن، فبُدّل
+  //  مطلعه ومحتواه معاً لا رقمُه وحده.)
+  {id:"vd_a1_9",lv:"A1",sk:"تفصيل محدَّد",t:"My Uncle's Farm",sc:[["🌴","My uncle has a small farm near Al-Aflaj."],["🐑","He keeps six sheep and two horses."],["🥛","In the morning he gives me fresh milk."]],q:"How many sheep does the uncle keep?",c:["Two","Six","Ten"],a:1},
+  {id:"vd_a1_10",lv:"A1",sk:"تفصيل محدَّد",t:"My Sister Hanan",sc:[["👧","My sister Hanan is nine years old."],["🎨","She likes to draw birds and trees."],["🏫","She goes to my school too."]],q:"How old is Hanan?",c:["Seven","Nine","Eleven"],a:1},
+  {id:"vd_a1_11",lv:"A1",sk:"تفصيل محدَّد",t:"A Rainy Day",sc:[["🌧️","It rained a lot this morning."],["☂️","I took my umbrella to school."],["🏠","We stayed inside at break time."]],q:"What did the girl take to school?",c:["A cap","An umbrella","A bicycle"],a:1},
+  {id:"vd_a1_12",lv:"A1",sk:"تفصيل محدَّد",t:"My Favourite Food",sc:[["🍚","My favourite food is kabsa."],["👩‍🍳","My mother cooks it on Friday."],["👨‍👩‍👧","We all eat together after prayer."]],q:"When does the mother cook kabsa?",c:["Friday","Monday","Every day"],a:0},
   // A2 (إلياس) — ثلاثة مشاهد، حوارٌ أو موقفٌ قصير كـLISTEN_BANK A2
   {id:"vd_a2_1",lv:"A2",sk:"سببٌ وعلاقة",t:"The Bus Trip",sc:[["🚌","Yesterday I took the bus to visit my uncle."],["🚦","The bus stopped for ten minutes because of traffic."],["🏠","I arrived a little late, but he was still waiting."]],q:"Why did the bus stop?",c:["Traffic","A flat tyre","The driver was tired"],a:0},
   {id:"vd_a2_2",lv:"A2",sk:"تفصيل محدَّد",t:"A New Phone",sc:[["📱","I want to buy a new phone this month."],["💵","The blue one costs six hundred riyals."],["🤔","But I only have four hundred, so I need to save more."]],q:"How much money does he need to save?",c:["Two hundred riyals","Four hundred riyals","Six hundred riyals"],a:0},
@@ -10929,6 +11141,14 @@ const VIDEO_BANK=[
   {id:"vd_a2_4",lv:"A2",sk:"تفصيل محدَّد",t:"The Football Match",sc:[["⚽","My team played a match on Thursday."],["😢","We lost two goals to one."],["💪","But our coach said we played much better than last time."]],q:"What was the score?",c:["One to two","Two to one","Two to two"],a:1},
   {id:"vd_a2_5",lv:"A2",sk:"تفصيل محدَّد",t:"Studying for the Exam",sc:[["📖","I have a science exam next week."],["😴","I studied late last night and I am very tired."],["☕","My mother made me tea to help me stay awake."]],q:"When is the exam?",c:["This week","Next week","Next month"],a:1},
   {id:"vd_a2_6",lv:"A2",sk:"تفصيل محدَّد",t:"Visiting the Doctor",sc:[["🤒","I had a headache yesterday."],["🏥","My father took me to the doctor."],["💊","The doctor gave me some medicine and told me to rest."]],q:"Who took him to the doctor?",c:["His mother","His father","His brother"],a:1},
+  // توسعةُ A2 — ٢٩ أغسطس: `VIDEO_N=5` وبنكه ستّة، أي جلسةٌ واحدة تستنفده.
+  // وإلياس لم يصله عنصرٌ مولَّد واحد في القسم خلال ثلاثة أيام، فالبنك المؤلَّف كلُّ ما لديه.
+  {id:"vd_a2_7",lv:"A2",sk:"سببٌ وعلاقة",t:"The Late Bus",sc:[["🕗","I usually catch the bus at eight o'clock."],["🚧","This morning the road was closed for repairs."],["🏃","I had to run, and I arrived at school ten minutes late."]],q:"Why was he late?",c:["He woke up late","The road was closed","The bus broke down"],a:1},
+  {id:"vd_a2_8",lv:"A2",sk:"تفصيل محدَّد",t:"A New Hobby",sc:[["📷","My uncle gave me his old camera."],["🌇","Now I take photos of the sky every evening."],["🖼️","Last week my photo was on the school wall."]],q:"Who gave him the camera?",c:["His uncle","His teacher","His friend"],a:0},
+  // (كان هذا العنصر بعنوان The Football Match نفسه وموضوعه — تكرارٌ حقيقي لا ضجيجُ
+  //  مقياس، كشفه فحصُ البنك قبل الشحن. بُدّل موضوعه كلّه.)
+  {id:"vd_a2_9",lv:"A2",sk:"سببٌ وعلاقة",t:"The Broken Window",sc:[["🪟","A window in our classroom was broken last week."],["❄️","The room became very cold in the morning."],["🔨","On Sunday a worker came and put in new glass."]],q:"Why was the room cold?",c:["The heater stopped","A window was broken","The door stayed open"],a:1},
+  {id:"vd_a2_10",lv:"A2",sk:"استنتاج",t:"Saving Money",sc:[["💵","Every week I put ten riyals in a small box."],["🎮","My friends spend their money on games."],["🚲","After six months I bought the bicycle I wanted."]],q:"How did he buy the bicycle?",c:["His father bought it","He saved a little every week","He borrowed money"],a:1},
   // B1 (محمد) — أربعة مشاهد، قصّةٌ فيها بداية ومنعطف ونتيجة كـLISTEN_BANK B1
   {id:"vd_b1_1",lv:"B1",sk:"سببٌ وعلاقة",t:"A Difficult Decision",sc:[["🎓","After finishing school, I had to choose between two universities."],["🏙️","One was close to home, but the other had a much better program."],["😟","It was a difficult decision because I would miss my family."],["✅","In the end, I chose the better program, and I don't regret it."]],q:"Why was the decision difficult?",c:["He would miss his family","He couldn't afford it","His friends disagreed"],a:0},
   {id:"vd_b1_2",lv:"B1",sk:"تسلسل الأحداث",t:"Learning to Drive",sc:[["🚗","Last year, I started learning to drive with my older brother."],["😬","At first, I was nervous and made a lot of mistakes."],["📅","After three months of practice, I finally passed my test."],["🎉","Now I drive to college every day, and it saves me a lot of time."]],q:"What happened after three months?",c:["He passed his test","He gave up","He bought a car"],a:0},
@@ -10936,6 +11156,11 @@ const VIDEO_BANK=[
   {id:"vd_b1_4",lv:"B1",sk:"استنتاج",t:"Starting a Small Business",sc:[["💡","My friend had an idea to sell homemade sweets online."],["📦","At the beginning, orders were slow and he almost gave up."],["📢","Then he started sharing videos on social media, and things changed."],["💰","Now he receives orders every day and even hired a helper."]],q:"What changed things for him?",c:["Sharing videos on social media","Lowering his prices","Opening a shop"],a:0},
   {id:"vd_b1_5",lv:"B1",sk:"تفصيل محدَّد",t:"A Lesson from Failure",sc:[["🏃","I trained for months to run in the school competition."],["😔","On the day of the race, I fell and finished last."],["🤝","My coach told me that trying again is more important than winning."],["🏆","The next year, I trained harder and came in second place."]],q:"What did the coach tell him?",c:["Trying again matters more than winning","He should quit running","He needed a new coach"],a:0},
   {id:"vd_b1_6",lv:"B1",sk:"سببٌ وعلاقة",t:"Helping a Neighbour",sc:[["👴","Our elderly neighbour lives alone since his children moved abroad."],["🛒","Every week, I help him carry his shopping bags home."],["☕","Sometimes we sit and he tells me stories about his youth."],["😊","I always leave feeling like I learned something new."]],q:"Why does the neighbour live alone?",c:["His children moved abroad","He prefers being alone","He is new to the area"],a:0},
+  // توسعةُ B1 — نفس سبب A2 أعلاه، ومحمد يرى هذا البنك بالضبط.
+  {id:"vd_b1_7",lv:"B1",sk:"منعطفٌ ونتيجة",t:"The Wrong Turn",sc:[["🗺️","We were driving to Abha and I was sure I knew the road."],["🚙","After an hour we realised we had taken the wrong exit."],["🏞️","The detour took us through a valley none of us had seen before."],["📸","In the end we stopped for photos and arrived late but happy."]],q:"How did the mistake turn out?",c:["It ruined the trip","It led them somewhere they enjoyed","They turned back home"],a:1},
+  {id:"vd_b1_8",lv:"B1",sk:"سببٌ وعلاقة",t:"The Quiet Student",sc:[["🙍","Hasan never spoke in class, and the teacher thought he was not interested."],["📝","Then she read his written work and found it was the best in the group."],["🗣️","She started asking him to write his ideas on the board instead of speaking."],["🌟","By the end of the term he was answering out loud without being asked."]],q:"What changed for Hasan?",c:["He stopped attending","A different way of taking part gave him confidence","He was moved to another class"],a:1},
+  {id:"vd_b1_9",lv:"B1",sk:"موقفٌ ورأي",t:"The Old Bicycle",sc:[["🚲","My father wanted to throw away my old bicycle."],["🔧","I spent two weekends cleaning it and changing the chain."],["💰","A repair shop said a new one would cost four times as much."],["🙂","Now my father borrows it more often than I do."]],q:"Why did he keep the bicycle?",c:["It was cheaper to repair than replace","His father asked him to","It was almost new"],a:0},
+  {id:"vd_b1_10",lv:"B1",sk:"منعطفٌ ونتيجة",t:"The Missing Wallet",sc:[["😰","Misfer lost his wallet somewhere between the bus stop and the shop."],["📞","He was about to cancel his cards when a stranger phoned him."],["🪪","The man had found the wallet and used the card inside to trace the bank."],["🤝","Nothing was missing, and Misfer now keeps his phone number on a card."]],q:"How did the stranger find him?",c:["He recognised Misfer","He used the bank card to reach the bank","He asked at the shop"],a:1},
   // ============ B2 — امتدادُ محمد ============
   // خمسة مشاهد لا أربعة، والسؤال عن **الاستنتاج أو الموقف** لا عن حدثٍ مذكور صراحةً.
   {id:"vd_b2_1",lv:"B2",sk:"استنتاج",t:"The Quiet Resignation",sc:[["\uD83D\uDCBC","Mohammed had been the most reliable engineer on the team for six years."],["\uD83D\uDCC8","When the department expanded, three new managers were hired from outside."],["\uD83E\uDD10","He stopped volunteering for the difficult projects, though he never complained."],["\uD83D\uDCC4","In March he handed in his notice, citing 'personal reasons'."],["\uD83D\uDCAD","His manager was surprised. Nobody had asked him why he had gone quiet."]],q:"What does the story suggest about why Mohammed left?",c:["He had been unhappy since being passed over, though he never said so","He was offered a much higher salary elsewhere","He had personal family problems unrelated to work"],a:0},
