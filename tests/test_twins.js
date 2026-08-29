@@ -107,7 +107,12 @@ const RAIN ="The sky turned grey and heavy rain started falling just as Leo left
        ["write",buildWritePlan,WRITE_N,writeBankFor],["gram",buildGramPlan,GRAM_N,gramBankFor],
        ["step",buildStepPlan,STEP_N,stepBankFor],["video",buildVideoPlan,VIDEO_N,videoBankFor]].forEach(function(x){
         const p=x[1](),POOL=bankStretched(x[0],lv,x[3]);
-        const twin=function(a,b){return twinSim(itemText(a),itemText(b))>=GEN_TWIN};
+        // العتبة من `twinThrFor(القسم)` لا من `GEN_TWIN` الثابتة — وهي بعينها التي
+        // يطبّقها `planNoTwins`. وكان الفحص يقرأ الثابتة، فصار بعد استثناء الكتابة
+        // (٢٩ أغسطس) يفحص عقداً غير الذي تعمل به الدالّة: يعدّ زوجَ كتابةٍ متمايزاً
+        // توأماً عند ٠٫٠٢ بينما القسم يقبل حتى ٠٫٦٠ لأن نصوصه تتشارك قالب الامتحان.
+        const thr=twinThrFor(x[0]);
+        const twin=function(a,b){return twinSim(itemText(a),itemText(b))>=thr};
         const hasTwin=p.some(function(a,i){return p.some(function(b,j){return j>i&&twin(a,b)})});
         // عقدُ planNoTwins المُعلَن: التوأم يعود **فقط** إن لم يوجد في المخزون بديلٌ
         // متمايزٌ عن كل ما بقي («ولا تُترك الجلسة ناقصةً»). فيُفحَص العقد نفسه لا
