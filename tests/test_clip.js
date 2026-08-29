@@ -30,7 +30,10 @@ console.log('\n١) كلُّ رابطٍ مسجَّل يبني مقطعاً فعل
     });
     return{links:links,out:out,nLinks:Object.keys(QZ_CARD_FADE_LINK).length};
   });
-  ok(r.nLinks>=10,'القوالب المربوطة — '+r.nLinks);
+  // حدٌّ أدنى لا عدد: القائمة تُوسَّع وتُقلَّم بالقياس (رُفعت روابط المتتاليات في ٢٩
+  // أغسطس لأن `tmplKey` لا يفرّق بين جمعٍ وضربٍ ومربّعات) — فتثبيتُ العدد يكسر كلَّ
+  // تعديلٍ مشروع ولا يقول أيُّ ربطٍ تغيّر. درس «الأعداد المكتوبة في الاختبارات فخّ صامت».
+  ok(r.nLinks>=5,'القوالب المربوطة لا تقلّ عن خمسة — '+r.nLinks);
   ok(r.links.length>0,'وأنواع المقاطع — '+r.links.length);
   r.links.forEach(function(l){
     const c=r.out[l];
