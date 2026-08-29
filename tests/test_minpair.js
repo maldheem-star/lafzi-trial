@@ -50,8 +50,43 @@ const banks=await page.evaluate(()=>({
     &&Array.isArray(x.s)&&x.s.length===2&&Array.isArray(x.m)&&x.m.length===2&&x.m[0]&&x.m[1]&&x.w[0]!==x.w[1]&&x.lv),
 }));
 ok(banks.a1&&banks.a2&&banks.b1,'لا اختلاط بين المستويات');
-ok(banks.n.a1>=10&&banks.n.a2>=10&&banks.n.b1>=10,`ولكلٍّ بنكٌ موسَّع (١٦ أغسطس) (${JSON.stringify(banks.n)})`);
 ok(banks.shape,'وكل عنصر بشكل سليم (كلمتان مختلفتان، ونُطقان، وجملتان)');
+
+// ===== وحدُّ البنك نسبةٌ إلى الجلسة لا عددٌ مكتوب — درس ٢٩ أغسطس =====
+// سطرٌ حيّ في سجلّ إلياس: «بنك minpair استُنفد: محجوب ٦ من ٨، وبقي بلا عرضٍ سابق ٠».
+// وكشف الفحصُ أسوأ منه: بنك **B2 ستّة أزواج لجلسةٍ من ثمانية** — أصغر من الجلسة
+// نفسها، ومحمد هو B2. فالحدّ يُقاس بنسبة البنك إلى MINPAIR_N، فيتحرّك معها بدل أن
+// يُكسَر كلَّ مرّة يتغيّر فيها حجم الجلسة (درس «الأعداد المكتوبة فخٌّ صامت»).
+{
+  const r=await page.evaluate(()=>{
+    const out={N:MINPAIR_N,lv:{},bad:[],dupPairs:[],dupIds:[]};
+    const ids={},pairs={};
+    ["A1","A2","B1","B2"].forEach(function(L){out.lv[L]=minpairBankFor(L).length});
+    MINPAIR_BANK.forEach(function(x){
+      if(ids[x.id])out.dupIds.push(x.id);ids[x.id]=1;
+      const k=x.lv+":"+[x.w[0],x.w[1]].slice().sort().join("/");
+      if(pairs[k])out.dupPairs.push(k);pairs[k]=1;
+      const why=[];
+      // متجانسان صوتياً ⇒ لا يميّزهما سمعٌ أصلاً، فلا يصلحان لتمرينٍ يقيس السمع.
+      // (أضفتُ بيدي أربعةً منها — principal/principle وأخواتها — فأمسكها الفحص.)
+      if(x.ph[0]===x.ph[1])why.push("homophone");
+      // وكل جملةٍ تحوي كلمتها بحدود الكلمة — نفس الرقابة القبلية على الجملة المولَّدة
+      [0,1].forEach(function(i){
+        if(!new RegExp("\\b"+x.w[i].replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\b","i").test(x.s[i]))why.push("s"+i+"≠"+x.w[i]);
+      });
+      if(x.s.some(function(t){return /[\u0600-\u06FF]/.test(t)}))why.push("arabic_in_s");
+      if(!x.m.every(function(t){return /[\u0600-\u06FF]/.test(t)}))why.push("m_not_ar");
+      if(why.length)out.bad.push(x.id+":"+why.join(","));
+    });
+    return out;
+  });
+  Object.keys(r.lv).forEach(function(L){
+    ok(r.lv[L]>=r.N*2,'بنك '+L+' ضِعفا الجلسة فأكثر — '+r.lv[L]+'/'+r.N);
+  });
+  ok(r.dupIds.length===0,'ولا معرّف مكرّر — '+(r.dupIds[0]||'نظيف'));
+  ok(r.dupPairs.length===0,'ولا زوجَ مكرّر داخل المستوى — '+(r.dupPairs[0]||'نظيف'));
+  ok(r.bad.length===0,'ولا عنصرَ معيب (تجانسٌ صوتي، أو جملةٌ بلا كلمتها، أو تلوّثُ لغة) — '+(r.bad[0]||'نظيف'));
+}
 
 console.log('\n٢) بدء الجلسة: هدفٌ عشوائي وترتيبٌ عشوائي — لا انحياز موضع');
 await page.evaluate(()=>startMinpair());
