@@ -4130,6 +4130,72 @@ function runAudioDiag(){
   audioDiagResult={status:"⏳ جارٍ التجربة..."};render();
   speakEnglish("Hello, can you hear this?",(r)=>{audioDiagResult=r;render()});
 }
+// ===== تجربةُ كل صوتٍ على حدة — قياسٌ على جهازها لا توصيةٌ عليه (٢٩ أغسطس) =====
+// سبعة صفوف `tts_fail` من جهاز هيا، كلّها `speak_error:synthesis-failed`، وعلى
+// **الصوت المختار وعلى البديل معاً** (بديل:١). أي أن المحرّك يردّ خطأً صريحاً لا
+// أن شيفرتنا تبتلع النداء. وما لا يقوله السطر: **أيُّ** صوتٍ يفشل — واحدٌ بعينه أم
+// كلّها؟ وجهازها فيه ٨٩ صوتاً وإنجليزيٌّ واحد، وهو رقمٌ شاذّ يستحقّ أن يُقاس.
+//
+// وقد نُهيتُ صراحةً عن التوصية على الجهاز بلا دليل («ما له داعي توصيته»)، وكان
+// النهي في محلّه. فهذا ليس توصيةً بل **مقياس**: يُجرَّب كل صوتٍ إنجليزي واحداً
+// واحداً، ويُسجَّل أيُّها بدأ فعلاً — فإن عمل صوتٌ وفشل غيره فالعلاج تثبيتُ الاختيار
+// عليه، وإن فشلت كلُّها فالسبب خارج اختيار الصوت أصلاً. ولا يُبنى على ذلك حكمٌ
+// قبل أن يصل السطر.
+let audioDiagVoices=null,audioDiagBusy=false;
+// تجربةٌ لصوتٍ بعينه: لا تمرّ على `pickEnglishVoice` عمداً — الغرض معرفةُ أيِّها
+// يعمل، لا معرفةُ ما يختاره التطبيق (وذاك معروضٌ فوق أصلاً).
+function ttsTryVoice(v,text,cb){
+  let settled=false;
+  const done=function(r){if(settled)return;settled=true;cb(r)};
+  try{
+    const synth=window.speechSynthesis;
+    if(!synth)return done({ok:false,reason:"unsupported"});
+    let didCancel=false;
+    try{if(synth.speaking||synth.pending){synth.cancel();didCancel=true}}catch(e){}
+    const u=new SpeechSynthesisUtterance(text);
+    if(v){try{u.voice=v}catch(e){}try{u.lang=v.lang}catch(e){}}
+    u.onstart=function(){done({ok:true})};
+    u.onerror=function(e){done({ok:false,reason:(e&&e.error)||"error"})};
+    setTimeout(function(){done({ok:false,reason:"silent"})},2500);
+    try{synth.resume()}catch(e){}
+    // نفس تأخير سباق الإلغاء المعتمد في speakEnglish — لا رقمٌ جديد
+    setTimeout(function(){try{synth.speak(u)}catch(e){done({ok:false,reason:"throw"})}},didCancel?90:0);
+  }catch(e){done({ok:false,reason:"throw"})}
+}
+function runAudioDiagAll(){
+  if(audioDiagBusy)return;
+  const synth=window.speechSynthesis;
+  // نفس توحيد الفاصل المعتمد في pickEnglishVoice — `en_US` بشرطةٍ سفلية يقع فعلاً
+  const list=(synth?synth.getVoices():[]).filter(function(v){
+    return v.lang&&String(v.lang).replace(/_/g,"-").toLowerCase().indexOf("en")===0;});
+  audioDiagVoices=list.map(function(v){
+    return{name:v.name,lang:v.lang,local:v.localService!==false,state:"…",reason:""}});
+  audioDiagBusy=true;render();
+  if(!list.length){audioDiagBusy=false;audioDiagReport();render();return}
+  let i=0;
+  const step=function(){
+    if(i>=list.length){audioDiagBusy=false;audioDiagReport();render();return}
+    const k=i++;
+    ttsTryVoice(list[k],"test",function(r){
+      audioDiagVoices[k].state=r.ok?"✓":"✗";
+      audioDiagVoices[k].reason=r.ok?"":(r.reason||"");
+      render();
+      // طابور النطق واحدٌ للصفحة كلّها، فالمحاولات متتابعة لا متوازية
+      setTimeout(step,220);
+    });
+  };
+  step();
+}
+// النتيجة تصل السجلّ لا الشاشة وحدها — وإلّا بقي التشخيص عند من فتح الصفحة
+function audioDiagReport(){
+  const v=audioDiagVoices||[];
+  const okN=v.filter(function(x){return x.state==="✓"}).length;
+  try{logAnswer("gen","tts_probe",null,okN+"/"+v.length+" صوتاً بدأ فعلاً",null,null,
+    {q_text:("[فحص الأصوات] "+(v.length
+      ?v.map(function(x){return x.name+"("+x.lang+")"+x.state+(x.reason?":"+x.reason:"")}).join(" · ")
+      :"لا صوت إنجليزي")+" · "+navigator.userAgent).slice(0,1200)});
+  }catch(e){}
+}
 function renderAudioDiag(){
   const supported='speechSynthesis' in window;
   const voices=supported?window.speechSynthesis.getVoices():[];
@@ -4160,6 +4226,23 @@ function renderAudioDiag(){
     else if(audioDiagResult.reason==="silent")resultBox=`<div style="background:#FFFBEB;border-radius:12px;padding:14px;margin-top:14px;font-size:14px;color:#92400E">⚠️ المتصفح <b>قبِل</b> أمر النطق ولم يُخطئ، لكنه <b>لم يبدأ النطق</b> خلال ثانيتين.<br>هذا ليس عطلاً في الموقع: المتصفح ابتلع الأمر بصمت. وأشهرُ أسبابه أن <b>محرّك النطق في النظام بلا بيانات اللغة الإنجليزية</b> (الإعدادات ← إمكانية الوصول ← تحويل النص إلى كلام ← تثبيت بيانات الصوت)، أو أن الصوت مكتوم/موجَّه لسمّاعة بلوتوث.<br>الأصوات المرئية: ${audioDiagResult.voicesCount==null?"?":toAr(audioDiagResult.voicesCount)}${audioDiagResult.voiceName?" · المختار: "+audioDiagResult.voiceName:""}.</div>`;
     else resultBox=`<div style="background:#FEF2F2;border-radius:12px;padding:14px;margin-top:14px;font-size:14px;color:#991B1B">✗ فشل النطق فعلياً: ${audioDiagResult.reason}${audioDiagResult.errorType?" ("+audioDiagResult.errorType+")":""}.<br>هذا يعني الجهاز/المتصفح لا يقدر يشغّل تحويل النص لصوت حالياً.</div>`;
   }
+  // نتيجةُ تجربة الأصوات واحداً واحداً — ✓ يعني أن هذا الصوت بدأ فعلاً على هذا الجهاز
+  let probeBox="";
+  if(audioDiagVoices){
+    const okN=audioDiagVoices.filter(function(x){return x.state==="✓"}).length;
+    const rows=audioDiagVoices.map(function(x){
+      const col=x.state==="✓"?"#059669":x.state==="✗"?"#B91C1C":"#94A3B8";
+      // رمزُ اللهجة لا يُشطَر عند الالتفاف — كشفته لقطةُ شاشة: «(en-» ثم «US)» في سطرين
+      return `<div style="display:flex;justify-content:space-between;gap:10px;padding:5px 0;font-size:13px;border-bottom:1px solid #F1F5F9">
+        <span>${x.name} <span style="color:#94A3B8;white-space:nowrap;unicode-bidi:isolate">(${x.lang})</span></span>
+        <span style="color:${col};white-space:nowrap">${x.state}${x.reason?" "+x.reason:""}</span>
+      </div>`}).join("");
+    const head=audioDiagBusy?"نجرّب الأصوات واحداً واحداً…"
+      :okN?("عمل "+toAr(okN)+" من "+toAr(audioDiagVoices.length)+" — فالصوت ممكنٌ على هذا الجهاز")
+      :"لم يبدأ أيُّ صوتٍ إنجليزي على هذا الجهاز";
+    probeBox=`<div style="background:${audioDiagBusy?"#F1F5F9":okN?"#ECFDF5":"#FEF2F2"};border-radius:12px;padding:12px 14px;margin-top:12px;font-size:13px;color:${audioDiagBusy?"#334155":okN?"#065F46":"#991B1B"}">
+      <b>${head}</b>${rows?`<div style="margin-top:8px">${rows}</div>`:""}</div>`;
+  }
   app.innerHTML=`
   <button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
   <div class="card">
@@ -4173,6 +4256,8 @@ function renderAudioDiag(){
     ${pickedBox}
     <button class="btn" style="background:#0891B2;margin-top:14px" onclick="runAudioDiag()">🔊 جربي النطق الآن</button>
     ${resultBox}
+    ${supported?`<button class="btn" style="background:#4F46E5;margin-top:10px" onclick="runAudioDiagAll()"${audioDiagBusy?" disabled":""}>${audioDiagBusy?"⏳ نجرّب صوتاً صوتاً…":"🔎 جرّبي كل صوتٍ على حدة"}</button>`:""}
+    ${probeBox}
     ${micDiagHTML()}
     <div style="font-size:13px;color:#94A3B8;margin-top:18px;line-height:1.8">لو ظهر "فشل النطق فعلياً"، أو ظهر "نجح" لكن ما سمعتِ صوتاً: تأكدي إن صوت الجهاز غير مكتوم وبمستوى عالٍ كافٍ، وافتحي إعدادات الهاتف ← إعدادات إضافية/تحويل النص إلى كلام ← تأكدي إن حزمة الصوت الإنجليزي منزّلة (قد تحتاجين تنزيلها لأول مرة)، ثم أعيدي المحاولة.</div>
   </div>`;
