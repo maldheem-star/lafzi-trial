@@ -3752,10 +3752,16 @@ function speakEnglish(text,onDone){
     const wasStart=u=>u;   // (توثيقٌ فقط: البدء/الخطأ يضبطان `started`/`triedFallback`)
     setTimeout(function(){
       if(settled||started)return;
-      const vs=synth.getVoices();
-      ttsMark(false,{ok:false,reason:'silent',voicesCount:vs.length,
-        hasEnVoice:!!pickEnglishVoice(vs),voiceName:(pickEnglishVoice(vs)||{}).name,
-        gesture:!!ttsGesture});
+      settled=true;
+      const vs=synth.getVoices(),pv=pickEnglishVoice(vs);
+      const info={ok:false,reason:'silent',voicesCount:vs.length,
+        hasEnVoice:!!pv,voiceName:pv&&pv.name,localOnly:!!(pv&&pv.localService!==false),
+        gesture:!!ttsGesture};
+      ttsMark(false,info);
+      // **ويُبلَّغ المُستدعي**: بلا هذا تعلق صفحة التشخيص على «⏳ جارٍ التجربة» إلى
+      // الأبد في الحالة الوحيدة التي فُتحت الصفحةُ لأجلها — كشفه فحصُ الفرع بعد أن
+      // قال صاحب المشروع إن الصفحة تعرض «لا يوجد صوت طبيعي».
+      if(onDone)onDone(info);
     },2000);
     attempt(false);
     // لو كانت قائمة الأصوات فارغة وقت اللمس ولم يبدأ النطق، نعيد المحاولة مرة واحدة بعد وصولها.
@@ -4114,13 +4120,16 @@ function renderAudioDiag(){
   const pickedBox=picked
     ?`<div style="background:${picked.localService===false?'#ECFDF5':'#FFFBEB'};border-radius:12px;padding:12px 14px;margin-top:10px;font-size:13px;color:${picked.localService===false?'#065F46':'#92400E'}">
         الصوت الذي سيختاره التطبيق تلقائياً على <b>هذا الجهاز بالذات</b>: <b>${picked.name}</b><br>
-        ${picked.localService===false?'☁️ صوتٌ سحابي — أقرب لصوت بشري.':'📴 لا يوجد صوتٌ سحابي/طبيعي متاح على هذا الجهاز، فيُستخدم أفضل صوتٍ محلّي متوفّر.'}
+        ${picked.localService===false
+          ?'☁️ صوتٌ سحابي — أقرب لصوت بشري.'
+          :'📴 كل الأصوات هنا محلّية (لا سحابية) — <b>وهذا طبيعي على كثير من الأجهزة ولا يمنع الصوت</b>. فوجودُ صوتٍ مختار يعني أن المتصفح يرى صوتاً إنجليزياً.<br>فإن لم تسمعي شيئاً رغم ذلك فالسبب خارج الموقع، وأشهرُه ثلاثة: <b>وضع الصامت</b> أو انخفاض <b>صوت الوسائط</b> (لا صوت الرنين)، أو <b>سمّاعة بلوتوث</b> متّصلة تسحب الصوت، أو <b>محرّك النطق في النظام بلا بيانات اللغة الإنجليزية</b> (الإعدادات ← إمكانية الوصول ← تحويل النص إلى كلام ← تثبيت بيانات الصوت).'}
       </div>`
     :(supported?`<div style="background:#FEF2F2;border-radius:12px;padding:12px 14px;margin-top:10px;font-size:13px;color:#991B1B">لا صوت إنجليزي على هذا الجهاز إطلاقاً</div>`:"");
   let resultBox="";
   if(audioDiagResult){
     if(audioDiagResult.status)resultBox=`<div style="background:#F1F5F9;border-radius:12px;padding:14px;margin-top:14px;font-size:14px">${audioDiagResult.status}</div>`;
     else if(audioDiagResult.ok)resultBox=`<div style="background:#ECFDF5;border-radius:12px;padding:14px;margin-top:14px;font-size:14px;color:#065F46">✓ المتصفح نفّذ أمر النطق فعلاً${audioDiagResult.fallback?" (بصوت افتراضي، لأن الصوت الإنجليزي المحدد ما اشتغل)":""}. الصوت المستخدم: ${audioDiagResult.voiceName||"افتراضي الجهاز"}.<br>لو ما سمعتِ شيئاً رغم هذا، فالمشكلة في صوت الجهاز نفسه (كتم/مستوى الصوت) وليست في الموقع.</div>`;
+    else if(audioDiagResult.reason==="silent")resultBox=`<div style="background:#FFFBEB;border-radius:12px;padding:14px;margin-top:14px;font-size:14px;color:#92400E">⚠️ المتصفح <b>قبِل</b> أمر النطق ولم يُخطئ، لكنه <b>لم يبدأ النطق</b> خلال ثانيتين.<br>هذا ليس عطلاً في الموقع: المتصفح ابتلع الأمر بصمت. وأشهرُ أسبابه أن <b>محرّك النطق في النظام بلا بيانات اللغة الإنجليزية</b> (الإعدادات ← إمكانية الوصول ← تحويل النص إلى كلام ← تثبيت بيانات الصوت)، أو أن الصوت مكتوم/موجَّه لسمّاعة بلوتوث.<br>الأصوات المرئية: ${audioDiagResult.voicesCount==null?"?":toAr(audioDiagResult.voicesCount)}${audioDiagResult.voiceName?" · المختار: "+audioDiagResult.voiceName:""}.</div>`;
     else resultBox=`<div style="background:#FEF2F2;border-radius:12px;padding:14px;margin-top:14px;font-size:14px;color:#991B1B">✗ فشل النطق فعلياً: ${audioDiagResult.reason}${audioDiagResult.errorType?" ("+audioDiagResult.errorType+")":""}.<br>هذا يعني الجهاز/المتصفح لا يقدر يشغّل تحويل النص لصوت حالياً.</div>`;
   }
   app.innerHTML=`

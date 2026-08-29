@@ -88,6 +88,23 @@ console.log('\n٤) وكل شاشةٍ صوتية فيها مخرج — لا شا�
   await p.close();
 }
 
+console.log('\n٥) وصفحة التشخيص لا تعلق على «جارٍ التجربة» في حالة الصمت');
+{
+  const p=await mk('silent');
+  await p.evaluate(()=>{startAudioDiag();runAudioDiag()});
+  await p.waitForTimeout(2600);
+  const r=await p.evaluate(()=>({
+    res:audioDiagResult&&audioDiagResult.reason,
+    stuck:!!(audioDiagResult&&audioDiagResult.status),
+    shown:document.body.innerText
+  }));
+  ok(r.stuck===false,'لم تبقَ على حالة الانتظار');
+  ok(r.res==='silent','بل أبلغت بالسبب — '+r.res);
+  ok(/لم يبدأ النطق/.test(r.shown),'وشرحته للمستخدمة نصّاً');
+  ok(/بيانات اللغة الإنجليزية/.test(r.shown),'ومعه الخطوة العملية على الجهاز');
+  await p.close();
+}
+
 await b.close();
 console.log(fails?`\n=== ${fails} فشل ===`:'\n=== كل الاختبارات نجحت ===');
 process.exit(fails?1:0);
