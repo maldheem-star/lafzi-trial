@@ -144,15 +144,17 @@ async function mk(browser,q){
         });
       });
       out.skills=Object.keys(MINPAIR_BANK.reduce(function(a,x){a[x.sk]=1;return a},{})).length;
+      out.N=MINPAIR_N;
       return out;
     });
-    // العددُ الكلّي كان مُثبَّتاً بـ٦٠، فكسرته إضافةُ مستوًى مشروعة (B2، ٢٥ أغسطس)
-    // ولم يقل أيُّ مستوًى تغيّر — درس «الأعداد المكتوبة في الاختبارات فخّ صامت».
-    // فيُثبَّت المعنى: عشرون لكل مستوًى من الثلاثة الأصلية، وبنكٌ كافٍ لأيّ مستوًى
-    // يُضاف، والمجموع يساوي مجموع المستويات (فلا يضيع عنصرٌ بلا مستوى).
-    ok(r.byLv.A1===20&&r.byLv.A2===20&&r.byLv.B1===20,'عشرون لكل مستوى — '+JSON.stringify(r.byLv));
-    ok(Object.keys(r.byLv).every(function(k){return r.byLv[k]>=5}),
-       'وكل مستوًى في البنك له عددٌ كافٍ لجلسة — '+JSON.stringify(r.byLv));
+    // العددُ الكلّي كان مُثبَّتاً بـ٦٠، فكسرته إضافةُ مستوًى مشروعة (B2، ٢٥ أغسطس).
+    // فكُتب هنا «درس الأعداد المكتوبة فخّ صامت» ثم **ثُبِّت عددٌ جديد (٢٠) مكانه** —
+    // فكسره توسيعُ البنك المشروع (٢٩ أغسطس، بعد سطر `exhausted` حيّ) بالضبط كما كسر
+    // سابقُه. والدرس لا يُطبَّق بتغيير الرقم بل بنزعه: الحدُّ **نسبةٌ إلى الجلسة**
+    // (`MINPAIR_N`) فيتحرّك مع البنك ومع حجم الجلسة معاً، ويقول أيُّ مستوًى نقص.
+    ok(Object.keys(r.byLv).every(function(k){return r.byLv[k]>=r.N*2}),
+       'كل مستوًى ضِعفا الجلسة فأكثر — '+JSON.stringify(r.byLv)+' · الجلسة '+r.N);
+    ok(Object.keys(r.byLv).length>=4,'والمستويات الأربعة حاضرة — '+Object.keys(r.byLv).join(','));
     ok(r.total===Object.keys(r.byLv).reduce(function(a,k){return a+r.byLv[k]},0),
        'والمجموع يساوي مجموع المستويات — '+r.total);
     ok(r.dupW.length===0,'لا زوجَ مكرّر — '+r.dupW.join(','));
@@ -168,7 +170,7 @@ async function mk(browser,q){
       const pool=minpairBankFor('A2').length;
       return{pool:pool,session:MINPAIR_N,ratio:+(pool/MINPAIR_N).toFixed(1)};
     });
-    ok(r.pool===20,'بنك المستوى عشرون — '+r.pool);
+    ok(r.pool>=r.session*2,'بنك المستوى ضِعفا الجلسة فأكثر — '+r.pool+'/'+r.session);
     ok(r.ratio>=2.5,'يكفي أكثر من جلستين قبل التكرار — '+r.ratio+' جلسة');
     await page.close();
   }
