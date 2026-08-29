@@ -414,8 +414,12 @@ function mcNumDec(correct,cands){
 function qz(d,q,correct,cands,w){const m=mcNum(correct,cands);return{d,q,c:m.choices,a:m.answer,w}}
 
 // ===== مولّدات الرياضي =====
-function gArith(){const s=rand(2,9),a=rand(1,9);const q=[a];for(let i=0;i<3;i++)q.push(q[i]+s);const ans=q[3]+s;return qz("quant",`أكمل المتتالية: ${arSeq(q)} ، ...`,ans,[ans+s,ans-s,q[3]+1],`يزيد العدد ${toAr(s)} في كل مرة: ${toAr(q[3])} + ${toAr(s)} = ${toAr(ans)}.`)}
-function gGeo(){const r=pick([2,3]),a=rand(2,5);const q=[a];for(let i=0;i<3;i++)q.push(q[i]*r);const ans=q[3]*r;return qz("quant",`أكمل المتتالية: ${arSeq(q)} ، ...`,ans,[ans-a,q[3]+r,ans+a],`كل عدد = الذي قبله × ${toAr(r)}: ${toAr(q[3])} × ${toAr(r)} = ${toAr(ans)}.`)}
+// يُرفق المتتالية المعروضة وحدّها التالي بالسؤال — بلا هذا لا يستطيع مقطعُ الشرح
+// أن يشرح على أرقامها هي، فيضطرّ إلى مثالٍ آخر قد يكون من عائلةٍ أخرى (وهو العيب
+// الذي رُصد بلقطة شاشة ٢٩ أغسطس: سؤال مربّعات ومقطعُ جمع).
+function withPat(o,pat,next){try{o.pat=pat.slice();o.next=next}catch(e){}return o}
+function gArith(){const s=rand(2,9),a=rand(1,9);const q=[a];for(let i=0;i<3;i++)q.push(q[i]+s);const ans=q[3]+s;return withPat(qz("quant",`أكمل المتتالية: ${arSeq(q)} ، ...`,ans,[ans+s,ans-s,q[3]+1],`يزيد العدد ${toAr(s)} في كل مرة: ${toAr(q[3])} + ${toAr(s)} = ${toAr(ans)}.`),q,ans)}
+function gGeo(){const r=pick([2,3]),a=rand(2,5);const q=[a];for(let i=0;i<3;i++)q.push(q[i]*r);const ans=q[3]*r;return withPat(qz("quant",`أكمل المتتالية: ${arSeq(q)} ، ...`,ans,[ans-a,q[3]+r,ans+a],`كل عدد = الذي قبله × ${toAr(r)}: ${toAr(q[3])} × ${toAr(r)} = ${toAr(ans)}.`),q,ans)}
 function gPrice(){const per=rand(2,6),k=rand(2,4),m=rand(5,8);const ck=per*k;return qz("quant",`إذا كان ثمن ${toAr(k)} أقلام ${toAr(ck)} ريالاً، فكم ثمن ${toAr(m)} أقلام؟`,per*m,[per*m+per,per*m-per,per*(m+1)],`سعر القلم = ${toAr(ck)} ÷ ${toAr(k)} = ${toAr(per)}، إذن ${toAr(m)} × ${toAr(per)} = ${toAr(per*m)} ريالاً.`)}
 function gPerim(){if(pick([0,1])){const side=rand(3,12);return qz("quant",`محيط مربع طول ضلعه ${toAr(side)} سم. كم محيطه؟`,4*side,[4*side+4,4*side-4,side*3],`محيط المربع = ٤ × الضلع = ${toAr(4*side)} سم.`)}const per=4*rand(3,12);return qz("quant",`محيط مربع يساوي ${toAr(per)} سم. كم طول ضلعه؟`,per/4,[per/4+1,per/4-1,per/2],`الضلع = المحيط ÷ ٤ = ${toAr(per/4)} سم.`)}
 function gClock(){const names=["","الواحدة","الثانية","الثالثة","الرابعة","الخامسة","السادسة"];const h=rand(1,6),ang=30*h;return qz("quant",`عندما تشير الساعة إلى ${names[h]} تماماً، كم الزاوية بين عقربَيها؟`,ang,[ang+30,ang-30,ang+15],`كل ساعة = ٣٠°، وعند ${toAr(h)}:٠٠ الزاوية = ${toAr(ang)}°.`)}
@@ -440,10 +444,10 @@ function gPercent(){const rentP=pick([30,40,50]),expP=pick([20,30]),leftP=100-re
 function gPaths(){const p=rand(2,4),q=rand(2,4);return qz("quant",`عدد الطرق من (أ) إلى (ب) ${toAr(p)}، ومن (ب) إلى (ج) ${toAr(q)}. كم عدد الطرق من (أ) إلى (ج)؟`,p*q,[p+q,p*q+1,p*q-1],`نضرب: ${toAr(p)} × ${toAr(q)} = ${toAr(p*q)} طريقاً.`)}
 
 // ===== مولّدات المرونة والأنماط =====
-function fDouble(){const a=pick([1,2,3]);const q=[a];for(let i=0;i<4;i++)q.push(q[i]*2);const ans=q[4]*2;return qz("flex",`أكمل النمط: ${arSeq(q)} ، ...`,ans,[ans-a,q[4]+2,ans+2],`كل عدد ضعف الذي قبله: ${toAr(q[4])} × ٢ = ${toAr(ans)}.`)}
-function fTriple(){const a=rand(1,3);const q=[a];for(let i=0;i<3;i++)q.push(q[i]*3);const ans=q[3]*3;return qz("flex",`أكمل النمط: ${arSeq(q)} ، ...`,ans,[ans-a,q[3]+3,ans+3],`كل عدد = الذي قبله × ٣: ${toAr(q[3])} × ٣ = ${toAr(ans)}.`)}
-function fFib(){let a=rand(1,4),b=rand(1,5);const q=[a,b];for(let i=0;i<4;i++)q.push(q[q.length-1]+q[q.length-2]);const ans=q[5]+q[4];return qz("flex",`أكمل النمط: ${arSeq(q)} ، ...`,ans,[ans+1,ans-1,q[5]*2],`كل عدد = مجموع العددين قبله: ${toAr(q[4])} + ${toAr(q[5])} = ${toAr(ans)}.`)}
-function fSq(){const c=pick([0,1]);const q=[];for(let n=1;n<=4;n++)q.push(n*n+c);const ans=25+c;return qz("flex",`أكمل النمط: ${arSeq(q)} ، ...`,ans,[ans+2,ans-2,ans+5],`مربعات الأعداد${c?" + ١":""}: والتالي ٥²${c?" + ١":""} = ${toAr(ans)}.`)}
+function fDouble(){const a=pick([1,2,3]);const q=[a];for(let i=0;i<4;i++)q.push(q[i]*2);const ans=q[4]*2;return withPat(qz("flex",`أكمل النمط: ${arSeq(q)} ، ...`,ans,[ans-a,q[4]+2,ans+2],`كل عدد ضعف الذي قبله: ${toAr(q[4])} × ٢ = ${toAr(ans)}.`),q,ans)}
+function fTriple(){const a=rand(1,3);const q=[a];for(let i=0;i<3;i++)q.push(q[i]*3);const ans=q[3]*3;return withPat(qz("flex",`أكمل النمط: ${arSeq(q)} ، ...`,ans,[ans-a,q[3]+3,ans+3],`كل عدد = الذي قبله × ٣: ${toAr(q[3])} × ٣ = ${toAr(ans)}.`),q,ans)}
+function fFib(){let a=rand(1,4),b=rand(1,5);const q=[a,b];for(let i=0;i<4;i++)q.push(q[q.length-1]+q[q.length-2]);const ans=q[5]+q[4];return withPat(qz("flex",`أكمل النمط: ${arSeq(q)} ، ...`,ans,[ans+1,ans-1,q[5]*2],`كل عدد = مجموع العددين قبله: ${toAr(q[4])} + ${toAr(q[5])} = ${toAr(ans)}.`),q,ans)}
+function fSq(){const c=pick([0,1]);const q=[];for(let n=1;n<=4;n++)q.push(n*n+c);const ans=25+c;return withPat(qz("flex",`أكمل النمط: ${arSeq(q)} ، ...`,ans,[ans+2,ans-2,ans+5],`مربعات الأعداد${c?" + ١":""}: والتالي ٥²${c?" + ١":""} = ${toAr(ans)}.`),q,ans)}
 function fOpp(){const dict={"طويل":"قصير","كبير":"صغير","سريع":"بطيء","قوي":"ضعيف","مفتوح":"مغلق","صعب":"سهل","ثقيل":"خفيف","بعيد":"قريب","كثير":"قليل","النور":"الظلام","الفرح":"الحزن"};const keys=Object.keys(dict);const w=pick(keys);const correct=dict[w];const others=shuffle(keys.filter(k=>k!==w).map(k=>dict[k]).filter(v=>v!==correct)).slice(0,3);const opts=shuffle([correct,...others]);return{d:"flex",q:`ما ضدّ كلمة «${w}»؟`,c:opts,a:opts.indexOf(correct),w:`ضدّ «${w}» هو «${correct}».`}}
 // الهرم العددي (مُصلَح: c/a)
 function gPyramid(){const known=rand(2,12),other=rand(2,12),top=(known+other)*2;const m=mcNum(other,[other+2,other-2,Math.round(top/2)]);const knownOnLeft=Math.random()<0.5;const svg=pyramidSVG(toAr(top),knownOnLeft?toAr(known):"؟",knownOnLeft?"؟":toAr(known),knownOnLeft,!knownOnLeft);return{d:"flex",q:`هرم عددي: مجموع العددين السفليين × ٢ = العلوي. ما العدد الناقص؟`,svg,c:m.choices,a:m.answer,w:`العلوي ÷ ٢ = ${toAr(top/2)}، ثم ${toAr(top/2)} − ${toAr(known)} = ${toAr(other)}.`}}
@@ -1889,7 +1893,134 @@ function clipBuild(link){
   return{key:key,icon:meta.icon,label:meta.label,q:d.q||"",steps:steps,
     rule:d.ruleTxt||"",ans:d.ans};
 }
+// ===== كيف تُكتشَف قاعدة المتتالية — إجراءٌ منشور لا تأكيدُ قاعدة (٢٩ أغسطس) =====
+// سأل صاحب المشروع بعد لقطة شاشة: «ليش ما شرحت كيفية تحديد القاعدة؟ أصلاً ما هي
+// القواعد وكم عددها؟» — والمقطع الأوّل كان يؤكّد قاعدةً («نجمع ٣ في كل مرة») ولا
+// يُعلّم كيف يُعرَف أنها الجمع. وهذا خطأٌ بيداغوجي لا عيبُ ربطٍ فقط.
+//
+// **والإجراء مسمّى منشور**: طريقةُ الفروق المنتهية (Method of Finite Differences) —
+// مقرَّرٌ مدرسيّ عالمي: الفروق الأولى، فإن لم تثبت فالنِّسَب، فالفروق الثانية.
+// وعائلات القواعد خمس، وهي بعينها ما تُنتجه مولّداتنا: جمعٌ ثابت، وضربٌ ثابت،
+// وفرقٌ متزايد بانتظام (تربيعية)، ومجموع السابقَين، ومرتبطةٌ بالموضع.
+//
+// وثلاثة قيود من الأدبيات تحكم شكل العرض:
+//  • **Stacey 1989** (Educational Studies in Mathematics 20:147): أكثر خطأٍ موثَّق أن
+//    يعتمد الطالب قاعدةً من حدَّين بلا تجريبها على البقيّة ⇒ **خطوةُ تحقّقٍ إلزامية
+//    على كل الحدود**، وهي لقطةٌ قائمة بذاتها لا جملةٌ عابرة.
+//  • **Catrambone 1998** (JEP: General): المثال المحلول ينتقل إلى مسائل جديدة إن
+//    وُسمت أهدافه الفرعية بأسماء ⇒ **لكل لقطةٍ اسمٌ ظاهر** بين قوسين معقوفين.
+//  • **Pólya 1945**: «انظر إلى الوراء» — التحقّق جزءٌ من الحلّ.
+//
+// **وميزته الحاسمة**: لأنه لا يدّعي أيّ قاعدةٍ هي، فهو صحيحٌ لكل الأنواع الخمسة —
+// فينحلّ عيبُ المفتاح من أصله (tmplKey يمحو الأرقام فلا يفرّق بين جمعٍ وضربٍ
+// ومربّعات) بدل ترقيعه، ويعود الربط الذي رُفع.
+const SEQ_FAMILIES=[
+  {k:"add",  name:"جمعٌ ثابت"},
+  {k:"mul",  name:"ضربٌ ثابت"},
+  {k:"quad", name:"فرقٌ متزايد بانتظام"},
+  {k:"fib",  name:"مجموع السابقَين"},
+  {k:"pos",  name:"مرتبطة بموضع العدد"}
+];
+function seqDiffs(a){const d=[];for(let i=1;i<a.length;i++)d.push(a[i]-a[i-1]);return d}
+function seqAllSame(a){return a.length>0&&a.every(function(x){return x===a[0]})}
+// التشخيص بالترتيب المعياريّ نفسه الذي يُعلَّم: الفروق ثم النِّسَب ثم الفروق الثانية
+// ثم التراجعي ثم الموضع. ويعود بالعائلة وبالأرقام التي أثبتتها — لا بادّعاء.
+function seqDiagnose(pat){
+  const a=(pat||[]).map(Number).filter(function(x){return isFinite(x)});
+  if(a.length<3)return null;
+  const d1=seqDiffs(a);
+  if(seqAllSame(d1))return{kind:"add",d:d1[0],d1:d1};
+  const r=[];let ratioOk=a.every(function(x){return x!==0});
+  if(ratioOk){for(let i=1;i<a.length;i++)r.push(a[i]/a[i-1]);ratioOk=seqAllSame(r)&&isFinite(r[0])}
+  if(ratioOk)return{kind:"mul",r:r[0],d1:d1,ratios:r};
+  // صيغةُ الموضع تُحسب دائماً: متتاليةٌ تربيعية قد تكون مربّعات الترتيب نفسها،
+  // وذكرُ الوصفين معاً أصدق من اختيار أحدهما — وشرحُ السؤال نفسه يذكر الثاني.
+  let posForm=null;
+  for(const c of [0,1,-1]){
+    let ok=true;for(let i=0;i<a.length&&ok;i++)if(a[i]!==(i+1)*(i+1)+c)ok=false;
+    if(ok){posForm="n²"+(c>0?" + "+toAr(c):(c<0?" − "+toAr(-c):""));break}
+  }
+  const d2=seqDiffs(d1);
+  if(seqAllSame(d2)&&d2.length>0)return{kind:"quad",d2:d2[0],d1:d1,d2list:d2,posForm:posForm};
+  let fib=a.length>=3;
+  for(let i=2;i<a.length&&fib;i++)if(a[i]!==a[i-1]+a[i-2])fib=false;
+  if(fib)return{kind:"fib",d1:d1};
+  if(posForm)return{kind:"pos",form:posForm,posForm:posForm,d1:d1};
+  return{kind:"none",d1:d1};
+}
+// يُطبَّق ما استُنتج على كل حدٍّ معطًى — وهي خطوة Stacey التي يتخطّاها الطالب
+function seqCheckLine(a,dg){
+  const parts=[];
+  for(let i=1;i<a.length;i++){
+    if(dg.kind==="add")parts.push(toAr(a[i-1])+" + "+toAr(dg.d)+" = "+toAr(a[i]));
+    else if(dg.kind==="mul")parts.push(toAr(a[i-1])+" × "+toAr(dg.r)+" = "+toAr(a[i]));
+    else if(dg.kind==="fib"&&i>=2)parts.push(toAr(a[i-2])+" + "+toAr(a[i-1])+" = "+toAr(a[i]));
+    else if(dg.kind==="pos"||(dg.kind==="quad"&&dg.posForm))parts.push(toAr(i)+"² ⇐ "+toAr(a[i-1]));
+  }
+  return parts.slice(0,3).join(" · ");
+}
+function seqNextLine(a,dg,next){
+  const last=a[a.length-1];
+  if(dg.kind==="add")return toAr(last)+" + "+toAr(dg.d)+" = "+toAr(next);
+  if(dg.kind==="mul")return toAr(last)+" × "+toAr(dg.r)+" = "+toAr(next);
+  if(dg.kind==="fib")return toAr(a[a.length-2])+" + "+toAr(last)+" = "+toAr(next);
+  if(dg.kind==="quad")return "الفرق التالي = "+toAr(seqDiffs(a)[seqDiffs(a).length-1]+dg.d2)+"، إذن "+toAr(last)+" + ذلك = "+toAr(next);
+  return "الحدّ التالي = "+toAr(next);
+}
+// يبني مقطع المتتالية من أرقام السؤال نفسه — لا من مثالٍ آخر
+function clipSeqBuild(q){
+  const a=(q&&Array.isArray(q.pat))?q.pat.map(Number):null;
+  if(!a||a.length<3)return null;
+  const dg=seqDiagnose(a);
+  if(!dg||dg.kind==="none")return null;
+  const fam=SEQ_FAMILIES.find(function(f){return f.k===dg.kind});
+  const d1=dg.d1.map(function(x){return toAr(x)}).join(" · ");
+  const diffLine=(function(){const out=[];for(let i=1;i<a.length;i++)out.push(toAr(a[i])+" − "+toAr(a[i-1])+" = "+toAr(a[i]-a[i-1]));return out.slice(0,3).join(" · ")})();
+  const steps=[];
+  // ١) اطرحي كل حدٍّ ممّا قبله — الاختبار الأوّل دائماً
+  steps.push("<b>[١ · اطرحي كل حدٍّ ممّا قبله]</b><br>"+diffLine);
+  // ٢) هل الفروق ثابتة؟ — القرار، بنعم أو لا صريحة
+  if(dg.kind==="add")
+    steps.push("<b>[٢ · هل الفروق ثابتة؟]</b><br>نعم، كلُّها "+toAr(dg.d)+" ⇐ القاعدة <b>جمعٌ ثابت</b>");
+  else{
+    steps.push("<b>[٢ · هل الفروق ثابتة؟]</b><br>لا ("+d1+") ⇐ ننتقل للاختبار التالي");
+    if(dg.kind==="mul")
+      steps.push("<b>[٣ · اقسمي كل حدٍّ على ما قبله]</b><br>"+
+        (function(){const o=[];for(let i=1;i<a.length;i++)o.push(toAr(a[i])+" ÷ "+toAr(a[i-1])+" = "+toAr(dg.r));return o.slice(0,3).join(" · ")})()+
+        "<br>ثابتة ⇐ القاعدة <b>ضربٌ ثابت</b>");
+    else if(dg.kind==="quad")
+      steps.push("<b>[٣ · اطرحي الفروق من بعضها]</b><br>الفروق الثانية كلُّها "+toAr(dg.d2)+
+        " ⇐ القاعدة <b>فرقٌ متزايد بانتظام</b>"+
+        (dg.posForm?("<br>وهي هنا نفسها <b>مربّعات الترتيب</b>: "+dg.posForm+" — وصفان لقاعدةٍ واحدة"):""));
+    else if(dg.kind==="fib")
+      steps.push("<b>[٣ · اجمعي كل حدَّين متجاورين]</b><br>"+seqCheckLine(a,dg)+
+        "<br>⇐ القاعدة <b>مجموع السابقَين</b>");
+    else if(dg.kind==="pos")
+      steps.push("<b>[٣ · قارني بمربّعات الترتيب]</b><br>"+seqCheckLine(a,dg)+
+        "<br>⇐ القاعدة <b>مرتبطة بالموضع</b>: "+dg.form);
+  }
+  // ٤) التحقّق على كل الحدود — خطوة Stacey، لقطةٌ قائمة بذاتها
+  const chk=seqCheckLine(a,dg);
+  steps.push("<b>[٤ · جرّبي القاعدة على كل الحدود]</b><br>"+(chk||"طبّقي القاعدة من الأوّل حتى الأخير")+
+    "<br>تنطبق على الجميع ⇐ صحيحة. ولو فشلت على حدٍّ واحد فهي خطأ.");
+  // ٥) التطبيق
+  if(q.next!=null)steps.push("<b>[٥ · طبّقي على الأخير]</b><br>"+seqNextLine(a,dg,q.next));
+  return{key:"seqproc",icon:"🔢",label:"كيف أعرف القاعدة؟",
+    q:"المتتالية: "+a.map(function(x){return toAr(x)}).join(" ، ")+" ، ...",
+    steps:steps,
+    rule:"الترتيب ثابت: اطرحي (فروق) ← اقسمي (نِسَب) ← اطرحي الفروق (فرق متزايد) ← اجمعي حدَّين (مجموع سابقَين) ← قارني بالموضع. ثم <b>جرّبي على كل الحدود قبل أن تعتمديها</b>."};
+}
 let clipOn=null,clipStep=0;
+// مقطع المتتالية يُبنى من السؤال الجاري لا من جدول الربط — فلا يمكن أن يعرض
+// قاعدةً من عائلةٍ أخرى مهما تشابهت المفاتيح.
+function clipOpenSeq(){
+  const q=filtered&&filtered[idx];
+  const c=clipSeqBuild(q);
+  if(!c)return;
+  clipOn=c;clipStep=0;
+  try{logAnswer("gen","clip_open",null,"seqproc",null,null,{q_text:"فُتح مقطع الشرح: "+c.label+" — "+c.q})}catch(e){}
+  render();
+}
 function clipOpen(link){
   const c=clipBuild(link);
   if(!c)return;
@@ -1928,6 +2059,10 @@ function clipHTML(){
 // إرشادٌ اختياري كزرّ «مثال محلول» في الكتابة، ويُسجَّل فتحُه ليُقاس أثره لاحقاً.
 function clipButtonHTML(q){
   if(clipOn)return "";
+  // المتتاليات أوّلاً: مقطعُها إجرائيّ يُبنى من أرقام السؤال نفسه، فيصحّ لكل
+  // عائلاتها الخمس — ولا يمرّ بجدول الربط أصلاً فينتفي التباسُ المفتاح.
+  if(q&&Array.isArray(q.pat)&&clipSeqBuild(q))
+    return `<button class="btn" style="background:#0D9488;margin-top:8px" onclick="clipOpenSeq()">🎬 كيف أعرف القاعدة؟ خطوة خطوة</button>`;
   const k=q?tmplKey(q):"",key=k?QZ_CARD_FADE_LINK[k]:null;
   if(!key||!CLIP_MAKERS[key])return "";
   const link=key+(CLIP_VARIANT[k]?"/"+CLIP_VARIANT[k]:"");
