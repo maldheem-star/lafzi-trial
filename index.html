@@ -1098,13 +1098,20 @@ function spreadTemplates(list){
 // المتتالية. والربط يُضاف **حيث يُعلّم موضوعُ التقوية الطريقةَ نفسها** لا حيث يتشابه
 // الاسم: `gPaths` و`gFraction` و`gCompound` أخطأتها كذلك وتُركت بلا ربط لأن لا موضوع
 // تقويةٍ يشرح طريقتها — ربطٌ مزيّف يعرض شرحاً لا يخصّ السؤال أسوأ من غياب الزرّ.
-// وصيغة القيمة «مفتاح» أو «مفتاح/نوع فرعي» لأن `fadeMakeSeq` تُنتج نوعين (متتالية/نسبة)
-// فيُطلَب المطابق لسؤالها لا ما يقع عشوائياً.
+// **والقيمة تبقى مفتاح موضوعٍ نقيّاً** — `startFade(fadeLink)` في بطاقة الخطأ المتكرّر
+// يقرأ هذا الجدول أيضاً، ومفتاحٌ مركّب («seq/ratio») لا يعرفه `fadeMakeQuestion`.
+// وقد كتبتُه مركّباً أوّلاً فكسرتُ عقد الجدول تحت مستهلكٍ آخر — كشفه `test_fadelink`
+// لا الاستعمال. فالنوع الفرعي في جدولٍ منفصلٍ لا يقرؤه إلا مقطعُ الشرح.
 const QZ_CARD_FADE_LINK={};
 [[gAngleEqualRays,"angles"],[gPercent,"percent"],[gMedian,"median"],[gCube,"cube"],[gPyramid,"pyramid"],
- [gPrice,"seq/ratio"],[gArith,"seq/seq"],[gGeo,"seq/seq"],[gConsec,"median"],
- [fDouble,"seq/seq"],[fTriple,"seq/seq"]]
+ [gPrice,"seq"],[gArith,"seq"],[gGeo,"seq"],[gConsec,"median"],
+ [fDouble,"seq"],[fTriple,"seq"]]
   .forEach(function(pair){try{QZ_CARD_FADE_LINK[tmplKey(pair[0]())]=pair[1]}catch(e){}});
+// النوع الفرعي للمقطع وحده: `fadeMakeSeq` تُنتج نوعين (نسبة/متتالية)، فيُطلَب المطابق
+// لسؤالها لا ما يقع عشوائياً — وإلا عُرض شرحُ الأقلام لسؤال متتالية.
+const CLIP_VARIANT={};
+[[gPrice,"ratio"],[gArith,"seq"],[gGeo,"seq"],[fDouble,"seq"],[fTriple,"seq"]]
+  .forEach(function(pair){try{CLIP_VARIANT[tmplKey(pair[0]())]=pair[1]}catch(e){}});
 // والتوزيع وحده لا يكفي حين يُنتج المولّد سبعة من قالب واحد في اثني عشر سؤالاً: لا
 // ترتيب يُباعد بينها حينئذ. فيُسحب بحصّة — ثلث العدد لكل قالب على الأكثر، وإن نفدت
 // المحاولات قُبل ما جاء (سؤال أقلّ تنويعاً خيرٌ من سؤال ناقص).
@@ -1913,8 +1920,9 @@ function clipHTML(){
 // إرشادٌ اختياري كزرّ «مثال محلول» في الكتابة، ويُسجَّل فتحُه ليُقاس أثره لاحقاً.
 function clipButtonHTML(q){
   if(clipOn)return "";
-  const link=q?QZ_CARD_FADE_LINK[tmplKey(q)]:null;
-  if(!link||!CLIP_MAKERS[String(link).split("/")[0]])return "";
+  const k=q?tmplKey(q):"",key=k?QZ_CARD_FADE_LINK[k]:null;
+  if(!key||!CLIP_MAKERS[key])return "";
+  const link=key+(CLIP_VARIANT[k]?"/"+CLIP_VARIANT[k]:"");
   return `<button class="btn" style="background:#0D9488;margin-top:8px" onclick="clipOpen('${link}')">🎬 شاهدي الشرح خطوة خطوة</button>`;
 }
 function fadeDedupe(correct,dist){const out=[];for(const d of dist){if(d!==correct&&!out.includes(d))out.push(d)}let p=1;while(out.length<3){[correct+p,correct-p].forEach(x=>{if(out.length<3&&x>0&&x!==correct&&!out.includes(x))out.push(x)});p++}return out.slice(0,3)}
@@ -7826,6 +7834,15 @@ function writeCaptureDraft(){
 //   لصق/إفلات ⇒ النصّ لم يُؤلَّف هنا أصلاً؛
 //   تركيبٌ صوتي (composition) ⇒ إملاء، فلا تدخل تصحيحاته البنك كما تقرّر في ٢٥ أغسطس؛
 //   استبدالٌ باقتراح ⇒ كتابةٌ عادية بالأصابع، لا يُسقَط منها شيء.
+// **والاستبدالُ باقتراحٍ يُصدَّق ما دام بحجم كلمة** — وإلا فهو ليس تصحيحاً لكلمة.
+// المواصفة تُعرّف `insertReplacementText` بأنه استبدالُ نصٍّ قائم بمدقّقٍ إملائي أو
+// تصحيحٍ تلقائي، وذلك بطبيعته **كلمةٌ واحدة**. فدفعةٌ أطول من أطول كلمةٍ معقولة ليست
+// تصحيحَ كلمة بل إدخالُ نصٍّ كامل (إملاءٌ صوتي يُسلّم جملةً دفعةً واحدة).
+// والحدُّ يفصل ما قِيس فعلاً بلا تداخل: أكبر دفعة تصحيحٍ تلقائي مرصودة **٩** محارف
+// (إلياس، ستّ حالات)، وأصغر دفعة إدخالٍ كامل مرصودة **٥١** (محمد) و٦٤ في حالة
+// الاختبار. فأيّ حدٍّ بينهما يفصل، واخترتُ ما يُبرّره **معنى الإشارة** لا منتصف
+// المسافة: أطول كلمةٍ يكتبها متعلّمٌ في هذا المستوى دون هذا بكثير.
+const WRITE_REPLACE_MAX=25;
 const WRITE_PASTE_TYPES=["insertFromPaste","insertFromDrop"];
 const WRITE_DICTATE_TYPES=["insertCompositionText","insertFromComposition"];
 let writeMaxBurst=0,writePrevLen=0,writeDictated=false,writePasted=false,writeInputTypes="";
@@ -7842,6 +7859,8 @@ function writeLive(ev){
     if(writeInputTypes.indexOf(t)<0)writeInputTypes+=(writeInputTypes?"|":"")+t;
     if(WRITE_DICTATE_TYPES.indexOf(t)>=0)writeDictated=true;
     if(WRITE_PASTE_TYPES.indexOf(t)>=0)writePasted=true;
+    // استبدالٌ بحجم كلمة = تصحيحٌ تلقائي (لا يُعاقَب)، وأطولُ منه = نصٌّ سُلِّم دفعةً
+    if(t==="insertReplacementText"&&d>WRITE_REPLACE_MAX)writeDictated=true;
   }
   if(box)box.innerHTML=writeCritHTML(writeCur(),el.value);
 }

@@ -19,8 +19,22 @@ await page.waitForFunction(()=>typeof QZ_CARD_FADE_LINK!=='undefined');
 console.log('\n١) خريطة الربط مبنيّة من مولّدات حقيقية — لا نصّ مكرَّر يدوياً');
 const link=await page.evaluate(()=>QZ_CARD_FADE_LINK);
 const keys=Object.keys(link);
-ok(keys.length===5,`خمسة قوالب مربوطة (${keys.length})`);
-ok(Object.values(link).every(v=>["angles","percent","median","cube","pyramid"].includes(v)),'وكلّها لمواضيع تقوية موجودة فعلاً');
+// حدٌّ أدنى لا عدد: القائمة «تُوسَّع بسطر واحد كلّما تأكّد قالبٌ آخر» بنصّ تعليقها،
+// فتثبيتُ العدد يكسر كلَّ توسعةٍ مشروعة ولا يقول أيُّ ربطٍ تغيّر — درس ١٨ أغسطس.
+ok(keys.length>=5,`القوالب المربوطة لا تقلّ عن خمسة (${keys.length})`);
+// والصحّة تُقاس بوجود الموضوع في FADE_TOPICS نفسها لا بقائمةٍ مكتوبة هنا تتقادم
+const topics=await page.evaluate(()=>FADE_TOPICS.map(t=>t.key));
+const badLinks=Object.values(link).filter(v=>topics.indexOf(v)<0);
+ok(badLinks.length===0,'وكلّها لمواضيع تقوية موجودة فعلاً'+(badLinks.length?' — دخيل: '+badLinks.join(','):''));
+// وقيمةُ الربط مفتاحٌ نقيّ يقبله startFade — لا مفتاحٌ مركّب («seq/ratio») يكسره
+ok(Object.values(link).every(v=>String(v).indexOf('/')<0),'وقيمتها مفتاحٌ نقيّ يقبله startFade');
+{
+  const varOk=await page.evaluate(()=>{
+    const keys=Object.keys(CLIP_VARIANT);
+    return keys.length>0&&keys.every(function(k){return QZ_CARD_FADE_LINK[k]==="seq"});
+  });
+  ok(varOk,'والنوع الفرعي في جدولٍ منفصل، ولا يُستعمل إلا لقوالب seq');
+}
 const anglesKey=keys.find(k=>link[k]==='angles');
 ok(!!anglesKey&&anglesKey.includes('مقسومة بأشعّة')&&anglesKey.includes('#'),'ومفتاح الزوايا بلا أرقام (منزوعة بـ#) فيطابق أيّ مثيل من نفس القالب');
 

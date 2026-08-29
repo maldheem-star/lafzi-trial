@@ -103,6 +103,24 @@ console.log('\n٣) اللصق لا يُمنح نجاحاً، والتصحيح ا
   ok(r.dict.indexOf('insertReplacementText')<0,'و«insertReplacementText» خرج من قائمة الإملاء — تصحيحٌ تلقائي لا إملاء');
   ok(r.paste.indexOf('insertReplacementText')<0,'ولا هو لصق');
   ok(r.dict.indexOf('insertCompositionText')>=0,'والتركيب الصوتي إملاءٌ كما كان');
+  // والحدُّ يفصل الحالتين المقاستين: تصحيح كلمة (٧-٩) لا يُعاقَب، وتسليم جملة يُمسَك
+  const burst=await p.evaluate(()=>{
+    const out={};
+    const run=function(len){
+      startWrite();writeBurstReset("");
+      const el=document.getElementById('writeIn');
+      el.value=new Array(len+1).join('x');
+      el.dispatchEvent(new InputEvent('input',{bubbles:true,inputType:"insertReplacementText"}));
+      return{dict:writeDictated,burst:writeMaxBurst};
+    };
+    out.word=run(9);       // أكبر دفعة تصحيحٍ تلقائي مرصودة عند إلياس
+    out.sentence=run(64);  // دفعة الجملة في حالة test_localize
+    out.cap=WRITE_REPLACE_MAX;
+    return out;
+  });
+  ok(burst.word.dict===false,'دفعةُ كلمة ('+burst.word.burst+') لا تُوسَم إملاءً — إلياس لا يُعاقَب على لوحة هاتفه');
+  ok(burst.sentence.dict===true,'ودفعةُ جملة ('+burst.sentence.burst+') تُوسَم — الثغرة مسدودة');
+  ok(burst.cap>9&&burst.cap<51,'والحدّ بين ما قِيس فعلاً — '+burst.cap+' (٩ تصحيحاً، ٥١ أصغرَ لصقٍ مرصود)');
   // الأثر الفعلي على الدرجة: نصٌّ ملصوق يبلغ عدد الكلمات ولا يُحتسب
   const eff=await p.evaluate(async()=>{
     startWrite();
