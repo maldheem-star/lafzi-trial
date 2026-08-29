@@ -34,7 +34,7 @@ const shape=(p,keepFresh)=>p.evaluate((keepFresh)=>{
   const buildIds=items.filter(function(i){return i.t==='build'}).map(function(i){return i.id});
   return{n:items.length,
     secs:items.reduce(function(a,i){return a+(ENG_SECS[i.t]||30)},0),
-    budget:PLAN_SECS, newCap:NEW_CAP, reserve:plan.reserve,
+    budget:PLAN_SECS, newCap:NEW_CAP, reserve:plan.reserve, planSecs:plan.secs,
     byType:byT,
     newN:items.filter(function(i){return i._isNew}).length,
     newIds:items.filter(function(i){return i._isNew}).map(function(i){return i.id}),
@@ -60,7 +60,9 @@ ok((A.byType.grammar||0)>0,'والقواعد حاضرة — '+(A.byType.grammar|
 ['vocab','dict','build'].forEach(function(t){
   ok((A.byType[t]||0)>0,'ونوع «'+t+'» حاضر — '+(A.byType[t]||0));
 });
-ok(A.secs<=A.budget+120,'والجلسة لم تطُل عن ميزانيتها — '+A.secs+'ث من '+A.budget);
+// الكمّية القاطعة هي عدّاد الاختيار نفسه (`plan.secs`)، لا مجموعُ عناصر الخطّة:
+// الأخير يشمل بطاقات الشرح المُقحَمة **بعد** حساب الميزانية، فيتذبذب بعددها.
+ok(A.planSecs<=A.budget,'والاختيار لم يتجاوز الميزانية — '+A.planSecs+'ث من '+A.budget);
 
 console.log('\n٣) وبلا جديدٍ لا تُقتطع دقيقة — الحصّة الأدنى بين الحاجة والسقف');
 const B=await(async()=>{const p=await mk();const r=await shape(p,false);await p.close();return r})();

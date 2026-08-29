@@ -2186,6 +2186,25 @@ function seqEndName(q,val){
   return "عدداً من داخلها";
 }
 function seqWantName(q){return q&&q.want==="mid"?"الأوسط":"الأصغر"}
+// ===== وآليةٌ ثانية تُسمّى: تكبيرُ الحجم بالمربّع لا بالمكعّب — درس ٢٩ أغسطس =====
+// بياناتُ هيا (٢٧ أغسطس، ٠ من ١٢ في الكمّي بزمنٍ وسيط ٢٦٫٤ث — اجتهادٌ لا تسرّع):
+// «مكعّب حجمه ٦٤ ⇒ اختارت ٢٥٦» و«مكعّب حجمه ٢٧ ⇒ اختارت ١٠٨»، وكلاهما **الحجم × ٤**
+// بالضبط. أي أنها تُكبّر بمعامل ٢² (نسبة المساحات) لا ٢³ (نسبة الأحجام) — آليةٌ واحدة
+// وقعت مرّتين في الجلسة نفسها، لا خطأ حساب.
+// والمموّه `v*4` مزروعٌ في `gCube` أصلاً عمداً، فما نقص هو **اسمه في السجلّ**: بلا
+// الاسم تُقرأ الإجابتان «فرق −٢٥٦» و«فرق −١٠٨» ولا يُرى أنهما آليةٌ واحدة.
+// والعلاج موجودٌ ولا يُبنى: `QZ_CARD_FADE_LINK` يربط `gCube` بموضوع التقوية "cube"
+// أصلاً، فتسميةُ الآلية تُشغّل ما هو مبنيّ.
+const CUBE_SCALE_BUG="cube_scale_square";
+function cubeScaleName(q,val){
+  if(!q||q.d!=="quant"||val==null)return null;
+  const t=String(q.q||"");
+  if(!/مكعّب/.test(t)||!/ضاعف/.test(t))return null;
+  const correct=parseArNum(q.c&&q.c[q.a]!=null?String(q.c[q.a]):null);
+  if(correct==null||!isFinite(correct))return null;
+  // ٢³ = ٨ والمختار ٢² = ٤ من الحجم الأصلي، أي نصف الصواب بالضبط
+  return (val*2===correct)?"ضربتِ في ٤ (نسبة المساحات) والصواب ٨ (نسبة الأحجام)":null;
+}
 // البوّابة تُسلَّح بتكرار الاسم لا بأوّل زلّة (SHAPE_ARM=2)، كبقيّة بوّابات المشروع،
 // وتنحلّ بالصواب — فلا تُعاقَب من لا تحتاجها. ونمطها نمط بوّابة النطاق في النسبة
 // (pctArm/pctPickBand) بالضبط: خطوةٌ واحدة تُقرّ قبل أن تُعرض الخيارات، لا أداةٌ جديدة.
@@ -5327,15 +5346,31 @@ async function coachFinish(){
   // الصدى يُقاس على ما عُرض فعلاً: إن لم تُعرض جمل فلا حكم، لا صدى ولا تأليف
   if(coachShowSays())echoRecord(heard,coachSaysNow());
   // ٢) كيف كان نطقها؟ مرجع Azure هو نصّها نفسه
-  let pct=null,weak=[];
+  // ===== ومسطرةُ النطق تُسجَّل هنا كما تُسجَّل هناك — درس ٢٩ أغسطس =====
+  // بياناتٌ حيّة: ثماني جملٍ منطوقة لإلياس، `engine` **فارغٌ في الثمانية** ومعه
+  // `accuracy_pct`/`completeness_pct` — بينما `weak_phonemes` مملوءٌ (`r:0, p:9, l:39`).
+  // أي أن Azure يعمل فعلاً و**الحقول تُهمَل عند الكتابة**: ثغرةُ تسجيل لا عطلٌ وظيفي،
+  // وهي نفس صنف ما أُصلح في `speakFinish` (٢٥ أغسطس) ولم يُوصَل هنا.
+  // وأثرها أن تشخيص المحادثة يعمى عن: أي مسطرةٍ قاست، وهل فشلت المحاذاة، وهل تعارضت
+  // الدرجة مع الاكتمال — وقد رُصد فعلاً صفٌّ بدرجة ١٠٠٪ لنصٍّ مفرَّغٍ مضطرب ومعه `r:0`.
+  let pct=null,weak=[],azSc=null,azFail="";
   try{
     const az=await azureTry(heard);
-    if(az.data){const sc=azureToScore(heard,az.data);pct=sc.pct;weak=sc.weak||[]}
-  }catch(e){}
+    if(az.data){azSc=azureToScore(heard,az.data);pct=azSc.pct;weak=azSc.weak||[]}
+    else azFail=az.fail||"azure_fail";
+  }catch(e){azFail="azure_throw"}
   coachMsgs.push({role:"user",text:heard,pct:pct,weak:weak});
   const said=coachMsgs.filter(function(m){return m.role==="user"}).length;
   logAnswer("coach","say",null,heard.slice(0,600),scene?scene.id:null,ms,
     {lesson:scene?scene.id:null,score_pct:num0(pct),weak_phonemes:weakPhonemeStr(weak),
+     // نفس حقول `speakFinish` بالضبط، فيُقارَن القسمان بمسطرةٍ واحدة
+     // `undefined` يُسقط الحقل عند التحويل إلى JSON، فلا يُكتب عمودٌ بلا معنى
+     engine:azSc?"azure":undefined,
+     judged_by:azSc?azSc.by:undefined,
+     accuracy_pct:azSc?num0(azSc.accuracy):undefined,
+     fluency_pct:azSc?num0(azSc.fluency):undefined,
+     completeness_pct:azSc?num0(azSc.completeness):undefined,
+     azure_fail:azSc?(azSc.disagree?"misaligned_pass":(azSc.aligned?null:"misaligned")):(azFail||null),
      // الخام يبقى في السجلّ حين يختلف: التثبيت على العرض لا على البيانات
      q_text:snapped?("سُمع: "+rawHeard).slice(0,200):null});
   render();
@@ -11824,6 +11859,14 @@ function choose(i){
     shapeRecord(SEQ_END_BUG,true);
     if(shapeArmed(SEQ_END_BUG))seqArm();
   }else if(ok&&Array.isArray(q.seq)){shapeRecord(SEQ_END_BUG,false);seqClear()}
+  // وآليةُ تكبير الحجم تُسمّى بنفس العُرف: الاسم يدخل السطر، والعدّاد يُجمَّع بالاستعلام
+  const cubeName=!ok?cubeScaleName(q,parseArNum(ansTxt)):null;
+  if(cubeName){
+    ansShape=(ansShape||"")+" · "+CUBE_SCALE_BUG+" ("+cubeName+")";
+    shapeRecord(CUBE_SCALE_BUG,true);
+  }else if(ok&&/مكعّب/.test(String(q.q||""))&&/ضاعف/.test(String(q.q||""))){
+    shapeRecord(CUBE_SCALE_BUG,false);
+  }
   // ===== ومعرّفٌ للسؤال: بلاه لا تباعد ولا منعَ تكرار ولا تمدّد — درس ٢٩ أغسطس =====
   // كان `item_id` فارغاً في كل صفوف اللفظي والعلمي والكمّي والمرونة (١٢٢ صفّاً عند هيا
   // في ثلاثة أيام)، فسجلُّ العرض العابر للأيّام و`seenSeed` من الخادم عمياوان عنها.
