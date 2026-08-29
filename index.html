@@ -278,7 +278,29 @@ function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor
 // **وحدُّه يُقال**: يكشف تكرار **النصّ** لا تشابه **الموضوع**. وفقرتا الطبخ كُشفتا لأنهما
 // تتقاسمان مطلع «Last Saturday, I joined the»؛ ولو اختلفت صياغتهما تماماً لمرّتا.
 // فهو يمسك التوأم القريب لا كلَّ تكرارٍ موضوعي، ولا يُدَّعى أكثر من ذلك.
+// ===== والعتبة تختلف بالقسم لا بالطبقة — درس ٢٩ أغسطس =====
+// شكا إلياس أن «الكتابة متكررة»، والسجلّ يقول السبب صراحةً: **٣٠ إسقاطاً بسبب توأم
+// الجلسة في ثلاثة أيام، كلُّها كتابة** (`write · wr_a2_sc6`…). فبنكه لم يكن يُستنفَد،
+// بل الجلسة تذبحه قبل أن يصله.
+// والقياس على أزواجٍ **متمايزة يقيناً** داخل المستوى الواحد (نفس منهج ٢٦ أغسطس):
+//   استماع/قراءة/قواعد/STEP: ٠٪ من ٤١٦ زوجاً يتجاوز ٠٫٠٢ · فيديو ٣٪ · minpair ١٪
+//   **كتابة: ٣١٪ من ٣٠٣، وأقصى تشابهٍ متمايز ٠٫٣٤٨** — لأن نصوصها تتشارك قالب الامتحان
+//   («Combine these two sentences into ONE sentence using …») حتماً لا صدفةً.
+// أي أن عتبةً واحدة ترفض **ثلث** بنك الكتابة المتمايز.
+//
+// **وهذا خطأٌ منّي أُصلحه لا عيبٌ اكتُشف**: يوم ٢٦ أغسطس قِستُ هذا التوزيع بعينه
+// وخفّفتُ عتبة **التخزين** (`storeTwinThr`) ونسيتُ عتبة **الجلسة**. فطبقتان تريان
+// النصّ نفسه وتحكمان عليه حكمين متناقضين.
+// والعلاج **استثناءٌ مشترك لا رقمٌ ثالث**: الطبقتان تبقيان بأرضيّتيهما (الجلسة أشدّ
+// لأن غرضها ألّا يظهر متشابهان في جلسةٍ واحدة، والتخزين أرخى لأن غرضه منعُ المكرّر
+// وحده)، لكن **إعفاء الكتابة وminpair واحدٌ فيهما** لأنه من طبيعة نصّهما لا من طبقة.
+// وفيديو ٣٪ فوق ٠٫٠٢ (أقصاه ٠٫٠٣١) — تُرك بلا استثناء: نسبةٌ صغيرة، ولا يُضاف رقمٌ
+// بلا حاجةٍ تُقاس.
 const GEN_TWIN=0.02, TWIN_K=3;
+const TWIN_TEMPLATED=/write|minpair/;   // بنوكٌ يتقاسم عناصرها قالباً بنيوياً
+function twinThrFor(name){
+  return TWIN_TEMPLATED.test(String(name||""))?STORE_TWIN_LOOSE:GEN_TWIN;
+}
 function twinShingles(t){
   const w=writeTokens(t),s=new Set();
   for(let i=0;i+TWIN_K<=w.length;i++)s.add(w.slice(i,i+TWIN_K).join(" "));
@@ -304,16 +326,17 @@ function itemText(it){
 // يُسقَط اللاحق المشابه لسابقٍ مُبقًى، ثم يُكمَل النقص من المخزون — الجلسة لا تنقص
 // عن حدّها (قاعدة ١٨ أغسطس)، فإن لم يوجد بديلٌ متمايز عاد المشابه ولا تخوى الجلسة.
 function planNoTwins(out,POOL,N,domain){
+  const thr=twinThrFor(domain);
   const kept=[],dropped=[];
   out.forEach(function(it){
-    const twin=kept.some(function(k){return twinSim(itemText(k),itemText(it))>=GEN_TWIN});
+    const twin=kept.some(function(k){return twinSim(itemText(k),itemText(it))>=thr});
     (twin?dropped:kept).push(it);
   });
   if(!dropped.length)return out;
   const have=new Set(kept.map(function(i){return i.id}));
   shuffle(POOL).forEach(function(c){
     if(kept.length>=N||have.has(c.id))return;
-    if(kept.some(function(k){return twinSim(itemText(k),itemText(c))>=GEN_TWIN}))return;
+    if(kept.some(function(k){return twinSim(itemText(k),itemText(c))>=thr}))return;
     kept.push(c);have.add(c.id);
   });
   // ولا تُترك الجلسة ناقصةً: يعود المُسقَط إن لم يوجد بديل
@@ -336,17 +359,21 @@ function planNoTwins(out,POOL,N,domain){
 // عرضاً على ١٧ عنصراً عند إلياس.
 // والترتيب هنا لا يُقصي أحداً — يقدّم ما لم يُرَ قطّ، ثم الأقدم عهداً، ثم المحجوب —
 // فتبقى قاعدة «الجلسة لا تنقص عن حدّها» (١٨ أغسطس) قائمةً بحرفها.
+// رتبةُ العنصر في سجلّ العرض: ما لم يُعرض قطّ أوّلاً، ثم الأقدم عهداً، ثم المحجوب،
+// وما عُرض اليوم أخيراً دائماً. استُخرجت دالّةً مشتركة (٢٩ أغسطس) لأن أقسام القدرات
+// تحتاجها بمعرّفٍ من نوعٍ آخر (`tmplKey` لا `id`) — والقاعدة واحدة فلا تُكتب مرّتين.
+function seenRank(key,seen,today){
+  const r=seen[String(key)];
+  if(!r)return -1;                       // لم يُعرض قطّ: الأوّل دائماً
+  if(r.last===today)return 1e9;          // عُرض اليوم: الأخير دائماً — لا يجدوله FSRS أصلاً
+  return seenBlockedFor(r)>0?1e6-(today-r.last):(today-r.last)*-1+1e3;
+}
 function topUpPlan(out,POOL,N,domain){
   if(out.length>=N)return out;
   const have=new Set(out.map(function(i){return i.id}));
   const seen=seenLoad(),today=seenDay();
   const cand=POOL.filter(function(i){return !have.has(i.id)});
-  const rank=function(i){
-    const r=seen[String(i.id)];
-    if(!r)return -1;                       // لم يُعرض قطّ: الأوّل دائماً
-    if(r.last===today)return 1e9;          // عُرض اليوم: الأخير دائماً — لا يجدوله FSRS أصلاً
-    return seenBlockedFor(r)>0?1e6-(today-r.last):(today-r.last)*-1+1e3;
-  };
+  const rank=function(i){return seenRank(i.id,seen,today)};
   const sorted=shuffle(cand).sort(function(a,b){return rank(a)-rank(b)});
   const filled=out.concat(sorted).slice(0,N);
   try{planSeenReport(filled,cand,N,domain)}catch(e){}
@@ -949,7 +976,26 @@ function uniqueFromGens(gens,maxTries){
 // يفلتر قائمة أسئلة (من الذكاء الاصطناعي أو البنك) مبقياً على غير المعروض فقط
 function dedupeList(arr){const out=[];(arr||[]).forEach(q=>{if(!isSeen(q)){out.push(q);markSeen(q)}});return out}
 // يأخذ أول "need" سؤالاً غير معروض من قائمة (تُستخدم لتعبئة النقص من البنك الاحتياطي)
-function takeUniqueFrom(arr,need){const out=[];for(const q of (arr||[])){if(out.length>=need)break;if(!isSeen(q)){out.push(q);markSeen(q)}}return out}
+// ===== التنويع كان جلسيّاً فقط، فتكرّر اللفظي ٤٤٪ عبر الأيّام — درس ٢٩ أغسطس =====
+// `isSeen` تقرأ `sessionSeenQuestions`، وهي مجموعةٌ في الذاكرة تُمحى بإعادة التحميل.
+// فالبنك الثابت (VERBAL/SCIENCE) لا يتذكّر شيئاً بين الجلسات: قِيس على هيا ٤٤٪ تكراراً
+// في اللفظي و٣٦٪ في العلمي خلال ثلاثة أيام، وظهر «القفاز يُلبَس في اليد» و«من جَدَّ»
+// في يومين متتاليين.
+// والعلاج **وصلٌ لا بناء**: سجلّ العرض العابر للأيّام (`seenLoad`) قائمٌ ويُبذَر من
+// الخادم عند الإقلاع، ويخدم البانيات التسع أصلاً — إنما كان أعمى عن هذه الأقسام لأن
+// صفوفها بلا `item_id` (١٢٢ صفّاً عند هيا). فيُوصَل بمفتاح `tmplKey` نفسه المستعمل
+// أصلاً في `qzErrRecord`/`qzInjectDue`، ويُرتَّب بنفس `seenRank`.
+// **ولا تنقص الجلسة**: الترتيب لا إقصاء — إن كان الكلُّ محجوباً عاد الأقدمُ عهداً.
+function takeUniqueFrom(arr,need){
+  const seen=seenLoad(),today=seenDay();
+  const fresh=(arr||[]).filter(function(q){return !isSeen(q)});
+  const sorted=fresh.slice().sort(function(a,b){
+    return seenRank(tmplKey(a),seen,today)-seenRank(tmplKey(b),seen,today);
+  });
+  const out=[];
+  for(const q of sorted){if(out.length>=need)break;out.push(q);markSeen(q)}
+  return out;
+}
 // حل أخير عند نفاد البنك عالمياً: يكمل من pool متفادياً تكرار نص موجود مسبقاً في نفس الدفعة (existing)،
 // حتى لو تجاوزنا حدود التتبّع العالمي لهذه الجلسة
 function fillAvoidingBatchDupes(existing,pool,need){
@@ -6561,9 +6607,10 @@ function genBankSave(key,arr){try{lsSet(key,JSON.stringify(arr))}catch(e){}}
 // أعلى تشابهٍ مشروعٍ رُصد فيهما. والتوأم الحقيقي المرصود (عنصرا AlUla) بلغ ٠٫٣٧٥،
 // فيُمسَك في البنوك الأولى بفارقٍ واسع.
 const STORE_TWIN_DEFAULT=0.15, STORE_TWIN_LOOSE=0.60;
+// نفس `TWIN_TEMPLATED` المستعملة لعتبة الجلسة — قائمةٌ واحدة للبنوك القالبية، فلا
+// تُعفى الكتابة في طبقةٍ وتُخنق في الأخرى كما وقع بين ٢٦ و٢٩ أغسطس.
 function storeTwinThr(key){
-  const k=String(key||"");
-  return (/write|minpair/.test(k))?STORE_TWIN_LOOSE:STORE_TWIN_DEFAULT;
+  return TWIN_TEMPLATED.test(String(key||""))?STORE_TWIN_LOOSE:STORE_TWIN_DEFAULT;
 }
 // ===== التوأم يُرفَض عند التخزين لا عند العرض — درس ٢٦ أغسطس =====
 // شكا إلياس التكرار، والسجلّ كشف السبب: **عنصران مولَّدان بالموضوع نفسه في دفعةٍ واحدة**
@@ -6634,19 +6681,34 @@ function parseGenBlock(text,domain){
 // فلا تتصادم بنيوياً لا احتمالياً. وخادمٌ قديم لا يعرف الحقل يتجاهله بلا ضرر.
 let genSeed=Math.floor(Math.random()*1000);
 function genNextTopicIdx(){genSeed=(genSeed+1)>>>0;return genSeed}
+// ===== تعذُّر التوليد يُسجَّل ولا يُبتلَع — درس ٢٩ أغسطس =====
+// «فشل التوليد ليس عطلاً» قرارٌ قائم ولا يُنقَض: تعذّرُ الشبكة يعيد `null` بهدوء
+// والبنك المؤلَّف يعمل وحده. **لكن الصمت غير الهدوء**: حين ظهر أن توليد قواعد هيا
+// صفرٌ ثلاثة أيام، لم يكن في السجلّ ما يفرّق بين «الخادم لم يُستدعَ» و«ردّ بخطأ»
+// و«ردّ بلا نصّ» و«النصّ لم يُفكَّك». فيُسجَّل السبب — والتصرّف كما كان تماماً.
+// وبسقفٍ للضجيج: أوّل ثلاثة في الجلسة، فالمائة بعدها لا تُضيف تشخيصاً.
+let genFailLogged=0;
+const GEN_FAIL_LOG_CAP=3;
+function genFailLog(domain,level,why,detail){
+  if(genFailLogged>=GEN_FAIL_LOG_CAP)return null;
+  genFailLogged++;
+  try{logAnswer("gen","gen_fail",false,domain+"/"+(level||"?")+" · "+why,null,null,
+    {q_text:("[توليد:"+why+"] "+String(detail||"").slice(0,200))})}catch(e){}
+  return null;
+}
 async function fetchTutorGen(domain,level,topicIdx){
   try{
     const res=await fetchTimeout(TUTOR_FN_URL,{method:"POST",
       headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},
       body:JSON.stringify({mode:"gen",domain,level,
         topicIdx:(topicIdx==null?genNextTopicIdx():topicIdx)})},15000);
-    if(!res||!res.ok)return null;
+    if(!res||!res.ok)return genFailLog(domain,level,"http",res?res.status:"no_res");
     const data=await res.json();
-    if(!data||!data.ok||!data.reply)return null;
+    if(!data||!data.ok||!data.reply)return genFailLog(domain,level,"no_reply",data&&data.error);
     const item=parseGenBlock(data.reply,domain);
     if(item)item.lv=level;
     return item;
-  }catch(e){return null}
+  }catch(e){return genFailLog(domain,level,"network",e&&e.message)}
 }
 // كم نداء توليدٍ صامت بعد جلسة؟ لا واحدٌ ثابت للجميع — درس ٢٠ أغسطس (شكوى إلياس
 // عن تكرار gram/read/minpair): بنكٌ تستهلك منه الجلسة أكثر من نصفه يحتاج نموّاً أسرع
@@ -6791,11 +6853,24 @@ function parseGenPickBlock(text,domain,wantTag){
     else if(m=/^TAG:\s*(.+)$/i.exec(l))tag=m[1].trim();
   });
   const idx=["1","2","3","4"];
-  if(idx.some(function(i){return !s[i]||!why[i]||typeof ok[i]!=="boolean"}))return null;
+  // ===== فشل التفكيك يُسجَّل بسببه لا يُبتلَع — درس ٢٩ أغسطس =====
+  // توليد قواعد هيا (A1) **صفرٌ في ثلاثة أيام** بينما يعمل عند إلياس ومحمد، ولم يكن
+  // في السجلّ ما يقول لماذا: `gjtDefect` يُسجّل رفضه، أمّا هذه الفحوص الأربعة فتُعيد
+  // `null` بصمت. فيستحيل التمييز بين «الخادم لم يردّ» و«الشكل ناقص» و«تلوّثٌ عربي»
+  // و«صوابان». وهذا نفس درس «ما لا يُسجَّل الآن لا يُشخَّص لاحقاً» في موضعٍ جديد.
+  const bad=function(why,extra){
+    try{logAnswer("gen","parse_fail",false,domain+" · "+why,null,null,
+      {q_text:("[تفكيك:"+why+"] "+String(extra||"").slice(0,400))})}catch(e){}
+    return null;
+  };
+  if(idx.some(function(i){return !s[i]||!why[i]||typeof ok[i]!=="boolean"}))
+    return bad("shape",idx.map(function(i){return i+(s[i]?"S":"-")+(why[i]?"W":"-")+(typeof ok[i]==="boolean"?"O":"-")}).join(" "));
   const texts=idx.map(function(i){return s[i]});
-  if(texts.some(function(t){return AR_CHARS.test(t)}))return null;
-  if(new Set(texts).size!==4)return null;
-  if(idx.filter(function(i){return ok[i]}).length!==1)return null;
+  if(texts.some(function(t){return AR_CHARS.test(t)}))
+    return bad("arabic",texts.filter(function(t){return AR_CHARS.test(t)}).join(" | "));
+  if(new Set(texts).size!==4)return bad("dup_sentences",texts.join(" | "));
+  const nOk=idx.filter(function(i){return ok[i]}).length;
+  if(nOk!==1)return bad("ok_count_"+nOk,texts.join(" | "));
   const c=idx.map(function(i){return{t:s[i],ok:ok[i],why:why[i]}});
   // صوابٌ مزدوج أو محكٌّ أسلوبي ⇒ يُسقَط العنصر كلّه، ويُسجَّل السبب مسمّى لا مبهماً
   const defect=gjtDefect(c);
@@ -7285,13 +7360,13 @@ async function fetchTutorGenWrite(level){
     const res=await fetchTimeout(TUTOR_FN_URL,{method:"POST",
       headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},
       body:JSON.stringify({mode:"gen",domain:"write",level,topicIdx:genNextTopicIdx()})},15000);
-    if(!res||!res.ok)return null;
+    if(!res||!res.ok)return genFailLog("write",level,"http",res?res.status:"no_res");
     const data=await res.json();
-    if(!data||!data.ok||!data.reply)return null;
+    if(!data||!data.ok||!data.reply)return genFailLog("write",level,"no_reply",data&&data.error);
     const item=parseGenWriteBlock(data.reply);
     if(item)item.lv=level;
     return item;
-  }catch(e){return null}
+  }catch(e){return genFailLog("write",level,"network",e&&e.message)}
 }
 function writeGenTopUp(level){
   const pool=writeBankFor(level);
@@ -7580,11 +7655,22 @@ function writeCaptureDraft(){
 // وinsertReplacementText وinsertCompositionText للإملاء الصوتي ومحرّرات التركيب.
 // فهو ما يُبنى عليه الحكم، والدفعةُ تبقى **رقماً يُسجَّل ولا يحكم** (نفس نهج
 // quizErrDelta: قياسٌ يسبق العلاج، وعتبةٌ تُسمّى من بياناتٍ حقيقية إن لزمت لاحقاً).
-const WRITE_DICTATE_TYPES=["insertFromPaste","insertFromDrop","insertReplacementText",
-                           "insertCompositionText","insertFromComposition"];
-let writeMaxBurst=0,writePrevLen=0,writeDictated=false,writeInputTypes="";
+// ===== والقائمة الواحدة كانت تخلط ثلاثة أشياء — درس ٢٩ أغسطس =====
+// القياس على كل حالةٍ وقعت فعلاً (٩ حالات، بلا تداخل):
+//   إلياس ٦ حالات: `insertReplacementText` وحده، أكبر دفعة **٧-٩ محارف** — أي كلمةٌ
+//     واحدة. وهذا **التصحيح التلقائي في لوحة الهاتف**: كتبها بأصابعه فصحّح المحرّك
+//     إملاءها. فإسقاط بطاقات تصحيحه عقوبةٌ على استعمال هاتف.
+//   محمد ٣ حالات: `insertFromPaste` صريحاً، دفعات **٥١ و٨٢٧ و٨٥٠** — لصقُ مقالٍ كامل.
+//   ولا حالة واحدة لهيا في هذا الجدول قطّ، فتعديل القائمة لا يمسّ درس ٢٥ أغسطس.
+// فالتفريق بدلالة المواصفة نفسها لا بعتبةٍ أخترعها للدفعة:
+//   لصق/إفلات ⇒ النصّ لم يُؤلَّف هنا أصلاً؛
+//   تركيبٌ صوتي (composition) ⇒ إملاء، فلا تدخل تصحيحاته البنك كما تقرّر في ٢٥ أغسطس؛
+//   استبدالٌ باقتراح ⇒ كتابةٌ عادية بالأصابع، لا يُسقَط منها شيء.
+const WRITE_PASTE_TYPES=["insertFromPaste","insertFromDrop"];
+const WRITE_DICTATE_TYPES=["insertCompositionText","insertFromComposition"];
+let writeMaxBurst=0,writePrevLen=0,writeDictated=false,writePasted=false,writeInputTypes="";
 function writeBurstReset(v){writeMaxBurst=0;writePrevLen=String(v||"").length;
-  writeDictated=false;writeInputTypes=""}
+  writeDictated=false;writePasted=false;writeInputTypes=""}
 function writeLive(ev){
   const el=document.getElementById('writeIn'),box=document.getElementById('writeCrit');
   if(!el)return;
@@ -7595,6 +7681,7 @@ function writeLive(ev){
   if(t){
     if(writeInputTypes.indexOf(t)<0)writeInputTypes+=(writeInputTypes?"|":"")+t;
     if(WRITE_DICTATE_TYPES.indexOf(t)>=0)writeDictated=true;
+    if(WRITE_PASTE_TYPES.indexOf(t)>=0)writePasted=true;
   }
   if(box)box.innerHTML=writeCritHTML(writeCur(),el.value);
 }
@@ -7666,7 +7753,14 @@ async function writeSubmit(){
   // دمج الجمل: النجاح نظافة نحوية لا عدد كلمات وحده — بلا فحصٍ نحوي (تعذّر الاتصال)
   // يُحكم بالطول وحده، كبقية الكتابة، لا يُعاقَب على عطلٍ ليس منه. والنسخ يُسقط
   // النجاح في الحالتين سواءً — نسخ جملةٍ مصدرٍ واحدة ليس دمجاً كما نسخ السؤال ليس إجابة
-  const ok=writeCopy?false:(it.type==="combine"?(lenOk&&(writeFixFail?true:!writeFix.length)):lenOk);
+  // ===== واللصقُ لا يُمنح نجاحاً — درس ٢٩ أغسطس =====
+  // بياناتٌ حيّة: محمد أرسل نصَّي B2 بدفعةٍ واحدة من **٨٢٧ و٨٥٠ محرفاً** بنوع
+  // `insertFromPaste` صريحاً، فنالا **١٠٠٪** لأن معيار النجاح عدد الكلمات. والحارس
+  // القائم رصدهما فأسقط بطاقات التصحيح — أي أنه أسقط **المكسب** وأبقى **الوهم**.
+  // وهذا معكوس: النسخُ يُسقط النجاح أصلاً (`writeCopy`) لأن نسخ السؤال ليس إجابة،
+  // ولصقُ نصٍّ من مكانٍ آخر ليس أقلّ من ذلك — بل هو الحالة التي بُني القسم لقياسها.
+  // ونصُّ اللصق يبقى **معروضاً ومصحَّحاً على الشاشة** كما هو: المنع للدرجة لا للتعلّم.
+  const ok=(writeCopy||writePasted)?false:(it.type==="combine"?(lenOk&&(writeFixFail?true:!writeFix.length)):lenOk);
   writeSrsUpdate(it.id,ok);
   // السقالة تتلاشى بالنجاح وتعود كاملةً بالتعثّر — لا تُقاس بالزمن ولا تُطفأ يدوياً
   writeScafRecord(it.lv,ok);
@@ -7684,7 +7778,7 @@ async function writeSubmit(){
       +(goals.sentences?(" · جمل "+writeSent+"/"+goals.sentences):"")
       +" · بادئة:"+(goals.jointWords?1:0)+" · سقالة:"+(writeScafOn(it.lv)?1:0)+" · دفعة:"+writeMaxBurst+" · إدخال:"+(writeInputTypes||"?")
       +" · review:"+reviewState+" · lt:"+writeLtJudged+"/"+writeLtDropped+" · مثال:"+writeModelViews
-      +" · نسخ:"+(writeCopy?1:0)+" · تنوّع:"+ttr+" · شبه سابق:"+selfSim+" · فوق K1:"+lfp.pct+"%").slice(0,1200)});
+      +" · نسخ:"+(writeCopy?1:0)+" · لصق:"+(writePasted?1:0)+" · تنوّع:"+ttr+" · شبه سابق:"+selfSim+" · فوق K1:"+lfp.pct+"%").slice(0,1200)});
   // يُحفظ بعد التسجيل لا قبله — والنسخ المحض لا يدخل السجلّ فلا يصير أساساً يُقاس عليه
   if(!writeCopy)writePrevAdd(txt);
   // نفس مسار بطاقات تصحيح المحادثة بالضبط: بطاقةٌ مجدولة تعود عند حافّة النسيان،
@@ -7701,10 +7795,11 @@ async function writeSubmit(){
   // إملاءً صوتياً أو لصقاً لا كتابةً بالأصابع (مُقاسٌ باختبار: ١ حرف مقابل ٤٩).
   // والتصحيح يبقى **معروضاً لها على الشاشة** كما هو — إنما لا يدخل بنك الأخطاء،
   // لأن ما يدخله يُدرَّب لاحقاً ويُقاس، وتدريبُ ما لم تقله لا يُصلح شيئاً.
-  if(!writeDictated)writeFix.forEach(function(f){fixCardSave(f)});
-  else{try{logAnswer("gen","write_dictated",null,writeInputTypes+" · دفعة:"+writeMaxBurst+" · أُسقطت "+writeFix.length+" بطاقة",it.id,null,
-    {q_text:("نصٌّ لم يُكتَب بالأصابع (inputType: "+writeInputTypes+"، أكبر دفعة "+writeMaxBurst
-      +" حرفاً) — إملاءٌ صوتي أو لصق، فلم تدخل تصحيحاته بنك الأخطاء: "+txt).slice(0,1200)})}catch(e){}}
+  if(!writeDictated&&!writePasted)writeFix.forEach(function(f){fixCardSave(f)});
+  else{const kind=writePasted?"لصق":"إملاء صوتي";
+    try{logAnswer("gen","write_dictated",null,kind+" · "+writeInputTypes+" · دفعة:"+writeMaxBurst+" · أُسقطت "+writeFix.length+" بطاقة",it.id,null,
+    {q_text:("نصٌّ لم يُكتَب بالأصابع ("+kind+" · inputType: "+writeInputTypes+"، أكبر دفعة "+writeMaxBurst
+      +" حرفاً) — فلم تدخل تصحيحاته بنك الأخطاء"+(writePasted?"، ولم يُحتسب نجاحاً":"")+": "+txt).slice(0,1200)})}catch(e){}}
   writeFix.forEach(function(f){
     logAnswer("write","fix",null,(f.said+" ⇐ "+f.fix).slice(0,300),it.id,null,
       {q_text:String(f.why||"").slice(0,200)});
@@ -7993,14 +8088,14 @@ async function fetchTutorGenGram(level){
     const res=await fetchTimeout(TUTOR_FN_URL,{method:"POST",
       headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},
       body:JSON.stringify({mode:"gen",domain:"gram",level,topicIdx:genNextTopicIdx()})},15000);
-    if(!res||!res.ok)return null;
+    if(!res||!res.ok)return genFailLog("gram",level,"http",res?res.status:"no_res");
     const data=await res.json();
-    if(!data||!data.ok||!data.reply)return null;
+    if(!data||!data.ok||!data.reply)return genFailLog("gram",level,"no_reply",data&&data.error);
     const item=parseGenPickBlock(data.reply,"gram",false);
     if(item)item.lv=level;
     genLogLtFlag("gram",level,data,item);
     return item;
-  }catch(e){return null}
+  }catch(e){return genFailLog("gram",level,"network",e&&e.message)}
 }
 function gramGenTopUp(level){
   const pool=gramBankFor(level),calls=genCallsFor(pool.length,GRAM_N);
@@ -9362,14 +9457,14 @@ async function fetchTutorGenStep(level){
     const res=await fetchTimeout(TUTOR_FN_URL,{method:"POST",
       headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},
       body:JSON.stringify({mode:"gen",domain:"step",level,topicIdx:genNextTopicIdx()})},15000);
-    if(!res||!res.ok)return null;
+    if(!res||!res.ok)return genFailLog("step",level,"http",res?res.status:"no_res");
     const data=await res.json();
-    if(!data||!data.ok||!data.reply)return null;
+    if(!data||!data.ok||!data.reply)return genFailLog("step",level,"no_reply",data&&data.error);
     const item=parseGenPickBlock(data.reply,"step",true);
     if(item)item.lv=level;
     genLogLtFlag("step",level,data,item);
     return item;
-  }catch(e){return null}
+  }catch(e){return genFailLog("step",level,"network",e&&e.message)}
 }
 function stepGenTopUp(level){
   const pool=stepBankFor(level),calls=genCallsFor(pool.length,STEP_N);
@@ -10733,13 +10828,13 @@ async function fetchTutorGenVideo(level){
     const res=await fetchTimeout(TUTOR_FN_URL,{method:"POST",
       headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},
       body:JSON.stringify({mode:"gen",domain:"video",level,topicIdx:genNextTopicIdx()})},15000);
-    if(!res||!res.ok)return null;
+    if(!res||!res.ok)return genFailLog("video",level,"http",res?res.status:"no_res");
     const data=await res.json();
-    if(!data||!data.ok||!data.reply)return null;
+    if(!data||!data.ok||!data.reply)return genFailLog("video",level,"no_reply",data&&data.error);
     const item=parseGenVideoBlock(data.reply);
     if(item)item.lv=level;
     return item;
-  }catch(e){return null}
+  }catch(e){return genFailLog("video",level,"network",e&&e.message)}
 }
 function videoGenTopUp(level){
   const pool=videoBankFor(level),calls=genCallsFor(pool.length,VIDEO_N);
@@ -11729,7 +11824,14 @@ function choose(i){
     shapeRecord(SEQ_END_BUG,true);
     if(shapeArmed(SEQ_END_BUG))seqArm();
   }else if(ok&&Array.isArray(q.seq)){shapeRecord(SEQ_END_BUG,false);seqClear()}
-  logAnswer(q.d,q.qtype||"bank",ok,ansShape,null,elapsed,
+  // ===== ومعرّفٌ للسؤال: بلاه لا تباعد ولا منعَ تكرار ولا تمدّد — درس ٢٩ أغسطس =====
+  // كان `item_id` فارغاً في كل صفوف اللفظي والعلمي والكمّي والمرونة (١٢٢ صفّاً عند هيا
+  // في ثلاثة أيام)، فسجلُّ العرض العابر للأيّام و`seenSeed` من الخادم عمياوان عنها.
+  // والمفتاح ليس جديداً: `tmplKey` هي بعينها المستعملة أصلاً في `qzErrRecord`
+  // و`qzInjectDue` و`QZ_CARD_FADE_LINK`. وحبيبتها **القالب** لا النصّ — وهذا هو
+  // الصواب هنا: الكمّي والمرونة يُولَّدان بأرقامٍ عشوائية، و«مجموع خمسة أعداد متتالية»
+  // بأرقامٍ مختلفة تكرارٌ فعلاً (ظهر أربع مرّات وأُخطئ الأربع، ١٦ أغسطس).
+  logAnswer(q.d,q.qtype||"bank",ok,ansShape,tmplKey(q)||null,elapsed,
     {q_text:(String(q.q||"")+chLog).slice(0,1200)});
   // الذاكرة قبل البطاقة: البطاقة تُقرَأ من الحالة بعد التسجيل
   const wasWrong=(qzErrOf(tmplKey(q))||{}).wrong||0;
