@@ -1089,8 +1089,17 @@ function spreadTemplates(list){
 // وgPercent هو نفسه «دفع مسفر ٪ من راتبه» الموثَّق سابقاً (صفر من ثلاث) — علاجه المخطَّط
 // له أصلاً كان «بطاقة الباقي=١٠٠٪−المدفوع بمثال محلول»، وهي موجودة في fade "percent"
 // بالفعل؛ الربط هنا يُنفّذه لا يخترعه. والقائمة تُوسَّع بسطر واحد كلّما تأكّد قالبٌ آخر.
+// ووُسِّعت القائمة (٢٩ أغسطس) بالقوالب التي **أخطأتها هيا فعلاً** في جلسة ٢٧ أغسطس
+// (٠ من ١٢): الأقلام (سعر الوحدة)، والمتتاليات الجمعية والضربية، ومجموع الأعداد
+// المتتالية. والربط يُضاف **حيث يُعلّم موضوعُ التقوية الطريقةَ نفسها** لا حيث يتشابه
+// الاسم: `gPaths` و`gFraction` و`gCompound` أخطأتها كذلك وتُركت بلا ربط لأن لا موضوع
+// تقويةٍ يشرح طريقتها — ربطٌ مزيّف يعرض شرحاً لا يخصّ السؤال أسوأ من غياب الزرّ.
+// وصيغة القيمة «مفتاح» أو «مفتاح/نوع فرعي» لأن `fadeMakeSeq` تُنتج نوعين (متتالية/نسبة)
+// فيُطلَب المطابق لسؤالها لا ما يقع عشوائياً.
 const QZ_CARD_FADE_LINK={};
-[[gAngleEqualRays,"angles"],[gPercent,"percent"],[gMedian,"median"],[gCube,"cube"],[gPyramid,"pyramid"]]
+[[gAngleEqualRays,"angles"],[gPercent,"percent"],[gMedian,"median"],[gCube,"cube"],[gPyramid,"pyramid"],
+ [gPrice,"seq/ratio"],[gArith,"seq/seq"],[gGeo,"seq/seq"],[gConsec,"median"],
+ [fDouble,"seq/seq"],[fTriple,"seq/seq"]]
   .forEach(function(pair){try{QZ_CARD_FADE_LINK[tmplKey(pair[0]())]=pair[1]}catch(e){}});
 // والتوزيع وحده لا يكفي حين يُنتج المولّد سبعة من قالب واحد في اثني عشر سؤالاً: لا
 // ترتيب يُباعد بينها حينئذ. فيُسحب بحصّة — ثلث العدد لكل قالب على الأكثر، وإن نفدت
@@ -1256,9 +1265,21 @@ function fadeMakeSeq(){
       rule:per, ruleTxt:`سعر القلم الواحد = ${toAr(per)} ريال`,
       q:`إذا كان ثمن ${toAr(k)} أقلام ${toAr(ck)} ريالاً، فكم ثمن ${toAr(m)} أقلام؟`};
   }
+  // خطواتٌ للمتتالية كذلك — كانت غائبة، فمقطع الشرح لا يُبنى لها (كشفه الفحص لا الحدس،
+  // ٢٩ أغسطس). وهيا أخطأت متتاليتين في جلسةٍ واحدة: «٣،٦،١٢،٢٤» أجابت ٢٦ (جمعت ٢ بدل
+  // المضاعفة)، و«٢،٤،٦،٨» أجابت ٨ (أعادت الأخير) — فالخطوة الأولى تُلزم بكشف القاعدة
+  // من الفرق/النسبة قبل الحساب، وهي بعينها الخطوة التي تخطّتها.
   const type=pick(["add","mul"]);
-  if(type==="add"){const st=rand(2,9),a=rand(1,9);const q=[a];for(let i=0;i<4;i++)q.push(q[i]+st);return{kind:"seq",type,rule:st,ruleTxt:`نجمع ${toAr(st)} في كل مرة`,seq:q,ans:q[4]+st,op:`${toAr(q[4])} + ${toAr(st)}`}}
-  const r=pick([2,3]),a=rand(2,4);const q=[a];for(let i=0;i<4;i++)q.push(q[i]*r);return{kind:"seq",type,rule:r,ruleTxt:`نضرب في ${toAr(r)} في كل مرة`,seq:q,ans:q[4]*r,op:`${toAr(q[4])} × ${toAr(r)}`};
+  if(type==="add"){const st=rand(2,9),a=rand(1,9);const q=[a];for(let i=0;i<4;i++)q.push(q[i]+st);
+    return{kind:"seq",type,rule:st,ruleTxt:`في المتتالية الجمعية: اطرحي عددين متجاورين لتعرفي المقدار الثابت، ثم أضيفيه إلى الأخير`,
+      steps:[`نبحث عن القاعدة أوّلاً: ${toAr(q[1])} − ${toAr(q[0])} = ${toAr(st)}، و${toAr(q[2])} − ${toAr(q[1])} = ${toAr(st)} — إذن نجمع ${toAr(st)} في كل مرة`,
+             `نطبّق القاعدة على الأخير: ${toAr(q[4])} + ${toAr(st)} = ${toAr(q[4]+st)}`],
+      seq:q,ans:q[4]+st,op:`${toAr(q[4])} + ${toAr(st)}`}}
+  const r=pick([2,3]),a=rand(2,4);const q=[a];for(let i=0;i<4;i++)q.push(q[i]*r);
+  return{kind:"seq",type,rule:r,ruleTxt:`في المتتالية الضربية: اقسمي عددين متجاورين لتعرفي المضروب فيه، ثم اضربي الأخير فيه — ولا تجمعي`,
+    steps:[`نبحث عن القاعدة أوّلاً: ${toAr(q[1])} ÷ ${toAr(q[0])} = ${toAr(r)}، و${toAr(q[2])} ÷ ${toAr(q[1])} = ${toAr(r)} — إذن نضرب في ${toAr(r)} في كل مرة لا نجمع`,
+           `نطبّق القاعدة على الأخير: ${toAr(q[4])} × ${toAr(r)} = ${toAr(q[4]*r)}`],
+    seq:q,ans:q[4]*r,op:`${toAr(q[4])} × ${toAr(r)}`};
 }
 // ===== أنواع إضافية لوضع التقوية: الوسيط، النسبة المئوية، حجم المكعّب، الهرم العددي =====
 function fadeMakeMedian(){
@@ -1807,6 +1828,90 @@ function fadeMakeQuestion(){
   if(fadeTopic==="prismvol")return fadeMakePrismVol();
   if(fadeTopic==="prismsurf")return fadeMakePrismSurf();
   return fadeMakeSeq();
+}
+// ===== مقطعُ شرحٍ يُشاهَد خطوةً خطوة — طلب صاحب المشروع، ٢٩ أغسطس =====
+// «هيّا تشكي من صعوبة الكمّي، فحوّل الشرح في الاستدلال الرياضي والمرونة إلى مقاطع
+// فيديو». وبياناتها تُصدّق الشكوى: ٠ من ١٢ في الكمّي يوم ٢٧ بزمنٍ وسيط **٢٦٫٤ ثانية**
+// (اجتهادٌ لا تسرّع)، و٢٥٪ و٥٠٪ في اليومين الآخرين.
+//
+// **والمحتوى موجودٌ ولا يُبنى**: `FADE_TOPICS` تحمل `icon` لكل موضوع، ومولّداتها
+// (`fadeMakeCube`/`fadeMakePercent`/`fadeMakeMedian`/`fadeMakeSeq`…) تُنتج `steps`
+// مفكَّكةً أصلاً و`ruleTxt` قاعدةً. و`QZ_CARD_FADE_LINK` يربط قالب السؤال بموضوعه
+// أصلاً. فالناقص **المشغّل** لا الشرح: الخطوات كانت تُعرض قائمةً ساكنة داخل وضع
+// التقوية وحده، ولا تصل من أخطأت السؤال في الاختبار.
+// والمشغّل نفسه ليس جديداً كذلك: هو بنية مشاهد `VIDEO_BANK` بالضبط (رمزٌ كبير +
+// سطر + نقاط تقدّم + «التالي»)، مطبَّقةً على خطوةٍ حسابية بدل مشهد قصّة.
+//
+// **ولا فيديو حقيقي هنا** — نفس ما أُعلن في ١٩ أغسطس عن القسم الإنجليزي: نؤلّف
+// المحتوى ونعرضه مشاهد متتابعة، أمانةً في العرض لا فيديو مموَّه.
+const CLIP_MAKERS={seq:fadeMakeSeq,median:fadeMakeMedian,percent:fadeMakePercent,
+  cube:fadeMakeCube,pyramid:fadeMakePyramid,angles:fadeMakeAngles,
+  circle:fadeMakeCircle,parallelogram:fadeMakeParallelogram,triangle:fadeMakeTriangle,
+  prismvol:fadeMakePrismVol,prismsurf:fadeMakePrismSurf};
+function clipTopicMeta(key){
+  for(const t of FADE_TOPICS)if(t.key===key)return t;
+  return null;
+}
+// يُبنى المقطع من موضوعٍ مسمّى: مثالٌ محلولٌ واحد بخطواته وقاعدته.
+// ويعود `null` إن لم يكن للموضوع مولّدٌ بخطوات — فلا يُعرض زرٌّ لا يفتح شيئاً.
+function clipBuild(link){
+  const parts=String(link||"").split("/"),key=parts[0],want=parts[1]||"";
+  const mk=CLIP_MAKERS[key],meta=clipTopicMeta(key);
+  if(!mk||!meta)return null;
+  let d=null;
+  // المولّد الواحد قد يُنتج نوعين (متتالية/نسبة)، فيُطلَب المطابق لسؤالها لا ما يقع
+  // عشوائياً — وإلا عُرض شرحُ الأقلام لسؤال متتالية. ومحاولاتٌ محدودة ثم قبولُ ما جاء.
+  for(let t=0;t<24;t++){
+    try{d=mk()}catch(e){return null}
+    if(!want||!d||d.kind===want)break;
+  }
+  const steps=(d&&Array.isArray(d.steps)?d.steps:[]).filter(Boolean);
+  if(!steps.length)return null;
+  return{key:key,icon:meta.icon,label:meta.label,q:d.q||"",steps:steps,
+    rule:d.ruleTxt||"",ans:d.ans};
+}
+let clipOn=null,clipStep=0;
+function clipOpen(link){
+  const c=clipBuild(link);
+  if(!c)return;
+  clipOn=c;clipStep=0;
+  try{logAnswer("gen","clip_open",null,String(link),null,null,{q_text:"فُتح مقطع الشرح: "+c.label})}catch(e){}
+  render();
+}
+function clipNext(){
+  if(!clipOn)return;
+  if(clipStep+1<clipOn.steps.length+1)clipStep++;
+  render();
+}
+function clipClose(){clipOn=null;clipStep=0;render()}
+// آخر لقطة هي القاعدة نفسها لا خطوةٌ حسابية — «الشرح منهجٌ لا جواب» (عُرف عناصر
+// ترتيب STEP): تُختم بما يُعمَّم على أسئلةٍ أخرى، لا بالناتج الذي لا يتكرّر.
+function clipHTML(){
+  if(!clipOn)return "";
+  const c=clipOn,last=clipStep>=c.steps.length;
+  const body=last?c.rule:c.steps[clipStep];
+  const dots=c.steps.concat([1]).map(function(_,i){
+    return `<span style="width:7px;height:7px;border-radius:50%;display:inline-block;margin:0 2px;background:${i<=clipStep?'#0D9488':'#E2E8F0'}"></span>`}).join("");
+  return `<div class="card" style="text-align:center;border:2px solid #0D9488;background:#F0FDFA">
+    <span class="tag" style="background:#CCFBF1;color:#0F766E">🎬 ${esc(c.label)} · خطوة ${toAr(Math.min(clipStep+1,c.steps.length+1))} من ${toAr(c.steps.length+1)}</span>
+    <div style="margin:14px 0;font-size:56px">${last?"💡":c.icon}</div>
+    ${c.q&&clipStep===0?`<div style="font-size:13px;color:#475569;margin-bottom:10px">${esc(c.q)}</div>`:""}
+    <!-- الخطوات من مولّداتنا نفسها وبعضها يحمل تمييزاً (<b>) مقصوداً، فلا تُهرَّب:
+         لا مدخلَ مستخدمٍ يصلها أبداً — كلّها أرقامٌ ونصٌّ مؤلَّف في هذا الملفّ. -->
+    <div style="font-size:17px;font-weight:700;color:#0F172A;min-height:52px;line-height:1.7">${body}</div>
+    <div style="margin:12px 0">${dots}</div>
+    ${last
+      ? `<button class="btn" style="background:#0D9488;margin:0" onclick="clipClose()">فهمت ✓</button>`
+      : `<button class="btn" style="background:#0D9488;margin:0" onclick="clipNext()">${clipStep+1>=c.steps.length?"القاعدة ←":"الخطوة التالية ←"}</button>`}
+  </div>`;
+}
+// زرُّ فتح المقطع يظهر فقط حين يكون للسؤال موضوعٌ مربوطٌ فعلاً — ولا يُفرَض:
+// إرشادٌ اختياري كزرّ «مثال محلول» في الكتابة، ويُسجَّل فتحُه ليُقاس أثره لاحقاً.
+function clipButtonHTML(q){
+  if(clipOn)return "";
+  const link=q?QZ_CARD_FADE_LINK[tmplKey(q)]:null;
+  if(!link||!CLIP_MAKERS[String(link).split("/")[0]])return "";
+  return `<button class="btn" style="background:#0D9488;margin-top:8px" onclick="clipOpen('${link}')">🎬 شاهدي الشرح خطوة خطوة</button>`;
 }
 function fadeDedupe(correct,dist){const out=[];for(const d of dist){if(d!==correct&&!out.includes(d))out.push(d)}let p=1;while(out.length<3){[correct+p,correct-p].forEach(x=>{if(out.length<3&&x>0&&x!==correct&&!out.includes(x))out.push(x)});p++}return out.slice(0,3)}
 function fadePrep(){
@@ -12811,6 +12916,8 @@ function renderQuiz(){
     ${seqBoxHTML()}
     ${(gateOpen()&&!seqGated())?`<div class="choices">${choices}</div>`:""}
     ${explain}
+    ${locked?clipButtonHTML(q):""}
+    ${locked?clipHTML():""}
     ${repeatCard}
     ${(locked&&picked!==q.a&&!tuOn&&tutorAvailable())?`<button type="button" onclick="quizAskTutor()" style="background:#EEF2FF;border:1.5px solid #C7D2FE;color:#4338CA;border-radius:12px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer;margin-top:10px;font-family:inherit">🧑‍🏫 ناقشيني فيها</button>`:""}
     ${tutorBoxHTML()}
