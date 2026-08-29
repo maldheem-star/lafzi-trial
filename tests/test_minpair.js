@@ -26,7 +26,11 @@ const mk=async(f)=>{
   });
   await page.addInitScript(()=>{
     window.__spoken=[];
-    Object.defineProperty(window,'speechSynthesis',{configurable:true,value:{speak(u){window.__spoken.push(u.text)},cancel(){},resume(){},pause(){},
+    // تُطلق `onstart` فعلاً: العدّاد صار لا يزيد إلّا على بدايةٍ حقيقية (٢٩ أغسطس)،
+    // ومحرّكٌ لا يُطلقه يُحاكي الصمت لا العمل — والصمت يُختبَر في test_ttssilent.
+    Object.defineProperty(window,'speechSynthesis',{configurable:true,value:{
+      speak(u){window.__spoken.push(u.text);setTimeout(function(){u.onstart&&u.onstart()},0)},
+      cancel(){},resume(){},pause(){},
       getVoices:()=>[{lang:'en-US',name:'X'}],speaking:false,pending:false}});
     window.SpeechSynthesisUtterance=function(t){this.text=t};
   });
@@ -61,7 +65,11 @@ ok(targets.has(0)&&targets.has(1),'الهدف يتنوّع بين الكلمتي
 ok(firsts.has(0)&&firsts.has(1),'وترتيب العرض يتنوّع كذلك');
 
 console.log('\n٣) الصوت يُنطق الكلمة الهدف تحديداً');
-await page.evaluate(()=>{startMinpair();window.__spoken=[];minpairPlay()});
+await page.evaluate(()=>{startMinpair();window.__spoken=[];minpairPlays=0;minpairPlay()});
+// العدّاد يزيد بعد بدايةٍ حقيقية لا عند الطلب — فيُنتظَر **الشرط** لا مهلةٌ بالساعة:
+// مهلةُ ١٢٠ملّي أسقطت جولةً من ستّ تحت حمل الجولة الكاملة، والمهلة الثابتة تُراهن
+// على سرعة الجهاز لا على الحدث.
+await page.waitForFunction(()=>minpairPlays>0,null,{timeout:5000});
 const spoken=await page.evaluate(()=>({said:window.__spoken[0],target:minpairCur().w[minpairTarget],plays:minpairPlays}));
 ok(spoken.said===spoken.target,`نُطقت الكلمة الهدف («${spoken.said}»)`);
 ok(spoken.plays===1,'وعدّاد الاستماعات زاد');

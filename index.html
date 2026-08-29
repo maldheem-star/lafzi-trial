@@ -11328,7 +11328,12 @@ function minpairSetupRound(){
   secGateStart("minpair","");
 }
 function minpairCur(){return minpairItems[minpairIdx]}
-function minpairPlay(){const it=minpairCur();if(!it)return;minpairPlays++;speakEnglish(it.w[minpairTarget])}
+// العدّاد يزيد على بدايةٍ حقيقية لا على مجرّد الطلب — نفس علاج `listenPlay`، وهو
+// هنا أوجب: العدد **يُعرض لها** («استمعتِ ٣ مرّات») ويدخل السجلّ (`استماعات:N`)،
+// فمحرّكٌ صامت كان يُخبرها أنها سمعت ثلاثاً ولم تسمع شيئاً، ويُدخل السجلَّ إعاداتٍ
+// لم تقع أصلاً. (فُحصت العدّادات الثلاثة: listen وminpair وvideo.)
+function minpairPlay(){const it=minpairCur();if(!it)return;
+  speakEnglish(it.w[minpairTarget],function(r){if(r&&r.ok){minpairPlays++;render()}})}
 function minpairChoose(i){
   if(minpairLocked||!gateOpen())return;   // بوّابة بنيوية: لا اختيار قبل السماع
   minpairPicked=i;minpairLocked=true;
@@ -11514,7 +11519,10 @@ function startVideo(){
 }
 function videoCur(){return videoItems[videoIdx]}
 function videoSceneCur(){const it=videoCur();return it?it.sc[videoScene]:null}
-function videoPlay(){const s=videoSceneCur();if(!s)return;videoPlays++;speakEnglish(s[1])}
+// وvideoPlays لا يُعرض ولا يُسجَّل اليوم، فيُوصَل بالبوّابة نفسها لا لفائدةٍ قائمة
+// بل لئلّا يُبنى غداً على عدّادٍ يعدّ الطلبات لا الاستماعات — ثالثُ الثلاثة.
+function videoPlay(){const s=videoSceneCur();if(!s)return;
+  speakEnglish(s[1],function(r){if(r&&r.ok)videoPlays++})}
 function videoNextScene(){
   const it=videoCur();if(!it)return;
   if(videoScene+1>=it.sc.length){videoQOn=true;secGateStart("video",it.sc.map(function(x){return x[1]}).join(" "));render();return}

@@ -21,7 +21,13 @@ const mk=async(f)=>{
     logs.push(x);r.fulfill({status:201,contentType:'application/json',body:'[]'});
   });
   await page.addInitScript(()=>{
-    Object.defineProperty(window,'speechSynthesis',{configurable:true,value:{speak(){},cancel(){},resume(){},pause(){},
+    // المحاكاة تُطلق `onstart` فعلاً — ومحرّكٌ لا يُطلقه ليس محرّكاً عاملاً بل صامتاً.
+    // وهذا لزم بعد ٢٩ أغسطس: `listenPlay` صار لا يزيد العدّاد إلّا على بدايةٍ حقيقية
+    // (كان يزيده على مجرّد الطلب فيكذب على قياسٍ نحكم به على المستوى). فمحاكاةُ
+    // `speak(){}` الفارغة كانت تُحاكي الصمت، ويُختبَر الصمتُ في test_ttssilent لا هنا.
+    Object.defineProperty(window,'speechSynthesis',{configurable:true,value:{
+      speak(u){setTimeout(function(){u.onstart&&u.onstart()},0)},
+      cancel(){},resume(){},pause(){},
       getVoices:()=>[{lang:'en-US',name:'X'}],speaking:false,pending:false}});
     window.SpeechSynthesisUtterance=function(t){this.text=t};
   });
@@ -60,8 +66,11 @@ ok(before.hasQ&&before.choices>=3,'السؤال والخيارات ظاهران 
 console.log('\n٤) الاستماع مرّتين للمستويات الثلاثة سواءً — معياريٌّ حرفياً (YLE/KET/PET كلّها "twice")، إرشادٌ لا قفل');
 const hints=await page.evaluate(()=>[listenPlaysHint('A1'),listenPlaysHint('A2'),listenPlaysHint('B1')]);
 ok(/مرّتين/.test(hints[0])&&/مرّتين/.test(hints[1])&&/مرّتين/.test(hints[2]),'A1/A2/B1: مرّتين للثلاثة — لا فرق IELTS الخاطئ سابقاً');
-const plays3=await page.evaluate(()=>{listenPlay();listenPlay();listenPlay();return listenPlays});
-ok(plays3>=3,'والزرّ لا يُقفَل تقنياً — لا فائدة تشخيصية من منعه');
+// والعدّاد يزيد بعد بدايةٍ حقيقية لا عند الطلب — فيُنتظَر الشرط لا مهلةٌ بالساعة
+await page.evaluate(()=>{listenPlay();listenPlay();listenPlay()});
+await page.waitForFunction(()=>listenPlays>=3,null,{timeout:5000}).catch(()=>{});
+const plays3=await page.evaluate(()=>listenPlays);
+ok(plays3>=3,'والزرّ لا يُقفَل تقنياً — لا فائدة تشخيصية من منعه ('+plays3+')');
 
 console.log('\n٥) الإجابة تُحتسب وتُسجَّل بعدد مرّات الاستماع');
 logs=[];
