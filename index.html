@@ -4186,6 +4186,50 @@ function ttsTryVoice(v,text,cb){
     setTimeout(function(){try{synth.speak(u)}catch(e){done({ok:false,reason:"throw"})}},didCancel?90:0);
   }catch(e){done({ok:false,reason:"throw"})}
 }
+// ===== بطاقة الجهاز: ما لا يستطيع Chromium بلا رأس أن يُجيب عنه — ٢٩ أغسطس =====
+// كل اختباراتنا تعمل على Chromium بلا رأس على خادم لينكس، بمحاكاةٍ للنطق كتبتُها
+// أنا. فأنا أختبر ضدّ **تصوّري** عن الأجهزة لا ضدّ الأجهزة — والعطل الذي فتح هذه
+// الجلسة (`synthesis-failed` على Android 10) من صنفٍ لا يُمسك إلّا على جهازٍ حقيقي.
+// وثلاثةٌ من أعطال اليوم كشفتها لقطةُ شاشةٍ أو سجلٌّ من جهازها، لا الاختبارات.
+//
+// فبطاقةٌ تُجمَع بلمسةٍ واحدة وتصل السجلّ، لتُقابَل جهازٌ بجهاز ويومٌ بيوم. وحقولها
+// مختارةٌ من أعطالٍ وقعت فعلاً لا من قائمةٍ عامّة:
+//   • لهجات الأصوات كما يكتبها الجهاز — درس `en_US` بالشرطة السفلية (١٦ أغسطس).
+//   • صيغ التسجيل المدعومة — تفريغُ الصوت يفشل بصمتٍ إن لم تُدعَم أيّ صيغة.
+//   • وسم البناء — درس ١٨ أغسطس: تدريباتُ محمد لم تصله ١٦ ساعة وهو على نسخةٍ مخزّنة.
+//   • والبيئة (تجريب/إنتاج) — فلا يُقرأ فحصُ التجريب على أنه فحصُ ما يستعمله الأبناء.
+function deviceReport(){
+  const s=[];
+  const put=function(k,fn){try{s.push(k+":"+fn())}catch(e){s.push(k+":خطأ")}};
+  put("بيئة",function(){return isPreview()?"تجريب":"إنتاج"});
+  put("بناء",function(){return window.__BUILD||"?"});
+  try{
+    const synth=window.speechSynthesis,vs=synth?synth.getVoices():[];
+    const en=vs.filter(function(v){return v.lang&&String(v.lang).replace(/_/g,"-").toLowerCase().indexOf("en")===0});
+    const pk=synth?pickEnglishVoice(vs):null;
+    s.push("أصوات:"+vs.length,"إنجليزي:"+en.length,
+      "المختار:"+((pk&&pk.name)||"—"),"سحابي:"+(pk&&pk.localService===false?1:0),
+      // اللهجات بنصّها الخام: الشرطة السفلية هنا هي بعينها ما أسقط اختيار الصوت
+      "لهجات:"+(en.map(function(v){return v.lang}).slice(0,8).join("/")||"—"));
+  }catch(e){s.push("أصوات:خطأ")}
+  put("مايك",function(){return micSupported()?1:0});
+  put("صيغ",function(){
+    const m=["audio/webm;codecs=opus","audio/webm","audio/mp4","audio/ogg;codecs=opus"]
+      .filter(function(x){return window.MediaRecorder&&MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported(x)});
+    return m.join(",")||"—";});
+  put("شاشة",function(){return screen.width+"x"+screen.height+"@"+(window.devicePixelRatio||1)});
+  put("لغة",function(){return navigator.language||"—"});
+  put("مخزون",function(){lsSet("__probe","1");const v=lsGet("__probe")==="1"?1:0;lsDel("__probe");return v});
+  put("اتصال",function(){return navigator.onLine?1:0});
+  return s.join(" · ");
+}
+let deviceCard=null;
+function runDeviceReport(){
+  deviceCard=deviceReport();
+  try{logAnswer("gen","device",null,(isPreview()?"تجريب":"إنتاج"),null,null,
+    {q_text:("[بطاقة الجهاز] "+deviceCard+" · "+navigator.userAgent).slice(0,1200)})}catch(e){}
+  render();
+}
 function runAudioDiagAll(){
   if(audioDiagBusy)return;
   const synth=window.speechSynthesis;
@@ -4278,6 +4322,8 @@ function renderAudioDiag(){
     </div>
     ${voiceRows?`<div style="margin-bottom:6px">${voiceRows}</div>`:""}
     ${pickedBox}
+    <button class="btn" style="background:#0F766E;margin-top:14px" onclick="runDeviceReport()">📇 بطاقة الجهاز — تُجمع وتُرسَل بلمسة</button>
+    ${deviceCard?`<div style="background:#F0FDFA;border:1px solid #99F6E4;border-radius:12px;padding:10px 12px;margin-top:10px;font-size:12px;line-height:1.9;color:#134E4A;word-break:break-word">${deviceCard}<div style="color:#0F766E;font-weight:800;margin-top:6px">✓ وصلت السجلّ — تُقارَن جهازاً بجهاز ويوماً بيوم</div></div>`:""}
     <button class="btn" style="background:#0891B2;margin-top:14px" onclick="runAudioDiag()">🔊 جربي النطق الآن</button>
     ${resultBox}
     ${supported?`<button class="btn" style="background:#4F46E5;margin-top:10px" onclick="runAudioDiagAll()"${audioDiagBusy?" disabled":""}>${audioDiagBusy?"⏳ نجرّب صوتاً صوتاً…":"🔎 جرّبي كل صوتٍ على حدة"}</button>`:""}
