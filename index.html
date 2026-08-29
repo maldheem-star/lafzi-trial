@@ -11592,6 +11592,21 @@ function weakPhonemeStr(weak){
 // ===== التسجيل: تبدأ وتتوقف بيدها بدل نافذة ثابتة كانت تقطع الكلام =====
 const PRON_MAX_MS=15000; // حدّ أمان فقط، لا نافذة إجبارية
 let pronRec=null,pronStream=null,pronChunks=[],pronTimer=null,pronElapsed=0,pronBusy=false;
+// ===== الزمن يُقاس بالساعة لا بنبضات العدّاد — درس ٢٩ أغسطس =====
+// بلاغُ هيا «المايك ما يشتغل»، والسجلّ يقول السبب بالرقم: **ثماني حالات `[too_short]`
+// في النطق عبر ثمانية أيام وكلماتٍ مختلفة، زمنُها ٧٥٠ ملّي ثانية بالضبط في كلٍّ منها**.
+// ولا إنسان يضغط بهذه الدقّة ثماني مرّات — إنه أثرُ تكميم.
+// و`pronElapsed` يتقدّم بخطوة ٠٫٢٥ث (`setInterval(...,250)`)، فقيمه ٠/٢٥٠/٥٠٠/٧٥٠/١٠٠٠،
+// و`PRON_MIN_MS=800` **يقع داخل الفجوة**: تسجيلٌ حقيقيّ طوله ٧٥٠-٩٩٩ ملّي ثانية يُقرأ
+// ٧٥٠ فيُرفض حتماً. وكلمةٌ مثل «hill» تُنطَق في أقلّ من ثانية، فتُرمى بصمت.
+// **والمحادثة نجحت قبلها بستّ عشرة ثانية** لأن حدّها ٧٠٠ — تحت الخطوة لا داخلها.
+// فالعلاج قياسُ الزمن الحقيقي بـ`Date.now()`، فيصير الحدُّ يعني ما يقوله. والعدّاد
+// يبقى للعرض على الشاشة كما هو — لا يُغيَّر ما لا عيب فيه.
+let pronStartedAt=0,speakStartedAt=0;
+function recMs(startedAt,ticks){
+  const real=startedAt?Date.now()-startedAt:0;
+  return real>0?real:Math.round((ticks||0)*1000);   // احتياطٌ إن غابت المرساة
+}
 async function pronStart(){
   if(pronListening||pronBusy)return;
   if(!micSupported()){pronUnsupported=true;render();return}
@@ -11604,7 +11619,7 @@ async function pronStart(){
     pronRec.onstop=()=>{pronFinish()};
     wavTapStart(pronStream); // مأخذ Azure الموازي — فشله لا يمنع التسجيل
     pronRec.start();
-    pronListening=true;pronElapsed=0;
+    pronListening=true;pronElapsed=0;pronStartedAt=Date.now();
     pronTimer=setInterval(()=>{pronElapsed+=0.25;if(pronElapsed*1000>=PRON_MAX_MS){pronStop();return}render()},250);
     render();
   }catch(e){pronListening=false;pronResult={heard:"",ok:false,error:true};render()}
@@ -11650,9 +11665,10 @@ async function pronFinish(){
   const target=pronSession[pronIdx]?pronSession[pronIdx].w:"";
   if(pronStream){try{pronStream.getTracks().forEach(t=>t.stop())}catch(e){}pronStream=null}
   wavTapStop();
-  if(pronElapsed*1000<PRON_MIN_MS){ // أُغلق الزر قبل أن تتكلّم: لا نحتسبها خطأً
+  const pronMs=recMs(pronStartedAt,pronElapsed);
+  if(pronMs<PRON_MIN_MS){ // أُغلق الزر قبل أن تتكلّم: لا نحتسبها خطأً
     pronResult={heard:"",ok:false,tooShort:true};pronBusy=false;
-    logAnswer("pronunciation_a1","discarded",false,"[too_short]",target,Math.round(pronElapsed*1000));
+    logAnswer("pronunciation_a1","discarded",false,"[too_short]",target,pronMs);
     render();return;
   }
   const az=await azureTry(target);
@@ -11871,7 +11887,7 @@ async function speakStart(){
     speakRec.ondataavailable=(e)=>{if(e.data&&e.data.size>0)speakChunks.push(e.data)};
     speakRec.onstop=()=>{speakFinish()};
     speakRec.start();
-    speakListening=true;speakElapsed=0;
+    speakListening=true;speakElapsed=0;speakStartedAt=Date.now();
     speakTimer=setInterval(()=>{speakElapsed+=0.25;if(speakElapsed*1000>=PRON_MAX_MS){speakStop();return}render()},250);
     render();
   }catch(e){speakListening=false;speakResult={heard:"",error:true};render()}
@@ -11899,9 +11915,10 @@ async function speakFinish(){
   if(speakStream){try{speakStream.getTracks().forEach(t=>t.stop())}catch(e){}speakStream=null}
   wavTapStop(); // يُوقَف قبل القراءة لا بعدها — `wavBlob` يقرأ المخزون و`wavTapStart` وحده يمسحه
   // محاولة مُهمَلة: لا تُحتسب خطأً ولا تُكتب في التباعد — الجملة تبقى كما هي لتعيدها
-  if(speakElapsed*1000<PRON_MIN_MS){
+  const speakMs=recMs(speakStartedAt,speakElapsed);
+  if(speakMs<PRON_MIN_MS){
     speakResult={heard:"",discarded:true,why:"short"};speakBusy=false;
-    logAnswer("speaking","discarded",false,"[too_short]",it?it.id:null,Math.round(speakElapsed*1000),{is_new:!!(it&&it._isNew),srs_box:it?it._box:null,q_text:speakLogText(target,null)});
+    logAnswer("speaking","discarded",false,"[too_short]",it?it.id:null,speakMs,{is_new:!!(it&&it._isNew),srs_box:it?it._box:null,q_text:speakLogText(target,null)});
     render();return;
   }
   const az=await azureTry(target);
