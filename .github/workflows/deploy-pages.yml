@@ -1,9 +1,25 @@
 name: Deploy Lafzi Trial
 
+# ===== الجذر إنتاجٌ، و/preview بيئةُ تجريب — ٢٩ أغسطس =====
+# كان `main` هو الإنتاج ولا شيء غيره: ما يُدمج يصل الثلاثة دفعةً واحدة بلا موضعٍ
+# يُفتح فيه على جهازٍ حقيقي قبل ذلك. وهذه ثغرةٌ اعتُمدت صراحةً بعد سؤال «هل طبّقت
+# كل مراحل SDLC؟» — والجواب كان: لا بيئة تجريب، ولا خطّة تراجع، ولا جهاز حقيقي.
+#
+# والنشر على Pages ذرّيّ: قطعةٌ واحدة تُرفع فتحلّ محلّ الموقع كلّه. فلا يمكن نشر
+# فرعين مستقلّين، لكن يمكن أن تحمل القطعةُ الواحدة الاثنين: جذرُها من `main`،
+# ومجلّد `preview/` من فرع التطوير.
+#
+# ولهذا نتيجتان مقصودتان:
+#   • ما يفتحه الأبناء (الجذر) لا يتغيّر إلّا بدمجٍ إلى `main` — كما كان تماماً.
+#   • ودفعُ فرع التطوير يُحدّث `preview/` وحده، فيُفتح على جهازٍ حقيقي قبل الشحن.
+#     وهذا بالضبط ما لا تستطيعه اختباراتنا: كلّها Chromium بلا رأس على لينكس،
+#     والعطل الذي فتح جلسة ٢٩ أغسطس (`synthesis-failed` على Android 10) من صنفٍ
+#     لا يُمسك إلّا على جهازٍ حقيقي.
 on:
   push:
     branches:
       - main
+      - claude/talent-app-fixes-visuals-poevc6
   workflow_dispatch:
 
 permissions:
@@ -22,8 +38,30 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      # الجذر من `main` دائماً — أيّاً كان الفرع الذي أطلق التشغيل. فدفعُ فرع
+      # التطوير لا يستطيع أن يمسّ ما يفتحه الأبناء ولو أخطأ أحدٌ في إعداد الشرط.
+      - name: Checkout main (production root)
         uses: actions/checkout@v4
+        with:
+          ref: main
+      # وفرعُ التطوير في مجلّدٍ فرعي. `continue-on-error` مقصود: فرعٌ محذوف أو
+      # غير موجود يجب ألّا يمنع نشر الإنتاج — التجريب إضافةٌ لا شرط.
+      - name: Checkout dev branch into preview/
+        id: preview
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          ref: claude/talent-app-fixes-visuals-poevc6
+          path: preview
+      # الوسم يُكتب **قبل** نزع git — وإلّا قرأ بصمة `main` لا بصمة الفرع، فقال
+      # للفاحص إنه يرى الإنتاج وهو يرى التجريب. (رُتِّب هكذا عمداً.)
+      - name: Mark preview
+        if: steps.preview.outcome == 'success'
+        run: |
+          printf '%s' "preview · $(git -C preview rev-parse --short HEAD) · $(date -u +%Y-%m-%dT%H:%MZ)" > preview/PREVIEW.txt
+      # لا حاجة لتاريخ git ولا لتعريفات النشر ولا للاختبارات داخل القطعة المنشورة
+      - name: Strip nested git metadata
+        run: rm -rf preview/.git preview/.github preview/tests || true
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload Pages artifact

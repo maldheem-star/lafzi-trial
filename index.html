@@ -148,6 +148,18 @@
 </style>
 </head>
 <body>
+<!-- شارةُ التجريب: تُرسم من الرابط وحده قبل أي شيفرة تطبيق، فتظهر حتى لو انكسر
+     التطبيق كلّه — وهذا موضع الحاجة إليها بالضبط: نسخةٌ مكسورة يجب أن يُعرف أنها
+     التجريب لا الإنتاج. ولا تظهر على الجذر إطلاقاً، فالأبناء لا يرونها. -->
+<div id="pvBadge" hidden style="position:fixed;top:0;left:0;right:0;z-index:9999;
+  background:#7C3AED;color:#fff;font-size:12px;font-weight:800;text-align:center;
+  padding:4px 8px;letter-spacing:.3px">نسخة تجريب — ليست نسخة الأبناء</div>
+<script>
+try{if(/(^|\/)preview\//.test(location.pathname)){
+  var b=document.getElementById("pvBadge");
+  b.hidden=false;document.body.style.paddingTop="26px";
+}}catch(e){}
+</script>
 <div class="wrap" id="app"></div>
 
 <script>
@@ -178,8 +190,20 @@ function profileId(){
   }catch(e){return "haya"}
 }
 function profileOf(){const id=profileId();return PROFILES.filter(function(p){return p.id===id})[0]||PROFILES[0]}
-// هيا بلا بادئة: مفاتيحها القديمة هي مفاتيحها الحالية، فلا تفقد شيئاً
-function pkey(k){const id=profileId();return id==="haya"?k:id+"::"+k}
+// ===== بيئة التجريب تُفصَل عن الإنتاج في المخزون — ٢٩ أغسطس =====
+// `/preview` و`/` على **نفس الأصل**، فيتشاركان `localStorage` كلّه. أي أن فتح نسخة
+// التجريب على جهاز هيا كان سيكتب في مخزونها الحقيقي: جدولة FSRS، وسجلّ ما عُرض،
+// والبنوك المولَّدة — فيُفسد بيانات التشخيص التي يقوم عليها المشروع كلّه، من حيث
+// أردنا أن نحميها. **وهذا لم يُكتشَف باختبار بل بفحص الأثر قبل الشحن.**
+//
+// والفصل عند `pkey` وحدها: نقطةٌ يمرّ بها كل `lsGet/lsSet/lsDel` في التطبيق، كما
+// فُصل الأبناء بعضهم عن بعض بها أصلاً — بادئةٌ ثانية لا آليةٌ ثانية.
+// وهيا بلا بادئة في الإنتاج: مفاتيحها القديمة هي مفاتيحها الحالية، فلا تفقد شيئاً.
+function isPreview(){try{return /(^|\/)preview\//.test(location.pathname)}catch(e){return false}}
+function pkey(k){
+  const id=profileId(),base=(id==="haya"?k:id+"::"+k);
+  return isPreview()?("pv::"+base):base;
+}
 function lsGet(k){try{return localStorage.getItem(pkey(k))}catch(e){return null}}
 function lsSet(k,v){try{localStorage.setItem(pkey(k),v)}catch(e){}}
 function lsDel(k){try{localStorage.removeItem(pkey(k))}catch(e){}}
