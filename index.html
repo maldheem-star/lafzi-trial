@@ -3709,6 +3709,11 @@ function pickEnglishVoice(voices){
     return score(b)-score(a);
   })[0];
 }
+// هل نحن داخل لمسةٍ حقيقية؟ نداءُ `speak()` خارجها يُتجاهَل بصمت على المحمول،
+// وهذا فرقٌ يجب أن يدخل السجلّ لا أن يُخمَّن لاحقاً.
+let ttsGesture=false;
+try{["pointerdown","touchstart","click","keydown"].forEach(function(t){
+  document.addEventListener(t,function(){ttsGesture=true;setTimeout(function(){ttsGesture=false},1200)},true)})}catch(e){}
 function speakEnglish(text,onDone){
   try{
     if(!text||!('speechSynthesis' in window)){const i={ok:false,reason:'unsupported'};ttsMark(false,i);if(onDone)onDone(i);return}
@@ -3722,9 +3727,10 @@ function speakEnglish(text,onDone){
       const usVoice=pickEnglishVoice(voices);
       if(!forceNoLang){u.lang='en-US';u.rate=0.85;try{if(usVoice)u.voice=usVoice}catch(e){}}
       else{u.rate=0.85} // لا نفرض لغة/صوتاً غير متوفرين على الجهاز، نترك المتصفح يختار افتراضياً
-      u.onstart=()=>{started=true;ttsMark(true);if(onDone)onDone({ok:true,voicesCount:voices.length,hasEnVoice:!!usVoice,voiceName:usVoice&&usVoice.name,fallback:!!forceNoLang})};
+      u.onstart=()=>{started=true;seal();ttsMark(true);if(onDone)onDone({ok:true,voicesCount:voices.length,hasEnVoice:!!usVoice,voiceName:usVoice&&usVoice.name,fallback:!!forceNoLang})};
       u.onerror=(e)=>{
         if(!forceNoLang&&!triedFallback){triedFallback=true;attempt(true);return}
+        seal();
         const i={ok:false,reason:'speak_error',errorType:e&&e.error,voicesCount:voices.length,hasEnVoice:!!usVoice,voiceName:usVoice&&usVoice.name,fallback:!!forceNoLang};
         ttsMark(false,i);if(onDone)onDone(i);
       };
@@ -3734,6 +3740,23 @@ function speakEnglish(text,onDone){
     // ننطق فوراً وبشكل متزامن داخل لمسة المستخدم. التأجيل لانتظار قائمة الأصوات (voiceschanged/setTimeout)
     // يُخرج الاستدعاء من سياق اللمسة، فتتجاهله المتصفحات بصمت — وهذا سبب عدم خروج أي صوت على الجهاز.
     const voicesReady=synth.getVoices().length>0;
+    // ===== الحالة الثالثة: لا خطأ ولا صوت — درس ٢٩ أغسطس (مساءً) =====
+    // لقطةٌ ثانية من جهاز هيا، شاشةُ الاستماع هذه المرّة: **لا رايةَ صفراء** (فلا خطأ
+    // وقع) ولا صوت. وهذه حالةٌ ثالثة لم تكن تُسجَّل إطلاقاً: `onerror` يُسجَّل منذ
+    // اليوم، و`onstart` يعني نجاحاً — أمّا **ألّا يقع أيٌّ منهما** فلا أثر له.
+    // وهي الحالة المتوقّعة حين يتجاهل المتصفح `speak()` بصمت (خارج لمسة المستخدم على
+    // المحمول خاصّةً)، أو حين يقبله محرّكٌ بلا بيانات صوتٍ فلا يُخرج شيئاً.
+    // فتُرصد بمهلة: طلبٌ لم يبدأ ولم يُخطئ خلال ثانيتين = صمت.
+    let settled=false;
+    const seal=function(){settled=true};
+    const wasStart=u=>u;   // (توثيقٌ فقط: البدء/الخطأ يضبطان `started`/`triedFallback`)
+    setTimeout(function(){
+      if(settled||started)return;
+      const vs=synth.getVoices();
+      ttsMark(false,{ok:false,reason:'silent',voicesCount:vs.length,
+        hasEnVoice:!!pickEnglishVoice(vs),voiceName:(pickEnglishVoice(vs)||{}).name,
+        gesture:!!ttsGesture});
+    },2000);
     attempt(false);
     // لو كانت قائمة الأصوات فارغة وقت اللمس ولم يبدأ النطق، نعيد المحاولة مرة واحدة بعد وصولها.
     // والانتظار على الحدث نفسه (`voiceschanged`) لا على مهلةٍ عمياء: مهلةُ ٧٠٠ملّي قد تنقضي
@@ -3782,10 +3805,23 @@ function ttsMark(ok,info){
   if(!ok)ttsLogFail(info);
   if(was!==ttsBroken&&(mode==="pron"||mode==="dictation"||mode==="speak"||mode==="engplan"))render();
 }
-function ttsNoticeHTML(){
+// ===== كل شاشةٍ صوتية تحتاج المخرج نفسه — درس ٢٩ أغسطس (مساءً) =====
+// لقطةُ شاشة الاستماع: لا رايةَ ولا زرَّ تشخيص، فهي عالقةٌ بلا تفسير ولا مخرج —
+// بينما شاشة النطق فيها الاثنان منذ بُنيا. والفحص أظهر أن **خمس شاشات صوتية**
+// (استماع، إملاء، أزواج الاستماع، فيديو، جمل منطوقة) كلُّها بلا واحدٍ منهما.
+// فالمساعِد واحدٌ يُوصَل بها جميعاً: الرايةُ حين تُرفع، والرابطُ دائماً — لأن
+// «لا صوت» قد يقع بلا أن تُرفع راية (طلبٌ يُتجاهَل بصمت).
+// والنصّ يختلف بالشاشة لا يُنسَخ: «اقرئي الكلمة المكتوبة» صحيحٌ في النطق حيث
+// الكلمة معروضة، وخطأٌ في الاستماع حيث الصوتُ هو السؤال ولا بديل مكتوب عنه —
+// كشفته لقطةُ شاشةٍ بعد أوّل وصل. فالبديل يُقال لكل شاشةٍ بحسب ما تملكه فعلاً.
+function ttsHelpHTML(alt){
+  return ttsNoticeHTML(alt)+
+    `<button class="link-btn" style="font-size:12px;margin:0 0 8px;padding:0" onclick="startAudioDiag()">🔧 لا تسمعين صوتاً؟ افحصي الصوت هنا</button>`;
+}
+function ttsNoticeHTML(alt){
   if(!ttsBroken)return "";
   return `<div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:12px;padding:12px 14px;margin-bottom:12px;font-size:13px;color:#92400E;line-height:1.8;text-align:start">
-    🔇 <b>الصوت لا يعمل على هذا الجهاز</b> — اقرئي الكلمة المكتوبة وانطقيها.
+    🔇 <b>الصوت لا يعمل على هذا الجهاز</b> — ${alt||"اقرئي الكلمة المكتوبة وانطقيها."}
     <button class="link-btn" style="font-size:12px;margin:6px 0 0;padding:0" onclick="startAudioDiag()">لماذا؟ وكيف أُصلحه ←</button>
   </div>`;
 }
@@ -6674,6 +6710,7 @@ function renderDictation(){
   <div style="font-size:12px;font-weight:800;color:#0E7490;margin-bottom:12px">${info.label}</div>
   <div class="card" style="text-align:center">
     <span class="tag" style="background:#CFFAFE;color:#0E7490">✍️ إملاء · ${info.tag}</span>
+    ${ttsHelpHTML("هذا القسم يحتاج الصوت، ولا نصّ يُقرأ بدلاً منه. افحصي الصوت أوّلاً، أو عودي لهذا القسم لاحقاً.")}
     <div style="margin:18px 0"><button type="button" onclick="dictReplay()" style="background:#0E7490;color:#fff;border:none;border-radius:50%;width:64px;height:64px;font-size:26px;cursor:pointer">🔊</button></div>
     <div style="font-size:13px;color:#64748B;margin-bottom:16px">اضغطي على السمّاعة لسماع الكلمة، ثم اكتبيها بالإنجليزي</div>
     ${hintBox}
@@ -7374,7 +7411,11 @@ function startListen(){
   genTopUp("listen",GEN_BANK_KEY_LISTEN,profileOf().level||"A2");
 }
 function listenCur(){return listenItems[listenIdx]}
-function listenPlay(){const it=listenCur();if(!it)return;listenPlays++;speakEnglish(it.audio)}
+// العدّاد كان يزيد على **الطلب** لا على السماع، فتقول الشاشة «استمعتِ مرّة» وهي لم
+// تسمع شيئاً — وتدخل الكذبةُ السجلّ (`plays:`) فيُقرأ لاحقاً على أنها سمعت وأخطأت.
+// فصار يزيد عند بدء النطق فعلاً (`onstart`) لا قبله.
+function listenPlay(){const it=listenCur();if(!it)return;
+  speakEnglish(it.audio,function(r){if(r&&r.ok){listenPlays++;render()}})}
 function listenChoose(i){
   if(listenLocked||!gateOpen())return;   // بوّابة بنيوية: لا اختيار قبل زمن السماع
   const it=listenCur();listenLocked=true;listenPicked=i;
@@ -7408,6 +7449,7 @@ function renderListen(){
   <div class="card" style="text-align:center">
     <span class="tag" style="background:#E0F2FE;color:#0369A1">🎧 استماع</span>
     <div class="q" style="margin-top:10px;direction:ltr;text-align:center;font-family:Georgia,serif">${it.q}</div>
+    ${ttsHelpHTML("هذا القسم يحتاج الصوت، ولا نصّ يُقرأ بدلاً منه. افحصي الصوت أوّلاً، أو عودي لهذا القسم لاحقاً.")}
     <div style="margin:16px 0"><button type="button" onclick="listenPlay()" style="background:#0284C7;color:#fff;border:none;border-radius:50%;width:64px;height:64px;font-size:26px;cursor:pointer">🔊</button></div>
     <div style="font-size:12px;color:#64748B;margin-bottom:14px">${listenPlaysHint(it.lv)}${listenPlays?` · استمعتَ ${toAr(listenPlays)} ${listenPlays===1?"مرّة":"مرّات"}`:""}</div>
     <div class="choices">${secGateHTML()}${choices}</div>
@@ -11286,6 +11328,7 @@ function renderMinpair(){
   <div class="meta"><span>${toAr(minpairIdx+1)} من ${toAr(minpairItems.length)}</span><span>لعبة الاستماع · ${it.lv}</span></div>
   <div class="card" style="text-align:center">
     <span class="tag" style="background:#CFFAFE;color:#0E7490">🎧 أيّ كلمة سمعتِ؟</span>
+    ${ttsHelpHTML("هذا القسم يحتاج الصوت، ولا نصّ يُقرأ بدلاً منه. افحصي الصوت أوّلاً، أو عودي لهذا القسم لاحقاً.")}
     <div style="margin:16px 0"><button type="button" onclick="minpairPlay()" style="background:#0891B2;color:#fff;border:none;border-radius:50%;width:64px;height:64px;font-size:26px;cursor:pointer">🔊</button></div>
     <div style="font-size:12px;color:#64748B;margin-bottom:14px">استمعي، ثم اختاري الكلمة${minpairPlays?` · استمعتِ ${toAr(minpairPlays)} ${minpairPlays===1?"مرّة":"مرّات"}`:""}</div>
     <div style="display:flex;gap:10px;justify-content:center">${secGateHTML()}${choices}</div>
@@ -11474,6 +11517,7 @@ function renderVideo(){
       <div class="vscene" style="margin:18px 0;font-size:64px">${s[0]}</div>
       <div class="vscene" style="direction:ltr;text-align:center;font-family:Georgia,serif;font-size:17px;color:#0F172A;min-height:44px">${esc(s[1])}</div>
       <div style="margin:10px 0">${dots}</div>
+      ${ttsHelpHTML("المشهد مكتوبٌ أمامك — اقرئيه، والسؤال بعده يعمل بلا صوت.")}
       <div style="margin:14px 0"><button type="button" onclick="videoPlay()" style="background:#DC2626;color:#fff;border:none;border-radius:50%;width:56px;height:56px;font-size:22px;cursor:pointer">🔊</button></div>
       <button class="btn" style="background:#DC2626;margin:0" onclick="videoNextScene()">${videoScene+1>=it.sc.length?"إلى السؤال ←":"المشهد التالي ←"}</button>
     </div>`;
@@ -12195,6 +12239,7 @@ function renderSpeak(){
     inner=`
     <div style="background:#FDF2F8;border-radius:14px;padding:16px;margin-bottom:14px;text-align:center">${sentence}</div>
     <div style="display:flex;gap:12px;justify-content:center;align-items:center;margin:6px 0 14px">
+      ${ttsHelpHTML("اقرئي الجملة المكتوبة أعلاه وانطقيها — التسجيل يعمل بلا سماع.")}
       <button type="button" onclick="speakReplay()" style="background:#ECFEFF;border:1.5px solid #A5F3FC;color:#0891B2;border-radius:50%;width:56px;height:56px;font-size:22px;cursor:pointer">🔊</button>
       ${speakListening
         ? `<button type="button" onclick="speakStop()" style="background:#DC2626;color:#fff;border:none;border-radius:50%;width:72px;height:72px;font-size:26px;cursor:pointer;box-shadow:0 0 0 6px rgba(220,38,38,.18)">⏹️</button>`
