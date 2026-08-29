@@ -3568,7 +3568,7 @@ function pickEnglishVoice(voices){
 }
 function speakEnglish(text,onDone){
   try{
-    if(!text||!('speechSynthesis' in window)){ttsMark(false);if(onDone)onDone({ok:false,reason:'unsupported'});return}
+    if(!text||!('speechSynthesis' in window)){const i={ok:false,reason:'unsupported'};ttsMark(false,i);if(onDone)onDone(i);return}
     const synth=window.speechSynthesis;
     let triedFallback=false,started=false,retried=false;
     const attempt=(forceNoLang)=>{
@@ -3582,7 +3582,8 @@ function speakEnglish(text,onDone){
       u.onstart=()=>{started=true;ttsMark(true);if(onDone)onDone({ok:true,voicesCount:voices.length,hasEnVoice:!!usVoice,voiceName:usVoice&&usVoice.name,fallback:!!forceNoLang})};
       u.onerror=(e)=>{
         if(!forceNoLang&&!triedFallback){triedFallback=true;attempt(true);return}
-        ttsMark(false);if(onDone)onDone({ok:false,reason:'speak_error',errorType:e&&e.error,voicesCount:voices.length,hasEnVoice:!!usVoice});
+        const i={ok:false,reason:'speak_error',errorType:e&&e.error,voicesCount:voices.length,hasEnVoice:!!usVoice,voiceName:usVoice&&usVoice.name,fallback:!!forceNoLang};
+        ttsMark(false,i);if(onDone)onDone(i);
       };
       synth.resume();
       synth.speak(u);
@@ -3591,18 +3592,51 @@ function speakEnglish(text,onDone){
     // يُخرج الاستدعاء من سياق اللمسة، فتتجاهله المتصفحات بصمت — وهذا سبب عدم خروج أي صوت على الجهاز.
     const voicesReady=synth.getVoices().length>0;
     attempt(false);
-    // لو كانت قائمة الأصوات فارغة وقت اللمس ولم يبدأ النطق، نعيد المحاولة مرة واحدة بعد وصولها
+    // لو كانت قائمة الأصوات فارغة وقت اللمس ولم يبدأ النطق، نعيد المحاولة مرة واحدة بعد وصولها.
+    // والانتظار على الحدث نفسه (`voiceschanged`) لا على مهلةٍ عمياء: مهلةُ ٧٠٠ملّي قد تنقضي
+    // قبل أن تصل القائمة على جهازٍ بطيء، فتفشل المحاولة الثانية لنفس السبب الأوّل وتُرفَع
+    // الراية ظلماً. والمهلة تبقى شبكةَ أمانٍ إن لم يُطلق المتصفحُ الحدث أصلاً.
     if(!voicesReady){
-      setTimeout(()=>{if(!started&&!retried){retried=true;attempt(false)}},700);
+      const again=function(){if(!started&&!retried){retried=true;attempt(false)}};
+      try{
+        const onVoices=function(){try{synth.removeEventListener('voiceschanged',onVoices)}catch(e){}again()};
+        synth.addEventListener('voiceschanged',onVoices,{once:true});
+        setTimeout(function(){try{synth.removeEventListener('voiceschanged',onVoices)}catch(e){}},4000);
+      }catch(e){}
+      setTimeout(again,700);
+      setTimeout(again,2500);   // جهازٌ بطيء: محاولةٌ أخيرة قبل رفع الراية
     }
-  }catch(e){ttsMark(false);if(onDone)onDone({ok:false,reason:'exception',message:String(e&&e.message||e)})}
+  }catch(e){const i={ok:false,reason:'exception',message:String(e&&e.message||e)};ttsMark(false,i);if(onDone)onDone(i)}
 }
 // ===== راية عطل النطق =====
 // حين يفشل تحويل النص إلى صوت على الجهاز، كانت أقسام الاستماع تصمت بلا تفسير.
 // الآن تُرفع راية تُغيّر الشاشة نفسها: تُعرض الكلمة مكتوبة، ويُشرح السبب وعلاجه.
 let ttsBroken=false,ttsChecked=false;
-function ttsMark(ok){
+// ===== وفشل النطق يُسجَّل بسببه — درس ٢٩ أغسطس =====
+// بلاغ هيا «ما تسمع صوت»، ولقطةُ شاشتها تُظهر راية «الصوت لا يعمل على هذا الجهاز».
+// والبيانات تحسم التوقيت: ٢٨ أغسطس أكملت إملاءً ١٢ واستماعاً ٨ وأزواجاً ٨ — أي أن
+// الصوت كان يعمل تماماً؛ واليوم **صفرٌ في الأقسام الصوتية الأربعة كلّها**.
+// **ولم يكن في السجلّ ما يقول لماذا**: `ttsMark` تُغيّر راية في الذاكرة ولا تكتب سطراً.
+// وهذا نفس صنف ثغرة حقول Azure أمس — رايةٌ تُعرض ولا تُسجَّل فلا تُشخَّص.
+// فيُسجَّل الآن سببُ الفشل ومعه ما يُميّز جهازها: عدد الأصوات المتاحة، وهل فيها
+// إنجليزيّ، واسم الصوت المختار، ونوع خطأ المتصفح نفسه. وبسقفٍ للضجيج: مرّةٌ لكل
+// سببٍ في الجلسة، فمئة محاولةٍ فاشلة لا تُضيف تشخيصاً.
+let ttsLogged={};
+function ttsLogFail(info){
+  try{
+    const why=(info&&(info.reason||"unknown"))+(info&&info.errorType?":"+info.errorType:"");
+    if(ttsLogged[why])return;ttsLogged[why]=1;
+    logAnswer("gen","tts_fail",false,why,null,null,
+      {q_text:("[نطق:"+why+"] أصوات:"+(info&&info.voicesCount!=null?info.voicesCount:"?")
+        +" · إنجليزي:"+(info&&info.hasEnVoice?1:0)
+        +" · المختار:"+((info&&info.voiceName)||"—")
+        +" · بديل:"+(info&&info.fallback?1:0)
+        +" · "+(navigator.userAgent||"").slice(0,120))});
+  }catch(e){}
+}
+function ttsMark(ok,info){
   const was=ttsBroken;ttsBroken=!ok;ttsChecked=true;
+  if(!ok)ttsLogFail(info);
   if(was!==ttsBroken&&(mode==="pron"||mode==="dictation"||mode==="speak"||mode==="engplan"))render();
 }
 function ttsNoticeHTML(){
