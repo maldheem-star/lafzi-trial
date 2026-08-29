@@ -288,6 +288,18 @@ function systemGenWrite(level: string, topicIdx?: number) {
       "each on its own line starting with '• '. End with a line 'Write about 80–100 words.'.",
       "MIN must be 70.",
     ].join(" "),
+    // ===== وB2 كان بلا شكل، فيسقط إلى A2 — عطلٌ كشفه تشخيصُ ٢٩ أغسطس =====
+    // محمد رُفع إلى B2، فكلُّ ما يُولَّد له كان يُطلَب بشكل A2 Key Part 6 وMIN=25،
+    // أي رسالةٌ من خمسٍ وعشرين كلمة لطالبٍ حدُّه المؤلَّف مئةٌ وثلاثون. والسقوط
+    // الصامت إلى مستوًى أدنى هو نفس عيب `rank[undefined]` (٢٥ أغسطس) في موضعٍ آخر.
+    B2: [
+      "Write ONE writing prompt for a CEFR B2 learner, in the style of Cambridge B2 First:",
+      "EITHER an opinion essay (one line giving the discussion context, then a line",
+      "'Include these points:', then exactly 3 lines starting with '• ' where the third is",
+      "'one point of your own'), OR a report / review / formal letter task with 2 to 3",
+      "content points each on its own line starting with '• '.",
+      "End with a line 'Write 140–190 words.'. MIN must be 130.",
+    ].join(" "),
   };
   const topic = pickTopic(topicIdx);
   return [

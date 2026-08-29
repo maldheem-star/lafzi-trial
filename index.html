@@ -7048,6 +7048,17 @@ function genBankAdd(key,item){
 // السطر نفسه) سُمع عربي وإنجليزي معاً، كما اشتكى إلياس فعلاً (١٦ أغسطس). فسطر الاستمرار
 // يرفض أي سطرٍ فيه عربي، والتحقّق النهائي يرفض العنصر كلّه إن تسرّب عربي رغم ذلك.
 const AR_CHARS=/[\u0600-\u06FF]/;
+// ===== ولا مفكِّكَ يسكت — تعميمُ درس ٢٩ أغسطس على نظائره =====
+// `parseGenPickBlock` صار يُسمّي سبب سقوطه، وبقيت ثلاثة تُعيد `null` بصمت:
+// parseGenBlock (استماع/قراءة) وparseGenWriteBlock وparseGenVideoBlock. وكلّفنا هذا
+// يوماً كاملاً: توليدُ الكتابة **صفرٌ للثلاثة على أربعة أيام** ولا سطرَ يقول لماذا —
+// فتعذّر الفصل بين «الخادم لم يردّ» (وهذا مُسجَّلٌ أصلاً) و«الشكل ناقص» و«MIN غائب».
+// فالفحصُ الذي يُسقط عنصراً يقول اسمه، وأوّلَ ما يُسقَط من ردٍّ نعرف ما فيه.
+function genParseFail(domain,why,extra){
+  try{logAnswer("gen","parse_fail",false,domain+" · "+why,null,null,
+    {q_text:("[تفكيك:"+why+"] "+String(extra||"").slice(0,400))})}catch(e){}
+  return null;
+}
 const COMP_SKILLS=["تفصيل محدَّد","الفكرة الرئيسية","سببٌ وعلاقة","استنتاج","تسلسل الأحداث"];
 function parseGenBlock(text,domain){
   const lines=String(text||"").split(/\r?\n/).map(function(l){return l.trim()});
@@ -7064,9 +7075,12 @@ function parseGenBlock(text,domain){
     else if(inText&&l&&!AR_CHARS.test(l))passage+=(passage?" ":"")+l;   // TEXT قد يمتدّ سطرين
   });
   passage=passage.trim();
-  if(!passage||!q||!a1||!a2||!a3||!correct)return null;
+  if(!passage||!q||!a1||!a2||!a3||!correct)
+    return genParseFail(domain,"shape",[passage?"T":"-",q?"Q":"-",a1?"A":"-",a2?"B":"-",a3?"C":"-",correct?"K":"-"].join("")
+      +" · "+String(text||"").replace(/\s+/g," ").slice(0,220));
   // العنصر كلّه إنجليزي الآن (١٦ أغسطس) — تلوّثٌ عربي في أيّ حقل يُرفض العنصر كلّه
-  if(AR_CHARS.test(passage)||AR_CHARS.test(q)||AR_CHARS.test(a1)||AR_CHARS.test(a2)||AR_CHARS.test(a3))return null;
+  if(AR_CHARS.test(passage)||AR_CHARS.test(q)||AR_CHARS.test(a1)||AR_CHARS.test(a2)||AR_CHARS.test(a3))
+    return genParseFail(domain,"arabic",[passage,q,a1,a2,a3].filter(function(t){return AR_CHARS.test(t)}).join(" | "));
   const idx={A:0,B:1,C:2}[correct];
   // المهارة تُقبل من تصنيف الفهم المعروف وحده — وسمٌ خارجه يُهمَل ولا يُخترَع بديلٌ له
   const item={id:"ai_"+domain+"_"+Date.now().toString(36)+"_"+Math.random().toString(36).slice(2,7),
@@ -7306,12 +7320,17 @@ function parseGenVideoBlock(text){
     else if(m=/^TAG:\s*(.+)$/i.exec(l))tag=m[1].trim();
   });
   const idx=Object.keys(scenes).map(Number).sort(function(a,b){return a-b});
-  if(idx.length<3)return null;
-  for(let i=0;i<idx.length;i++)if(idx[i]!==i+1)return null;   // متتابعة بلا فجوة من ١
+  const head=String(text||"").replace(/\s+/g," ").slice(0,220);
+  if(idx.length<3)return genParseFail("video","scenes_"+idx.length,head);
+  for(let i=0;i<idx.length;i++)if(idx[i]!==i+1)   // متتابعة بلا فجوة من ١
+    return genParseFail("video","scene_gap",idx.join(",")+" · "+head);
   const sc=idx.map(function(i){return scenes[i]});
-  if(sc.some(function(x){return !x.e||!x.t||x.e.length>8}))return null;
-  if(!title||!q||!a1||!a2||!a3||!correct)return null;
-  if([title,q,a1,a2,a3].concat(sc.map(function(x){return x.t})).some(function(t){return AR_CHARS.test(t)}))return null;
+  if(sc.some(function(x){return !x.e||!x.t||x.e.length>8}))
+    return genParseFail("video","scene_shape",sc.map(function(x){return (x.e||"-")+"/"+(x.t?"T":"-")}).join(" "));
+  if(!title||!q||!a1||!a2||!a3||!correct)
+    return genParseFail("video","shape",[title?"T":"-",q?"Q":"-",a1?"A":"-",a2?"B":"-",a3?"C":"-",correct?"K":"-"].join("")+" · "+head);
+  if([title,q,a1,a2,a3].concat(sc.map(function(x){return x.t})).some(function(t){return AR_CHARS.test(t)}))
+    return genParseFail("video","arabic",[title,q,a1,a2,a3].filter(function(t){return AR_CHARS.test(t)}).join(" | "));
   return{id:"ai_video_"+Date.now().toString(36)+"_"+Math.random().toString(36).slice(2,7),
     sk:COMP_SKILLS.indexOf(tag)>=0?tag:null,
     t:title,sc:sc.map(function(x){return[x.e,x.t]}),q:q,c:[a1,a2,a3],a:{A:0,B:1,C:2}[correct],ai:true};
@@ -7767,7 +7786,9 @@ function writeBankFor(level){
 // PROMPT قد يمتدّ أسطراً (مطلوبٌ في الصيغة نفسها: "1)"/"2)" أو "•")، فالمحرّك يكتبها
 // بعلامة \n حرفية بدل سطرٍ فعلي (كما TEXT في parseGenBlock يبقى سطراً واحداً) — تُفكّ هنا
 function parseGenWriteBlock(text){
-  const lines=String(text||"").split(/\r?\n/);
+  // الأسطر تُشذَّب كما في parseGenBlock — سطرٌ بفراغٍ بادئ كان يُفقِد الوسم كلّه،
+  // وهي أسهل صورة يخرج بها نموذجٌ عن الشكل (مسافةٌ أو ترقيمٌ قبل PROMPT).
+  const lines=String(text||"").split(/\r?\n/).map(function(l){return l.trim()});
   let prompt="",min=0;
   lines.forEach(function(l){
     let m;
@@ -7775,7 +7796,11 @@ function parseGenWriteBlock(text){
     else if(m=/^MIN:\s*(\d+)/i.exec(l))min=parseInt(m[1],10);
   });
   prompt=prompt.replace(/\\n/g,"\n").trim();
-  if(!prompt||!min||min<5||AR_CHARS.test(prompt))return null;
+  const head=String(text||"").replace(/\s+/g," ").slice(0,300);
+  if(!prompt)return genParseFail("write","no_prompt",head);
+  if(!min)return genParseFail("write","no_min",head);
+  if(min<5)return genParseFail("write","min_"+min,head);
+  if(AR_CHARS.test(prompt))return genParseFail("write","arabic",prompt.slice(0,200));
   return{id:"ai_write_"+Date.now().toString(36)+"_"+Math.random().toString(36).slice(2,7),
     prompt:prompt,min:min,ai:true};
 }
