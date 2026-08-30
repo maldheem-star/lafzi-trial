@@ -4038,6 +4038,7 @@ const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEn
   "accLoad","accSave","accRecord","accRate","stretchOn","bankStretched",
   "seqStart","seqReset","seqPlanFor","seqWeek","seqCur","startSeq","seqCardHTML","renderSeq",
   "loadKpi","kpiAgg","renderKpi","gjtNorm","gjtNoOxford","gjtWordBag","gjtIsRotation","gjtDefect","wbNeed","wbLeft",
+  "azExpandWords",
   "bktLoad","bktSave","bktStep","bktKey","skOf","bktRecord","bktOf","bktMastered","bktToMastery",
   "writeLfp","mockBand","mockLogLoad","mockLogAdd","mockSeenRecently","mockPickFrom",
   "buildMockPaper","startMock","mockCur","mockQuestion","mockChoose","mockFinish","renderMock","renderMockResult"];
@@ -6713,6 +6714,23 @@ function wbStart(sentence,stage){
   const extra=(WB_STAGES[wbStage-1]||WB_STAGES[0]).extra;
   wbPool=extra<0?[]:shuffle(wbTok.concat(wbDistract(wbTok,extra)));
   wbPicked=[];wbLocked=false;wbOk=false;wbTyped="";wbOn=true;
+  // ===== بوّابة التسرّع على بنك الكلمات — ٣٠ أغسطس =====
+  // كانت موصولةً بستّة أقسامٍ وليس بنك الكلمات منها، وهو أشدُّها حاجةً إليها.
+  // والقياس على واحدٍ وعشرين يوماً يفصل الحالين بلا تداخل:
+  //   صوابها  ٧ محاولات · وسيط **٨٫٤ث** · وأسرعها **٤٫٣ث**
+  //   خطؤها ١١٣ محاولة · وسيط ٤٫٨ث · ورُبعها **دون ٣٫٤ث**
+  // فالأرضيّة ٤ ثوانٍ — نصفُ وسيطها المنخرط بنفس القاعدة الموضوعة أصلاً، **ودون
+  // أسرع إجابةٍ صحيحة أنتجتها قطّ** (٤٫٣ث)، فلا تُحبَس محاولةٌ صادقة واحدة.
+  // والسقف ٩ عند وسيطها المنخرط نفسه، كما سُقِّف قسم القواعد بزمنه المقاس.
+  //
+  // **وحدُّها يُقال**: ١١ من ١٤٤ محاولةً صحيحة في ثلاثة أسابيع (٧٫٦٪) — والبوّابة
+  // تعالج الرُّبع المتسرّع لا الباقي. فإن لم ترتفع النسبة بعدها فالعلّة في مكانٍ آخر
+  // ويُبحَث عنه، ولا يُدَّعى أن هذه علاجُه.
+  //
+  // وموضعها هنا لا في كل قسمٍ على حدة: `wbStart` نقطةٌ يمرّ بها الأبوابُ الستّة
+  // (الإملاء، والخطّة، وأخطائي، وبنك المحادثة، وقسم البناء، والمشهد الحرّ)، وكلّها
+  // تستدعيها عند انتقال العنصر لا في كل رسم — فتغييرٌ واحد وصلها جميعاً.
+  if(wbPool.length)secGateStart("build",wbTarget);
 }
 function wbReset(){wbOn=false;wbTarget="";wbTok=[];wbPool=[];wbPicked=[];wbLocked=false;wbOk=false;wbTyped=""}
 function wbPick(i){if(wbLocked||wbPicked.indexOf(i)>=0)return;wbPicked.push(i);render()}
@@ -6773,11 +6791,14 @@ function wbHTML(){
       style="background:${used?'#F1F5F9':'#fff'};color:${used?'#CBD5E1':'#0F172A'};border:1.5px solid ${used?'#E2E8F0':'#A5F3FC'};
       border-radius:10px;padding:8px 12px;margin:0 4px 6px 0;font-family:Georgia,serif;font-size:16px;
       cursor:${(used||wbLocked)?'default':'pointer'}">${esc(w)}</button>`}).join("");
+  // البوّابة تُخفي الكلمات وحدها — والمطلوب (الجملة العربية أو ما سُمع) يبقى معروضاً،
+  // فالزمن يُنفَق في فهم المطلوب لا في انتظارٍ أعمى. وسطرُ المبنيّ يبقى ليُرى أنه فارغ.
+  const gated=(gateKind==="build"&&!gateOpen());
   return `<div style="display:flex;gap:6px;margin-bottom:8px">${bar}</div>
   <div style="font-size:12px;font-weight:800;color:#0E7490;margin-bottom:10px">${st.label}</div>
   <div style="direction:ltr;text-align:left;min-height:52px;background:#F8FAFC;border:2px dashed #CBD5E1;
     border-radius:12px;padding:10px;margin-bottom:12px">${line}</div>
-  <div style="direction:ltr;text-align:left">${tiles}</div>`;
+  ${gated?secGateHTML("الكلمات"):`<div style="direction:ltr;text-align:left">${tiles}</div>`}`;
 }
 // بنك الجمل: مصدرٌ واحد لثلاثة أبواب — الإملاء (تُسمَع ثم تُبنى)، وخطة الإنجليزية
 // (تُطلب بالعربية ثم تُبنى)، ووضع أخطائي. والقواعد موسومة لتُربط بشرحها القائم.
@@ -12197,11 +12218,28 @@ function phonemeLabel(p){const k=String(p||"").toLowerCase().replace(/[0-9]/g,""
 // والتكرار من طفلة تتأكّد من نفسها سلوك حسن لا خطأ، فلا يُعاقَب عليه.
 // فللمرجع القصير نعتمد دقّة الأصوات وحدها، وللجملة تبقى الدرجة المركّبة على حالها.
 const PRON_SHORT_REF=2;
+// ===== الاختصار يُفكَّك في الطرفين لا في طرفٍ واحد — ٣٠ أغسطس =====
+// كلماتُ الهدف تمرّ على `PRON_CONTRACTIONS` فتصير «can't» كلمتين، وكلماتُ Azure لا
+// تمرّ عليها فتبقى كلمةً واحدة — فيختلّ العدد وتسقط الدرجة إلى مطابقة النصّ، وهي
+// المسطرة الضعيفة التي وُصل Azure للخلاص منها.
+// فتُمرَّر كلماتُ Azure على **نفس القائمة المغلقة** — لا قائمةٌ ثانية ولا منطقٌ ثانٍ.
+// **والافتراض يُعلَن**: شطرا الاختصار يرثان درجة الكلمة الواحدة، لأن Azure قاسهما
+// نُطقاً واحداً فعلاً ولا يملك لهما درجتين.
+function azExpandWords(aw){
+  const out=[];
+  (aw||[]).forEach(function(x){
+    const parts=pronWords(x.w);
+    if(!parts.length)return;
+    parts.forEach(function(p){out.push({w:p,score:x.score,err:x.err})});
+  });
+  return out;
+}
 function azureToScore(target,data){
   const t=pronWords(target);
   const all=data.words||[];
-  const aw=all.filter(function(x){return String(x.err||"")!=="Insertion"});
-  const repeats=Math.max(0,all.length-aw.length);
+  const kept=all.filter(function(x){return String(x.err||"")!=="Insertion"});
+  const aw=azExpandWords(kept);
+  const repeats=Math.max(0,all.length-kept.length);
   const aligned=aw.length===t.length;
   // المحاذاة مشروطة بتساوي العدد: لو اختلف، سقطت الدرجة على الكلمة الخطأ فنعود للمقارنة النصية
   const hit=aligned?aw.map(function(x){return x.score>=60&&x.err!=="Omission"}):pronAlign(t,pronWords(data.lexical||data.heard||""));
@@ -12225,8 +12263,24 @@ function azureToScore(target,data){
     // — وهي بالضبط المسطرة الضعيفة التي وُصل Azure للخلاص منها.
     // ولا تُغيَّر الدرجة اليوم: تُوسَم الحالة ويُقاس تكرارها أوّلاً، بنفس نهج
     // `quizErrDelta` — عتبةٌ تُسمّى من توزيعٍ حقيقي لا تُخترع الآن.
+    //
+    // ===== وقد قِيس، فعولج السبب لا العَرَض — ٣٠ أغسطس =====
+    // جلسة هيا اليوم: **٢ من ١٠** صفوف محادثة موسومة `misaligned`، وكلاهما على اختصار
+    // (`I'll` و`can't`)، **وكلاهما نال ١٠٠٪** ودقّته الحقيقية ٩٢٪ و٧١٪ واكتماله ٧١٪.
+    // أي أن الوسم كان يحرس نجاحاً كاذباً ولا يمنعه. والسبب مسمّى بدقّة — اختلافُ
+    // تفكيك الاختصار بين الطرفين — فأُصلح في `azExpandWords` أعلاه: يُفكَّك الطرفان
+    // بنفس القائمة، فيتحاذيان، فتعمل مسطرة Azure الحقيقية بدل مطابقة النصّ.
+    // **والوسم يبقى** لما يبقى من اختلالٍ لسببٍ آخر (حذفٌ أو إقحامٌ حقيقي) — فالعلاج
+    // لسببٍ واحد معلوم لا يُلغي المقياس الذي كشفه.
     aligned:aligned,
-    disagree:(!aligned&&typeof data.completeness==="number"&&data.completeness<60&&pct>=PRON_PASS),
+    // ===== والوسم لا يُعلَّق على المحاذاة بعد اليوم =====
+    // كان شرطُه `!aligned` لأن الاختلال كان **السبب المشتبه به**. وقد عولج السبب
+    // أعلاه، فلو بقي الشرط لاختفى الوسمُ ومعه التعارضُ نفسه ما زال قائماً: صفُّ
+    // ٢٦ أغسطس (درجة ٩٣٪ واكتمال ٢٩٪) يتحاذى الآن، فيمرّ بلا راية وهو أشدُّ ما
+    // يحتاجها. فالشرط صار على التعارض ذاته: نجاحٌ يُمنَح بينما Azure يقول إنها لم
+    // تنطق إلّا أقلّ من نصف الجملة. **ولا تُغيَّر الدرجة** — الوسم يُقاس أوّلاً،
+    // بنفس ما تقرّر في ٢٦ أغسطس ولم يُنقَض منه إلّا سببٌ واحد ثبت علاجُه.
+    disagree:(typeof data.completeness==="number"&&data.completeness<60&&pct>=PRON_PASS),
     repeats:repeats,accuracy:data.accuracy,fluency:data.fluency,completeness:data.completeness,weak:data.weak||[]};
 }
 // الأصوات الضعيفة في سطر واحد للسجلّ: «t:45,s:52» — يجعل سؤال «أي صوت تُخطئ فيه دائماً؟»
@@ -12808,14 +12862,14 @@ function gateOpen(){return gateSecs===0||gateLeft<=0}
 // ١٦٫١/١٨٫٠ث. والقاعدة كما وُضعت أصلاً: الأرضيّة نصف **أدنى** وسيطٍ منخرط لا متوسّطه،
 // فلا تُحبَس أسرعُ إجابةٍ صادقة قطّ. و`pick` مطابقٌ عمداً لشكل `gram` (مذكورٌ في ملفّ
 // المشروع)، فيأخذ أرقامه المُجرَّبة نفسها لا رقماً جديداً.
-const SEC_GATE_FLOOR={listen:3,read:5,gram:4,minpair:2,video:4,math6:3,
+const SEC_GATE_FLOOR={listen:3,read:5,gram:4,minpair:2,video:4,math6:3,build:4,
   "step:pick":4,"step:gap":2,"step:order":4};
 // **وسقفٌ لكل قسم عند زمنها المقاس حين تنخرط فعلاً** — تصحيحٌ لعيبٍ في أوّل تصميمٍ لي:
 // حساب الطول وحده أعطى ١٨-٢٥ ثانية لعنصر قواعد (أربع جملٍ متشابهة تُجمَع كلماتها)،
 // وزمنها الوسيط المنخرط ٧٫٨ ثانية. فبوّابةٌ فوق ذلك تحبسها وهي تعمل بجدّ — والبوّابة
 // بُنيت لتمنع النقر لا لتُعاقب الاجتهاد. ومقارنة أربع جملٍ متقاربة ليست قراءة اثنتين
 // وثلاثين كلمة جديدة: تُمسح الفروق لا تُقرأ الجمل كاملةً.
-const SEC_GATE_MAX={listen:5,read:9,gram:8,minpair:3,video:11,math6:12,
+const SEC_GATE_MAX={listen:5,read:9,gram:8,minpair:3,video:11,math6:12,build:9,
   "step:pick":8,"step:gap":5,"step:order":11};
 // `key` يفصل مفتاح الجدول عن اسم القسم المعروض: STEP يحتاج أرضيّةً لكل نوع، ونصُّ
 // الشريط يبقى واحداً باسم القسم. وغيابه يعني المفتاح هو القسم نفسه كما كان.
@@ -12831,11 +12885,15 @@ function secGateStart(domain,text,key){
   gateTimer=setInterval(function(){gateLeft--;if(gateLeft<=0){gateLeft=0;gateStop()}render()},1000);
 }
 // شريطُ العدّ يُعرض فوق الخيارات — نفس نصّ بوّابة القراءة القائمة ونفس ألوانها
-function secGateHTML(){
+// `what` اسمُ ما هو محجوب فعلاً على هذه الشاشة. وبنك الكلمات يحجب **كلمات** لا خيارات،
+// ونصٌّ يسمّي غير المعروض يُربك — وهو بعينه ما وقع حين قيل «اقرئي الكلمة المكتوبة» على
+// شاشة الاستماع ولا كلمة فيها. كشفته لقطةُ شاشة لا اختبار، فالنصّ يُمرَّر لا يُفترَض.
+function secGateHTML(what){
   if(gateOpen())return "";
+  const w=what||"الخيارات";
   return `<div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:12px;padding:.8rem 1rem;margin:.6rem 0;text-align:center">
     <div style="font-size:30px;font-weight:800;color:#1D4ED8;line-height:1.2">${toAr(gateLeft)}</div>
-    <div style="font-size:12px;color:#3B82F6;margin-top:6px;line-height:1.7">الخيارات ستظهر بعد ${arSecs(gateLeft)} — خذي وقتك، فالتخمين السريع لا يُعلّم شيئاً.</div>
+    <div style="font-size:12px;color:#3B82F6;margin-top:6px;line-height:1.7">${w} ستظهر بعد ${arSecs(gateLeft)} — خذي وقتك، فالتخمين السريع لا يُعلّم شيئاً.</div>
   </div>`;
 }
 function gateReveal(){gateLeft=0;gateStop();gateSeen=true;render()} // لا تتخطّى الزمن، تُستعمل بعده فقط

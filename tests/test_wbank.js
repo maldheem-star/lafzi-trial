@@ -155,6 +155,10 @@ const dictBuild=await p3.evaluate(async()=>{
   startDictation();
   while(!dictIsBuild()&&dictIdx<dictSession.length-1){dictIdx++}
   dictLocked=false;wbReset();render();
+  // بوّابة التسرّع على بنك الكلمات (٣٠ أغسطس) تحجب الكلمات أربع ثوانٍ. والاختبار هنا
+  // عن البناء لا عن البوّابة — ولها اختبارها في `test_fixes_0830` — فتُقدَّم الساعة
+  // بدل انتظارٍ حقيقي يُبطئ الجولة، كما تُقدَّم ساعة الاستحقاق في القسم ١٠ أدناه.
+  gateLeft=0;gateStop();render();
   const isB=dictIsBuild();
   const tiles=document.querySelectorAll('button[onclick^="wbPick"]').length;
   return {isB,tiles,n:dictSession.length,words:dictSession.filter(x=>!x.build).length};
@@ -178,7 +182,7 @@ ok(dictRes.html,'وتُعرض النتيجة على الشاشة');
 const planBuild=await p3.evaluate(()=>{
   const P=engPool().filter(x=>x.t==="build");
   planItems=[P[0]];planIdx=0;planLocked=false;planScore=0;planDone=false;planMeta={secs:0};
-  mode="engplan";wbStart(P[0].s);render();
+  mode="engplan";wbStart(P[0].s);render();gateLeft=0;gateStop();render();
   return {n:P.length,tiles:document.querySelectorAll('button[onclick^="wbPick"]').length,
           hasPrompt:document.body.innerText.indexOf('قولي بالإنجليزية')>=0};
 });
@@ -196,7 +200,7 @@ const errRes=await p3.evaluate(()=>{
   m[k].due=srsToday();                // الغد: نُقدّم الساعة بدل انتظاره
   localStorage.setItem('mawhiba_coach_fix_v1',JSON.stringify(m));
   const nextDay=errCount();
-  startErrors();
+  startErrors();gateLeft=0;gateStop();render();
   const c=errCur();
   const tiles=document.querySelectorAll('button[onclick^="wbPick"]').length;
   return {sameDay,nextDay,kind:c&&c.kind,tiles,saidShown:document.body.innerText.indexOf('I go beach yesterday')>=0};
