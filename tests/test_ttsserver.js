@@ -16,7 +16,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'  ✓ ':'  ✗ FAIL ')+m);if(!c)fai
 const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium'});
 
 // mode: كيف يتصرّف محرّك الجهاز · azure: كيف يردّ الخادم
-const mk=async(mode,azure)=>{
+const mk=async(mode,azure,audio)=>{
   const logs=[],calls=[];
   const p=await b.newPage({viewport:{width:420,height:900}});
   p.on('pageerror',e=>{console.log('  ✗ PAGEERROR '+e.message);fails++});
@@ -39,7 +39,8 @@ const mk=async(mode,azure)=>{
     r.fulfill({status:200,contentType:'audio/mpeg',
       headers:{'X-Tts-Chars':String((x.text||'').length)},body:'ID3AUDIOBYTES'});
   });
-  await p.addInitScript((m)=>{
+  await p.addInitScript((o)=>{
+    const m=o.m;
     // محرّك الجهاز
     const synth={speaking:false,pending:false,
       getVoices:()=>[{lang:'en_US',name:'الإنجليزية الولايات المتحدة',localService:true}],
@@ -55,11 +56,14 @@ const mk=async(mode,azure)=>{
     window.__played=[];
     window.Audio=function(src){
       window.__played.push(src);
-      const a={src:src,play:function(){setTimeout(function(){a.onplaying&&a.onplaying()},5);
+      const a={src:src,play:function(){
+        // سياسة التشغيل التلقائي: النداء ينجح والصوت يصل، ثم يرفض المتصفّح تشغيله
+        if(o.audio==='block')return Promise.reject(new Error('NotAllowedError'));
+        setTimeout(function(){a.onplaying&&a.onplaying()},5);
         return{catch:function(){return null}}}};
       return a;
     };
-  },mode);
+  },{m:mode,audio:audio||'ok'});
   await p.goto('http://127.0.0.1:8931/index.html');
   await p.waitForFunction(()=>typeof ttsServerSpeak==='function');
   p._logs=logs;p._calls=calls;return p;
@@ -157,7 +161,27 @@ console.log('\n٦) والجملة الواحدة تُطلب مرّةً واحد�
   await p.close();
 }
 
-console.log('\n٧) والخادم: وضع tts داخل دالّة Azure نفسها — لا مورد ولا مفتاح جديد');
+console.log('\n٧) والصوتُ يصل ثم يرفض المتصفّح تشغيله ⇒ صمتٌ **مُسمّى** لا نجاحٌ كاذب');
+{
+  // العطلُ الذي كان سيمرّ: النداء ينجح فيُسجَّل «ok»، والتشغيل يُرفَض فلا تسمع شيئاً —
+  // فيقول السجلّ إن المسار عمل وهي صامتة. سُمّي السبب قبل أن يصل جهازها.
+  const p=await mk('error','ok','block');
+  const r=await p.evaluate(()=>new Promise(res=>{
+    speakEnglish('Blocked here.',function(i){res(i)});
+    setTimeout(()=>res({timeout:true}),6000);
+  }));
+  ok(r&&r.ok===false,'لا نجاح — '+JSON.stringify(r&&r.reason));
+  // والمُبلَّغ للمُستدعي يبقى عطلَ الجهاز الأصلي كما في القسم ٤ — قرارٌ مقصود:
+  // المُستدعي يعنيه أنّ النطق لم يقع، والتفصيل موضعه السجلّ لا الردّ.
+  ok(r&&r.reason==='speak_error','والمُبلَّغ عطلُ الجهاز كما في القسم ٤ — '+(r&&r.reason));
+  await p.waitForTimeout(400);
+  const rows=p._logs.filter(x=>x&&x.qtype==='tts_server').map(x=>String(x.response||''));
+  ok(rows.indexOf('play_autoplay_blocked')>=0,'ويصل السجلّ سطرٌ يسمّيه — '+rows.join(' | '));
+  ok(rows.indexOf('ok')>=0,'ومعه سطرُ نجاح النداء — فيُفصَل عطلُ التشغيل عن عطل الخادم');
+  await p.close();
+}
+
+console.log('\n٨) والخادم: وضع tts داخل دالّة Azure نفسها — لا مورد ولا مفتاح جديد');
 {
   const fs=require('fs');
   const t=fs.readFileSync('supabase-functions-assess-azure.ts','utf8');

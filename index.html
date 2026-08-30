@@ -3769,11 +3769,17 @@ function ttsServerSpeak(text,onDone){
       a.onplaying=win;
       // بعض المتصفّحات لا تُطلق playing على مقطعٍ قصير جداً — والانتهاء نجاحٌ كذلك
       a.onended=win;
-      a.onerror=function(){if(done)return;done=true;fire({ok:false,reason:'audio_error'})};
+      // ===== وفشلُ **التشغيل** يُسجَّل كفشل النداء سواءً =====
+      // النداء قد ينجح والصوتُ يصل كاملاً، ثمّ يرفض المتصفّح تشغيله (سياسة التشغيل
+      // التلقائي، أو ترميزٌ لا يقرؤه). ولو سُجّل «ok» وحده لظهر المسار ناجحاً في
+      // السجلّ وهي لا تسمع شيئاً — وهذا بعينه العطل الذي كلّفنا مراراً: «ما لا
+      // يُسجَّل الآن لا يُشخَّص لاحقاً». فيُسمّى سببُ الصمت لا يُبتلَع.
+      const lose=function(why,detail){if(done)return;done=true;
+        ttsServerLog("play_"+why,detail);fire({ok:false,reason:why,detail:detail})};
+      a.onerror=function(){lose('audio_error',null)};
       const pr=a.play();
-      if(pr&&pr.catch)pr.catch(function(e){
-        if(done)return;done=true;fire({ok:false,reason:'autoplay_blocked',detail:String(e).slice(0,80)})});
-    }catch(e){fire({ok:false,reason:'audio_throw'})}
+      if(pr&&pr.catch)pr.catch(function(e){lose('autoplay_blocked',String(e).slice(0,80))});
+    }catch(e){fire({ok:false,reason:'audio_throw'});ttsServerLog("play_throw",String(e).slice(0,80))}
   };
   if(TTS_CACHE[t])return play(TTS_CACHE[t]);
   let ctrl=null,timer=null;
