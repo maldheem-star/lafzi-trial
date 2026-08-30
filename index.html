@@ -3743,6 +3743,78 @@ try{["pointerdown","touchstart","click","keydown"].forEach(function(t){
     ttsGesture=true;setTimeout(function(){ttsGesture=false},1200);
     if(ttsArmed){const f=ttsArmed;ttsArmed=null;try{f()}catch(e){}}
   },true)})}catch(e){}
+// ===== صوتٌ من الخادم حين يعجز الجهاز — ٣٠ أغسطس =====
+// قياسٌ من جهاز هيا: **خمسة أصوات إنجليزية، خمس لهجات، وكلُّها `synthesis-failed`**
+// (٠ من ٥). فالعطل في محرّك جهازها لا في اختيارنا للصوت ولا في شيفرتنا — ولا علاج
+// له من داخل المتصفّح إطلاقاً. وأقسامها الصوتية الستّة معطّلةٌ كلّها بسببه.
+//
+// ولا مورد جديد: التركيب جزءٌ من **نفس مورد Azure Speech** الذي يُقيّم نطقها منذ
+// شهر، بنفس المفتاح والمنطقة والدالّة — وصلٌ لا بناء. وقرار «لا دفع» قائم: الطبقة
+// المجانية تشمل التركيب، والاستهلاك يُقاس بالمحارف في السجلّ لا يُفترض.
+//
+// **ومشروطٌ**: لا يُطلب إلّا بعد أن يفشل نطق الجهاز فعلاً — فلا يُنفَق طلبٌ على
+// متعلّمٍ صوتُه يعمل. ونتيجةُ أوّل نداء تُحفظ للجلسة، فلا يُعاد اكتشافُ ما عُرف.
+let ttsServerOk=null;            // null=لم يُجرَّب · true=يعمل · false=فشل
+let ttsServerChars=0, ttsServerCalls=0, ttsServerLogged=false;
+const TTS_CACHE={};              // نصٌّ ⇐ رابط blob: الجملة الواحدة تُطلب مرّةً واحدة
+function ttsServerSpeak(text,onDone){
+  const t=String(text||"").trim();
+  const fire=function(i){try{if(onDone)onDone(i)}catch(e){}};
+  if(!t)return fire({ok:false,reason:'empty'});
+  const play=function(url){
+    try{
+      const a=new Audio(url);
+      let done=false;
+      const win=function(){if(done)return;done=true;ttsMark(true);fire({ok:true,engine:'azure'})};
+      a.onplaying=win;
+      // بعض المتصفّحات لا تُطلق playing على مقطعٍ قصير جداً — والانتهاء نجاحٌ كذلك
+      a.onended=win;
+      a.onerror=function(){if(done)return;done=true;fire({ok:false,reason:'audio_error'})};
+      const pr=a.play();
+      if(pr&&pr.catch)pr.catch(function(e){
+        if(done)return;done=true;fire({ok:false,reason:'autoplay_blocked',detail:String(e).slice(0,80)})});
+    }catch(e){fire({ok:false,reason:'audio_throw'})}
+  };
+  if(TTS_CACHE[t])return play(TTS_CACHE[t]);
+  let ctrl=null,timer=null;
+  try{ctrl=new AbortController();timer=setTimeout(function(){try{ctrl.abort()}catch(e){}},15000)}catch(e){}
+  fetch(AZURE_FN_URL,{method:"POST",signal:ctrl?ctrl.signal:undefined,
+    headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},
+    body:JSON.stringify({mode:"tts",text:t,slow:true})})
+  .then(function(res){
+    if(timer)clearTimeout(timer);
+    const ct=String(res.headers.get("content-type")||"");
+    // خطأٌ يعود JSON، ونجاحٌ يعود صوتاً — فالتفريق بالنوع لا بالحالة
+    if(!res.ok||ct.indexOf("audio")<0){
+      return res.json().catch(function(){return{error:"http_"+res.status}}).then(function(j){
+        ttsServerOk=false;
+        ttsServerLog(j&&j.error||("http_"+res.status),j&&j.detail);
+        fire({ok:false,reason:'server',detail:(j&&j.error)||("http_"+res.status)});
+      });
+    }
+    ttsServerChars+=t.length;ttsServerCalls++;
+    return res.blob().then(function(b){
+      ttsServerOk=true;
+      try{TTS_CACHE[t]=URL.createObjectURL(b)}catch(e){}
+      ttsServerLog("ok");
+      play(TTS_CACHE[t]||URL.createObjectURL(b));
+    });
+  })
+  .catch(function(e){
+    if(timer)clearTimeout(timer);
+    ttsServerOk=false;
+    ttsServerLog("network",String(e).slice(0,80));
+    fire({ok:false,reason:'server_unreachable'});
+  });
+}
+// يُسجَّل مرّةً واحدة لكل جلسة — الغرض معرفةُ أن المسار عمل وكم كلّف، لا إغراقُ السجلّ
+function ttsServerLog(why,detail){
+  if(ttsServerLogged&&why==="ok")return;
+  ttsServerLogged=true;
+  try{logAnswer("gen","tts_server",null,why,null,null,
+    {q_text:("[صوت الخادم] "+why+" · نداءات:"+ttsServerCalls+" · محارف:"+ttsServerChars
+      +(detail?" · "+String(detail).slice(0,120):"")+" · "+navigator.userAgent).slice(0,1200)})}catch(e){}
+}
 function speakEnglish(text,onDone){
   try{
     if(!text||!('speechSynthesis' in window)){const i={ok:false,reason:'unsupported'};ttsMark(false,i);if(onDone)onDone(i);return}
@@ -3771,7 +3843,15 @@ function speakEnglish(text,onDone){
         if(!forceNoLang&&!triedFallback){triedFallback=true;attempt(true);return}
         seal();
         const i={ok:false,reason:'speak_error',errorType:e&&e.error,voicesCount:voices.length,hasEnVoice:!!usVoice,voiceName:usVoice&&usVoice.name,fallback:!!forceNoLang};
-        ttsMark(false,i);fire(i);
+        ttsMark(false,i);
+        // **الحالة المقاسة على جهاز هيا**: المحرّك يردّ `synthesis-failed` على كل
+        // صوتٍ إنجليزي. فبعد استنفاد مسار الجهاز (الصوت المختار ثم البديل) يُطلب
+        // الصوت من الخادم — وهو المسار الوحيد الباقي، ولا يُطلب قبل ذلك.
+        if(ttsServerOk!==false)return ttsServerSpeak(text,function(r){
+          if(r&&r.ok)return fire(r);
+          fire(i);
+        });
+        fire(i);
       };
       synth.resume();
       if(didCancel)setTimeout(function(){try{synth.resume();synth.speak(u)}catch(e){}},90);
@@ -3810,6 +3890,11 @@ function speakEnglish(text,onDone){
         hasEnVoice:!!pv,voiceName:pv&&pv.name,localOnly:!!(pv&&pv.localService!==false),
         gesture:!!ttsGesture};
       ttsMark(false,info);
+      // جهازٌ صامت ⇒ يُجرَّب صوت الخادم مرّةً. ولا يُعاد إن ثبت فشله في هذه الجلسة.
+      if(ttsServerOk!==false)return ttsServerSpeak(text,function(r){
+        if(r&&r.ok)return fire(r);
+        fire(info);
+      });
       // **ويُبلَّغ المُستدعي**: بلا هذا تعلق صفحة التشخيص على «⏳ جارٍ التجربة» إلى
       // الأبد في الحالة الوحيدة التي فُتحت الصفحةُ لأجلها — كشفه فحصُ الفرع بعد أن
       // قال صاحب المشروع إن الصفحة تعرض «لا يوجد صوت طبيعي».

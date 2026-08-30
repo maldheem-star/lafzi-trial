@@ -80,7 +80,11 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const audioB64 = body.audio as string | undefined;
     const referenceText = String(body.referenceText || "").trim();
-    if (!audioB64 || !referenceText) return jsonOut({ error: "missing_audio_or_reference" }, 400);
+    // وضعُ التركيب لا صوت فيه ولا نصّ مرجعي — فلا يُرفض بحارس التقييم
+    const mode = String((body as Record<string, unknown>).mode || "");
+    if (mode !== "tts" && (!audioB64 || !referenceText)) {
+      return jsonOut({ error: "missing_audio_or_reference" }, 400);
+    }
 
     // رؤوس HTTP تقبل ByteString فقط (≤ U+00FF). ومحرف واحد غير مرئي ملتصق بالمفتاح — علامة
     // اتجاه (U+200F) أو مسافة غير فاصلة (U+00A0) تأتي مع اللصق من صفحة عربية — يجعل fetch
@@ -120,6 +124,68 @@ Deno.serve(async (req) => {
     if (!/^[a-z][a-z0-9]+$/.test(REGION)) {
       return jsonOut({ error: "azure_bad_region", detail: `قيمة المنطقة غير صالحة`,
         region: REGION, rawLength: REGION_RAW.length, trimmedLength: REGION.length });
+    }
+
+    // ===== وضعُ التركيب الصوتي: صوتٌ من الخادم حين يعجز الجهاز — ٣٠ أغسطس =====
+    // قياسٌ من جهاز هيا: **خمسة أصوات إنجليزية، خمس لهجات، وكلُّها يردّ عليها المحرّك
+    // بـ`synthesis-failed`** (0/5). أي أن العطل في محرّك الجهاز لا في اختيارنا للصوت
+    // ولا في شيفرتنا — ولا علاج له من داخل المتصفّح إطلاقاً.
+    //
+    // ولا مورد جديد: التركيب جزءٌ من **نفس مورد Azure Speech** الذي يُقيّم النطق
+    // عندنا منذ شهر، وبنفس المفتاح والمنطقة والتحقّق أعلاه. فهذا وصلٌ لا بناء.
+    // والطبقة المجانية F0 تشمل التركيب العصبي — وقرار «لا دفع» قائم، ولهذا يُعاد
+    // عدد المحارف في الرأس ليُقاس الاستهلاك بالرقم لا بالظنّ.
+    //
+    // ويُستدعى **مشروطاً** من العميل: لا يُطلب إلّا بعد أن يفشل نطق الجهاز فعلاً،
+    // فلا يُنفَق طلبٌ على متعلّمٍ صوتُه يعمل.
+    if (mode === "tts") {
+      const text = String((body as Record<string, unknown>).text || "").trim().slice(0, 600);
+      if (!text) return jsonOut({ error: "missing_text" }, 400);
+      // اسم الصوت من قائمة Azure — يُقيَّد شكلاً فلا يُحقَن في SSML ما ليس اسم صوت
+      const vRaw = String((body as Record<string, unknown>).voice || "");
+      const voice = /^[A-Za-z]{2}-[A-Za-z]{2}-[A-Za-z]+Neural$/.test(vRaw) ? vRaw : "en-US-JennyNeural";
+      // نفس بطء التطبيق المعتمد للمبتدئات (rate 0.85) معبَّراً عنه بصيغة SSML
+      const slow = (body as Record<string, unknown>).slow !== false;
+      const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+      const ssml = `<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='en-US'>`
+        + `<voice name='${voice}'><prosody rate='${slow ? "-15%" : "0%"}'>${esc(text)}</prosody></voice></speak>`;
+      const ttsUrl = `https://${REGION}.tts.speech.microsoft.com/cognitiveservices/v1`;
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 15000);
+      let res: Response;
+      try {
+        res = await fetch(ttsUrl, {
+          method: "POST",
+          headers: {
+            "Ocp-Apim-Subscription-Key": KEY,
+            "Content-Type": "application/ssml+xml",
+            // صيغة MP3 يقرؤها كل متصفّح بلا مكتبة — والحجم صغير لجملةٍ قصيرة
+            "X-Microsoft-OutputFormat": "audio-24khz-48kbitrate-mono-mp3",
+            "User-Agent": "lafzi-tts",
+          },
+          body: ssml,
+          signal: ctrl.signal,
+        });
+      } catch (e) {
+        clearTimeout(timer);
+        return jsonOut({ error: String(e).includes("abort") ? "azure_tts_timeout" : "azure_tts_unreachable",
+          detail: String(e).slice(0, 160), region: REGION });
+      }
+      clearTimeout(timer);
+      if (!res.ok) {
+        const detail = (await res.text()).slice(0, 400);
+        // تُفصَل الأسباب لأن علاجها مختلف: المفتاح، والحصّة، واسم الصوت
+        const kind = res.status === 401 || res.status === 403 ? "azure_tts_auth"
+          : res.status === 429 ? "azure_tts_quota"
+          : res.status === 400 ? "azure_tts_bad_request"
+          : "azure_tts_http";
+        return jsonOut({ error: kind, status: res.status, detail, region: REGION, voice });
+      }
+      const buf = await res.arrayBuffer();
+      // الاستهلاك يُعاد بالرأس ليُقاس بالرقم — «الطبقة المجانية» دعوى تحتاج عدّاداً
+      return new Response(buf, { headers: { ...CORS, "Content-Type": "audio/mpeg",
+        "X-Tts-Chars": String(text.length), "X-Tts-Voice": voice } });
     }
 
     const bytes = base64ToBytes(audioB64);
