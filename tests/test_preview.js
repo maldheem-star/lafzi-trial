@@ -120,6 +120,14 @@ console.log('\n٥) والإجراء نفسه: الجذر من main دائماً�
   // الوسم قبل النزع، وإلّا قرأ بصمة main فكذب على الفاحص
   ok(y.indexOf('Mark preview')<y.indexOf('Strip nested git metadata'),'والوسم قبل نزع git — وإلّا حمل بصمة main');
   ok(/rm -rf preview\/\.git/.test(y),'وتُنزَع بيانات git من القطعة المنشورة');
+  // ===== ولا يُطلَق من فرع التطوير — أثبته سقوطُ تشغيلين =====
+  // جُرِّب فسقط التشغيلان في ثانيتين، بلا عدّاء (runner_id: 0) وبلا خطوةٍ واحدة:
+  // رُفضت المهمّة قبل تخصيص آلةٍ لها — توقيعُ حماية بيئة github-pages (الفرع
+  // الافتراضي وحده). فالإطلاق من main، والمعاينة تُسحب من الفرع في كل تشغيل.
+  const on=y.slice(y.indexOf("\non:"),y.indexOf("permissions:"));
+  ok(!/claude\/talent-app/.test(on),'لا يُطلَق من فرع التطوير — قاعدةُ البيئة ترفضه');
+  ok(/workflow_dispatch/.test(on),'ويُطلَق يدوياً لتحديث المعاينة بلا دمج');
+  ok(/-\s*main/.test(on),'ومن main بالدفع');
 }
 
 }finally{
