@@ -73,10 +73,18 @@ async function mk(browser,q){
     ok(r.ptsA1===3,'نقاط A1 تُقرأ من «1) 2) 3)» — '+r.ptsA1);
     ok(r.ptsA2===3,'ونقاط A2 من «•» — '+r.ptsA2);
     ok(r.ptsB1===0,'وB1 بلا نقاطٍ مفروضة — كتابةٌ حرّة');
-    ok(r.gA2.sentences===3,'فهدف A2 ثلاث جمل');
+    // ===== نُقض هذا السطر بالذات في ٣٠ أغسطس، ولم يُدهَس — نفس درس ٢٢ أغسطس =====
+    // كان `gA2.sentences===3` (جملةٌ لكل نقطة)، وكُتب حينها تحذيرٌ صريح بجانبه: قد
+    // تُغطّى ٣ نقاطٍ في جملتين فتُحسب رسوباً — خطرٌ مفترَض. وفحص جلسة إلياس حوّله
+    // إلى واقع: رسالتان بلغتا هدف الكلمات بمسافة وربطتا نقاطهما بأدواتٍ صحيحة في
+    // جملةٍ متماسكة واحدة، فسقطتا لعدد الجمل وحده. فأُسقط الشرط: Cambridge A2 Key
+    // Part 6 لا تُحصي جمل المتعلّم، وعدّ الجمل آلياً وعدٌ لا نتحقّق منه فعلاً —
+    // فالباقي (عدد الكلمات) هو المعيار الوحيد المضمون. والدعوى القديمة صُحِّحت.
+    ok(r.gA2.sentences===0,'فA2 صار بلا شرط جمل — لا يُشدَّد بما لا تُتحقّق منه الأداة فعلاً');
     ok(r.gB1.sentences===0,'وB1 بلا شرط جمل — لا يُشدَّد بما لا تنصّ عليه مهمّته');
     ok(r.gSc.sentences===0&&r.gSc.combine===true,'والدمج يُقاس بغير هذا');
     ok(r.arabic,'والمعايير عربيةٌ كلّها — وهي أصل الشكوى');
+    ok(r.critA2.join(' ').indexOf('جملةً لكل نقطة')<0,'ولا يُعرض شرطٌ لم يعد يُقاس — '+r.critA2.join(' | '));
     ok(r.critSc.join(' ').indexOf('جملةٌ واحدة')>=0,'ومعيار الدمج ينصّ على جملةٍ واحدة');
   }
 
@@ -224,6 +232,29 @@ async function mk(browser,q){
     ok(r.missing.length===0,(q||'هيا')+': لا دالّة مفقودة — '+r.missing.join(','));
     ok(r.modes>0,(q||'هيا')+': الصفحة تُرسم');
     ok(r.n>0&&r.mode==='write',(q||'هيا')+': جلسة كتابة تُبنى — '+r.n+' عناصر');
+    await page.close();
+  }
+
+  // ===== ٩) الحالتان الحقيقيتان اللتان أوجبتا الإصلاح — ٣٠ أغسطس =====
+  // نصّا إلياس نفسهما من السجلّ الحيّ (`wr_a2_3`, `wr_a2_2`)، لا حالتان مؤلَّفتان:
+  // بلغا الهدف بمسافة (٣٦ و٣١ كلمة لحدّ ٢٥) وربطا نقاطهما بأدوات ربطٍ صحيحة في
+  // جملةٍ واحدة متماسكة — وكانا يسقطان لعدد الجمل وحده. يُثبَّتان بأعيانهما.
+  console.log('\n٩) حالتا إلياس الحقيقيتان لم تعودا تسقطان على عدد الجمل');
+  {
+    const page=await mk(browser);
+    const r=await page.evaluate(()=>{
+      const it3={id:"wr_a2_3",lv:"A2",min:25,type:undefined,
+        prompt:"You cannot go to football practice tomorrow. Write a message to your coach.\nSay:\n• why you cannot come\n• when you can come next\n• say sorry\nWrite 25–35 words."};
+      const it2={id:"wr_a2_2",lv:"A2",min:25,type:undefined,
+        prompt:"Your English pen friend wants to know about your weekend. Write them an email.\nSay:\n• what you did on Saturday\n• who you were with\n• how you felt\nWrite 25–35 words."};
+      const txt3="Dear Coach,\nI am sorry, but I cannot come tomorrow because I'm going to be in the hospital for two days so I'm going out of the way and then I'm not going back until Friday.";
+      const txt2="Hi Hasan,\nLast Saturday I was thinking about you and wondering if you had any idea of what time you would be coming in tomorrow to help me with the car.";
+      const st3=writeCritState(it3,txt3),st2=writeCritState(it2,txt2);
+      return{s3:st3.g.sentences,words3:st3.words,sent3:st3.sentences,w3:st3.w,
+             s2:st2.g.sentences,words2:st2.words,sent2:st2.sentences,w2:st2.w};
+    });
+    ok(r.words3&&r.sent3,'wr_a2_3: ٣٦ كلمةً بجملةٍ واحدة — تنجح الآن — كلمات:'+r.words3+' جمل:'+r.sent3);
+    ok(r.words2&&r.sent2,'wr_a2_2: ٣١ كلمةً بجملةٍ واحدة — تنجح الآن — كلمات:'+r.words2+' جمل:'+r.sent2);
     await page.close();
   }
 
