@@ -68,6 +68,30 @@ jobs:
         if: steps.preview.outcome == 'success'
         run: |
           printf '%s' "preview · $(git -C preview rev-parse --short HEAD) · $(date -u +%Y-%m-%dT%H:%MZ)" > preview/PREVIEW.txt
+      # ===== وسمُ النسخة يُختم آلياً — درس ١٨ أغسطس واقعاً مرّةً ثالثة =====
+      # `BUILD` ثابتٌ مكتوبٌ بيدٍ في `index.html`، فيبقى على تاريخٍ قديم ما لم
+      # يتذكّر أحدٌ تحديثه. وقد وقع ثمنُه اليوم في فحصٍ حيّ: بطاقة جهاز هيا وصلت
+      # تقول «بناء:build-20260825-0100» بينما تحمل الصفحةُ فعلاً شيفرة ٣٠ أغسطس —
+      # فتعذّر الحكم من الوسم: أهي نسخةٌ قديمة أم وسمٌ قديم فوق نسخةٍ جديدة؟
+      #
+      # والقاعدة المكتوبة في ذاكرة المشروع صريحة: «آليةٌ تعتمد على أن يتذكّر أحدٌ
+      # خطوةً يدوية ستفشل، ولا يكفي إصلاحها مرّةً — يجب نزع التذكّر من مسارها».
+      # فيُختم هنا من بصمة الالتزام وزمن النشر: يتحرّك مع كل شحنة بلا أن ينتظر أحداً.
+      - name: Stamp build id from commit
+        run: |
+          # صفحتا الأخوين تُحمّلان index.html نفسه، فالوسم فيه وحده — ويُبحَث عنه
+          # بالنمط لا بالسطر، فانتقالُه لا يُسقط الختم صامتاً.
+          stamp(){                       # $1 = الملفّ · $2 = الوسم
+            [ -f "$1" ] || return 0
+            grep -q 'var BUILD="' "$1" || { echo "::error::لا وسم BUILD في $1"; exit 1; }
+            sed -i "s|var BUILD=\"[^\"]*\"|var BUILD=\"$2\"|" "$1"
+          }
+          stamp index.html "$(git rev-parse --short HEAD)-$(date -u +%Y%m%d-%H%M)"
+          # وسمُ التجريب مسبوقٌ بـpv- فلا يُقرأ فحصُ التجريب على أنه فحصُ الإنتاج
+          if [ -d preview/.git ]; then
+            stamp preview/index.html "pv-$(git -C preview rev-parse --short HEAD)-$(date -u +%Y%m%d-%H%M)"
+          fi
+          grep -o 'var BUILD="[^"]*"' index.html preview/index.html 2>/dev/null || true
       # لا حاجة لتاريخ git ولا لتعريفات النشر ولا للاختبارات داخل القطعة المنشورة
       - name: Strip nested git metadata
         run: rm -rf preview/.git preview/.github preview/tests || true
