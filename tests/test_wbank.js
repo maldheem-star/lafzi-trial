@@ -52,9 +52,13 @@ const r2=await page.evaluate(()=>{
 });
 ok(!r2.ok,`المعكوس يُرفض: «${r2.built}»`);
 
-console.log('\n٣) الدرجة الثانية تُدخل كلمات دخيلة — ولا تكون من كلمات الجملة');
+console.log('\n٣) درجة الكلمات الدخيلة — ولا تكون من كلمات الجملة');
 const r3=await page.evaluate(()=>{
-  wbStart("He does not like cold weather.",2);
+  // ===== الرقم يُشتقّ لا يُكتب — درس ١٨ أغسطس («الأعداد المكتوبة فخّ صامت») =====
+  // كانت الدخيلة الدرجة ٢ قبل درجة الأدوار الملوَّنة (٣٠ أغسطس)؛ صارت ٣ بعد إدراج
+  // درجةٍ جديدة في مقدّمة WB_STAGES. الاسم (`extra>0`) لا يتغيّر ولو تغيّر الفهرس.
+  const distractStage=WB_STAGES.findIndex(st=>st.extra>0)+1;
+  wbStart("He does not like cold weather.",distractStage);
   const extra=wbPool.filter(w=>wbTok.indexOf(w)<0);
   const dup=extra.filter(w=>wbTok.some(t=>wbNorm(t)===wbNorm(w)));
   return {pool:wbPool.length,tok:wbTok.length,extra:extra.length,dup:dup.length};
@@ -165,8 +169,13 @@ const dictBuild=await p3.evaluate(async()=>{
 });
 ok(dictBuild.n===12&&dictBuild.words===8,`جلسة الإملاء: ${dictBuild.words} كلمات ثم ٤ جمل (${dictBuild.n} عنصراً)`);
 ok(dictBuild.isB&&dictBuild.tiles>0,`وبنك الكلمات مرسوم على الشاشة (${dictBuild.tiles} كلمة)`);
-// نبنيها بالضغط الحقيقي على الأزرار، ثم نتحقّق
+// نبنيها بالضغط الحقيقي على الأزرار، ثم نتحقّق. هذا القسم عن آلية الضغط على
+// **كلماتٍ** مفردة تحديداً (منذ ٢٢ أغسطس) — درجة الكتل الملوَّنة (٣٠ أغسطس) لها
+// اختبارها الخاصّ (`test_wbchunks.js`)، فتُفرَض هنا درجة «الكلمات بالعدد بالضبط»
+// صراحةً بدل الاعتماد على وضعٍ افتراضيّ قد يتغيّر فهرسه لاحقاً.
 const dictRes=await p3.evaluate(async()=>{
+  const wordStage=WB_STAGES.findIndex(st=>!st.chunk&&st.extra===0)+1;
+  wbStart(wbTarget,wordStage);gateLeft=0;gateStop();render();
   const tok=wbTok.slice();
   for(const t of tok){
     const i=wbPool.findIndex((w,k)=>w===t&&wbPicked.indexOf(k)<0);

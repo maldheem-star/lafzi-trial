@@ -44,12 +44,15 @@ async function mk(browser){
   }
 
   // ===== ٢) مرحلة المموّهات: عدد الهدف لا البنك كلّه =====
+  // ===== الرقم يُشتقّ لا يُكتب — درس ١٨ أغسطس، طُبِّق بعد إدراج درجة الأدوار
+  // الملوَّنة (٣٠ أغسطس) في مقدّمة WB_STAGES فأزاحت فهارس الدرجتين التاليتين =====
   console.log('\n٢) مرحلة المموّهات');
   {
     const page=await mk(browser);
     const r=await page.evaluate(()=>{
-      wbStart("There are a few books on the table.",2);
-      const out={pool:wbPool.length,tok:wbTok.length,need:wbNeed(),extra:WB_STAGES[1].extra};
+      const distractIdx=WB_STAGES.findIndex(st=>st.extra>0);
+      wbStart("There are a few books on the table.",distractIdx+1);
+      const out={pool:wbPool.length,tok:wbTok.length,need:wbNeed(),extra:WB_STAGES[distractIdx].extra};
       while(wbPicked.length<wbTok.length)wbPick(wbPicked.length);
       out.atTarget={ready:wbReady(),left:wbLeft()};
       return out;
@@ -65,7 +68,8 @@ async function mk(browser){
   {
     const page=await mk(browser);
     const r=await page.evaluate(()=>{
-      wbStart("I went to the beach.",3);
+      const typeIdx=WB_STAGES.findIndex(st=>st.extra<0);
+      wbStart("I went to the beach.",typeIdx+1);
       return{need:wbNeed(),left:wbLeft(),pool:wbPool.length};
     });
     ok(r.pool===0,'بلا بنكٍ إطلاقاً');
@@ -126,15 +130,18 @@ async function mk(browser){
       render();
       const full=app.innerHTML;
       return{reached:true,
-        zeroLeft:/بقي .* كلمة/.test(zero),
-        twoLeft:/بقي .* كلمة/.test(two),
+        // اختيار عناصر الإملاء عشوائيٌّ (`shuffle`)، فقد تقع على عنصرٍ يحمل كتلاً
+        // ملوَّنة (٣٠ أغسطس) بدل كلمات — والزرّ حينها يقول «كتلة» لا «كلمة» بحقّ.
+        // فالنمط يقبل الاسمين معاً؛ ما يُختبَر هنا آلية «بقي N» نفسها لا وحدة العدّ.
+        zeroLeft:/بقي .* (كلمة|كتلة)/.test(zero),
+        twoLeft:/بقي .* (كلمة|كتلة)/.test(two),
         fullCheck:/تحقّقي ←/.test(full),
         disabledWhenShort:/disabled/.test(two)};
     });
     ok(r.reached,'بُلغت مرحلة البناء فعلاً في الجلسة');
     if(r.reached){
-      ok(r.zeroLeft,'بلا اختيار: الزرّ يعرض «بقي ن كلمة»');
-      ok(r.twoLeft,'وبكلمتين ما زال يعرض المتبقّي بدل صمتٍ معطَّل');
+      ok(r.zeroLeft,'بلا اختيار: الزرّ يعرض «بقي ن كلمة/كتلة»');
+      ok(r.twoLeft,'وباختيار جزئي ما زال يعرض المتبقّي بدل صمتٍ معطَّل');
       ok(r.disabledWhenShort,'وهو معطَّلٌ فعلاً حتى الإكمال');
       ok(r.fullCheck,'وبالإكمال يعود «تحقّقي ←»');
     }

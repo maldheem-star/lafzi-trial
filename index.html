@@ -4818,7 +4818,7 @@ function engPool(){
   // والتجميد يمرّ على `engLevelOk` نفسها فيُسجَّل في `eng_plan/frozen` ويعود متى ارتفع
   // مستواها. وهذا ما تفعله `ENG_ITEMS` أصلاً — فرقٌ كان يجعل البناء استثناءً بلا سبب.
   ENG_BUILD.forEach(function(x){
-    _engPool.push({id:x.id,t:"build",s:x.s,m:x.m,lesson:x.lesson||null,lv:x.lv});
+    _engPool.push({id:x.id,t:"build",s:x.s,m:x.m,lesson:x.lesson||null,lv:x.lv,chunks:x.chunks||null});
   });
   return _engPool;
 }
@@ -5413,7 +5413,7 @@ function startEngPlan(){
   const p0=cxNeededFor(f);
   if(p0){cxStart(p0);return}
   if(fixNeeded(f)){fixStart(f);return}
-  if(f&&f.t==="build")wbStart(f.s);else wbReset();
+  if(f&&f.t==="build")wbStart(f.s,null,f.chunks);else wbReset();
   render();
   if(f&&f.t==="dict")setTimeout(()=>speakEnglish(f.w),400);
 }
@@ -5463,7 +5463,7 @@ function planNext(){
   if(p){cxStart(p);return}
   // السؤال العالق لا تُعرض خياراته حتى تمرّ ببطاقة التصحيح وتمرينيها
   if(fixNeeded(it)){fixStart(it);return}
-  if(it&&it.t==="build")wbStart(it.s);else wbReset();
+  if(it&&it.t==="build")wbStart(it.s,null,it.chunks);else wbReset();
   render();
   if(it&&it.t==="dict")setTimeout(()=>speakEnglish(it.w),300);
 }
@@ -6380,7 +6380,7 @@ function renderCoach(){
         ${wbLocked?"":wbHTML()}
         ${wbLocked
           ? `<div style="font-size:13px;font-weight:800;color:${wbOk?'#059669':'#B45309'};margin-bottom:8px">${wbOk?"✓ بنيتِها صحيحة":"الترتيب الصحيح:"}</div>${plainSays()}`
-          : `<button class="btn" style="background:${wbReady()?'#0E7490':'#94A3B8'};margin-top:10px" ${wbReady()?"":"disabled"} onclick="coachBankCheck()">${wbReady()?"تحقّقي ←":("بقي "+toAr(wbLeft())+" كلمة")}</button>`}
+          : `<button class="btn" style="background:${wbReady()?'#0E7490':'#94A3B8'};margin-top:10px" ${wbReady()?"":"disabled"} onclick="coachBankCheck()">${wbReady()?"تحقّقي ←":("بقي "+toAr(wbLeft())+" "+wbUnitWord())}</button>`}
       </div>`
     : "";
   const helpBox=bankBox?bankBox
@@ -6583,7 +6583,7 @@ function renderEngPlan(){
     return;
   }
   if(it.t==="build"){
-    if(!wbOn||wbTarget!==it.s)wbStart(it.s);
+    if(!wbOn||wbTarget!==it.s)wbStart(it.s,null,it.chunks);
     const fb=planLocked
       ?`<div class="explain"><div class="explain-title" style="color:${wbOk?'#059669':'#B45309'}">${wbOk?"✓ صحيح":"الصحيح:"}</div>
          <div class="explain-body">${wbOk?"":`<div style="direction:ltr;font-family:Georgia,serif;font-size:17px;font-weight:700;margin:6px 0">${esc(it.s)}</div>`}
@@ -6598,7 +6598,7 @@ function renderEngPlan(){
     </div>
     ${planLocked
       ?`<button class="btn" style="background:#4338CA" onclick="planNext()">${planIdx+1>=planItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`
-      :`<button class="btn" style="background:${wbReady()?'#0E7490':'#94A3B8'}" ${wbReady()?"":"disabled"} onclick="planCheckBuild()">${wbReady()?"تحقّقي ←":("بقي "+toAr(wbLeft())+" كلمة")}</button>`}`;
+      :`<button class="btn" style="background:${wbReady()?'#0E7490':'#94A3B8'}" ${wbReady()?"":"disabled"} onclick="planCheckBuild()">${wbReady()?"تحقّقي ←":("بقي "+toAr(wbLeft())+" "+wbUnitWord())}</button>`}`;
     if(!planLocked&&wbStage>=WB_STAGES.length){const el=document.getElementById('wbIn');if(el)el.focus()}
     return;
   }
@@ -6687,7 +6687,16 @@ function renderEngPlanResult(){
 const WB_KEY="mawhiba_wb_stage";
 const WB_REQ=3;   // ثلاث صحيحات متتالية للصعود — أكثر من الإملاء لأن الترتيب يُصاب بالحظّ
 const WB_BACK=2;  // خطآن متتاليان للنزول
+// ===== درجةٌ صفرية: كتلٌ ملوَّنة قبل الكلمات المفردة — ٣١ أغسطس =====
+// Colourful Semantics (Bryan 1997): مَن (برتقالي) ⇐ يفعل ماذا (أصفر) ⇐ ماذا (أخضر)
+// ⇐ أين/متى (أزرق) — كتلٌ لا كلمات، فيقلّ عدد احتمالات الترتيب (٣-٤ لا ٥٠٤٠).
+// ومشروطةٌ بوجود `chunks` على العنصر (`extra:0` كدرجة «العدد بالضبط» القديمة تماماً
+// إن غاب `chunks` — سقوطٌ آمن، لا كسرٌ صامت): انظر `wbStart` أدناه.
+const WB_ROLE_COLOR={who:{bg:"#FFEDD5",bd:"#FB923C",fg:"#9A3412"},doing:{bg:"#FEF9C3",bd:"#EAB308",fg:"#854D0E"},
+  what:{bg:"#DCFCE7",bd:"#22C55E",fg:"#166534"},where:{bg:"#DBEAFE",bd:"#3B82F6",fg:"#1E40AF"}};
+const WB_ROLE_LABEL={who:"مَن",doing:"يفعل ماذا",what:"ماذا",where:"أين/متى"};
 const WB_STAGES=[
+  {label:"رتّبي الأدوار الملوَّنة",tag:"أدوار",extra:0,chunk:true},
   {label:"رتّبي الكلمات — العدد بالضبط",tag:"رتّبي",extra:0},
   {label:"رتّبي واحذري: بعض الكلمات زائدة",tag:"زائدة",extra:3},
   {label:"بلا بنك — اكتبيها بنفسك",tag:"مستقلّة",extra:-1},
@@ -6708,11 +6717,24 @@ function wbDistract(tokens,n){
 }
 let wbOn=false,wbTarget="",wbTok=[],wbPool=[],wbPicked=[],wbLocked=false,wbOk=false;
 let wbStage=1,wbStreak=0,wbMiss=0,wbTyped="";
-function wbStart(sentence,stage){
+let wbChunkMode=false,wbPoolRoles=[];
+// `chunks` وسيطٌ اختياري: [{t:"a small cat.",role:"what"}, …] من العنصر إن وُجد.
+// وغيابه سقوطٌ آمن إلى درجة الكلمات المفردة — لا كسرٌ صامت ولا شاشةٌ فارغة.
+function wbStart(sentence,stage,chunks){
   wbTarget=String(sentence||"");wbTok=wbSplit(wbTarget);
   wbStage=stage||wbStageGet();
-  const extra=(WB_STAGES[wbStage-1]||WB_STAGES[0]).extra;
-  wbPool=extra<0?[]:shuffle(wbTok.concat(wbDistract(wbTok,extra)));
+  const st=WB_STAGES[wbStage-1]||WB_STAGES[0];
+  wbChunkMode=!!(st.chunk&&Array.isArray(chunks)&&chunks.length>1
+    &&chunks.map(function(c){return c.t}).join(" ")===wbTarget);
+  if(wbChunkMode){
+    const idx=shuffle(chunks.map(function(_,i){return i}));
+    wbPool=idx.map(function(i){return chunks[i].t});
+    wbPoolRoles=idx.map(function(i){return chunks[i].role});
+  }else{
+    const extra=st.chunk?0:st.extra;   // درجة الأدوار بلا chunks تسلك كدرجة «العدد بالضبط»
+    wbPool=extra<0?[]:shuffle(wbTok.concat(wbDistract(wbTok,extra)));
+    wbPoolRoles=[];
+  }
   wbPicked=[];wbLocked=false;wbOk=false;wbTyped="";wbOn=true;
   // ===== بوّابة التسرّع على بنك الكلمات — ٣٠ أغسطس =====
   // كانت موصولةً بستّة أقسامٍ وليس بنك الكلمات منها، وهو أشدُّها حاجةً إليها.
@@ -6732,7 +6754,7 @@ function wbStart(sentence,stage){
   // تستدعيها عند انتقال العنصر لا في كل رسم — فتغييرٌ واحد وصلها جميعاً.
   if(wbPool.length)secGateStart("build",wbTarget);
 }
-function wbReset(){wbOn=false;wbTarget="";wbTok=[];wbPool=[];wbPicked=[];wbLocked=false;wbOk=false;wbTyped=""}
+function wbReset(){wbOn=false;wbTarget="";wbTok=[];wbPool=[];wbPoolRoles=[];wbChunkMode=false;wbPicked=[];wbLocked=false;wbOk=false;wbTyped=""}
 function wbPick(i){if(wbLocked||wbPicked.indexOf(i)>=0)return;wbPicked.push(i);render()}
 function wbUnpick(k){if(wbLocked)return;wbPicked.splice(k,1);render()}
 function wbBuilt(){return wbPicked.map(function(i){return wbPool[i]}).join(" ")}
@@ -6759,6 +6781,9 @@ function wbReady(){
 }
 // كم بقي — يُعرض للمتعلّمة بدل زرٍّ معطَّلٍ بلا سبب
 function wbLeft(){const need=wbNeed();return need?Math.max(0,need-wbPicked.length):0}
+// «بقي ٣ كلمة» على شاشة كتلٍ لا كلمات يقول شيئاً غير المعروض — نفس درس «الشريط قال
+// الخيارات ستظهر على شاشةٍ لا خيارات فيها» (٣٠ أغسطس). نقطةٌ واحدة تخدم خمس شاشاتٍ زرّها.
+function wbUnitWord(){return wbChunkMode?"كتلة":"كلمة"}
 function wbGrade(ok){
   if(ok){wbMiss=0;wbStreak++;if(wbStreak>=WB_REQ&&wbStage<WB_STAGES.length){wbStage++;wbStreak=0;wbStageSet(wbStage)}}
   else{wbStreak=0;wbMiss++;if(wbMiss>=WB_BACK&&wbStage>1){wbStage--;wbMiss=0;wbStageSet(wbStage)}}
@@ -6780,25 +6805,37 @@ function wbHTML(){
     <div style="font-size:12px;font-weight:800;color:#0E7490;margin-bottom:10px">${st.label}</div>
     <input id="wbIn" ${wbLocked?"disabled":""} value="${esc(wbTyped)}" style="width:100%;padding:14px;border-radius:12px;border:2px solid #E2E8F0;font-size:17px;direction:ltr;font-family:Georgia,serif" placeholder="type the sentence" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">`;
   }
+  // في درجة الأدوار: لونُ الكتلة من `wbPoolRoles[i]` (Colourful Semantics)، وإلا
+  // اللون التركوازيّ المعتاد — نفس بنية الأزرار، فرقٌ في اللون وحده.
+  const roleOf=function(i){return wbChunkMode?(WB_ROLE_COLOR[wbPoolRoles[i]]||null):null};
   const line=wbPicked.length
-    ? wbPicked.map(function(i,k){return `<button type="button" ${wbLocked?"disabled":""} onclick="wbUnpick(${k})"
-        style="background:#0E7490;color:#fff;border:none;border-radius:10px;padding:8px 12px;margin:0 4px 6px 0;
+    ? wbPicked.map(function(i,k){const c=roleOf(i);
+        return `<button type="button" ${wbLocked?"disabled":""} onclick="wbUnpick(${k})"
+        style="background:${c?c.bd:'#0E7490'};color:#fff;border:none;border-radius:10px;padding:8px 12px;margin:0 4px 6px 0;
         font-family:Georgia,serif;font-size:16px;cursor:${wbLocked?'default':'pointer'}">${esc(wbPool[i])}</button>`}).join("")
-    : `<span style="color:#94A3B8;font-size:14px">اضغطي الكلمات بالترتيب…</span>`;
+    : `<span style="color:#94A3B8;font-size:14px">${wbChunkMode?"اضغطي الكتل بالترتيب…":"اضغطي الكلمات بالترتيب…"}</span>`;
   const tiles=wbPool.map(function(w,i){
-    const used=wbPicked.indexOf(i)>=0;
+    const used=wbPicked.indexOf(i)>=0,c=roleOf(i);
+    const bg=used?'#F1F5F9':(c?c.bg:'#fff'),bd=used?'#E2E8F0':(c?c.bd:'#A5F3FC'),fg=used?'#CBD5E1':(c?c.fg:'#0F172A');
     return `<button type="button" ${(used||wbLocked)?"disabled":""} onclick="wbPick(${i})"
-      style="background:${used?'#F1F5F9':'#fff'};color:${used?'#CBD5E1':'#0F172A'};border:1.5px solid ${used?'#E2E8F0':'#A5F3FC'};
+      style="background:${bg};color:${fg};border:1.5px solid ${bd};
       border-radius:10px;padding:8px 12px;margin:0 4px 6px 0;font-family:Georgia,serif;font-size:16px;
       cursor:${(used||wbLocked)?'default':'pointer'}">${esc(w)}</button>`}).join("");
-  // البوّابة تُخفي الكلمات وحدها — والمطلوب (الجملة العربية أو ما سُمع) يبقى معروضاً،
-  // فالزمن يُنفَق في فهم المطلوب لا في انتظارٍ أعمى. وسطرُ المبنيّ يبقى ليُرى أنه فارغ.
+  // شارة الألوان الأربع — تُعرض في درجة الأدوار وحدها، فوق البوّابة لتُقرأ قبل عدّها
+  const legend=wbChunkMode?`<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+    ${Object.keys(WB_ROLE_LABEL).map(function(r){const c=WB_ROLE_COLOR[r];
+      return `<span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:${c.fg}">
+        <span style="width:11px;height:11px;border-radius:3px;background:${c.bd};display:inline-block"></span>${WB_ROLE_LABEL[r]}</span>`}).join("")}
+  </div>`:"";
+  // البوّابة تُخفي الكلمات/الكتل وحدها — والمطلوب (الجملة العربية أو ما سُمع) يبقى
+  // معروضاً، فالزمن يُنفَق في فهم المطلوب لا في انتظارٍ أعمى. وسطرُ المبنيّ يبقى
+  // ليُرى أنه فارغ.
   const gated=(gateKind==="build"&&!gateOpen());
   return `<div style="display:flex;gap:6px;margin-bottom:8px">${bar}</div>
   <div style="font-size:12px;font-weight:800;color:#0E7490;margin-bottom:10px">${st.label}</div>
   <div style="direction:ltr;text-align:left;min-height:52px;background:#F8FAFC;border:2px dashed #CBD5E1;
     border-radius:12px;padding:10px;margin-bottom:12px">${line}</div>
-  ${gated?secGateHTML("الكلمات"):`<div style="direction:ltr;text-align:left">${tiles}</div>`}`;
+  ${gated?secGateHTML(wbChunkMode?"الكتل":"الكلمات"):(legend+`<div style="direction:ltr;text-align:left">${tiles}</div>`)}`;
 }
 // بنك الجمل: مصدرٌ واحد لثلاثة أبواب — الإملاء (تُسمَع ثم تُبنى)، وخطة الإنجليزية
 // (تُطلب بالعربية ثم تُبنى)، ووضع أخطائي. والقواعد موسومة لتُربط بشرحها القائم.
@@ -6807,16 +6844,35 @@ const ENG_BUILD=[
  // `engBuildFor("A1")` كانت تُعيد عناصر A2، فهيا (A1 مقاسة) لم تر جملةً في مستواها قطّ.
  // وهذه بمعيار A1: مضارع بسيط، جملةٌ واحدة، أربع إلى سبع كلمات، بلا ماضٍ ولا مقارنة
  // ولا تركيب — وبمحتوًى سعوديّ كبقيّة بنوك التطبيق.
- {id:"b_a1_cat",s:"I have a small cat.",m:"عندي قطّة صغيرة.",lv:"A1"},
- {id:"b_a1_school",s:"I go to school every day.",m:"أذهب إلى المدرسة كل يوم.",lv:"A1"},
- {id:"b_a1_bag",s:"My bag is red.",m:"حقيبتي حمراء.",lv:"A1"},
- {id:"b_a1_like",s:"I like apples and dates.",m:"أحبّ التفاح والتمر.",lv:"A1"},
- {id:"b_a1_sister",s:"My sister is eight years old.",m:"أختي عمرها ثماني سنوات.",lv:"A1"},
- {id:"b_a1_water",s:"I drink water in the morning.",m:"أشرب الماء في الصباح.",lv:"A1"},
- {id:"b_a1_book",s:"This is my English book.",m:"هذا كتابي في الإنجليزية.",lv:"A1"},
- {id:"b_a1_play",s:"We play football after school.",m:"نلعب كرة القدم بعد المدرسة.",lv:"A1"},
- {id:"b_a1_riyadh",s:"My family lives in Riyadh.",m:"عائلتي تسكن في الرياض.",lv:"A1"},
- {id:"b_a1_weather",s:"The weather is hot today.",m:"الطقس حارّ اليوم.",lv:"A1"},
+ //
+ // ===== chunks: كتلٌ دلاليّةٌ ملوَّنة (Colourful Semantics، Bryan 1997) — ٣١ أغسطس =====
+ // فحص شكل خطأ هيا في الترتيب (Kendall tau≈٠٫١٢، وأزواجٌ متجاورة محفوظة ١٥٪ فقط —
+ // دون العشوائي البحت) أثبت أنه ليس آليةً مسمّاة بل غياب ترتيب SVO تماماً، وأن
+ // مفرداتها سليمة (تختار الكلمات الصحيحة، لا تعرف مواضعها). فالعلاج يفصل الترتيبَ
+ // عن اختيار الكلمة (نموذج Levelt 1989: الترميز الوظيفي سليمٌ، والموضعيّ معطوب) —
+ // تُبنى الجملة من كتلٍ بأدوارٍ ملوَّنة (من = برتقالي، يفعل ماذا = أصفر، ماذا = أخضر،
+ // أين/متى = أزرق) بدل كلماتٍ مفردة، فيقلّ عدد الاحتمالات (٣-٤ كتل لا ٥-٧ كلمات).
+ // والتحقّق: `verify_chunks.js` يُثبت أن كل تسلسل كتلٍ يُعيد بناء `s` حرفاً بحرف.
+ {id:"b_a1_cat",s:"I have a small cat.",m:"عندي قطّة صغيرة.",lv:"A1",
+   chunks:[{t:"I",role:"who"},{t:"have",role:"doing"},{t:"a small cat.",role:"what"}]},
+ {id:"b_a1_school",s:"I go to school every day.",m:"أذهب إلى المدرسة كل يوم.",lv:"A1",
+   chunks:[{t:"I",role:"who"},{t:"go",role:"doing"},{t:"to school",role:"where"},{t:"every day.",role:"where"}]},
+ {id:"b_a1_bag",s:"My bag is red.",m:"حقيبتي حمراء.",lv:"A1",
+   chunks:[{t:"My bag",role:"who"},{t:"is",role:"doing"},{t:"red.",role:"what"}]},
+ {id:"b_a1_like",s:"I like apples and dates.",m:"أحبّ التفاح والتمر.",lv:"A1",
+   chunks:[{t:"I",role:"who"},{t:"like",role:"doing"},{t:"apples and dates.",role:"what"}]},
+ {id:"b_a1_sister",s:"My sister is eight years old.",m:"أختي عمرها ثماني سنوات.",lv:"A1",
+   chunks:[{t:"My sister",role:"who"},{t:"is",role:"doing"},{t:"eight years old.",role:"what"}]},
+ {id:"b_a1_water",s:"I drink water in the morning.",m:"أشرب الماء في الصباح.",lv:"A1",
+   chunks:[{t:"I",role:"who"},{t:"drink",role:"doing"},{t:"water",role:"what"},{t:"in the morning.",role:"where"}]},
+ {id:"b_a1_book",s:"This is my English book.",m:"هذا كتابي في الإنجليزية.",lv:"A1",
+   chunks:[{t:"This",role:"who"},{t:"is",role:"doing"},{t:"my English book.",role:"what"}]},
+ {id:"b_a1_play",s:"We play football after school.",m:"نلعب كرة القدم بعد المدرسة.",lv:"A1",
+   chunks:[{t:"We",role:"who"},{t:"play",role:"doing"},{t:"football",role:"what"},{t:"after school.",role:"where"}]},
+ {id:"b_a1_riyadh",s:"My family lives in Riyadh.",m:"عائلتي تسكن في الرياض.",lv:"A1",
+   chunks:[{t:"My family",role:"who"},{t:"lives",role:"doing"},{t:"in Riyadh.",role:"where"}]},
+ {id:"b_a1_weather",s:"The weather is hot today.",m:"الطقس حارّ اليوم.",lv:"A1",
+   chunks:[{t:"The weather",role:"who"},{t:"is",role:"doing"},{t:"hot",role:"what"},{t:"today.",role:"where"}]},
  {id:"b_beach",s:"I went to the beach with my family.",m:"ذهبتُ إلى الشاطئ مع عائلتي.",lv:"A2"},
  {id:"b_bfast",s:"I ate eggs and bread for breakfast.",m:"أكلتُ بيضاً وخبزاً في الفطور.",lv:"A2"},
  {id:"b_tea",s:"I would like a cup of tea, please.",m:"أريد كوب شاي من فضلك.",lv:"A2"},
@@ -6923,7 +6979,7 @@ function startDictation(){
   // وهي الاستماع والبناء معاً — أنفع من كلٍّ وحده، وبلا شاشة جديدة.
   const words=shuffle(DICTATION_A1).slice(0,8);
   const sents=shuffle(engBuildFor(profileOf().level)).slice(0,4)
-    .map(function(x){return{s:x.s,m:x.m,id:x.id,build:true}});
+    .map(function(x){return{s:x.s,m:x.m,id:x.id,build:true,chunks:x.chunks||null}});
   mode="dictation";dictSession=words.concat(sents);dictIdx=0;dictInput="";dictLocked=false;dictScore=0;dictDone=false;
   dictStage=dictStageGet();dictStreak=0;dictMiss=0;dictShownAt=Date.now();wbReset();
   window.scrollTo(0,0);render();
@@ -6963,7 +7019,7 @@ function dictCheck(){
 function dictNext(){
   if(dictIdx+1>=dictSession.length){dictDone=true;window.scrollTo(0,0);render();return}
   dictIdx++;dictInput="";dictLocked=false;dictShownAt=Date.now();
-  if(dictIsBuild())wbStart(dictCur().s);else wbReset();
+  if(dictIsBuild())wbStart(dictCur().s,null,dictCur().chunks);else wbReset();
   render();
   setTimeout(()=>speakEnglish(dictText()),300);
 }
@@ -6978,7 +7034,7 @@ function renderDictationBuild(){
     :"";
   const btn=dictLocked
     ?`<button class="btn" style="background:#0E7490" onclick="dictNext()">${dictIdx+1>=dictSession.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`
-    :`<button class="btn" style="background:${wbReady()?'#0E7490':'#94A3B8'}" ${wbReady()?"":"disabled"} onclick="dictCheck()">${wbReady()?"تحقّقي ←":("بقي "+toAr(wbLeft())+" كلمة")}</button>`;
+    :`<button class="btn" style="background:${wbReady()?'#0E7490':'#94A3B8'}" ${wbReady()?"":"disabled"} onclick="dictCheck()">${wbReady()?"تحقّقي ←":("بقي "+toAr(wbLeft())+" "+wbUnitWord())}</button>`;
   app.innerHTML=`
   <button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
   <div class="bar">${prog}</div>
@@ -6996,7 +7052,7 @@ function renderDictationBuild(){
 }
 function renderDictation(){
   if(dictDone)return renderDictationResult();
-  if(dictIsBuild()){if(!wbOn||wbTarget!==dictCur().s)wbStart(dictCur().s);return renderDictationBuild()}
+  if(dictIsBuild()){if(!wbOn||wbTarget!==dictCur().s)wbStart(dictCur().s,null,dictCur().chunks);return renderDictationBuild()}
   const item=dictSession[dictIdx];
   const info=DICT_STAGES[dictStage-1];
   const prog=dictSession.map((_,i)=>`<div class="seg" style="background:${i<=dictIdx?'#0E7490':'#E2E8F0'};opacity:${i<=dictIdx?1:.5}"></div>`).join("");
@@ -7207,7 +7263,7 @@ function renderErrors(){
       ${fb}
     </div>
     ${errLocked?`<button class="btn" style="background:#DB2777" onclick="errNext()">${errIdx+1>=errItems.length?"إنهاء":"التالي ←"}</button>`
-      :`<button class="btn" style="background:${wbReady()?'#0E7490':'#94A3B8'}" ${wbReady()?"":"disabled"} onclick="errCheck()">${wbReady()?"تحقّق ←":("بقي "+toAr(wbLeft())+" كلمة")}</button>`}`;
+      :`<button class="btn" style="background:${wbReady()?'#0E7490':'#94A3B8'}" ${wbReady()?"":"disabled"} onclick="errCheck()">${wbReady()?"تحقّق ←":("بقي "+toAr(wbLeft())+" "+wbUnitWord())}</button>`}`;
     if(!errLocked&&wbStage>=WB_STAGES.length){const el=document.getElementById('wbIn');if(el)el.focus()}
     return;
   }
@@ -9120,7 +9176,7 @@ function buildCur(){return buildItems[buildIdx]}
 function buildSetupRound(){
   const it=buildCur();if(!it)return;
   buildShownAt=Date.now();
-  wbStart(it.s);
+  wbStart(it.s,null,it.chunks);
 }
 function buildCheck(){
   if(!wbOn||wbLocked)return;
@@ -9148,7 +9204,7 @@ function renderBuild(){
   ${prog}
   <div class="meta"><span>${toAr(buildIdx+1)} من ${toAr(buildItems.length)}</span><span>بناء الجملة · ${it.lv||""}</span></div>
   <div class="card">
-    <span class="tag" style="background:#FCE7F3;color:#9D174D">🧩 رتّب الكلمات</span>
+    <span class="tag" style="background:#FCE7F3;color:#9D174D">🧩 ${wbChunkMode?"رتّب الأدوار":"رتّب الكلمات"}</span>
     <div style="margin-top:10px;font-size:15px;color:#0F172A;line-height:1.9">${esc(it.m||"")}</div>
     <div style="margin-top:12px">${wbHTML()}</div>
     ${wbLocked?`<div style="margin-top:12px;background:${wbOk?'#ECFDF5':'#FEF2F2'};border-radius:12px;padding:12px">
@@ -9158,7 +9214,7 @@ function renderBuild(){
   </div>
   ${wbLocked
     ? `<button class="btn" style="background:#9D174D" onclick="buildNext()">${buildIdx+1>=buildItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`
-    : `<button class="btn" style="background:#9D174D" onclick="buildCheck()" ${wbReady()?"":"disabled"}>${wbReady()?"تحقّق":"بقي "+toAr(wbLeft())+" كلمة"}</button>`}`;
+    : `<button class="btn" style="background:#9D174D" onclick="buildCheck()" ${wbReady()?"":"disabled"}>${wbReady()?"تحقّق":"بقي "+toAr(wbLeft())+" "+wbUnitWord()}</button>`}`;
 }
 function renderBuildResult(){
   const pct=buildItems.length?Math.round(buildScore/buildItems.length*100):0;
