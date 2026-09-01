@@ -4130,6 +4130,34 @@ async function runAzureDiag(){
 }
 // ردّ Azure الخام يُعرض كنصّ لا كترميز: فيه أقواس واقتباسات، ولولا التهريب لكسر الصفحة
 function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
+// ===== تمييز جملة الدليل بعد القفل — الاستماع والمقروء، درس ١ سبتمبر =====
+// gram/step يشرحان كل خيارٍ بعد القفل (`why` مؤلَّف لكل عنصر)؛ listen/read لا يفعلان —
+// «الصحيحة بالأخضر» فقط بلا سبب. وبيانات إلياس الحيّة كشفت فخّاً محدَّداً يعيد نفسه:
+// مقطعٌ فيه رقمان متقاربان (وقت البدء ووقت الانتهاء، رقمٌ صُحِّح ورقمٌ أوّل) فيختار
+// الرقم غير المطلوب مراراً («cook the pasta»: أخطأها بالضبط بنفس الشكل في يومين).
+// **لا تأليف شرحٍ جديد لكل عنصرٍ من ~١٠٠** (كلفةٌ لا تُبرَّر) بل تقنيّةٌ عامّة: تُحدَّد
+// الجملة الأقرب لكلمات الجواب الصحيح داخل النصّ نفسه (المقروء مرئيٌّ أصلاً، والمسموع
+// يُكشَف نصّه الآن لأوّل مرّة بعد الإجابة فقط — لا قبلها، فلا يُخلّ بصيغة الاختبار) وتُبرَز.
+function evidenceSentence(text,answer){
+  if(!text||!answer)return "";
+  const sents=String(text).match(/[^.!?]+[.!?]*/g)||[String(text)];
+  const words=String(answer).toLowerCase().replace(/[^a-z0-9\s]/g," ").split(/\s+/).filter(function(w){return w.length>=4});
+  if(!words.length)return "";
+  let best="",bestN=0;
+  sents.forEach(function(s){
+    const low=s.toLowerCase();
+    const n=words.filter(function(w){return low.indexOf(w)>=0}).length;
+    if(n>bestN){bestN=n;best=s}
+  });
+  return bestN>0?best.trim():"";
+}
+function boldEvidence(text,sentence){
+  const t=String(text||"");
+  if(!sentence)return esc(t);
+  const i=t.indexOf(sentence);
+  if(i<0)return esc(t);
+  return esc(t.slice(0,i))+`<b style="background:#FEF3C7;padding:0 2px;border-radius:3px">`+esc(sentence)+`</b>`+esc(t.slice(i+sentence.length));
+}
 function copyAzRaw(){
   const r=azDiag&&azDiag.info&&azDiag.info.raw;if(!r)return;
   const done=function(){alert("نُسخ الردّ الخام. الصقه لمن يفحص العطل.")};
@@ -5973,7 +6001,7 @@ async function coachFinish(){
   let pct=null,weak=[],azSc=null,azFail="";
   try{
     const az=await azureTry(heard);
-    if(az.data){azSc=azureToScore(heard,az.data);pct=azSc.pct;weak=azSc.weak||[]}
+    if(az.data){azSc=azureToScore(heard,az.data);pct=azSc.pct;weak=azSc.weak||[];pronWeakRecord(weak,pct)}
     else azFail=az.fail||"azure_fail";
   }catch(e){azFail="azure_throw"}
   coachMsgs.push({role:"user",text:heard,pct:pct,weak:weak});
@@ -6063,6 +6091,37 @@ function coachWeakSummary(){
     // شرط الكلمتين: صوتٌ ضعف في كلمة واحدة قد يكون الكلمة لا الصوت
     .filter(function(x){return x.words.length>=WEAK_MIN_WORDS||x.n>=WEAK_MIN_WORDS+1})
     .sort(function(a,b){return b.n-a.n||a.avg-b.avg}).slice(0,3);
+}
+// ===== الأصوات الضعيفة تتراكم عبر الجلسات لا داخل جلسةٍ واحدة — درس ١ سبتمبر =====
+// `coachWeakSummary` تُبنى من `coachMsgs` وحدها فتُمحى مع كل جلسة جديدة — فصوتٌ يتكرّر
+// ضعفه أسابيع (بيانات إلياس: /r/ في ١٢ من ~٦٨ صفّاً موسوماً، أكثر من ضعف أيّ صوتٍ آخر)
+// لا تراه الخلاصة اليومية إن لم يتكرّر **في نفس الجلسة** بعينها. فمخزونٌ محلّي يتراكم
+// (نفس نمط FSRS/shapeRecord: تجميعٌ لا استبدال) يُغذّي سطراً إضافياً في الخلاصة.
+// **ولا تفسير صوتيّ جديد هنا** — قرار «الصوت يُقلَّد لا يُشرَح» (٣٠ أغسطس) قائم، فالإضافة
+// عرضٌ تراكميّ فقط، بنفس شكل البطاقة ونفس الكلمات (كلماتٌ للتقليد لا شرحٌ للنطق).
+const PRON_WEAK_KEY="mawhiba_pron_weak_v1";
+function pronWeakLoad(){try{return JSON.parse(lsGet(PRON_WEAK_KEY)||"{}")}catch(e){return{}}}
+function pronWeakSave(o){try{lsSet(PRON_WEAK_KEY,JSON.stringify(o))}catch(e){}}
+function pronWeakRecord(list,pct){
+  const clean=weakClean(list,pct);if(!clean.length)return;
+  const m=pronWeakLoad();
+  clean.forEach(function(x){
+    const k=String(x.p||"");if(!k)return;
+    const t=m[k]||{n:0,sum:0,words:{}};
+    t.n++;t.sum+=Number(x.score||0);
+    if(x.w)t.words[String(x.w).toLowerCase()]=1;
+    m[k]=t;
+  });
+  pronWeakSave(m);
+}
+// أعلى صوتٍ تراكميّاً يتجاوز شرط الكلمتين نفسه — ولا يُعرض إن كان أصلاً في ملخّص اليوم
+function pronWeakPersistedTop(excludeKeys){
+  const m=pronWeakLoad(),ex=excludeKeys||[];
+  return Object.keys(m).filter(function(k){return ex.indexOf(k)<0}).map(function(k){
+    const t=m[k],ws=Object.keys(t.words);
+    return{p:k,n:t.n,avg:Math.round(t.sum/t.n),words:ws};
+  }).filter(function(x){return x.words.length>=WEAK_MIN_WORDS&&x.n>=6})
+    .sort(function(a,b){return b.n-a.n||a.avg-b.avg})[0]||null;
 }
 // ===== صفحة التصحيح: بعد الجلسة لا في أثنائها =====
 // المقاطعة تقتل الكلام — جرّبناه. لكن الجلسة كانت تنتهي بلا شيء بيده: محمد قال
@@ -6341,6 +6400,13 @@ function renderCoach(){
         الأصوات التي تكرّر ضعفها:${w.map(function(x){return `<div>• <b style="direction:ltr;display:inline-block">${esc(phonemeLabel(x.p))}</b> — بمعدّل ${toAr(x.avg)}/١٠٠${x.words.length?` في: <b style="direction:ltr;display:inline-block">${x.words.slice(0,3).map(esc).join(" · ")}</b>`:""}</div>`}).join("")}
         <div style="font-size:12px;color:#7C3AED;margin-top:8px">اسمعي الكلمة ثم كرّريها ثلاثاً — الصوت يُقلَّد لا يُشرَح.</div></div>`
         :`<div style="font-size:14px;color:#059669;margin-top:10px">لا صوت تكرّر ضعفه في أكثر من كلمة ✓</div>`}
+      ${(function(){
+        // تراكمٌ عبر الأيام لا هذه الجلسة وحدها — نفس شرط الكلمتين والصوت يُقلَّد لا يُشرَح
+        const top=pronWeakPersistedTop(w.map(function(x){return x.p}));
+        if(!top)return "";
+        return `<div style="background:#FFF7ED;border-radius:12px;padding:12px;margin-top:10px;text-align:right;font-size:13px;color:#9A3412;line-height:1.9">
+          وعبر أيامٍ سابقة أيضاً: صوت <b style="direction:ltr;display:inline-block">${esc(phonemeLabel(top.p))}</b> يتكرّر ضعفه (بمعدّل ${toAr(top.avg)}/١٠٠${top.words.length?` في: <b style="direction:ltr;display:inline-block">${top.words.slice(0,3).map(esc).join(" · ")}</b>`:""})</div>`;
+      })()}
     </div>
     ${coachFixBusy?`<div class="card" style="text-align:center"><div class="spin"></div>
       <div style="font-size:14px;color:#64748B;margin-top:12px">نراجع جملك…</div></div>`:""}
@@ -7835,7 +7901,8 @@ function renderListen(){
     <div style="margin:16px 0"><button type="button" onclick="listenPlay()" style="background:#0284C7;color:#fff;border:none;border-radius:50%;width:64px;height:64px;font-size:26px;cursor:pointer">🔊</button></div>
     <div style="font-size:12px;color:#64748B;margin-bottom:14px">${listenPlaysHint(it.lv)}${listenPlays?` · استمعتَ ${toAr(listenPlays)} ${listenPlays===1?"مرّة":"مرّات"}`:""}</div>
     <div class="choices">${secGateHTML()}${choices}</div>
-    ${listenLocked?`<div class="explain"><div class="explain-title" style="color:${listenPicked===it.a?'#059669':'#B45309'}">${listenPicked===it.a?"✓ فهمتَ صحيحاً":"الصحيحة بالأخضر"}</div></div>`:""}
+    ${listenLocked?`<div class="explain"><div class="explain-title" style="color:${listenPicked===it.a?'#059669':'#B45309'}">${listenPicked===it.a?"✓ فهمتَ صحيحاً":"الصحيحة بالأخضر"}</div>
+      <div style="margin-top:8px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:10px;direction:ltr;text-align:left;font-family:Georgia,serif;font-size:14px;color:#334155;line-height:1.8">📝 ${boldEvidence(it.audio,evidenceSentence(it.audio,it.c[it.a]))}</div></div>`:""}
   </div>
   ${listenLocked?`<button class="btn" style="background:#0284C7" onclick="listenNext()">${listenIdx+1>=listenItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`:""}`;
   if(!listenLocked&&listenPlays===0)setTimeout(function(){listenPlay()},300);
@@ -7973,10 +8040,10 @@ function renderRead(){
   <div class="meta"><span>${toAr(readIdx+1)} من ${toAr(readItems.length)}</span><span>فهم المقروء · ${it.lv}</span></div>
   <div class="card">
     <span class="tag" style="background:#F5F3FF;color:#6D28D9">📖 اقرئي</span>
-    <div style="background:#FAF5FF;border:1px solid #E9D5FF;border-radius:12px;padding:14px;margin:14px 0;font-size:16px;line-height:1.8;direction:ltr;text-align:left;color:#4C1D95;font-family:Georgia,serif">${it.passage}</div>
+    <div style="background:#FAF5FF;border:1px solid #E9D5FF;border-radius:12px;padding:14px;margin:14px 0;font-size:16px;line-height:1.8;direction:ltr;text-align:left;color:#4C1D95;font-family:Georgia,serif">${readLocked?boldEvidence(it.passage,evidenceSentence(it.passage,it.c[it.a])):it.passage}</div>
     <div class="q" style="direction:ltr;text-align:left;font-family:Georgia,serif;margin-top:12px">${it.q}</div>
     <div class="choices">${secGateHTML()}${choices}</div>
-    ${readLocked?`<div class="explain"><div class="explain-title" style="color:${readPicked===it.a?'#059669':'#B45309'}">${readPicked===it.a?"✓ فهمتِ صحيحاً":"الصحيحة بالأخضر"}</div></div>`:""}
+    ${readLocked?`<div class="explain"><div class="explain-title" style="color:${readPicked===it.a?'#059669':'#B45309'}">${readPicked===it.a?"✓ فهمتِ صحيحاً":"الصحيحة بالأخضر — والجملة المُبرَزة أعلاه هي الدليل"}</div></div>`:""}
   </div>
   ${readLocked?`<button class="btn" style="background:#7C3AED" onclick="readNext()">${readIdx+1>=readItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`:""}`;
 }
@@ -9085,6 +9152,12 @@ function gramChoose(i){
   if(ok)gramScore++;
   const elapsed=Date.now()-gramShownAt;
   gramSrsUpdate(it.id,ok);
+  // ===== تكرار الخطأ نفسه — درس ١ سبتمبر =====
+  // بيانات إلياس: عنصرا «on Friday»/«in the music class» و«bigger/biggest» أُخطئا
+  // ٣-٤ مرّات كلٌّ عبر أيام متعدّدة رغم إعادة FSRS لهما — نفس شكل الخطأ يتكرّر بعد
+  // إعادة العرض، أي أن التباعد وحده لا يكفي حين لا يوجد تعلّمٌ بين المرّتين. نفس
+  // آلية SHAPE_ARM/shapeRecord القائمة في الأساسيات — لا آلية جديدة، مفتاحٌ مختلف فقط.
+  shapeRecord("gram:"+it.id,!ok);
   // ===== الخيارات تُسجَّل بترتيب العرض لا بترتيب البنك — درس ٢٥ أغسطس =====
   // `gramSetupRound` يخلط العرض فعلاً، لكن السطر كان يُبنى من `it.c` بترتيبه الأصلي —
   // فظهر الصواب في الموضع «٢» في خمسة عناصر متتالية لهيا (٠ من ٥) لأن هكذا كُتب البنك
@@ -9101,6 +9174,18 @@ function gramNext(){
 
   if(gramIdx+1>=gramItems.length){gramDone=true;render();return}
   gramIdx++;gramSetupRound();render();
+}
+// تذكيرٌ قبل الاختيار لا بعده — نفس منطق «الدعم قبل لا بعد» (الكتل الملوّنة، ٣٠ أغسطس):
+// إن سبق أن أُخطئ هذا العنصر بعينه مرّتين (shapeArmed) فسطرُ قاعدةٍ من شرح الخيار الصحيح
+// نفسه (لا محتوًى جديد) يُعرض قبل الخيارات — تذكيرٌ بالقاعدة لا كشفٌ لموضع الصواب.
+function gramArmedHint(it){
+  if(!it||gramLocked||!shapeArmed("gram:"+it.id))return "";
+  const right=it.c.find(function(c){return c.ok});
+  if(!right)return "";
+  // بلا فرض اتّجاه على السطر كلّه — نفس نمط صندوق شرح الخيار القائم أصلاً (يخلط عربياً
+  // بإنجليزية كـ«-s» بأمان) خلاف محاولةٍ أولى فرضت LTR على الحاوية فانقلب الجزء الإنجليزي
+  // من `why` — نفس فخّ «بلا عربية ⇐ يسار، وفيه عربية ⇐ يمين» الموثَّق (٢٥ أغسطس).
+  return `<div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:10px;margin:10px 0;font-size:13px;color:#1E40AF;line-height:1.8">📘 أخطأتِ هذا السؤال من قبل — تذكّري القاعدة: ${esc(right.why)}</div>`;
 }
 function renderGram(){
   if(!gramItems.length){app.innerHTML=`<div class="card" style="text-align:center">لا شيء مستحقّ اليوم — عودي غداً 🌱</div><button class="link-btn" onclick="home()">→ الرئيسية</button>`;return}
@@ -9120,6 +9205,7 @@ function renderGram(){
   <div class="meta"><span>${toAr(gramIdx+1)} من ${toAr(gramItems.length)}</span><span>دقّة القواعد · ${it.lv}</span></div>
   <div class="card">
     <span class="tag" style="background:#CFFAFE;color:#0E7490">✍️ أيّ جملةٍ صحيحة؟</span>
+    ${gramArmedHint(it)}
     <div class="choices" style="margin-top:12px">${secGateHTML()}${choices}</div>
   </div>
   ${gramLocked?`<button class="btn" style="background:#0E7490" onclick="gramNext()">${gramIdx+1>=gramItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`:""}`;
@@ -10588,6 +10674,10 @@ function stepSeqSubmit(){
   const ok=stepSeqPicked.every(function(v,k){return v===k});
   if(ok)stepScore++;
   stepSrsUpdate(it.id,ok);
+  // ===== الترتيب هو الأضعف في STEP (٦٠٪ عند إلياس) — درس ١ سبتمبر =====
+  // نفس آلية SHAPE_ARM: تُسلَّح على **النوع** لا العنصر (بنك order صغيرٌ ومتنوّع، خلاف
+  // gram)، فتُعرض تذكرة المنهج قبل التالي حين يتكرّر الإخفاق في هذا النوع بعينه.
+  shapeRecord("step:order",!ok);
   logAnswer("step","order",ok,stepSeqPicked.map(function(v){return v+1}).join("-"),it.id,
     Date.now()-stepShownAt,
     {_sk:skOf(it),q_text:("[ترتيب] الصواب "+it.s.map(function(_,k){return k+1}).join("-")+" · "
@@ -10599,6 +10689,13 @@ function stepNext(){
 
   if(stepIdx+1>=stepItems.length){stepDone=true;render();return}
   stepIdx++;stepSetupRound();render();
+}
+// منهجٌ عامّ لا مرتبط بعنصرٍ بعينه (خلاف it.why الذي يكشف رأس الفقرة لهذا النصّ تحديداً) —
+// نفس العبارة الموثَّقة أصلاً في CLAUDE.md لحلّ عناصر الترتيب، فلا يُفشي الإجابة قبل المحاولة.
+const STEP_ORDER_METHOD="ابحثي أوّلاً عن رأس الفقرة — الجملة التي لا تشير إلى ما قبلها ولا تحمل كلمة تسلسل. ثم رتّبي الباقي بكلمات الإشارة: أوّلاً (First) ثم (Then) وأخيراً (Finally).";
+function stepOrderHint(){
+  if(stepLocked||!shapeArmed("step:order"))return "";
+  return `<div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:10px;margin-bottom:10px;font-size:13px;color:#1E40AF;line-height:1.8">📘 ${esc(STEP_ORDER_METHOD)}</div>`;
 }
 function renderStep(){
   if(!stepItems.length){app.innerHTML=`<div class="card" style="text-align:center">لا شيء مستحقّ اليوم — عودي غداً 🌱</div><button class="link-btn" onclick="home()">→ الرئيسية</button>`;return}
@@ -10627,6 +10724,7 @@ function renderStep(){
         <div style="margin-top:8px;font-size:13px;color:#78350F;line-height:1.9">💡 ${esc(it.why)}</div>
       </div>`:"";
     body=`<div style="font-size:13px;color:#64748B;margin-bottom:10px">${m?"رتّب الجمل لتصير فقرةً مترابطة":"رتّبي الجمل لتصير فقرةً مترابطة"}</div>
+      ${stepOrderHint()}
       <div style="background:#FFFBEB;border:2px dashed #FCD34D;border-radius:12px;padding:10px;min-height:56px;margin-bottom:12px">${chosen}</div>
       ${secGateHTML()}
       ${(stepLocked||!gateOpen())?"":tiles}
@@ -12458,6 +12556,7 @@ async function pronFinish(){
     const sc=azureToScore(target,az.data);
     pronResult={heard:az.data.heard||az.data.lexical||"",ok:sc.ok,sc,note:"",engine:"azure"};
     if(sc.ok)pronScore++;
+    pronWeakRecord(sc.weak,sc.pct);
     // نحفظ ما يُقاس لا ما يُعرض فقط: الدقّة وحدها تُميّز «نطقٌ سليم مع تكرار» عن «نطقٌ ضعيف»،
     // وأضعف الأصوات هي الجسر إلى أخطاء إملائها (gate←kate، prize←price) — كلّها فرق جهر
     logAnswer("pronunciation_a1","word",sc.ok,az.data.heard||"",target,Math.round(pronElapsed*1000),
@@ -12708,6 +12807,7 @@ async function speakFinish(){
     const sc=azureToScore(target,az.data);
     speakTries++;
     speakResult={heard:az.data.heard||az.data.lexical||"",ok:sc.ok,sc,note:"",engine:"azure"};
+    pronWeakRecord(sc.weak,sc.pct);
     logAnswer("speaking","stage"+speakStage,sc.ok,az.data.heard||"",it.id,Math.round(speakElapsed*1000),
       {score_pct:sc.pct,engine:"azure",is_new:!!it._isNew,srs_box:it._box,judged_by:sc.by,
        // الوسم يدخل عمود azure_fail لأنه العمود القائم لحال «Azure عمل ولم يُحسم به»
