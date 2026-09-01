@@ -82,13 +82,19 @@ console.log('\n٤) الزرّ يظهر لما هو مربوط وحده');
 {
   const r=await p.evaluate(()=>{
     clipOn=null;clipStep=0;            // القسم السابق تركه مفتوحاً، والزرّ يُخفى حينئذ عمداً
-    const linked=gCube(),unlinked=gPaths();
-    return{linked:clipButtonHTML(linked).length>0,unlinked:clipButtonHTML(unlinked).length>0,
+    // gPaths كانت بلا موضوع تقويةٍ يشرح طريقته (٢٩ أغسطس)، فلم تُربَط بجدول
+    // QZ_CARD_FADE_LINK. لكن آلية withSteps (١ سبتمبر) لا تمرّ بهذا الجدول أصلاً —
+    // تبني الخطوات من أرقام السؤال المعروض نفسه، فصار لها مقطعٌ فعلاً. gCompound لم
+    // تُمَسّ فتبقى المثال الحقيقي لسؤالٍ بلا مقطعٍ إطلاقاً.
+    const linked=gCube(),direct=gPaths(),unlinked=gCompound();
+    return{linked:clipButtonHTML(linked).length>0,direct:clipButtonHTML(direct).length>0,
+      unlinked:clipButtonHTML(unlinked).length>0,
       // ولا يظهر والمقطع مفتوح
       whileOpen:(function(){clipOn=clipBuild("cube");const h=clipButtonHTML(linked);clipOn=null;return h.length>0})()};
   });
-  ok(r.linked===true,'يظهر لسؤال المكعّب (مربوط)');
-  ok(r.unlinked===false,'ولا يظهر لسؤال الطرق (بلا موضوع تقويةٍ يشرح طريقته)');
+  ok(r.linked===true,'يظهر لسؤال المكعّب (مربوط بجدول QZ_CARD_FADE_LINK)');
+  ok(r.direct===true,'ويظهر لسؤال الطرق أيضاً الآن — مقطعٌ مبنيٌّ من أرقامه هو مباشرةً (withSteps، ١ سبتمبر)');
+  ok(r.unlinked===false,'ولا يظهر لسؤالٍ بلا withSteps ولا رابطٍ في الجدول (gCompound)');
   ok(r.whileOpen===false,'ولا يتكرّر والمقطع مفتوح');
 }
 

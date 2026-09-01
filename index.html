@@ -442,14 +442,33 @@ function qz(d,q,correct,cands,w){const m=mcNum(correct,cands);return{d,q,c:m.cho
 // أن يشرح على أرقامها هي، فيضطرّ إلى مثالٍ آخر قد يكون من عائلةٍ أخرى (وهو العيب
 // الذي رُصد بلقطة شاشة ٢٩ أغسطس: سؤال مربّعات ومقطعُ جمع).
 function withPat(o,pat,next){try{o.pat=pat.slice();o.next=next}catch(e){}return o}
+// ===== مقطع شرحٍ يُبنى من أرقام السؤال المعروض نفسه — درس ١ سبتمبر =====
+// نفس مبدأ `withPat`/`clipSeqBuild` (٢٩ أغسطس): الشرح من الأرقام الحقيقية للسؤال لا
+// من مثالٍ منفصل قد يكون من عائلةٍ أخرى. `steps` مبسّطةٌ بمستوى صفٍّ أدنى (بطلبٍ صريح
+// من صاحب المشروع بعد أن ظهر ضعف حقيقي في الكمّي عند هيا)، بلا مساسٍ بصعوبة السؤال
+// نفسه ولا بمولّده — الشرح فقط يتغيّر، والمستوى المعروض عليها كما هو.
+function withSteps(o,icon,label,steps,rule){
+  try{o.steps=steps;o.clipIcon=icon;o.clipLabel=label;o.clipRule=rule||o.w}catch(e){}
+  return o;
+}
 function gArith(){const s=rand(2,9),a=rand(1,9);const q=[a];for(let i=0;i<3;i++)q.push(q[i]+s);const ans=q[3]+s;return withPat(qz("quant",`أكمل المتتالية: ${arSeq(q)} ، ...`,ans,[ans+s,ans-s,q[3]+1],`يزيد العدد ${toAr(s)} في كل مرة: ${toAr(q[3])} + ${toAr(s)} = ${toAr(ans)}.`),q,ans)}
 function gGeo(){const r=pick([2,3]),a=rand(2,5);const q=[a];for(let i=0;i<3;i++)q.push(q[i]*r);const ans=q[3]*r;return withPat(qz("quant",`أكمل المتتالية: ${arSeq(q)} ، ...`,ans,[ans-a,q[3]+r,ans+a],`كل عدد = الذي قبله × ${toAr(r)}: ${toAr(q[3])} × ${toAr(r)} = ${toAr(ans)}.`),q,ans)}
 function gPrice(){const per=rand(2,6),k=rand(2,4),m=rand(5,8);const ck=per*k;return qz("quant",`إذا كان ثمن ${toAr(k)} أقلام ${toAr(ck)} ريالاً، فكم ثمن ${toAr(m)} أقلام؟`,per*m,[per*m+per,per*m-per,per*(m+1)],`سعر القلم = ${toAr(ck)} ÷ ${toAr(k)} = ${toAr(per)}، إذن ${toAr(m)} × ${toAr(per)} = ${toAr(per*m)} ريالاً.`)}
 function gPerim(){if(pick([0,1])){const side=rand(3,12);return qz("quant",`محيط مربع طول ضلعه ${toAr(side)} سم. كم محيطه؟`,4*side,[4*side+4,4*side-4,side*3],`محيط المربع = ٤ × الضلع = ${toAr(4*side)} سم.`)}const per=4*rand(3,12);return qz("quant",`محيط مربع يساوي ${toAr(per)} سم. كم طول ضلعه؟`,per/4,[per/4+1,per/4-1,per/2],`الضلع = المحيط ÷ ٤ = ${toAr(per/4)} سم.`)}
-function gClock(){const names=["","الواحدة","الثانية","الثالثة","الرابعة","الخامسة","السادسة"];const h=rand(1,6),ang=30*h;return qz("quant",`عندما تشير الساعة إلى ${names[h]} تماماً، كم الزاوية بين عقربَيها؟`,ang,[ang+30,ang-30,ang+15],`كل ساعة = ٣٠°، وعند ${toAr(h)}:٠٠ الزاوية = ${toAr(ang)}°.`)}
+function gClock(){const names=["","الواحدة","الثانية","الثالثة","الرابعة","الخامسة","السادسة"];const h=rand(1,6),ang=30*h;
+  return withSteps(qz("quant",`عندما تشير الساعة إلى ${names[h]} تماماً، كم الزاوية بين عقربَيها؟`,ang,[ang+30,ang-30,ang+15],`كل ساعة = ٣٠°، وعند ${toAr(h)}:٠٠ الزاوية = ${toAr(ang)}°.`),
+    "🕐","زاوية عقارب الساعة",
+    [`الساعة دائرة كاملة = ٣٦٠°، وفيها ١٢ رقماً، فبين كل رقمين متجاورين = ٣٦٠ ÷ ١٢ = ٣٠°`,
+     `عند الساعة ${names[h]} تماماً، بين عقرب الساعات والرقم ١٢ يوجد ${toAr(h)} أرقام`,
+     `الزاوية = ${toAr(h)} × ٣٠° = ${toAr(ang)}°`])}
 function gSides(){const sh=pick([["المثلث",3],["المربع",4],["الشكل الخماسي",5],["الشكل السداسي",6],["الشكل الثماني",8]]);return qz("quant",`كم عدد أضلاع ${sh[0]}؟`,sh[1],[sh[1]+1,sh[1]-1,sh[1]+2],`${sh[0]} له ${toAr(sh[1])} أضلاع.`)}
 // متقدّمة
-function gWorkers(){const w1=rand(3,6),f=rand(2,4),d2=rand(3,6);const total=w1*d2*f;const d1=total/w1;const w2=total/d2;return qz("quant",`يستطيع ${toAr(w1)} عمّال دهن بيت في ${toAr(d1)} يوماً. كم عاملاً يدهنون نفس البيت في ${toAr(d2)} أيام؟`,w2,[w2+1,w2-1,w1+d2],`العمل ثابت: العمّال × الأيام = ${toAr(total)}. العمّال = ${toAr(total)} ÷ ${toAr(d2)} = ${toAr(w2)}.`)}
+function gWorkers(){const w1=rand(3,6),f=rand(2,4),d2=rand(3,6);const total=w1*d2*f;const d1=total/w1;const w2=total/d2;
+  return withSteps(qz("quant",`يستطيع ${toAr(w1)} عمّال دهن بيت في ${toAr(d1)} يوماً. كم عاملاً يدهنون نفس البيت في ${toAr(d2)} أيام؟`,w2,[w2+1,w2-1,w1+d2],`العمل ثابت: العمّال × الأيام = ${toAr(total)}. العمّال = ${toAr(total)} ÷ ${toAr(d2)} = ${toAr(w2)}.`),
+    "👷","تناسبٌ عكسي",
+    [`عدد العمّال × عدد الأيام = كمّية العمل، وهي ثابتة دائماً: ${toAr(w1)} × ${toAr(d1)} = ${toAr(total)}`,
+     `كلّما زاد عدد العمّال قلّت الأيام اللازمة، والعكس صحيح — لأن كمّية العمل نفسها لا تتغيّر`,
+     `عدد العمّال في ${toAr(d2)} أيام = ${toAr(total)} ÷ ${toAr(d2)} = ${toAr(w2)}`])}
 // ===== المتتاليات: أيّ طرفٍ مطلوب — بذرتها بياناتٌ حيّة (٢٣ أغسطس) =====
 // أخطأت السؤالين كليهما في اليوم نفسه، وفي كليهما اختارت **أكبر أعداد المتتالية**:
 //   · «مجموع ٣ متتالية = ٦٠، ما الأصغر؟» الصواب ١٩، والمعروض ٢١ | ١٨ | ٢٠ | ١٩ ⇐ اختارت ٢١.
@@ -465,7 +484,12 @@ function gMedian(){const mid=rand(4,20),sum=5*mid;
   o.seq=[mid-2,mid-1,mid,mid+1,mid+2];o.want="mid";return o}
 function gCube(){const s=rand(2,5),v=s*s*s,nv=(2*s)**3;return qz("quant",`مكعّب حجمه ${toAr(v)} سم³. إذا ضاعفنا طول ضلعه، فما حجمه الجديد؟`,nv,[v*2,v*4,v*6],`مضاعفة الضلع تضاعف الحجم ٨ مرّات: ${toAr(v)} × ٨ = ${toAr(nv)} سم³.`)}
 function gPercent(){const rentP=pick([30,40,50]),expP=pick([20,30]),leftP=100-rentP-expP;if(leftP<=0)return gPercent();const salary=pick([6000,8000,9000,10000,12000]);const left=salary*leftP/100;if(!Number.isInteger(left))return gPercent();const onePercent=left/leftP;return qz("quant",`دفع مسفر ${toAr(rentP)}% من راتبه إيجاراً و${toAr(expP)}% مصروفات، وتبقّى له ${toAr(left)} ريال. كم راتبه؟`,salary,[salary+1000,salary-1000,left*2],`المتبقّي = ${toAr(leftP)}% من الراتب = ${toAr(left)} ريال. قيمة ١% واحد = ${toAr(left)} ÷ ${toAr(leftP)} = ${toAr(onePercent)} ريال. الراتب الكامل = ${toAr(onePercent)} × ١٠٠ = ${toAr(salary)} ريال.`)}
-function gPaths(){const p=rand(2,4),q=rand(2,4);return qz("quant",`عدد الطرق من (أ) إلى (ب) ${toAr(p)}، ومن (ب) إلى (ج) ${toAr(q)}. كم عدد الطرق من (أ) إلى (ج)؟`,p*q,[p+q,p*q+1,p*q-1],`نضرب: ${toAr(p)} × ${toAr(q)} = ${toAr(p*q)} طريقاً.`)}
+function gPaths(){const p=rand(2,4),q=rand(2,4);
+  return withSteps(qz("quant",`عدد الطرق من (أ) إلى (ب) ${toAr(p)}، ومن (ب) إلى (ج) ${toAr(q)}. كم عدد الطرق من (أ) إلى (ج)؟`,p*q,[p+q,p*q+1,p*q-1],`نضرب: ${toAr(p)} × ${toAr(q)} = ${toAr(p*q)} طريقاً.`),
+    "🛤️","مبدأ الضرب في العدّ",
+    [`لكل طريقٍ من (أ) إلى (ب)، تُفتح كل الطرق الممكنة من (ب) إلى (ج) معه`,
+     `مثال بسيط: لو عندك ٢ قميص و٣ بناطيل، عدد الأطقم الممكنة = ٢ × ٣ = ٦ — نفس الفكرة هنا`,
+     `نضرب: ${toAr(p)} × ${toAr(q)} = ${toAr(p*q)} طريقاً`])}
 
 // ===== مولّدات المرونة والأنماط =====
 function fDouble(){const a=pick([1,2,3]);const q=[a];for(let i=0;i<4;i++)q.push(q[i]*2);const ans=q[4]*2;return withPat(qz("flex",`أكمل النمط: ${arSeq(q)} ، ...`,ans,[ans-a,q[4]+2,ans+2],`كل عدد ضعف الذي قبله: ${toAr(q[4])} × ٢ = ${toAr(ans)}.`),q,ans)}
@@ -487,7 +511,11 @@ function gDice(){const faces=rand(1,6),opp=7-faces;return qz("flex",`في حجر
 // ===== مولّدات رياضية إضافية (من المرجع) =====
 function gCompound(){const m1=rand(2,5),h1=rand(2,6),rate=rand(2,5);const units1=m1*h1*rate;const m2=rand(2,6);const h2=units1/(m2*rate);if(!Number.isInteger(h2)||h2<1||h2>12)return gCompound();return qz("quant",`${toAr(m1)} آلات تنتج ${toAr(units1)} قطعة في ${toAr(h1)} ساعات. كم ساعة تحتاج ${toAr(m2)} آلات لإنتاج نفس الكمية؟`,h2,[h2+1,h2-1,h1],`الإنتاج ثابت: آلات×ساعات×معدّل = ${toAr(units1)}. الساعات = ${toAr(units1)} ÷ (${toAr(m2)}×${toAr(rate)}) = ${toAr(h2)}.`)}
 function gFraction(){const opts=pick([[[1,4],[1,3],"٥/١٢"],[[1,2],[1,4],"١/٤"],[[1,3],[1,6],"١/٢"],[[2,5],[1,5],"٢/٥"]]);const [[n1,d1],[n2,d2],correct]=opts;const distract=shuffle(["١/٣","٢/٣","٣/٤","١/٢","١/٤","٥/١٢","٧/١٢"].filter(x=>x!==correct)).slice(0,3);const all=shuffle([correct,...distract]);return {d:"quant",q:`قضى محمد ${toAr(n1)}/${toAr(d1)} من يومه في المدرسة، و${toAr(n2)}/${toAr(d2)} في النوم. ما الكسر المتبقّي من يومه؟`,c:all,a:all.indexOf(correct),w:`المتبقّي = ١ − ${toAr(n1)}/${toAr(d1)} − ${toAr(n2)}/${toAr(d2)} = ${correct}.`}}
-function gTrees(){const L=pick([12,18,24,30]),W=pick([6,9,12]);const perim=2*(L+W);const gap=pick([2,3,6]);if(perim%gap!==0)return gTrees();const trees=perim/gap;return qz("quant",`بستان مستطيل طوله ${toAr(L)}م وعرضه ${toAr(W)}م. زُرعت أشجار على حدوده كل ${toAr(gap)} أمتار. كم شجرة زُرعت؟`,trees,[trees+1,trees-1,perim],`المحيط = ٢×(${toAr(L)}+${toAr(W)}) = ${toAr(perim)}م. الأشجار = ${toAr(perim)} ÷ ${toAr(gap)} = ${toAr(trees)}.`)}
+function gTrees(){const L=pick([12,18,24,30]),W=pick([6,9,12]);const perim=2*(L+W);const gap=pick([2,3,6]);if(perim%gap!==0)return gTrees();const trees=perim/gap;
+  return withSteps(qz("quant",`بستان مستطيل طوله ${toAr(L)}م وعرضه ${toAr(W)}م. زُرعت أشجار على حدوده كل ${toAr(gap)} أمتار. كم شجرة زُرعت؟`,trees,[trees+1,trees-1,perim],`المحيط = ٢×(${toAr(L)}+${toAr(W)}) = ${toAr(perim)}م. الأشجار = ${toAr(perim)} ÷ ${toAr(gap)} = ${toAr(trees)}.`),
+    "🌳","محيط وعدّ الأشجار",
+    [`محيط البستان = (الطول + العرض) × ٢ = (${toAr(L)}+${toAr(W)}) × ٢ = ${toAr(perim)}م`,
+     `عدد الأشجار = المحيط ÷ المسافة بين كل شجرتين = ${toAr(perim)} ÷ ${toAr(gap)} = ${toAr(trees)}`])}
 function gCircleValue(){const rule=pick(["sum","prod"]);if(rule==="sum"){const a=rand(3,12),b=rand(3,12);return qz("quant",`في الدائرة: العلوي = مجموع السفليين. إذا كان العلوي ${toAr(a+b)} وأحد السفليين ${toAr(a)}، فما الآخر؟`,b,[b+2,b-2,a],`الآخر = ${toAr(a+b)} − ${toAr(a)} = ${toAr(b)}.`)}const a=rand(2,6),b=rand(2,6);return qz("quant",`في الدائرة: العلوي = حاصل ضرب السفليين. إذا كان العلوي ${toAr(a*b)} وأحد السفليين ${toAr(a)}، فما الآخر؟`,b,[b+1,b-1,a],`الآخر = ${toAr(a*b)} ÷ ${toAr(a)} = ${toAr(b)}.`)}
 function gConsec(){const count=pick([3,5]),mid=rand(5,20);const sum=count*mid;const first=mid-Math.floor(count/2);
   const o=qz("quant",`مجموع ${toAr(count)} أعداد صحيحة متتالية يساوي ${toAr(sum)}. ما العدد الأول (الأصغر)؟`,first,[first+1,first-1,mid],`الأوسط = ${toAr(sum)} ÷ ${toAr(count)} = ${toAr(mid)}. الأول = ${toAr(mid)} − ${toAr(Math.floor(count/2))} = ${toAr(first)}.`);
@@ -538,7 +566,11 @@ function gAngleTriangle(){
     <text x="${lC.x.toFixed(1)}" y="${lC.y.toFixed(1)}" font-size="14" font-weight="800" text-anchor="middle" dominant-baseline="middle" fill="#D97706">ص</text>
   </svg>`;
   const m=mcNum(ans,[ans+10,ans-10,180-ans]);
-  return{d:"quant",q:"في المثلث المجاور، ما قيمة الزاوية ص؟",c:m.choices.map(x=>x+"°"),a:m.answer,w:`مجموع زوايا المثلث ١٨٠°: ص = ١٨٠ − ${toAr(a)} − ${toAr(b)} = ${toAr(ans)}°.`,svg};
+  return withSteps({d:"quant",q:"في المثلث المجاور، ما قيمة الزاوية ص؟",c:m.choices.map(x=>x+"°"),a:m.answer,w:`مجموع زوايا المثلث ١٨٠°: ص = ١٨٠ − ${toAr(a)} − ${toAr(b)} = ${toAr(ans)}°.`,svg},
+    "🔺","مجموع زوايا المثلث",
+    [`<div style="margin:8px 0">${svg}</div>مجموع زوايا أيّ مثلث دائماً = ١٨٠° بالضبط، مهما كان شكله`,
+     `اجمعي الزاويتين المعروفتين: ${toAr(a)} + ${toAr(b)} = ${toAr(a+b)}°`,
+     `اطرحي من ١٨٠°: ١٨٠ − ${toAr(a+b)} = ${toAr(ans)}°`]);
 }
 function gAngleLine(){
   const k=pick([2,2,3]);
@@ -549,8 +581,13 @@ function gAngleLine(){
   const O={x:100,y:150};
   const svg=renderSectorFan(O,0,values,unknownIdx);
   const ans=values[unknownIdx];
+  const otherSum=values.reduce(function(s,v,i){return i===unknownIdx?s:s+v},0);
   const m=mcNum(ans,[ans+15,ans-15,180-ans]);
-  return{d:"quant",q:"الزوايا في الشكل واقعة على خط مستقيم (مجموعها ١٨٠°). ما قيمة الزاوية ص؟",c:m.choices.map(x=>x+"°"),a:m.answer,w:`مجموع الزوايا على المستقيم = ١٨٠°. ص = ١٨٠ − باقي الزوايا = ${toAr(ans)}°.`,svg};
+  return withSteps({d:"quant",q:"الزوايا في الشكل واقعة على خط مستقيم (مجموعها ١٨٠°). ما قيمة الزاوية ص؟",c:m.choices.map(x=>x+"°"),a:m.answer,w:`مجموع الزوايا على المستقيم = ١٨٠°. ص = ١٨٠ − باقي الزوايا = ${toAr(ans)}°.`,svg},
+    "📐","زوايا على خطّ مستقيم",
+    [`<div style="margin:8px 0">${svg}</div>الخطّ المستقيم دائماً = ١٨٠° بالضبط (نصف الدائرة كاملة)`,
+     `اجمعي الزوايا المعروفة (كل ما عدا ص): مجموعها = ${toAr(otherSum)}°`,
+     `اطرحيها من ١٨٠°: ١٨٠ − ${toAr(otherSum)} = ${toAr(ans)}°`]);
 }
 function gAnglePoint(){
   const k=pick([3,3,4]);
@@ -642,7 +679,11 @@ function gSpeedGraph(){
   ];
   const chosen=pick(kinds),order=shuffle(kinds);
   const c=order.map(k=>curveSVG(k.key));
-  return{d:"quant",q:`أيّ الرسوم البيانية التالية (السرعة/الزمن) يمثّل الوصف: «${chosen.desc}»؟`,c,a:order.findIndex(k=>k.key===chosen.key),w:`الوصف يطابق النمط: ${chosen.exp}`};
+  return withSteps({d:"quant",q:`أيّ الرسوم البيانية التالية (السرعة/الزمن) يمثّل الوصف: «${chosen.desc}»؟`,c,a:order.findIndex(k=>k.key===chosen.key),w:`الوصف يطابق النمط: ${chosen.exp}`},
+    "🚗","قراءة الرسم البياني",
+    [`خطٌّ صاعد ⬈ = السرعة تزيد (تسارع). خطٌّ هابط ⬊ = السرعة تقلّ (تباطؤ). خطٌّ مستوٍ ➡ = السرعة ثابتة لا تتغيّر`,
+     `الوصف: «${chosen.desc}»`,
+     `<div style="margin:8px 0">${curveSVG(chosen.key)}</div>الرسم المطابق: ${chosen.exp}`]);
 }
 
 // ===== تدوير الأشكال في تسلسل =====
@@ -696,7 +737,11 @@ function gShadedArea(){
     <text x="100" y="22" font-size="13" text-anchor="middle" fill="#334155">${toAr(S)} سم</text>
   </svg>`;
   const m=mcNum(ans,[Math.round(ans/2),ans*2,S*S]);
-  return{d:"quant",q:`مربّع طول ضلعه ${toAr(S)} سم، ورُسم داخله مربّع آخر (المُظلّل) بتوصيل منتصفات أضلاعه كما في الشكل. ما مساحة الجزء المُظلّل؟`,c:m.choices.map(x=>x+" سم²"),a:m.answer,w:`مساحة المربع الكبير = ${toAr(S)}×${toAr(S)} = ${toAr(S*S)} سم². توصيل منتصفات الأضلاع يعطي مربّعاً مساحته نصف الكبير دائماً = ${toAr(ans)} سم².`,svg};
+  return withSteps({d:"quant",q:`مربّع طول ضلعه ${toAr(S)} سم، ورُسم داخله مربّع آخر (المُظلّل) بتوصيل منتصفات أضلاعه كما في الشكل. ما مساحة الجزء المُظلّل؟`,c:m.choices.map(x=>x+" سم²"),a:m.answer,w:`مساحة المربع الكبير = ${toAr(S)}×${toAr(S)} = ${toAr(S*S)} سم². توصيل منتصفات الأضلاع يعطي مربّعاً مساحته نصف الكبير دائماً = ${toAr(ans)} سم².`,svg},
+    "◼️","مساحة المربّع الداخلي",
+    [`<div style="margin:8px 0">${svg}</div>مساحة المربّع الكبير = الضلع × الضلع = ${toAr(S)}×${toAr(S)} = ${toAr(S*S)} سم²`,
+     `قاعدة نحفظها: توصيل منتصفات أضلاع أيّ مربّع يُنتج مربّعاً مساحته دائماً نصف الكبير بالضبط`,
+     `مساحة الجزء المُظلَّل = ${toAr(S*S)} ÷ ٢ = ${toAr(ans)} سم²`]);
 }
 
 // ===== خط الأعداد (بصري) =====
@@ -2052,6 +2097,17 @@ function clipOpen(link){
   try{logAnswer("gen","clip_open",null,String(link),null,null,{q_text:"فُتح مقطع الشرح: "+c.label})}catch(e){}
   render();
 }
+// ===== مقطعٌ من أرقام السؤال المعروض نفسه — لا يمرّ بجدول الربط ولا بمولّدٍ ثانٍ =====
+// نفس مبدأ clipOpenSeq بالضبط (٢٩ أغسطس)، معمَّماً على أيّ مولّدٍ وضع withSteps —
+// فلا خطر تطابقٍ خاطئ بين سؤالٍ وشرحٍ لغيره: الخطوات مبنيّةٌ من نفس متغيّرات السؤال.
+function clipOpenDirect(){
+  const q=filtered&&filtered[idx];
+  if(!q||!Array.isArray(q.steps)||!q.steps.length)return;
+  clipOn={key:"direct",icon:q.clipIcon||"🔢",label:q.clipLabel||"خطوة خطوة",q:q.q||"",steps:q.steps,rule:q.clipRule||q.w||""};
+  clipStep=0;
+  try{logAnswer("gen","clip_open",null,"direct:"+(q.clipLabel||""),null,null,{q_text:"فُتح مقطع الشرح: "+(q.clipLabel||"")+" — "+(q.q||"")})}catch(e){}
+  render();
+}
 function clipNext(){
   if(!clipOn)return;
   if(clipStep+1<clipOn.steps.length+1)clipStep++;
@@ -2087,6 +2143,9 @@ function clipButtonHTML(q){
   // عائلاتها الخمس — ولا يمرّ بجدول الربط أصلاً فينتفي التباسُ المفتاح.
   if(q&&Array.isArray(q.pat)&&clipSeqBuild(q))
     return `<button class="btn" style="background:#0D9488;margin-top:8px" onclick="clipOpenSeq()">🎬 كيف أعرف القاعدة؟ خطوة خطوة</button>`;
+  // مولّداتٌ ترفق خطواتها مباشرةً (withSteps) — أولى من جدول الربط لأنها لا تحتاجه
+  if(q&&Array.isArray(q.steps)&&q.steps.length)
+    return `<button class="btn" style="background:#0D9488;margin-top:8px" onclick="clipOpenDirect()">🎬 شاهدي الشرح خطوة خطوة</button>`;
   const k=q?tmplKey(q):"",key=k?QZ_CARD_FADE_LINK[k]:null;
   if(!key||!CLIP_MAKERS[key])return "";
   const link=key+(CLIP_VARIANT[k]?"/"+CLIP_VARIANT[k]:"");
