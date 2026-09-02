@@ -3775,6 +3775,30 @@ function unlockTTS(){
 }
 document.addEventListener("touchend",unlockTTS,{capture:true,once:true});
 document.addEventListener("click",unlockTTS,{capture:true,once:true});
+// ===== عنصر صوتٍ واحد يُجهَّز عند أوّل لمسة — لصوت الخادم تحديداً، درس ٢ سبتمبر =====
+// نفس مبدأ unlockTTS أعلاه بالضبط، لعطلٍ مختلف الشكل: `ttsServerSpeak` تُشغِّل صوت
+// الخادم بعد تأخّرين لا مفرّ منهما (مهلة صمت الجهاز ثانيتان، ثم نداء شبكة) — وكلاهما
+// يُخرج التشغيل من نافذة لمسة المستخدم التي يشترطها Safari. فرُصد `play_autoplay_blocked`
+// على إلياس (فيديو + سجلّ، ٤ ثم ٨ ثم ١٢ نداءً) على Safari عاديّ — لا Snapchat وحده
+// كما ظُنّ في ٣٠-٣١ أغسطس، فالعطل أوسع ممّا وُثِّق. والعلاج معياري: عنصر <audio> واحد
+// يُشغَّل صامتاً داخل أوّل لمسةٍ حقيقية يبقى "مصرَّحاً له" من Safari، فيُعاد استعماله
+// لاحقاً (تغيير src فقط) مهما تأخّر التشغيل الفعلي عن اللمسة.
+let _ttsAudioEl=null;
+function ttsAudioEl(){
+  if(_ttsAudioEl)return _ttsAudioEl;
+  try{
+    const a=new Audio();
+    // wav صامتٌ (رأسٌ ٤٤ بايت + عيّنةٌ صفرية) — بلا شبكة، فلا يتأخّر عن اللمسة
+    a.src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
+    a.volume=0;
+    const p=a.play();
+    if(p&&p.catch)p.catch(function(){});
+    _ttsAudioEl=a;
+  }catch(e){}
+  return _ttsAudioEl;
+}
+document.addEventListener("touchend",ttsAudioEl,{capture:true,once:true});
+document.addEventListener("click",ttsAudioEl,{capture:true,once:true});
 // أصوات المتصفح المدمجة تتفاوت: القديمة المحلّية (localService:true) آلية الوقع،
 // والسحابية (localService:false) وما يحمل اسماً كـNatural/Neural/Enhanced/Premium/Online
 // أقرب لصوتٍ بشري — بلا خدمة خارجية ولا اشتراك، الاختيار وحده يتغيّر من نفس القائمة المتاحة.
@@ -3822,7 +3846,12 @@ function ttsServerSpeak(text,onDone){
   if(!t)return fire({ok:false,reason:'empty'});
   const play=function(url){
     try{
-      const a=new Audio(url);
+      // العنصر المُجهَّز عند أوّل لمسة أولى من عنصرٍ جديد — Safari يُصرّح لعنصرٍ استُعمل
+      // فعلاً داخل لمسةٍ حقيقية ولو تأخّر تشغيله، ويرفض عنصراً جديداً أُنشئ خارجها.
+      const shared=ttsAudioEl();
+      const a=shared||new Audio();
+      if(shared)try{a.pause()}catch(e){}
+      a.src=url;a.volume=1;
       let done=false;
       const win=function(){if(done)return;done=true;ttsMark(true);fire({ok:true,engine:'azure'})};
       a.onplaying=win;

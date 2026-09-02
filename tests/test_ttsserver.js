@@ -52,11 +52,18 @@ const mk=async(mode,azure,audio)=>{
       }};
     Object.defineProperty(window,'speechSynthesis',{configurable:true,value:synth});
     window.SpeechSynthesisUtterance=function(t){this.text=t};
-    // تشغيلُ الصوت مُحاكًى: مخرجُ الصوت الحقيقي غير متاح هنا، والمقصود فحصُ المسار
+    // تشغيلُ الصوت مُحاكًى: مخرجُ الصوت الحقيقي غير متاح هنا، والمقصود فحصُ المسار.
+    // ===== العنصر يُنشَأ مرّةً ويُعاد استعماله — درس ٢ سبتمبر =====
+    // ttsAudioEl() تُنشئ عنصراً واحداً وتُهيّئه بمصدرٍ صامتٍ ثم play() (تجهيزٌ لا يُسمَع)،
+    // وplay(url) الحقيقية تُعيد استعمال هذا العنصر (src=url) بدل new Audio(url) كل
+    // مرّة. فالتتبّع الصحيح هنا هو كل نداء play() الفعلي (بمصدره وقتها) لا كل إنشاء —
+    // إنشاءٌ واحد فقط يقع الآن مهما تعدّدت التشغيلات.
     window.__played=[];
-    window.Audio=function(src){
-      window.__played.push(src);
-      const a={src:src,play:function(){
+    window.__TTS_SILENT="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
+    window.Audio=function(){
+      const a={src:'',play:function(){
+        // تجهيزُ العنصر الصامت عند "أوّل لمسة" (ttsAudioEl) لا يُحسَب تشغيلاً حقيقياً
+        if(a.src&&a.src!==window.__TTS_SILENT)window.__played.push(a.src);
         // سياسة التشغيل التلقائي: النداء ينجح والصوت يصل، ثم يرفض المتصفّح تشغيله
         if(o.audio==='block')return Promise.reject(new Error('NotAllowedError'));
         setTimeout(function(){a.onplaying&&a.onplaying()},5);
@@ -149,10 +156,11 @@ console.log('\n٥) وتعذّرُ الشبكة يُسمّى كذلك، ولا ي
 console.log('\n٦) والجملة الواحدة تُطلب مرّةً واحدة — والاستهلاك يُقاس بالمحارف');
 {
   const p=await mk('error','ok');
-  await p.evaluate(()=>new Promise(res=>{speakEnglish('Same text.',()=>res(1));setTimeout(()=>res(0),6000)}));
-  await p.evaluate(()=>new Promise(res=>{speakEnglish('Same text.',()=>res(1));setTimeout(()=>res(0),6000)}));
+  const r1=await p.evaluate(()=>new Promise(res=>{speakEnglish('Same text.',i=>res(i));setTimeout(()=>res({timeout:true}),6000)}));
+  const r2=await p.evaluate(()=>new Promise(res=>{speakEnglish('Same text.',i=>res(i));setTimeout(()=>res({timeout:true}),6000)}));
   ok(p._calls.length===1,'نداءٌ واحد لجملتين متطابقتين — '+p._calls.length);
-  ok(await p.evaluate(()=>window.__played.length)===2,'وشُغّلت مرّتين من المخزون');
+  ok(r1&&r1.ok===true&&r2&&r2.ok===true,'وكلتا المحاولتين نجح تشغيلها فعلياً — الثانية من المخزون بلا نداءٍ ثانٍ');
+  ok(await p.evaluate(()=>window.__played.length)===2,'وشُغّلت مرّتين فعلياً (لا إنشاءً مزدوجاً، بل تشغيلَين على العنصر المُعاد استعماله)');
   await p.evaluate(()=>new Promise(res=>{speakEnglish('Other text here.',()=>res(1));setTimeout(()=>res(0),6000)}));
   ok(p._calls.length===2,'ونصٌّ مختلف يُطلب — '+p._calls.length);
   await p.waitForTimeout(400);
