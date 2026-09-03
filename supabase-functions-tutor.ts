@@ -320,6 +320,55 @@ function systemGenWrite(level: string, topicIdx?: number) {
   ].join("\n");
 }
 
+// ===== توليد نوع «دمج الجمل» — علاج شكوى إلياس المؤكَّدة: ٣ سبتمبر =====
+// بنك الدمج (`type:"combine"` في WRITE_BANK) كان ثابتاً بالكامل (٦ عناصر/مستوى) بلا
+// توليدٍ إطلاقاً — الفرع الحرّ وحده يستدعي `systemGenWrite`. وفحص سجلّ إلياس الحيّ
+// أثبت الأثر: نفس عنصرَي الدمج بعينهما (wr_a2_sc4، wr_a2_sc6) ظهرا له حرفياً في
+// ٣١ أغسطس وأوّل وثالث سبتمبر — بستّة عناصر فقط لا مجال لغير هذا مع الاستعمال المتكرّر.
+//
+// وأداة الربط **تُختار في الخادم لا يُترك اختيارها للنموذج**: القائمة نفسها المستعملة
+// أصلاً في WRITE_BANK لكل مستوى (نحوٌ مقرَّر، لا اختراع)، فيُضمَن أن `REQ` دائماً كلمةٌ
+// نتحقّق منها فعلاً (`writeReqMissing`)، ولا نعتمد على أن يُصرّح النموذج بما استعمله.
+// والنموذج يُنتج الجملتين المصدر فقط — لا جملةً مُدمَجة نموذجية، لأن معيار النجاح أصلاً
+// (كلمة الربط + جملةٌ واحدة) لا يحتاج إجابةً مرجعية، تماماً كعناصر WRITE_BANK المؤلَّفة.
+const COMBINE_CONNECTORS: Record<string, string[]> = {
+  A1: ["because", "and", "but", "so"],
+  A2: ["when", "because", "but", "after", "so", "who"],
+  B1: ["because", "when", "although", "before", "after", "which"],
+  B2: ["despite", "which", "whereas"],
+};
+function pickConnector(level: string, topicIdx?: number): string {
+  const list = COMBINE_CONNECTORS[level] || COMBINE_CONNECTORS.A2;
+  if (typeof topicIdx === "number" && isFinite(topicIdx) && topicIdx >= 0) {
+    return list[Math.floor(topicIdx) % list.length];
+  }
+  return list[Math.floor(Math.random() * list.length)];
+}
+function systemGenWriteCombine(level: string, topicIdx?: number) {
+  const connector = pickConnector(level, topicIdx);
+  const topic = pickTopic(topicIdx);
+  const minByLevel: Record<string, number> = { A1: 7, A2: 8, B1: 9, B2: 9 };
+  return [
+    `Write TWO short, simple, natural CEFR ${level} English sentences (S1 and S2) about this`,
+    `topic: ${topic}. They must combine smoothly into ONE sentence using the word "${connector}"`,
+    "— do not write the combined sentence, only the two separate source sentences.",
+    "Each sentence 4 to 10 words. Do NOT reuse a stock textbook example.",
+    GEN_CULTURE,
+    "",
+    "OUTPUT EXACTLY in this shape, nothing else, no markdown, no extra commentary:",
+    "TYPE: combine",
+    `CONNECTOR: ${connector}`,
+    `MIN: ${minByLevel[level] || minByLevel.A2}`,
+    "S1: <first sentence, ending with a period>",
+    "S2: <second sentence, ending with a period>",
+    "",
+    "RULES:",
+    "1. S1 and S2 must be entirely in English — ZERO Arabic characters anywhere.",
+    `2. S1 and S2 must combine naturally with "${connector}" — do not force an unnatural pairing.`,
+    "3. Keep content appropriate for a school-age learner: no violence, romance, politics or unsafe topics.",
+  ].join("\n");
+}
+
 // ===== الأزواج المتشابهة: جملةٌ جديدة لزوجٍ صوتيٍّ ثابتٍ معروف، لا زوجٌ جديد =====
 // الفرق عن الاستماع/القراءة/الكتابة مقصود: هناك النموذج يُنشئ المحتوى كلّه لأن أيّ
 // فقرة متماسكة تصلح، أمّا هنا فصحّة الزوج نفسه (أن ship/sheep تباعدهما فعلاً حركة
@@ -530,8 +579,8 @@ function systemGenVideo(level: string, topicIdx?: number): string {
   ].join("\n");
 }
 
-function systemGen(domain: string, level: string, word: string, topicIdx?: number) {
-  if (domain === "write") return systemGenWrite(level, topicIdx);
+function systemGen(domain: string, level: string, word: string, topicIdx?: number, writeKind?: string) {
+  if (domain === "write") return writeKind === "combine" ? systemGenWriteCombine(level, topicIdx) : systemGenWrite(level, topicIdx);
   if (domain === "minpair") return systemGenMinpair(level, word);
   if (domain === "gram") return systemGenGram(level, topicIdx);
   if (domain === "step") return systemGenStep(level, topicIdx);
@@ -795,7 +844,7 @@ Deno.serve(async (req) => {
           !!b.styleTip, male, lname, !!b.easy, !!b.suggest, !!b.openTurn, lrAge)
       : gen
       ? systemGen(clip(b.domain, 20) || "read", clip(b.level, 10) || "A2", clip(b.word, 40),
-          Number.isFinite(Number(b.topicIdx)) ? Number(b.topicIdx) : undefined)
+          Number.isFinite(Number(b.topicIdx)) ? Number(b.topicIdx) : undefined, clip(b.writeKind, 10))
       : systemFor(subject, lrAge, male, lname);
 
     // تاريخ الحوار يصل من العميل ويعود إليه: الدالة بلا ذاكرة عمداً، فلا حالة تُدار هنا

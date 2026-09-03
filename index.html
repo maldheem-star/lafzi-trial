@@ -4018,6 +4018,19 @@ function speakEnglish(text,onDone){
 // حين يفشل تحويل النص إلى صوت على الجهاز، كانت أقسام الاستماع تصمت بلا تفسير.
 // الآن تُرفع راية تُغيّر الشاشة نفسها: تُعرض الكلمة مكتوبة، ويُشرح السبب وعلاجه.
 let ttsBroken=false,ttsChecked=false;
+// ===== متصفّح سناب شات المدمج: عطلٌ لا حلّ له من داخل الصفحة — ٣ سبتمبر =====
+// فيديو من إلياس يضغط 🔊 بلا صوت، وسجلّه في الدقائق نفسها يُظهر `play_autoplay_blocked`
+// **حتى بعد** علاج ٢ سبتمبر (عنصر <audio> مُجهَّز عند أوّل لمسة) — ١٣ مرّةً متتالية،
+// وسببه `AbortError` لا `NotAllowedError` كما في Safari العاديّ. أي أن متصفّح سناب شات
+// المدمج (WebView داخل تطبيقٍ آخر، نفس صنف عطل الميكروفون الموثَّق أعلاه في
+// `MIC_ERR_HELP.no_api`) يمنع التشغيل البرمجي للصوت بسياسةٍ أشدّ من Safari نفسه —
+// ولا حيلة جانب العميل تتجاوزها: لا الأولوية المؤجَّلة، ولا العنصر المُجهَّز، لأن
+// المتصفّح يرفض الصوت بصرف النظر عن توقيت اللمسة. **فلا يُبنى علاجٌ ثالث بلا دليل
+// أنه سينجح حيث فشل الثاني** — العلاج المعياريّ الوحيد لعطلٍ من هذا الصنف هو الخروج
+// من المتصفّح المدمج، تماماً كما تنصح رسالة الميكروفون بالضبط.
+function isSnapchatWebView(){
+  try{return /Snapchat/i.test(navigator.userAgent||"")}catch(e){return false}
+}
 // ===== وفشل النطق يُسجَّل بسببه — درس ٢٩ أغسطس =====
 // بلاغ هيا «ما تسمع صوت»، ولقطةُ شاشتها تُظهر راية «الصوت لا يعمل على هذا الجهاز».
 // والبيانات تحسم التوقيت: ٢٨ أغسطس أكملت إملاءً ١٢ واستماعاً ٨ وأزواجاً ٨ — أي أن
@@ -4043,7 +4056,12 @@ function ttsLogFail(info){
 function ttsMark(ok,info){
   const was=ttsBroken;ttsBroken=!ok;ttsChecked=true;
   if(!ok)ttsLogFail(info);
-  if(was!==ttsBroken&&(mode==="pron"||mode==="dictation"||mode==="speak"||mode==="engplan"))render();
+  // ===== ٣ سبتمبر: القائمة كانت ناقصة ثلاث شاشاتٍ صوتية =====
+  // فيديو إلياس في شاشة الاستماع بعينها — و`listen`/`minpair`/`video` لم تكن ضمن
+  // أوضاع إعادة الرسم، فرايةُ العطل تصل السجلّ ولا تظهر على الشاشة إلا بعد تفاعلٍ
+  // لاحق. نفس درس «كل شاشةٍ صوتية تحتاج المخرج نفسه» (٢٩ أغسطس) مطبَّقاً على
+  // توقيت الظهور لا وجود المخرج فقط.
+  if(was!==ttsBroken&&(mode==="pron"||mode==="dictation"||mode==="speak"||mode==="engplan"||mode==="listen"||mode==="minpair"||mode==="video"))render();
 }
 // ===== كل شاشةٍ صوتية تحتاج المخرج نفسه — درس ٢٩ أغسطس (مساءً) =====
 // لقطةُ شاشة الاستماع: لا رايةَ ولا زرَّ تشخيص، فهي عالقةٌ بلا تفسير ولا مخرج —
@@ -4060,6 +4078,15 @@ function ttsHelpHTML(alt){
 }
 function ttsNoticeHTML(alt){
   if(!ttsBroken)return "";
+  // سناب شات تحديداً: العلاجان السابقان (النطق المحلّي، ثم صوت الخادم بعنصرٍ مُجهَّز)
+  // فشلا معاً في هذا المتصفّح المدمج — لا ثالث لهما، فالنصيحة الصادقة الخروج منه لا
+  // «اقرئي الكلمة» كما في بقية الأجهزة، وإلّا كذَبنا حلّاً لا يملكه هذا المتصفّح.
+  if(isSnapchatWebView()){
+    return `<div style="background:#FEE2E2;border:1px solid #FCA5A5;border-radius:12px;padding:12px 14px;margin-bottom:12px;font-size:13px;color:#991B1B;line-height:1.8;text-align:start">
+      🔇 <b>الصوت لا يعمل داخل سناب شات</b> — متصفّح سناب شات المدمج يمنع تشغيل الصوت من الصفحة، ولا حلّ له من هنا.
+      افتحي الرابط في Safari مباشرةً: اضغطي ⋯ أعلى الشاشة ثم «فتح في المتصفح» (Open in Browser).
+    </div>`;
+  }
   return `<div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:12px;padding:12px 14px;margin-bottom:12px;font-size:13px;color:#92400E;line-height:1.8;text-align:start">
     🔇 <b>الصوت لا يعمل على هذا الجهاز</b> — ${alt||"اقرئي الكلمة المكتوبة وانطقيها."}
     <button class="link-btn" style="font-size:12px;margin:6px 0 0;padding:0" onclick="startAudioDiag()">لماذا؟ وكيف أُصلحه ←</button>
@@ -8270,6 +8297,29 @@ function parseGenWriteBlock(text){
   // الأسطر تُشذَّب كما في parseGenBlock — سطرٌ بفراغٍ بادئ كان يُفقِد الوسم كلّه،
   // وهي أسهل صورة يخرج بها نموذجٌ عن الشكل (مسافةٌ أو ترقيمٌ قبل PROMPT).
   const lines=String(text||"").split(/\r?\n/).map(function(l){return l.trim()});
+  // ===== نوع الدمج — علاج شكوى إلياس المؤكَّدة، ٣ سبتمبر =====
+  // TYPE: combine يُميَّز أوّلاً؛ أداة الربط (CONNECTOR) والحدّ الأدنى (MIN) يختارهما
+  // الخادم من قائمةٍ ثابتة معروفة الصحّة (نفس JOIN_WORDS هنا)، فيُتحقَّق أنها فعلاً
+  // من الطبقة المغلقة قبل القبول — لا يُصدَّق أيّ كلمةٍ يذكرها النموذج بلا تحقّق.
+  if(/^TYPE:\s*combine\s*$/im.test(text||"")){
+    let connector="",s1="",s2="",min=0;
+    lines.forEach(function(l){
+      let m;
+      if(m=/^CONNECTOR:\s*(.+)$/i.exec(l))connector=m[1].trim();
+      else if(m=/^MIN:\s*(\d+)/i.exec(l))min=parseInt(m[1],10);
+      else if(m=/^S1:\s*(.+)$/i.exec(l))s1=m[1].trim();
+      else if(m=/^S2:\s*(.+)$/i.exec(l))s2=m[1].trim();
+    });
+    const head=String(text||"").replace(/\s+/g," ").slice(0,300);
+    if(!s1||!s2)return genParseFail("write","combine_no_sentences",head);
+    if(AR_CHARS.test(s1)||AR_CHARS.test(s2))return genParseFail("write","arabic",(s1+" "+s2).slice(0,200));
+    if(!connector||JOIN_WORDS.indexOf(connector.toLowerCase())<0)
+      return genParseFail("write","combine_bad_connector",connector||"(فارغ)");
+    if(!min||min<5)min=8;
+    const prompt="Combine these two sentences into ONE sentence using \""+connector+"\":\n1) "+s1+"\n2) "+s2;
+    return{id:"ai_write_"+Date.now().toString(36)+"_"+Math.random().toString(36).slice(2,7),
+      type:"combine",req:[connector.toLowerCase()],prompt:prompt,min:min,sk:"دمج جمل",ai:true};
+  }
   let prompt="",min=0;
   lines.forEach(function(l){
     let m;
@@ -8285,11 +8335,13 @@ function parseGenWriteBlock(text){
   return{id:"ai_write_"+Date.now().toString(36)+"_"+Math.random().toString(36).slice(2,7),
     prompt:prompt,min:min,ai:true};
 }
-async function fetchTutorGenWrite(level){
+async function fetchTutorGenWrite(level,kind){
   try{
+    const body={mode:"gen",domain:"write",level,topicIdx:genNextTopicIdx()};
+    if(kind==="combine")body.writeKind="combine";
     const res=await fetchTimeout(TUTOR_FN_URL,{method:"POST",
       headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},
-      body:JSON.stringify({mode:"gen",domain:"write",level,topicIdx:genNextTopicIdx()})},15000);
+      body:JSON.stringify(body)},15000);
     if(!res||!res.ok)return genFailLog("write",level,"http",res?res.status:"no_res");
     const data=await res.json();
     if(!data||!data.ok||!data.reply)return genFailLog("write",level,"no_reply",data&&data.error);
@@ -8298,11 +8350,16 @@ async function fetchTutorGenWrite(level){
     return item;
   }catch(e){return genFailLog("write",level,"network",e&&e.message)}
 }
+// ===== النوعان يُغذَّيان معاً — ٣ سبتمبر =====
+// كانت `writeGenTopUp` تولّد النوع الحرّ وحده؛ بنك الدمج ثابتٌ ستّة عناصر/مستوى بلا
+// نموٍّ إطلاقاً، فتكرّر عنصراه بعينهما لإلياس عبر ثلاثة أيام (`wr_a2_sc4`/`wr_a2_sc6`).
+// نصف النداءات لكلّ نوع — لا حصّة الحرّ كاملةً على حساب الدمج الذي كان الأضعف بنكاً.
 function writeGenTopUp(level){
   const pool=writeBankFor(level);
   const calls=genCallsFor(pool.length,WRITE_N);
   for(let i=0;i<calls;i++){
-    if(!genFire(function(){return fetchTutorGenWrite(level).then(function(item){
+    const kind=(i%2===0)?"free":"combine";
+    if(!genFire(function(){return fetchTutorGenWrite(level,kind).then(function(item){
       if(item)genBankAdd(GEN_BANK_KEY_WRITE,item);
     })}))break;
   }
@@ -8338,6 +8395,18 @@ function writeNorm(t){return String(t||"").toLowerCase().replace(/[^a-z\s]/g,"")
 function writeIsCopy(txt,prompt){
   const a=writeNorm(txt),b=writeNorm(prompt);
   return a.length>=6 && b.indexOf(a)>=0;
+}
+// ===== لا تُفحَص لعناصر الدمج (type:"combine") — عيبٌ حقيقيّ كشفه اختبارٌ جديد،٣ سبتمبر =====
+// نصّ السؤال نفسه بصيغة «Combine…using "X":\n1) S1\n2) S2» يجعل كل إجابةٍ **صحيحة**
+// تُصدِّر أداة الربط أوّل الجملة (Because S1, S2.) تُطابق — بعد تجريد الأرقام والترقيم —
+// نفس تتابع الكلمات المطبوع في السؤال حرفياً، فـ`writeIsCopy` تُصدرها "نسخاً" وتُسقط
+// النجاح رغم صحّتها التامّة. وهذا ليس افتراضياً: `wr_a1_sc1` («I like summer.»/«I can
+// swim every day.» بـ"because") يقع فيه أيّ ردٍّ طبيعي مُصدَّرٍ بالأداة. والفحص الحقيقي
+// لدمجٍ صحيح موجودٌ أصلاً بلا فائدة إضافية من مطابقة نصّية: جملةٌ واحدة (`cf.many`)
+// وأداة الربط المطلوبة فعلاً داخل النصّ (`cf.req`) — نسخ السؤال بأكمله (٣ جملٍ: التعليمة
+// + S1 + S2) يسقط بـ`cf.many` أصلاً، فـ`writeIsCopy` كانت تكراراً ضارّاً لا حارساً إضافياً.
+function writeCopyCheck(it,txt,prompt){
+  return (it&&it.type==="combine")?false:writeIsCopy(txt,prompt);
 }
 // ===== قياس الإنتاج لا الكمّ وحده — ٢١ أغسطس =====
 // «كتبت ٩٣ كلمة · الهدف ٧٠» رقمٌ يمرّ حتى لو كان النصّ استرجاعاً لمحاولةٍ سابقة: محمد
@@ -8568,7 +8637,10 @@ function writeCriteria(it){
     out.push({k:"one",t:"جملةٌ واحدة تجمع الجملتين — لا جملتان"});
     if(it&&it.req)out.push({k:"req",t:"تستعملين "+writeReqLabel(it)+" كما يطلب السؤال"});
     out.push({k:"words",t:"لا تقلّ عن "+toAr(g.words)+" كلمة"});
-    out.push({k:"own",t:"بكلماتك أنتِ لا نسخُ نصّ السؤال"});
+    // ===== بلا معيار «بكلماتك أنتِ» هنا — ٣ سبتمبر =====
+    // إعادة إنتاج S1/S2 بالضبط هي المطلوب نفسه في الدمج، لا نسخاً يُعاقَب عليه —
+    // خلاف الحرّ حيث نسخ نصّ السؤال فعلاً ليس إجابة. ومعيارا «one»/«req» أعلاه
+    // يكفيان لضبط دمجٍ صحيح؛ عرضُ معيارٍ لا يُفحَص فعلياً كان يُضلّل لا يُرشد.
   }else{
     // المعيار يقول ما يُقاس بالضبط: العدّ على الجمل لا على «تغطية النقاط» — وتلك
     // وعدٌ لا نستطيع التحقّق منه آلياً (قد تُغطّى ثلاث نقاطٍ في جملتين فتُحسب رسوباً).
@@ -8593,7 +8665,7 @@ function writeCritState(it,txt){
     // الشرطُ المعروض تُشغَّل علامتُه بنفس الدالّة التي يحكم بها الاختبار — وإلّا
     // بقيت ○ فوق جملةٍ تحوي الكلمة فعلاً، فيُقرأ الإرشاد كذباً (كشفته لقطة شاشة)
     req:(it&&it.req)?(w>0&&!writeReqMissing(it,txt)):true,
-    own:w>0&&!writeIsCopy(txt,it&&it.prompt)};
+    own:w>0&&!writeCopyCheck(it,txt,it&&it.prompt)};
 }
 function writeCritHTML(it,txt){
   if(!it)return "";
@@ -8733,7 +8805,7 @@ async function writeSubmit(){
   // ليس فارغاً حرفياً لكنه فارغٌ من إنتاجها هي — ولا يجوز أن يُحرق محاولةً حقيقية
   // على نقرةٍ عاجلة قبل أن تكتب. نفس حراسة الحقل الفارغ بالضبط، موسَّعةً لتشمل هذه الحالة.
   if(!txt||txt===writeJointFor(it).trim())return;
-  writeTyped=txt;writeCount=writeWordCount(txt);writeCopy=writeIsCopy(txt,it.prompt);
+  writeTyped=txt;writeCount=writeWordCount(txt);writeCopy=writeCopyCheck(it,txt,it.prompt);
   // هدف المنتَج صار مركّباً لا عددَ كلماتٍ وحده (Writing Next: أثر ٠٫٧٠): الكلماتُ،
   // ومعها تغطيةُ النقاط التي **تنصّ عليها التعليمة نفسها** حيث تنصّ عليها (رسائل A2
   // بنقاطها الثلاث، وأسئلة A1 الموجَّهة) — لا رقمٌ أخترعه. وB1 كتابةٌ حرّة بلا نقاطٍ
@@ -8829,12 +8901,11 @@ function writeNext(){
   writeShownAt=Date.now();window.scrollTo(0,0);render();
 }
 function renderWriteFeedback(it){
+  // النسخ لا يُفحَص لعناصر الدمج (writeCopyCheck تُعيد false لها دائماً) — إعادة إنتاج
+  // S1/S2 بالضبط هي المطلوب نفسه لا خطأ، فهذا المسار للكتابة الحرّة وحدها (٣ سبتمبر).
   if(writeCopy){
-    const copyMsg=it.type==="combine"
-      ?"ادمجي الجملتين بكلماتك — لا تنسخي إحداهما أو نصّ السؤال نفسه."
-      :"اكتبي بكلماتك أنتِ — جملة عن نفسك تجيب عن السؤال، لا نصّ السؤال نفسه.";
     return `<div class="explain"><div class="explain-title" style="color:#B45309">هذا نسخٌ من نصّ السؤال، لا إجابة</div>
-      <div class="explain-body">${copyMsg}</div></div>`;
+      <div class="explain-body">اكتبي بكلماتك أنتِ — جملة عن نفسك تجيب عن السؤال، لا نصّ السؤال نفسه.</div></div>`;
   }
   const isCombine=it.type==="combine";
   const G=writeGoalsNow(it);

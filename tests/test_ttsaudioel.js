@@ -100,7 +100,60 @@ async function mk(browser){
     await page.close();
   }
 
-  console.log('\n٦) لا انحدار');
+  console.log('\n٦) سناب شات المدمج: العلاجان السابقان فشلا معاً — الرسالة الآن «افتحي في Safari» لا «اقرئي الكلمة» (٣ سبتمبر)');
+  {
+    const page=await mk(browser);
+    const r=await page.evaluate(()=>{
+      ttsMark(false,{reason:'speak_error',errorType:'synthesis-failed'});
+      return{broken:ttsBroken,notice:ttsNoticeHTML('اقرئي الكلمة المكتوبة.'),help:ttsHelpHTML('اقرئي الكلمة المكتوبة.')};
+    });
+    ok(r.broken,'ttsBroken صار true بعد فشلٍ محاكى');
+    ok(/اقرئي الكلمة المكتوبة/.test(r.notice),'وعلى متصفّحٍ عاديّ: الرسالة القديمة كما هي (لا انحدار)');
+    ok(!/سناب شات/.test(r.notice),'ولا ذكر لسناب شات على متصفّحٍ ليس هو');
+    await page.close();
+  }
+  {
+    const page=await browser.newPage({userAgent:'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Snapchat/12.79.0.36 Mobile/15E148'});
+    page.on('pageerror',e=>{console.log('  ! pageerror:',e.message);fails++});
+    await page.route('**/rest/v1/**',r=>r.fulfill({status:201,contentType:'application/json',body:'[]'}));
+    await page.route('**/functions/v1/**',r=>r.fulfill({status:200,contentType:'application/json',body:'{}'}));
+    await page.goto(BASE,{waitUntil:'domcontentloaded'});
+    await page.waitForFunction(()=>typeof window.render==='function',{timeout:15000});
+    const r=await page.evaluate(()=>{
+      const before=ttsNoticeHTML('x');   // بلا عطلٍ بعد: لا رسالة إطلاقاً مهما كان المتصفّح
+      ttsMark(false,{reason:'speak_error',errorType:'synthesis-failed'});
+      return{isSnap:isSnapchatWebView(),beforeEmpty:before==='',
+        notice:ttsNoticeHTML('اقرئي الكلمة المكتوبة.')};
+    });
+    ok(r.isSnap,'isSnapchatWebView() تكتشف الـUA الحقيقي لمتصفّح سناب شات المدمج');
+    ok(r.beforeEmpty,'وبلا عطلٍ فعليّ بعد: لا رسالة — الحكم يُبنى على السطر لا قبله');
+    ok(/سناب شات/.test(r.notice)&&/Safari/i.test(r.notice),'وبعد العطل: الرسالة توجّه صراحةً للخروج إلى Safari');
+    ok(!/اقرئي الكلمة المكتوبة/.test(r.notice),'ولا الرسالة القديمة المضلِّلة — العلاجان السابقان فشلا معاً في هذا المتصفّح');
+    await page.close();
+  }
+
+  console.log('\n٧) رايةُ العطل تُعيد رسم شاشات الاستماع/الأزواج/الفيديو فوراً — لا شاشةً عالقة (٣ سبتمبر)');
+  {
+    const page=await mk(browser);
+    const r=await page.evaluate(()=>{
+      const before={};
+      ['listen','minpair','video'].forEach(function(m){
+        mode=m;ttsBroken=false;ttsChecked=false;
+        let rendered=false;
+        const orig=window.render;window.render=function(){rendered=true;try{orig()}catch(e){}};
+        ttsMark(false,{reason:'silent'});
+        before[m]=rendered;
+        window.render=orig;
+      });
+      return before;
+    });
+    ok(r.listen===true,'listen: تُعاد الشاشة عند أوّل فشلٍ في الجلسة');
+    ok(r.minpair===true,'minpair: كذلك');
+    ok(r.video===true,'video: كذلك');
+    await page.close();
+  }
+
+  console.log('\n٨) لا انحدار');
   for(const q of ['','?p=mohammed','?p=elias']){
     const page=await browser.newPage();
     page.on('pageerror',e=>{console.log('  ! pageerror:',e.message);fails++});

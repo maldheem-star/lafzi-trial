@@ -35,7 +35,7 @@ const mk=async(f)=>{
     // ونصوص الكتابة تتشارك قالب الامتحان أصلاً (قِيس: ٣١٪ من الأزواج المتمايزة فوق
     // عتبة الجلسة)، فعتبةُ تخزينها أعلى — والمتطابق يُرفَض بحقّ. فيتنوّع الردّ هنا.
     if(x.mode==='gen'){
-      const rep=typeof genReply==='function'?genReply(genN++):genReply;
+      const rep=typeof genReply==='function'?genReply(genN++,x.writeKind):genReply;
       return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,reply:rep})});
     }
     r.fulfill({status:200,contentType:'application/json',body:JSON.stringify(review)});
@@ -377,6 +377,80 @@ await page.click('button[onclick="writeSubmit()"]');
 await page.waitForTimeout(300);
 const aiRow=logs.find(l=>l.domain==='write'&&l.qtype!=='fix');
 ok(aiRow&&aiRow.q_text.startsWith('[مولَّد]'),`والسجلّ يُصرِّح بأنه مولَّد (${aiRow&&aiRow.q_text.slice(0,20)})`);
+
+console.log('\n١٣هـ) نوع «دمج الجمل» التوليدي (٣ سبتمبر) — بنكه كان ثابتاً ٦ عناصر/مستوى بلا نموّ،');
+console.log('    فتكرّر wr_a2_sc4/wr_a2_sc6 بعينهما لإلياس ثلاثة أيام. الآن يتفكّك ويُتحقَّق منه كالبنك المؤلَّف تماماً.');
+const combineParse=await page.evaluate(()=>({
+  ok:parseGenWriteBlock("TYPE: combine\nCONNECTOR: because\nMIN: 9\nS1: The bus was late.\nS2: I missed the first class."),
+  badConnector:parseGenWriteBlock("TYPE: combine\nCONNECTOR: moreover\nMIN: 9\nS1: The bus was late.\nS2: I missed class."),
+  missingS2:parseGenWriteBlock("TYPE: combine\nCONNECTOR: because\nMIN: 9\nS1: The bus was late."),
+  arabic:parseGenWriteBlock("TYPE: combine\nCONNECTOR: because\nMIN: 9\nS1: الحافلة تأخّرت.\nS2: فاتني الدرس."),
+  lowMin:parseGenWriteBlock("TYPE: combine\nCONNECTOR: when\nMIN: 2\nS1: I got home.\nS2: I did my homework."),
+}));
+ok(!!combineParse.ok&&combineParse.ok.type==='combine'&&combineParse.ok.min===9&&combineParse.ok.ai===true,'شكلٌ سليم يُقبل بنوعه وحدّه وعلامة ai:true');
+ok(Array.isArray(combineParse.ok.req)&&combineParse.ok.req[0]==='because','وأداة الربط تدخل req — نفس شكل عناصر البنك المؤلَّف');
+ok(combineParse.ok.prompt.includes('1)')&&combineParse.ok.prompt.includes('2)')&&/"because"/.test(combineParse.ok.prompt),'والسؤال المبنيّ يذكر الأداة والجملتين مرقّمتين');
+ok(combineParse.badConnector===null,'أداة ربطٍ خارج JOIN_WORDS تُرفض — لا يُصدَّق ما يذكره النموذج بلا تحقّق');
+ok(combineParse.missingS2===null,'جملةٌ ناقصة تُرفض');
+ok(combineParse.arabic===null,'تلوّثٌ عربي في أيّ جملة يُرفض');
+ok(combineParse.lowMin&&combineParse.lowMin.min===8,'حدٌّ أدنى ضعيفٌ في الردّ يُصحَّح إلى ٨ لا يُرفض — نفس أرضية البنك المؤلَّف');
+
+console.log('\n١٣و-٠) عيبٌ حقيقيّ كشفه هذا الاختبار نفسه: نسخ يُسقط دمجاً صحيحاً — أصلحناه لا الاختبار');
+// أداةٌ مُصدَّرةٌ («Because S1, S2.») تُطابق — بعد تجريد الأرقام والترقيم — نفس تتابع
+// الكلمات المطبوع في نصّ السؤال «using because: 1) S1 2) S2»، فكانت writeIsCopy تُسقطها
+// ظلماً. وهذا يمسّ البنك المؤلَّف نفسه لا التوليد وحده — wr_a1_sc1 مثالٌ حيّ منه.
+const copyBugFixed=await page.evaluate(()=>({
+  staticBankItem:writeIsCopy(
+    "Because I like summer, I can swim every day.",
+    "Join these two sentences into ONE sentence with \"because\":\n1) I like summer.\n2) I can swim every day."),
+  combineSkipsCheck:writeCopyCheck({type:'combine'},
+    "Because I like summer, I can swim every day.",
+    "Join these two sentences into ONE sentence with \"because\":\n1) I like summer.\n2) I can swim every day."),
+  freeStillChecked:writeCopyCheck({type:undefined},
+    "Write about your family",
+    "Write about your family.\n1) How many brothers or sisters do you have?"),
+}));
+ok(copyBugFixed.staticBankItem===true,'الفحص الخام (writeIsCopy) ما زال يُبلِّغ تطابقاً — العيب حقيقيٌّ في المنطق لا في هذا الاختبار وحده');
+ok(copyBugFixed.combineSkipsCheck===false,'ودالّة الحكم الفعلية (writeCopyCheck) تتجاوزه لعناصر الدمج — إجابةٌ صحيحة لن تُسقَط بعد اليوم');
+ok(copyBugFixed.freeStillChecked===true,'وتبقى تفحصه للكتابة الحرّة كما كانت — لا انحدار في الحارس الأصليّ');
+
+console.log('\n١٣و) العنصر المولَّد يعمل داخل الجلسة الحقيقية كنظيره المؤلَّف — نجاحٌ وفشل');
+const genC1=await page.evaluate(()=>parseGenWriteBlock("TYPE: combine\nCONNECTOR: because\nMIN: 8\nS1: It started raining.\nS2: We went home early."));
+review={ok:true,reply:"NONE"};
+await page.evaluate(item=>{startWrite();writeItems[0]=item;writeIdx=0;render()},genC1);
+await page.fill('#writeIn','Because it started raining, we went home early.');
+await page.click('button[onclick="writeSubmit()"]');
+await page.waitForTimeout(400);
+let tg=await page.textContent('#app');
+ok(tg.includes('جملة مدمَجة سليمة')&&await page.evaluate(()=>writeScore)===1,'عنصرٌ مولَّدٌ سليم النطق ⇐ نجاحٌ كنظيره المؤلَّف');
+await page.evaluate(item=>{startWrite();writeItems[0]=item;writeIdx=0;render()},genC1);
+await page.fill('#writeIn','It started raining. We went home early.');
+await page.click('button[onclick="writeSubmit()"]');
+await page.waitForTimeout(400);
+tg=await page.textContent('#app');
+ok(tg.includes('الجملة تحتاج تصحيحاً')||await page.evaluate(()=>writeScore)===0,'بلا أداة الربط المطلوبة ⇐ لا تُحتسب — نفس فحص req على البنك المؤلَّف');
+
+console.log('\n١٣ز) writeGenTopUp يطلب النوعين معاً — لا الحرّ وحده كما كان قبل اليوم');
+genReply=function(n,kind){
+  if(kind==='combine')return "TYPE: combine\nCONNECTOR: "+(["because","when","although"][n%3])
+    +"\nMIN: 8\nS1: We finished the game.\nS2: We went home together.";
+  return "PROMPT: Describe a place you visited.\nMIN: 20";
+};
+await page.evaluate(()=>{try{lsDel(GEN_BANK_KEY_WRITE)}catch(e){}});
+calls=[];genN=0;
+// نكرّر النبضة حتى تصل نداءاتٌ كافية لرؤية النوعين معاً — عدد الدفعة الواحدة قد
+// يكون واحداً وحده بحسب حجم البنك الساعة، فالتكرار يضمن الرؤية لا الحظّ
+for(let i=0;i<5;i++){await page.evaluate(level=>writeGenTopUp(level),'B1');await page.waitForTimeout(250)}
+const writeGenCalls=calls.filter(c=>c.mode==='gen'&&c.domain==='write');
+ok(writeGenCalls.length>=2,`عدّة نداءات توليدٍ للكتابة (${writeGenCalls.length})`);
+ok(writeGenCalls.some(c=>c.writeKind==='combine'),'نداءٌ يطلب النوع combine صراحةً');
+ok(writeGenCalls.some(c=>!c.writeKind),'ونداءٌ آخر يطلب النوع الحرّ (بلا writeKind) — النصف الآخر من الحصّة');
+const aiBankB1=await page.evaluate(()=>genBankLoad(GEN_BANK_KEY_WRITE));
+ok(aiBankB1.some(x=>x.type==='combine'&&Array.isArray(x.req)),'وعنصر دمجٍ مولَّد فعلاً دخل بنك التوليد المحلّي');
+ok(aiBankB1.some(x=>x.type!=='combine'),'وعنصر حرٌّ مولَّد كذلك — النوعان معاً لا أحدهما وحده');
+const mergedB1=await page.evaluate(()=>writeBankFor('B1').filter(x=>x.type==='combine'));
+ok(mergedB1.some(x=>x.ai===true),'والدمج المولَّد يظهر ضمن writeBankFor مع الدمج المؤلَّف الستّة — لا بديلاً عنه');
+await page.evaluate(()=>{try{lsDel(GEN_BANK_KEY_WRITE)}catch(e){}});
 
 console.log('\n١٤) لا انحدار');
 for(const [pg,fn,md] of [['index.html',"startWrite()",'write'],['index.html',"startRead()",'read'],
