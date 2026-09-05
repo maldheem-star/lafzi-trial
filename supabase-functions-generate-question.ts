@@ -87,14 +87,48 @@ function extractQuestions(rawText: string) {
   );
 }
 
-async function callGroq(key: string, prompt: string) {
+// ===== سقفُ الرموز ورسالةُ ٤٢٩ — درس ٥ سبتمبر =====
+// سجلّ هيا (٥ سبتمبر، ١٥:٣٠) بعد إسماع الفشل: ثلاثة نداءات، كلُّها 502 وداخلها ردُّ
+// Groq حرفياً — «Request too large … on output tokens per …» و«Rate limit reached …».
+// أي أن المولّد لم يعد ميّتاً (إصلاح ٤ سبتمبر عمل) لكنه يصطدم بسقف الطبقة المجانية.
+//
+// **والرسالتان مختلفتان في المعنى**: «Rate limit reached» عارضةٌ تزول بانقضاء النافذة،
+// أمّا «Request too large» فتعني أن **طلبنا الواحد** يتجاوز السقف كلَّه — فيفشل أبداً
+// مهما انتظرنا. والأرقام التي تفصلهما (Limit/Requested والوحدة: دقيقة أم يوم) كانت
+// في الرسالة **وقُطعت** عند حدّ التسجيل ٢٠٠ محرف، لأن معرّف المنظّمة يتصدّرها ويلتهمها.
+// فلا يُختار العلاج بلا هذه الأرقام — وهذا ما يُصلحه `groqLimitSummary`: يستخرجها
+// ويضعها **أوّل** التفصيل، فتنجو من أي قصٍّ لاحق.
+function groqLimitSummary(status: number, body: string, retryAfter: string) {
+  const lim = /Limit\s+([\d,]+)/i.exec(body);
+  const req = /Requested\s+([\d,]+)/i.exec(body);
+  const unit = /(?:tokens|requests)\s+per\s+(minute|day|hour)/i.exec(body);
+  const kind = /Request too large/i.test(body) ? "too_large"
+             : /Rate limit reached/i.test(body) ? "rate_limited" : "";
+  const bits: string[] = [String(status)];
+  if (kind) bits.push(kind);
+  if (unit) bits.push("per_" + unit[1].toLowerCase());
+  if (lim) bits.push("limit=" + lim[1]);
+  if (req) bits.push("requested=" + req[1]);
+  if (retryAfter) bits.push("retry_after=" + retryAfter);
+  return bits.join(" · ");
+}
+// وسقفُ الرموز كان **٢٥٠٠ ثابتاً** مهما كان عدد الأسئلة المطلوبة، و`Requested` عند
+// Groq = رموزُ الطلب + هذا السقف. فالسقف نفسه قد يكون سببَ «Request too large».
+// **ولا يُختار رقمٌ بالحدس**: يُشتقّ من بنية العنصر التي يفرضها الطلب نفسه — سؤالٌ
+// (~١٥ كلمة) وأربعة خيارات (~١٢) وتفكيرٌ خطوةً خطوة (~٤٠)، أي نحو سبعين كلمة عربية
+// ≈ ٢٦٠ رمزاً بترميز JSON. وهو **تقديرٌ يُصحَّح بالقياس لا يبقى حدساً**: الاستهلاك
+// الفعلي (`usage.completion_tokens`) صار يعود في الردّ ويُسجَّل، فيُضبط الثابت من رقمٍ
+// حقيقي في الجولة القادمة بدل أن يُخمَّن مرّةً أخرى.
+const TOK_PER_Q = 260, TOK_OVERHEAD = 300;
+async function callGroq(key: string, prompt: string, askCount: number) {
   // gpt-oss نموذج تفكيرٍ يُنفق من سقف الرموز على تفكيرٍ داخلي قبل الجواب — وهو
   // بعينه ما أفرغ ردَّ `tutor` (tutor_no_text، محمد ١٧ أغسطس، finishReason="length").
   // فنفس علاجه هناك: reasoning_effort منخفض وسقفٌ يتّسع لدفعة أسئلة كاملة.
   const isGptOss = /gpt-oss/i.test(GROQ_MODEL);
+  const maxTok = TOK_OVERHEAD + TOK_PER_Q * Math.max(1, askCount);
   const payload: Record<string, unknown> = {
     model: GROQ_MODEL, messages: [{ role: "user", content: prompt }],
-    temperature: 0.8, max_tokens: 2500, response_format: { type: "json_object" },
+    temperature: 0.8, max_tokens: maxTok, response_format: { type: "json_object" },
   };
   if (isGptOss) payload.reasoning_effort = "low";
   else if (/qwen3/i.test(GROQ_MODEL)) payload.reasoning_effort = "none";
@@ -102,9 +136,17 @@ async function callGroq(key: string, prompt: string) {
     method: "POST", headers: { "Authorization": `Bearer ${key}`, "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
-  if (!res.ok) { const t = await res.text(); return { ok: false, status: res.status, detail: t.slice(0, 300) }; }
+  if (!res.ok) {
+    const t = await res.text();
+    const head = groqLimitSummary(res.status, t, res.headers.get("retry-after") || "");
+    // الملخّص أوّلاً فينجو من القصّ، والنصّ الخام بعده لما لا يُطابقه الاستخراج
+    return { ok: false, status: res.status, detail: (head + " :: " + t).slice(0, 400),
+             retryAfter: res.headers.get("retry-after") || "" };
+  }
   const data = await res.json();
-  return { ok: true, questions: extractQuestions(data?.choices?.[0]?.message?.content || ""), model: GROQ_MODEL };
+  return { ok: true, questions: extractQuestions(data?.choices?.[0]?.message?.content || ""),
+           model: GROQ_MODEL, asked: maxTok, used: data?.usage?.completion_tokens ?? null,
+           finish: data?.choices?.[0]?.finish_reason || "" };
 }
 async function callGemini(key: string, prompt: string) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${key}`;
@@ -121,7 +163,10 @@ Deno.serve(async (req: Request) => {
     const type = String(body?.type || "reading");
     const count = Math.min(Math.max(parseInt(body?.count) || 1, 1), 4);
     const instr = TEXT_TYPES[type] || TEXT_TYPES.reading;
-    const askCount = Math.min(count + 3, 6);
+    // الإفراط في الطلب (count+3، حتى ستّة) كان يُضاعف حجزَ الرموز مقابل السقف بلا
+    // مقابلٍ مقاس: الغرضُ منه أن يبقى العددُ المطلوب نظيفاً بعد فلتر العربية، و**زائدٌ
+    // واحد يكفي لذلك** — والنقصُ يُكمله البنك المؤلَّف كما كان يفعل أصلاً.
+    const askCount = Math.min(count + 1, 4);
     const prompt = buildPrompt(askCount, instr);
 
     const GROQ = Deno.env.get("GROQ_API_KEY") || Deno.env.get("GROQ_KEY");
@@ -129,12 +174,14 @@ Deno.serve(async (req: Request) => {
     const errors: any = {};
 
     if (GROQ) {
-      let all: any[] = [];
+      let all: any[] = [], usage: any = null;
       for (let i = 0; i < 3 && all.length < count; i++) {
-        const r = await callGroq(GROQ, prompt);
-        if (r.ok) all = all.concat(r.questions); else { errors.groq = { status: r.status, detail: r.detail, model: GROQ_MODEL }; break; }
+        const r = await callGroq(GROQ, prompt, askCount);
+        if (r.ok) { all = all.concat(r.questions); usage = { asked: r.asked, used: r.used, finish: r.finish }; }
+        else { errors.groq = { status: r.status, detail: r.detail, retryAfter: r.retryAfter, model: GROQ_MODEL }; break; }
       }
-      if (all.length) return jsonOut({ type, engine: "groq", model: GROQ_MODEL, questions: all.slice(0, count) });
+      // الاستهلاك الفعلي يعود مع الردّ ليُسجَّل — فيُضبط سقفُ الرموز من قياسٍ لا حدس
+      if (all.length) return jsonOut({ type, engine: "groq", model: GROQ_MODEL, usage, questions: all.slice(0, count) });
       if (!errors.groq) errors.groq = { reason: "no_clean_questions", model: GROQ_MODEL };
     } else errors.groq = "no_key";
 

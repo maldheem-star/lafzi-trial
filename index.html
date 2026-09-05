@@ -1080,6 +1080,22 @@ function cachePut(type,arr){try{const c=JSON.parse(lsGet("gemini_cache")||"{}");
 function quizGenFail(type,why,detail){
   try{if(typeof genFailLog==="function")genFailLog("quiz:"+type,null,why,detail)}catch(e){}
 }
+// ===== ولا تُطرَق نافذةٌ ممتلئة ثلاث مرّات — درس ٥ سبتمبر =====
+// جلسة هيا: ثلاثة نداءات متتابعة خلال خمس ثوانٍ (تشبيه ⇐ منطق ⇐ مفردات)، كلُّها
+// ٤٢٩ من Groq. والأوّل وحده كان كافياً للحكم: سقفُ الرموز محسوبٌ **لكل دقيقة**،
+// فالثاني والثالث يقعان في نفس النافذة الممتلئة ويفشلان يقيناً — ثلاثة سطور فشلٍ
+// بدل واحد، وثلاثة طلباتٍ من حصّةٍ يومية محدودة أصلاً.
+// **ونفس قاطع الدائرة المعتمَد اليوم لصوت الخادم** (Nygard 2007) لا آليةٌ ثانية:
+// يُفتح عند ٤٢٩، ويُغلق بعد تهدئة — ومدّتها من رأس `Retry-After` حين يُرسله المزوّد
+// (معيار HTTP، RFC 9110 §10.2.3) لا من رقمٍ نختاره، وإلّا فدقيقةٌ كنافذة TPM نفسها.
+const QUIZ_COOL_DEFAULT=60000;
+let quizOpenedAt=0, quizCoolMs=QUIZ_COOL_DEFAULT;
+function quizRateOk(){return !quizOpenedAt||(Date.now()-quizOpenedAt)>=quizCoolMs}
+function quizRateTrip(retryAfter){
+  const s=parseInt(retryAfter,10);
+  quizCoolMs=(s>0&&s<600)?s*1000:QUIZ_COOL_DEFAULT;
+  quizOpenedAt=Date.now();
+}
 // يجلب أسئلة من المحرّك، مع تخزين الفائض وإعادة الاستخدام، واحترام الحد اليومي
 async function fetchGemini(type,need){
   const out=[];
@@ -1095,6 +1111,11 @@ async function fetchGemini(type,need){
     quizGenFail(type,"daily_cap","الحدّ اليومي "+DAILY_CAP+" · المتاح من الكاش: "+out.length);
     return out.map(tagAI(type)); // نكتفي بالمتاح
   }
+  // 2ب) ونافذةٌ ثبت امتلاؤها لا تُطرَق ثانيةً حتى تنقضي — يُسجَّل مرّةً كسببٍ مسمّى
+  if(!quizRateOk()){
+    quizGenFail(type,"rate_window","النافذة ممتلئة · تهدئة "+Math.round(quizCoolMs/1000)+"ث · المتاح من الكاش: "+out.length);
+    return out.map(tagAI(type));
+  }
   // 3) اطلب دفعة (3) لتقليل عدد النداءات
   try{
     const res=await fetch(FN_URL,{method:"POST",headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({type,count:3})});
@@ -1103,17 +1124,34 @@ async function fetchGemini(type,need){
       const qs=(data.questions||[]).map(normAI(type));
       // ردٌّ سليمٌ بلا أسئلة ليس نجاحاً: يقع حين يُسقط فلتر العربية كلَّ ما وُلِّد.
       if(!qs.length)quizGenFail(type,"no_questions",("محرّك:"+(data.engine||"?")+" · نموذج:"+(data.model||"?")).slice(0,200));
+      // الاستهلاك الفعلي يُسجَّل مرّةً — به يُضبط سقفُ الرموز بالقياس لا بالتقدير
+      quizUsageLog(data&&data.usage,type);
       const take=qs.slice(0,need-out.length);out.push(...take);cachePut(type,qs.slice(take.length));
     }else{
       // **التفصيل موجودٌ في الردّ ويُرمى** — نفس خطأ `coachSetFail` (١٧ أغسطس):
       // الدالّة تُعيد `errors` مفصَّلةً بالمحرّك والحالة ونصّ رفض المزوّد واسم النموذج،
       // وكان يُهمَل كلُّه. فيُقرأ الجسمُ ويُسجَّل، وبلا هذا يستحيل معرفة أيّ محرّكٍ سقط ولماذا.
-      let detail="";
-      try{const j=await res.json();detail=JSON.stringify(j&&j.errors?j.errors:j)}catch(e){detail=""}
+      let detail="",body=null;
+      try{body=await res.json();detail=JSON.stringify(body&&body.errors?body.errors:body)}catch(e){detail=""}
+      // ٤٢٩ من المزوّد يصل إلينا داخل ٥٠٢ من الدالّة — فيُقرأ من التفصيل لا من حالتنا
+      const g=body&&body.errors&&body.errors.groq;
+      if(g&&(g.status===429||/rate_limited|too_large|\b429\b/.test(String(g.detail||""))))
+        quizRateTrip(g.retryAfter||"");
       quizGenFail(type,"http_"+res.status,detail.slice(0,300));
     }
   }catch(e){quizGenFail(type,"network",(e&&e.message)||String(e))}
   return out.map(tagAI(type));
+}
+// سقفُ الرموز في الخادم مُقدَّرٌ من بنية العنصر (٢٦٠ لكل سؤال) لا مقاس. فالاستهلاك
+// الفعلي يُسجَّل مرّةً في الجلسة ليُضبط الثابت برقمٍ حقيقي — ومعه `finish_reason`
+// لأن «length» يعني أن السقف قُطع على الجواب فيُرفَع لا يُخفَّض (درس ١٧ أغسطس).
+let quizUsageLogged=false;
+function quizUsageLog(u,type){
+  if(quizUsageLogged||!u||u.used==null)return;
+  quizUsageLogged=true;
+  try{logAnswer("gen","gen_usage",null,"quiz:"+type+" · "+u.used+"/"+u.asked,null,null,
+    {q_text:("[استهلاك التوليد] المستعمَل:"+u.used+" · المطلوب سقفاً:"+u.asked
+      +" · finish:"+(u.finish||"?")).slice(0,300)})}catch(e){}
 }
 function cachePutReplace(type,arr){try{const c=JSON.parse(lsGet("gemini_cache")||"{}");c[type]=arr;lsSet("gemini_cache",JSON.stringify(c))}catch(e){}}
 function normAI(type){return q=>({d:aiDomain(type),q:q.q,c:q.choices,a:q.answer,w:q.why||"",qtype:type})}
@@ -2647,6 +2685,50 @@ function cubeScaleName(q,val){
   if(correct==null||!isFinite(correct))return null;
   // ٢³ = ٨ والمختار ٢² = ٤ من الحجم الأصلي، أي نصف الصواب بالضبط
   return (val*2===correct)?"ضربتِ في ٤ (نسبة المساحات) والصواب ٨ (نسبة الأحجام)":null;
+}
+// ===== آليّتان كشفتهما جلسة هيا ٥ سبتمبر — تُسمّيان ولا تُبنى لهما بوّابة =====
+// عشرُ إجاباتٍ خاطئة متتالية (كمّي ٠/٤ ورياضيات ٦ ٠/٦) بأزمنةٍ منخرطة (٤٫٨-٣٢٫٩ث)،
+// وواحدةٌ فقط منها حملت اسم آلية (`metric_wrong_power`) — والتسع «فرقٌ» بلا اسم.
+// وفيها **عائلتان** لا زلّات: كلٌّ وقعت مرّتين بشكلٍ واحد بعينه.
+//
+// **والاسمان منشوران لا مخترَعان**:
+//   · الاستدلال الجمعي مكان الضربي — Hart 1981، وحقل Vergnaud الضربي المفاهيمي.
+//   · «الترجمة المباشرة»: انتقاءُ أعدادٍ من النصّ بلا بناء نموذجٍ للموقف —
+//     Hegarty, Mayer & Monk 1995، *Journal of Educational Psychology* 87:18.
+//
+// **وقياسٌ لا علاج** — بنفس قرار `quizErrDelta` (١٦ أغسطس): الاسم يدخل السطر ويُجمَّع
+// بالاستعلام، ولا يُشعل بوّابةً حتى يُثبت توزيعٌ حقيقي أنها عائلةٌ مستقرّة لا صدفة
+// مرّتين. فإن تكرّرت وُصلت ببوّابة كما وُصلت بوّابتا الطرح، وإلّا سقطت بلا كلفة.
+const MULT_ADD_BUG="mult_as_add";
+// «٣ أمثال ٢٥» ⇐ ٢٨ (٢٥+٣) · «اضربي في ٤ ثم أضيفي ٨، المُدخل ٥» ⇐ ١٧ (٥+٤+٨).
+// والشكل المشترك: **مجموع أعداد نصّ السؤال كلّها** حيث المطلوب ضربٌ — لا مجموع زوجٍ
+// منها، فمجموع الزوج يُصادف كثيراً ويُطلق بلاغاتٍ كاذبة (درس المقياس المصنوع باليد).
+function stemNums(t){
+  const m=String(t||"").replace(/[٠-٩]/g,function(d){return String("٠١٢٣٤٥٦٧٨٩".indexOf(d))}).match(/\d+/g);
+  return m?m.map(Number).filter(function(n){return isFinite(n)}):[];
+}
+function multAsAddName(q,val){
+  if(!q||val==null||!isFinite(val))return null;
+  const t=String(q.q||"");
+  if(!/أمثال|مثل[يَا]?\b|اضرب|ضاعف|×/.test(t))return null;     // نصٌّ ضربيٌّ صراحةً
+  const ns=stemNums(t);
+  if(ns.length<2)return null;
+  const sum=ns.reduce(function(a,b){return a+b},0);
+  const correct=parseArNum(q.c&&q.c[q.a]!=null?String(q.c[q.a]):null);
+  if(correct==null||!isFinite(correct)||correct===sum)return null;  // الصواب نفسه المجموع ⇒ لا دلالة
+  return (val===sum)?("جمعتِ أعداد السؤال ("+ns.map(toAr).join("+")+") والمطلوب ضرب"):null;
+}
+const STEM_NUM_BUG="stem_number";
+// «٥ أوراق … كم ورقة من فئة ٥٠؟» ⇐ ٥ · «٣ عمّال في ١٠ أيام … في ٥ أيام؟» ⇐ ٥.
+// عددٌ معروضٌ في النصّ يُختار كما هو. وشرطُه أن يكون **في النصّ وليس الصواب**، وألّا
+// يكون ناتجَ الجمع (وإلّا نُسب الخطأ لآليّتين معاً على نفس الإجابة).
+function stemNumberName(q,val){
+  if(!q||val==null||!isFinite(val))return null;
+  const ns=stemNums(q.q);
+  if(ns.indexOf(val)<0)return null;
+  const correct=parseArNum(q.c&&q.c[q.a]!=null?String(q.c[q.a]):null);
+  if(correct==null||correct===val)return null;
+  return "اخترتِ عدداً معروضاً في نصّ السؤال ("+toAr(val)+")";
 }
 // البوّابة تُسلَّح بتكرار الاسم لا بأوّل زلّة (SHAPE_ARM=2)، كبقيّة بوّابات المشروع،
 // وتنحلّ بالصواب — فلا تُعاقَب من لا تحتاجها. ونمطها نمط بوّابة النطاق في النسبة
@@ -10623,7 +10705,26 @@ function math6Choose(i){
   const bug=ok?null:m6BugOf(it,parseArNum(it.c[i]));
   if(bug){shapeRecord(bug,true);if(shapeArmed(bug))m6Arm(bug)}
   else if(ok&&it.bugs)Object.keys(it.bugs).forEach(function(k){shapeRecord(k,false)});
-  logAnswer("math6",it._l.id,ok,it.c[i]+(bug?" · "+bug+" ("+(M6_BUGS[bug]||{}).ar+")":""),it._l.id,Date.now()-math6ShownAt,
+  // ===== والعائلتان العامّتان تُسمَّيان هنا كذلك — درس ٥ سبتمبر =====
+  // حالتا «جمعتِ مكان أن تضربي» وقعتا في **هذا القسم** لا في الاختبار، و`choose()`
+  // لا تمرّ به إطلاقاً (له عارضه الخاصّ). فلو وُصلت الآلية بـ`choose` وحدها لَما
+  // سُمّيت الحالتان اللتان أوجبتاها أصلاً — كشفه الاختبار لا الفحص.
+  // وتُسمّى **بعد** آلية العنصر المؤلَّفة: تلك أخصُّ (محاكاةُ إجراءٍ مكسور بعينه).
+  const m6Got=ok?null:parseArNum(it.c[i]);
+  const m6Ma=(!ok&&!bug)?multAsAddName(it,m6Got):null;
+  const m6Sn=(!ok&&!bug&&!m6Ma)?stemNumberName(it,m6Got):null;
+  if(m6Ma)shapeRecord(MULT_ADD_BUG,true);
+  if(m6Sn)shapeRecord(STEM_NUM_BUG,true);
+  const extra=m6Ma?(" · "+MULT_ADD_BUG+" ("+m6Ma+")"):(m6Sn?(" · "+STEM_NUM_BUG+" ("+m6Sn+")"):"");
+  // ===== والفرقُ كان غائباً عن هذا القسم وحده — كشفه الاختبار، ٥ سبتمبر =====
+  // عُرفُ المشروع منذ ١٣ أغسطس: «٢٥ · الصواب ٢٦ · فرق −١» — بلا الفرق تُقرأ الإجابات
+  // الخاطئة ضعفاً عامّاً. و`choose()` تكتبه لكل أقسام الاختبار، و`math6Choose` **لا
+  // تكتبه إطلاقاً**: ستّ أخطاءٍ لهيا اليوم وصلت السجلَّ بنصّ الخيار وحده. ونفس
+  // `quizErrDelta` المشتركة — لا حسابٌ ثانٍ.
+  const m6Dlt=ok?null:quizErrDelta(String(it.c[i]),String(it.c[it.a]));
+  const m6Shape=String(it.c[i])+(m6Dlt!=null
+    ? " · الصواب "+it.c[it.a]+" · فرق "+(m6Dlt>0?"+":"−")+toAr(Math.abs(m6Dlt)) : "");
+  logAnswer("math6",it._l.id,ok,m6Shape+(bug?" · "+bug+" ("+(M6_BUGS[bug]||{}).ar+")":extra),it._l.id,Date.now()-math6ShownAt,
     {_sk:it._l.sk,
      q_text:(it._src?"["+it._src+"] ":"[مولَّد] ")+it.q+" · الخيارات: "+
        it.c.map(function(x,k){return (k+1)+") "+x+(k===it.a?" ✓":"")}).join(" | ")});
@@ -14041,6 +14142,19 @@ function choose(i){
     shapeRecord(CUBE_SCALE_BUG,true);
   }else if(ok&&/مكعّب/.test(String(q.q||""))&&/ضاعف/.test(String(q.q||""))){
     shapeRecord(CUBE_SCALE_BUG,false);
+  }
+  // والعائلتان الجديدتان بنفس العُرف — قياسٌ لا بوّابة (٥ سبتمبر).
+  // والترتيب مقصود: الجمعُ الضربيّ أخصُّ، فإن انطبق لم يُنسَب الخطأ لعددِ النصّ أيضاً.
+  const gotNum=!ok?parseArNum(ansTxt):null;
+  const maName=!ok?multAsAddName(q,gotNum):null;
+  const snName=(!ok&&!maName)?stemNumberName(q,gotNum):null;
+  if(maName){
+    ansShape=(ansShape||"")+" · "+MULT_ADD_BUG+" ("+maName+")";
+    shapeRecord(MULT_ADD_BUG,true);
+  }
+  if(snName){
+    ansShape=(ansShape||"")+" · "+STEM_NUM_BUG+" ("+snName+")";
+    shapeRecord(STEM_NUM_BUG,true);
   }
   // ===== ومعرّفٌ للسؤال: بلاه لا تباعد ولا منعَ تكرار ولا تمدّد — درس ٢٩ أغسطس =====
   // كان `item_id` فارغاً في كل صفوف اللفظي والعلمي والكمّي والمرونة (١٢٢ صفّاً عند هيا
