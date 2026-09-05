@@ -4251,7 +4251,7 @@ const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEn
   "logQueueLoad","logQueuePush","logQueueFlush","logSend",
   "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","piPickBand","piBandBoxHTML","piArm","piOk","piVals","piGateOn","piGated","piSig1","fsrsUpdate","fsrsIvl","fsrsR","fsrsInitS","fsrsInitD","fsrsNextD","fsrsClampD","fsrsRecallS","fsrsForgetS","tmplKey","spreadTemplates","drawSpread","qzErrRecord","qzDueKeys","qzInjectDue","qzErrOf","qzCardDone","fadeQText","fadeAnsText","fadeGateStart","fadeGateStop","fadeGateNeeded","copyAzRaw","esc","weakPhonemeStr","num0","profileBarHTML","renderHomeCoachOnly","learnerInfo","coachLevel","toMasc","genderizeText","genderizeNode","genderizeInit","lsGet","lsSet","lsDel","pkey","cxShuffleOrder","cxPreStart","cxPreChoose","cxPreNext","cxPreQuit","cxPreCur","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary","coachMode","coachAskHelp","coachEnd","coachReview","coachFixParse","weakClean","coachSaysNow","snapToSuggestion","editDist","coachShowSays","coachParse","coachTopicGo","coachTopicBack","coachTopicClean","coachFreeScene","wbStart","wbPick","wbUnpick","wbCheck","wbHTML","wbReady","wbSay","wbReset","wbNorm","wbDistract","wbStageGet","wbGrade","engBuildFor","dictErrRecord","dictIsBuild","dictCur","renderDictationBuild","planCheckBuild","echoRecord","echoArmed","coachBankOn","coachBankSync","coachBankCheck","fixCardSave","fixCardGrade","bugOf","basicsOpNow","basicsOperands","basicsBugNow","digitsOf","factDcpm","factDcpmBand","coachLeave","coachAutoReview","coachSetFail","coachHintNow","basicsErrDelta","shapeRecord","shapeArmed","ob1Arm","ob1Jump","ob1Back","ob1Complete","ob1BoxHTML","btArm","btBorrow","btComplete","btBoxHTML","basicsOb1Gated","basicsBtGated","basicsShapeLogRemedy","shapeLogRemedy","quotArm","quotGated","quotReset","listenBankFor","listenSrsUpdate","buildListenPlan","listenPlaysHint","startListen","listenPlay","listenChoose","listenNext","renderListen",
   "readBankFor","readSrsUpdate","buildReadPlan","startRead","readChoose","readNext","renderRead",
-  "genBankLoad","genBankAdd","parseGenBlock","fetchTutorGen","genTopUp","genCallsFor","genLogText","parseGenPickBlock","parseGenVideoBlock","errCollect","errDraw","errCount","errQuizCount","startErrors","errCheck","errChoose","errNext","errReplay","renderErrors",
+  "genBankLoad","genBankAdd","parseGenBlock","fetchTutorGen","genTopUp","genCallsFor","genFire","genSweepFlight","genGateLog","genLogText","parseGenPickBlock","parseGenVideoBlock","errCollect","errDraw","errCount","errQuizCount","startErrors","errCheck","errChoose","errNext","errReplay","renderErrors",
   "minpairBankFor","minpairSrsUpdate","buildMinpairPlan","startMinpair","minpairPlay","minpairChoose","minpairNext","renderMinpair",
   "gramBankFor","gramSrsUpdate","buildGramPlan","startGram","gramChoose","gramNext","renderGram","fetchTutorGenGram","gramGenTopUp",
   "stepBankFor","stepSrsUpdate","buildStepPlan","startStep","stepChoose","stepSeqPick","stepSeqUnpick","stepSeqSubmit","stepNext","renderStep","fetchTutorGenStep","stepGenTopUp","fetchTutorGenVideo","videoGenTopUp",
@@ -7768,10 +7768,53 @@ function genCallsFor(poolLen,N){
 // تُطلق بسقفٍ للطائر منها، وما يفيض يُهمَل بهدوء — النبضة التالية تُكمله.
 let genInFlight=0;
 const GEN_MAX_INFLIGHT=4;
+// ===== وعدّادُ الطائر كان يُسرَّب فيُغلق التوليد صامتاً — درس ٥ سبتمبر =====
+// سجلّ الخادم لجلسة إلياس (٥ سبتمبر، ١١:٢٥-١١:٣٥ ت.ع) يُظهر **صفرَ طلباتٍ إلى
+// `/functions/v1/tutor`** رغم ستّ جلسات كتابةٍ بدأها — والستّة كلّها تُسجَّل، فالطلبات
+// الست إلى `/rest/v1` وحدها. أي أن نداء التوليد **لم يغادر الجهاز أصلاً**، ولا سطرَ
+// واحد يقول لماذا: `genFire` كانت تُعيد `false` بصمتٍ تامّ.
+//
+// **والسبب المُثبَت هو الصمت، لا الآلية**: طلبٌ لا يُسوَّى — ومتصفّح سناب شات المدمج
+// (وهو متصفّحه، مؤكَّدٌ من بصمة الطلبات) يُجمّد المؤقّتات في الخلفية فلا يُطلق حتى
+// إجهاضَ `fetchTimeout` — يبقى محسوباً في العدّاد **إلى الأبد**، فيُقفل التوليد لكل
+// الأقسام بقيّة عمر الصفحة. وهذا نفس صنف عطل `ttsServerOk=false` المُصلَح اليوم:
+// حالةٌ تُغلق مساراً ولا تنعكس أبداً. **ولا أدّعي أنه سبب اليوم بعينه** — أدّعي أنه
+// المسار الصامت الوحيد الذي يُنتج هذه البصمة، وأنه عطلٌ بذاته على أيّ حال.
+//
+// فالعلاج طبقتان: **كنسٌ بعمرٍ مقاس** (ضِعف مهلة `fetchTimeout` وزيادة — فما تجاوزه
+// مُسرَّبٌ يقيناً لا بطيء)، **وسطرٌ حين يُمنع نداء** فلا يعود المنعُ غير قابلٍ للقياس.
+const GEN_INFLIGHT_TTL=45000;
+let genFlightAt=[];
+let genGateLogged=0;
+const GEN_GATE_LOG_CAP=2;
+function genGateLog(why,detail){
+  if(genGateLogged>=GEN_GATE_LOG_CAP)return;
+  genGateLogged++;
+  try{logAnswer("gen","gate",null,why,null,null,
+    {q_text:("[بوّابة التوليد:"+why+"] "+String(detail||"")).slice(0,300)})}catch(e){}
+}
+function genSweepFlight(){
+  const now=Date.now(),before=genFlightAt.length;
+  genFlightAt=genFlightAt.filter(function(t){return now-t<GEN_INFLIGHT_TTL});
+  const leaked=before-genFlightAt.length;
+  genInFlight=genFlightAt.length;
+  if(leaked>0)genGateLog("leak",leaked+" نداءً لم يُسوَّ خلال "+(GEN_INFLIGHT_TTL/1000)+"ث فأُعيد مكانه");
+}
 function genFire(mk){
-  if(genInFlight>=GEN_MAX_INFLIGHT)return false;
-  genInFlight++;
-  const done=function(){genInFlight=Math.max(0,genInFlight-1)};
+  genSweepFlight();
+  if(genFlightAt.length>=GEN_MAX_INFLIGHT){
+    genGateLog("busy",genFlightAt.length+" نداءات طائرة — السقف "+GEN_MAX_INFLIGHT);
+    return false;
+  }
+  const tok={};tok.t=Date.now();genFlightAt.push(tok.t);
+  genInFlight=genFlightAt.length;
+  let settled=false;
+  const done=function(){
+    if(settled)return;settled=true;
+    const i=genFlightAt.indexOf(tok.t);
+    if(i>=0)genFlightAt.splice(i,1);
+    genInFlight=genFlightAt.length;
+  };
   try{mk().then(done,done)}catch(e){done()}
   return true;
 }
