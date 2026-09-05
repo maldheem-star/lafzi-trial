@@ -274,6 +274,22 @@ const DAILY_CAP=80; // حد أقصى لطلبات الذكاء الاصطناع�
 const rand=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
 const pick=a=>a[Math.floor(Math.random()*a.length)];
 function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+// ===== خلطٌ يضمن اختلاف الترتيب عن الأصل — درس ٥ سبتمبر =====
+// في تمارين **الترتيب** (بنك الكلمات، وعناصر order في STEP) الخلطُ العاري قد يُعيد
+// الترتيب الصحيح نفسه، فيُعرض السؤال محلولاً. وهو نادرٌ مع ٦-٨ كلمات (١ من ٧٢٠)
+// و**كثيرٌ** بعد درجة الأدوار الملوَّنة (٣١ أغسطس): ثلاث كتلٍ ⇒ **١ من ٦**، وأربعٌ
+// ⇒ ١ من ٢٤. واكتُشف بالقياس لا بالنظر: ثلاثون جولةَ «بناء الجملة» خرجت **ثلاثٌ**
+// منها ببنكٍ مرتَّبٍ صحيحاً (`b_a1_school`, `b_a1_sister`, `b_a1_bag`).
+// وتعليقُ `stepSetupRound` كان ينصّ على النيّة صراحةً («وإلا ظهرت الجمل مرتّبةً
+// أصلاً فلا سؤال») والتنفيذ لا يضمنها — فالنيّة تُبرمَج لا تُكتب.
+// وبسقفٍ للمحاولات فلا حلقة لا تنتهي، ولا يُطلب المستحيل (وحدةٌ واحدة، أو وحداتٌ
+// متطابقة النصّ) — عندها يُعاد الخلط العاري كما كان.
+function shuffleDiff(a,txt){
+  const key=function(l){return l.map(txt||function(x){return x}).join("")};
+  const base=key(a);
+  for(let i=0;i<20;i++){const out=shuffle(a);if(key(out)!==base)return out}
+  return shuffle(a);
+}
 // أيّ تدريبٍ غير مقاليّ لا يقلّ عن N (طلب صاحب المشروع، ١٨ أغسطس) — كانت جلساتٌ حيّة
 // تُنهي بسؤالٍ واحد فقط لأن buildXPlan تُكمل من البنك كلّه عند خواء المستحقّ+الجديد
 // تماماً (out.length===0) لا عند نقصه (١-٤ عناصر): طالبٌ له عنصرٌ مستحقٌّ واحد فقط كان
@@ -1013,6 +1029,28 @@ function bumpUsage(n){const u=geminiUsage();u.count+=n;lsSet("gemini_day",JSON.s
 function cacheGet(type){try{const c=JSON.parse(lsGet("gemini_cache")||"{}");return c[type]||[]}catch(e){return[]}}
 function cachePut(type,arr){try{const c=JSON.parse(lsGet("gemini_cache")||"{}");c[type]=((c[type]||[]).concat(arr)).slice(-40);lsSet("gemini_cache",JSON.stringify(c))}catch(e){}}
 
+// ===== وفشلُ هذا المولّد كان صامتاً تماماً — درس ٤ سبتمبر =====
+// `catch(e){}` عارية و`if(res.ok)` تتخطّى الفشل بلا أثر: لا سطر، لا سبب، لا شيء.
+// فبقيت دالّة `generate-question` تطلب نموذجاً أوقفته Groq في ١٦ أغسطس، وتعود
+// **502 في كل نداء** — **أسبوعين ونصفاً** بلا أن يعرف أحد. والثمن مقاس: بنكا
+// اللفظي والعلمي المؤلَّفان (٢٤ و٢٧ عنصراً) استُنفدا ١٠٠٪، فصارت هيا ترى السؤال
+// نفسه سبع إلى ثماني مرّات — أحدُها **١٣ مرّة**، تجيبه في **٠٫٩ ثانية** حفظاً لا فهماً.
+// وهي شكت «الأسئلة متكرّرة» فكانت محقّة، ولم يكن في السجلّ ما يدلّ على السبب.
+//
+// وهذا **بعينه** صنف العطل الذي عولج في مولّدات `tutor` يوم ٢٩ أغسطس (`genFailLog`)
+// — ولم يُوصَل بهذه الدالّة الأقدم. فيُوصَل الآن بنفسها لا بآليةٍ ثانية: نفس
+// `genFailLog` ونفس `domain='gen'` ونفس سقف الضجيج (أوّل ثلاثة في الجلسة).
+// **والتصرّف كما كان**: «فشل التوليد ليس عطلاً» قرارٌ قائم — يعود المتاح بهدوء
+// والبنك المؤلَّف يعمل وحده. الصمتُ وحده هو ما تغيّر.
+//
+// **والتسجيل نفسه لا يجوز أن يصير نقطة عطل**: `genFailLog` مُعرَّفةٌ بعد هذا الموضع
+// بآلاف الأسطر (وفي كتلة `<script>` أخرى)، وهي متاحةٌ وقت التشغيل لا وقت التعريف.
+// لكنّ استدعاءها عارياً يعني أن أيّ تعذّرٍ في وصولها يكسر **تحميل الأسئلة نفسه** —
+// أي أن علاج الصمت يصير عطلاً أسوأ من الصمت. فيمرّ عبر حارسٍ يسقط بهدوء.
+// وهذا حرفياً مبدأ رأس دالّة `tutor`: «الربط الجديد لا يجوز أن يكون نقطة عطل جديدة».
+function quizGenFail(type,why,detail){
+  try{if(typeof genFailLog==="function")genFailLog("quiz:"+type,null,why,detail)}catch(e){}
+}
 // يجلب أسئلة من المحرّك، مع تخزين الفائض وإعادة الاستخدام، واحترام الحد اليومي
 async function fetchGemini(type,need){
   const out=[];
@@ -1022,12 +1060,30 @@ async function fetchGemini(type,need){
   cachePutReplace(type,cache);
   if(out.length>=need)return out.map(tagAI(type));
   // 2) تحقّق من الحد اليومي
-  if(geminiUsage().count>=DAILY_CAP)return out.map(tagAI(type)); // نكتفي بالمتاح
+  // ويُسجَّل بلوغُه: هو سببٌ مشروع لتوقّف التوليد، لكن الخلط بينه وبين عطلٍ حقيقي
+  // هو ما يجعل التشخيص تخميناً — فيُسمّى كغيره ويُعرف عدده.
+  if(geminiUsage().count>=DAILY_CAP){
+    quizGenFail(type,"daily_cap","الحدّ اليومي "+DAILY_CAP+" · المتاح من الكاش: "+out.length);
+    return out.map(tagAI(type)); // نكتفي بالمتاح
+  }
   // 3) اطلب دفعة (3) لتقليل عدد النداءات
   try{
     const res=await fetch(FN_URL,{method:"POST",headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({type,count:3})});
-    if(res.ok){const data=await res.json();bumpUsage(1);const qs=(data.questions||[]).map(normAI(type));const take=qs.slice(0,need-out.length);out.push(...take);cachePut(type,qs.slice(take.length))}
-  }catch(e){}
+    if(res.ok){
+      const data=await res.json();bumpUsage(1);
+      const qs=(data.questions||[]).map(normAI(type));
+      // ردٌّ سليمٌ بلا أسئلة ليس نجاحاً: يقع حين يُسقط فلتر العربية كلَّ ما وُلِّد.
+      if(!qs.length)quizGenFail(type,"no_questions",("محرّك:"+(data.engine||"?")+" · نموذج:"+(data.model||"?")).slice(0,200));
+      const take=qs.slice(0,need-out.length);out.push(...take);cachePut(type,qs.slice(take.length));
+    }else{
+      // **التفصيل موجودٌ في الردّ ويُرمى** — نفس خطأ `coachSetFail` (١٧ أغسطس):
+      // الدالّة تُعيد `errors` مفصَّلةً بالمحرّك والحالة ونصّ رفض المزوّد واسم النموذج،
+      // وكان يُهمَل كلُّه. فيُقرأ الجسمُ ويُسجَّل، وبلا هذا يستحيل معرفة أيّ محرّكٍ سقط ولماذا.
+      let detail="";
+      try{const j=await res.json();detail=JSON.stringify(j&&j.errors?j.errors:j)}catch(e){detail=""}
+      quizGenFail(type,"http_"+res.status,detail.slice(0,300));
+    }
+  }catch(e){quizGenFail(type,"network",(e&&e.message)||String(e))}
   return out.map(tagAI(type));
 }
 function cachePutReplace(type,arr){try{const c=JSON.parse(lsGet("gemini_cache")||"{}");c[type]=arr;lsSet("gemini_cache",JSON.stringify(c))}catch(e){}}
@@ -1042,8 +1098,23 @@ const AI_SCIENCE=["science"];
 // ===== منع تكرار نص السؤال داخل الجلسة الحالية =====
 // يتذكّر نصوص الأسئلة التي عُرضت فعلاً منذ فتح الصفحة (كل الأوضاع)، ويتجنّب إعادتها
 const sessionSeenQuestions=new Set();
-function markSeen(q){if(q&&q.q)sessionSeenQuestions.add(q.q);return q}
-function isSeen(q){return !!(q&&sessionSeenQuestions.has(q.q))}
+// ===== وهويّة السؤال نصُّه **وخياراته** — عيبٌ كشفه اختبار ٤ سبتمبر =====
+// كان المفتاح `q.q` وحده، و`VERBAL` فيه أربعةٌ وعشرون عنصراً بـ**اثنين وعشرين** نصّاً
+// متمايزاً: «أي كلمة لا تنتمي إلى المجموعة؟» ثلاث مرّات — أسئلةٌ مختلفةٌ فعلاً
+// (المحتوى في خياراتها لا في صدرها، وهذا شكل «الشاذّ» المعياريّ ولا يصحّ تغييره
+// لأن ذكر الفئة في الصدر يُفشي ما يقيسه السؤال). فكانت الثلاثة تنهار إلى واحد،
+// **فلا يصل المتعلّمَ إلا أوّلُها ويُحجب اثنان حجباً دائماً** — بنكٌ يُضيّق نفسه
+// بينما الشكوى أصلاً من ضيق البنك.
+// والتضييق في المفتاح لا يمكن أن يُقصّر جلسةً ولا أن يُعيد نصّاً متطابقاً: هو
+// يسمح بمرور المزيد لا بأقلّ. والمفتاح العابر للأيّام (`tmplKey`) لا يُمسّ — ذاك
+// حبيبتُه القالبُ عمداً لأن الكمّي يُولَّد بأرقامٍ عشوائية (درس ٢٩ أغسطس).
+function qIdent(q){
+  if(!q||!q.q)return "";
+  const ch=Array.isArray(q.c)?q.c:(Array.isArray(q.choices)?q.choices:[]);
+  return q.q+""+ch.map(function(x){return String(x)}).join("");
+}
+function markSeen(q){if(q&&q.q)sessionSeenQuestions.add(qIdent(q));return q}
+function isSeen(q){return !!(q&&sessionSeenQuestions.has(qIdent(q)))}
 // يولّد من قائمة مولّدات عشوائياً حتى يجد نصاً لم يُعرض من قبل (بحد أقصى من المحاولات تفادياً لحلقة لا نهائية)
 function uniqueFromGens(gens,maxTries){
   maxTries=maxTries||50;
@@ -6908,12 +6979,13 @@ function wbStart(sentence,stage,chunks){
   wbChunkMode=!!(st.chunk&&Array.isArray(chunks)&&chunks.length>1
     &&chunks.map(function(c){return c.t}).join(" ")===wbTarget);
   if(wbChunkMode){
-    const idx=shuffle(chunks.map(function(_,i){return i}));
+    // `shuffleDiff` لا `shuffle`: ثلاث كتلٍ تعني أن سُدس الجولات كانت تُعرض محلولةً
+    const idx=shuffleDiff(chunks.map(function(_,i){return i}),function(i){return chunks[i].t});
     wbPool=idx.map(function(i){return chunks[i].t});
     wbPoolRoles=idx.map(function(i){return chunks[i].role});
   }else{
     const extra=st.chunk?0:st.extra;   // درجة الأدوار بلا chunks تسلك كدرجة «العدد بالضبط»
-    wbPool=extra<0?[]:shuffle(wbTok.concat(wbDistract(wbTok,extra)));
+    wbPool=extra<0?[]:shuffleDiff(wbTok.concat(wbDistract(wbTok,extra)));
     wbPoolRoles=[];
   }
   wbPicked=[];wbLocked=false;wbOk=false;wbTyped="";wbOn=true;
@@ -10797,8 +10869,10 @@ function stepSetupRound(){
   const it=stepCur();
   stepPicked=-1;stepLocked=false;stepShownAt=Date.now();stepSeqPicked=[];
   stepOrder=shuffle([0,1,2,3]);
-  // ترتيبُ عرضٍ مخلوط لعناصر الترتيب — وإلا ظهرت الجمل مرتّبةً أصلاً فلا سؤال
-  stepSeq=it&&it.type==="order"?shuffle(it.s.map(function(_,i){return i})):[];
+  // ترتيبُ عرضٍ مخلوط لعناصر الترتيب — وإلا ظهرت الجمل مرتّبةً أصلاً فلا سؤال.
+  // و`shuffleDiff` تضمن هذه النيّة بدل أن تكتبها: `shuffle` العارية كانت تُعيد
+  // الترتيب الصحيح في ١ من ٦ للفقرات الثلاثية و١ من ٢٤ للرباعية (درس ٥ سبتمبر).
+  stepSeq=it&&it.type==="order"?shuffleDiff(it.s.map(function(_,i){return i}),function(i){return it.s[i]}):[];
   // ===== بوّابة التسرّع تصل STEP — درس ٢٥ أغسطس =====
   // كانت موصولةً بستّة أقسام و`step` ليس منها. وهيا اليوم: ٠ من ٦، ومنها عنصرُ حروفٍ
   // كبيرة بأربع جملٍ كاملة أُجيب في **١٫٣٧ ثانية** وآخرُ في ٢٫٠ — وهو بعينه شكلُ النقر

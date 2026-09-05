@@ -16,6 +16,20 @@ const mk=async(who)=>{
   await page.addInitScript(()=>{
     Object.defineProperty(window,'speechSynthesis',{configurable:true,value:{speak(){},cancel(){},getVoices:()=>[{lang:'en-US',name:'X'}],speaking:false,pending:false}});
     window.SpeechSynthesisUtterance=function(t){this.text=t};
+    // الترتيبُ الصحيح يُبنى من **البنك المعروض نفسه** لا من `wbTok`: بعد درجة الأدوار
+    // الملوَّنة (٣١ أغسطس) صار البنك كتلاً («My bag» / «is» / «red.») بينما `wbTok`
+    // كلماتٌ مفردة، فبحثُ كل كلمةٍ داخله يفشل حتماً على عناصر الكتل — وهو ما جعل هذا
+    // الاختبار **يتقلّب بالقرعة** حتى ٥ سبتمبر. والمطابقةُ بالبادئة تصلح للحالين معاً،
+    // ولا تخلط الدخيلةَ بالصواب لأن الدخيلة لا تطابق كلمةً في الجملة أصلاً.
+    window.__wbCorrect=function(){
+      let rest=String(wbTarget||"").trim();const used=[];
+      while(rest){
+        const i=wbPool.findIndex(function(x,k){return used.indexOf(k)<0&&(rest===x||rest.indexOf(x+" ")===0)});
+        if(i<0)return null;
+        used.push(i);rest=rest.slice(wbPool[i].length).trim();
+      }
+      return used;
+    };
   });
   await page.goto('http://127.0.0.1:8931/index.html'+(who?'?p='+who:''));
   await page.waitForFunction(()=>typeof startBuildSec==='function');
@@ -57,14 +71,11 @@ console.log('\n٣) جلسةٌ كاملة بنقراتٍ حقيقية، والت�
   await p.evaluate(()=>{startBuildSec()});
   await p.waitForFunction(()=>mode==='build');
   const first=await p.evaluate(()=>({target:buildCur().s,stage:wbStage}));
-  // نرتّب الكلمات صحيحةً بالضغط على أزرار البنك بترتيب الجملة
+  // نرتّب البنك صحيحاً بالضغط على أزراره بترتيب الجملة — كلماتٍ كان أو كتلاً
   const okFlag=await p.evaluate(()=>{
-    const want=wbTok.slice();
-    for(const w of want){
-      const i=wbPool.findIndex((x,k)=>x===w&&wbPicked.indexOf(k)<0);
-      if(i<0)return false;
-      wbPick(i);
-    }
+    const order=__wbCorrect();
+    if(!order)return false;
+    order.forEach(k=>wbPick(k));
     buildCheck();
     return wbOk;
   });
@@ -88,15 +99,49 @@ console.log('\n٤) الخطأ يعرض الصواب ولا يُحتسب');
   const p=await mk('mohammed');
   await p.evaluate(()=>{startBuildSec()});
   const r=await p.evaluate(()=>{
-    // ترتيبٌ معكوس
-    const idx=wbPool.map((_,k)=>k).reverse();
-    idx.forEach(k=>wbPick(k));
+    // **ترتيبٌ خاطئ يقيناً لا «معكوسٌ ونرجو»**: عكسُ البنك المخلوط قد يصادف الصواب —
+    // وهو ما وقع فعلاً في ٣ من ٣٠ جولة (`b_a1_school`, `b_a1_sister`, `b_a1_bag`)
+    // لأن الكتل ثلاثٌ أو أربع. فنبني الصواب ثم نُبدّل أوّل وحدتين مختلفتين.
+    const order=__wbCorrect();
+    if(!order)return{fatal:'تعذّر بناء الترتيب الصحيح من البنك'};
+    let a=-1;
+    for(let i=0;i+1<order.length;i++){if(wbPool[order[i]]!==wbPool[order[i+1]]){a=i;break}}
+    const ord=order.slice();
+    if(a>=0){const t=ord[a];ord[a]=ord[a+1];ord[a+1]=t}
+    const built=ord.map(k=>wbPool[k]).join(" ");
+    ord.forEach(k=>wbPick(k));
     buildCheck();
-    return{ok:wbOk,score:buildScore,shown:document.body.innerText.indexOf(buildCur().s)>=0};
+    return{ok:wbOk,score:buildScore,shown:document.body.innerText.indexOf(buildCur().s)>=0,
+      differs:built.trim()!==String(wbTarget||"").trim(),s:buildCur().s};
   });
-  ok(r.ok===false,'الترتيب المعكوس يُرفَض');
+  ok(!r.fatal,'الترتيب الصحيح يُبنى من البنك المعروض — '+(r.fatal||'تمّ'));
+  // وإلّا لكان الاختبار يزعم رفضاً لجوابٍ صحيح
+  ok(r.differs===true,'والترتيب المُرسَل مخالفٌ للصواب فعلاً — «'+String(r.s||'').slice(0,40)+'»');
+  ok(r.ok===false,'والترتيب الخاطئ يُرفَض');
   ok(r.score===0,'ولا يُحتسب');
   ok(r.shown===true,'ويُعرض الصواب نصّاً');
+  await p.close();
+}
+
+// ===== ٤ب) البنك لا يُعرض مرتَّباً صحيحاً — عيبُ منتجٍ كشفه تقلّبُ الاختبار =====
+// `shuffle` العارية تُعيد الترتيب الصحيح في ١ من ٦ لثلاث كتل و١ من ٢٤ لأربع، فيُهدى
+// الجواب. كان نادراً مع ٦-٨ كلمات، وصار كثيراً بعد درجة الأدوار (٣١ أغسطس).
+console.log('\n٤ب) البنك المخلوط لا يُعرض مرتَّباً صحيحاً — لا يُهدى الجواب');
+{
+  const p=await mk('mohammed');
+  const r=await p.evaluate(()=>{
+    let solved=0,chunkRounds=0,n=0;
+    for(let t=0;t<200;t++){
+      startBuildSec();
+      if(!wbOn||!wbPool.length)continue;
+      n++;if(wbChunkMode)chunkRounds++;
+      if(wbPool.join(" ").trim()===String(wbTarget||"").trim())solved++;
+    }
+    return{solved:solved,chunkRounds:chunkRounds,n:n};
+  });
+  ok(r.n>=150,'جولاتٌ حقيقية للقياس — '+r.n);
+  ok(r.chunkRounds>0,'ومنها جولاتُ كتلٍ فعلاً (وإلّا لم يُقَس ما بُني له) — '+r.chunkRounds);
+  ok(r.solved===0,'ولا جولةَ واحدة عُرض بنكها مرتَّباً صحيحاً — '+r.solved);
   await p.close();
 }
 

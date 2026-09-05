@@ -97,12 +97,15 @@ console.log('\n٧) ترتيب الجمل: تُعرض مخلوطةً، وتُبن
 await page.evaluate(()=>{startStep();stepItems=[STEP_BANK.find(x=>x.type==='order'&&x.lv==='A1')];stepIdx=0;stepScore=0;stepSetupRound();gateLeft=0;gateStop();render()});
 const shuf=await page.evaluate(()=>({seq:stepSeq.slice(),n:stepCur().s.length}));
 ok(shuf.seq.length===shuf.n,'كل الجمل معروضة');
-let shuffledOnce=0;
-for(let i=0;i<15;i++){
+// **كل** جولة لا «مرّةً على الأقلّ»: `shuffle` العارية كانت تُعيد الترتيب الصحيح في
+// ١ من ٦ للفقرة الثلاثية، فتُعرض الجمل مرتّبةً أصلاً — وهو بعينه ما ينفيه تعليقُ
+// `stepSetupRound`. صار `shuffleDiff` يضمنه، فتُثبَّت الضمانة لا الاحتمال (٥ سبتمبر).
+let shuffledRounds=0;const ROUNDS=40;
+for(let i=0;i<ROUNDS;i++){
   const s=await page.evaluate(()=>{stepSetupRound();gateLeft=0;gateStop();return stepSeq.slice()});
-  if(s.some((v,k)=>v!==k))shuffledOnce++;
+  if(s.some((v,k)=>v!==k))shuffledRounds++;
 }
-ok(shuffledOnce>0,'وترتيب العرض مخلوطٌ فعلاً — لا تظهر مرتّبةً أصلاً');
+ok(shuffledRounds===ROUNDS,'وترتيب العرض مخلوطٌ في كل جولة — لا تظهر مرتّبةً أصلاً ('+shuffledRounds+'/'+ROUNDS+')');
 await page.evaluate(()=>{stepSetupRound();gateLeft=0;gateStop();stepSeqSubmit()});
 ok(await page.evaluate(()=>stepLocked)===false,'الإرسال بترتيبٍ ناقص لا يُحرق العنصر');
 
