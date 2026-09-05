@@ -412,6 +412,35 @@ function seenRank(key,seen,today){
   if(r.last===today)return 1e9;          // عُرض اليوم: الأخير دائماً — لا يجدوله FSRS أصلاً
   return seenBlockedFor(r)>0?1e6-(today-r.last):(today-r.last)*-1+1e3;
 }
+// ===== حصّةٌ للجديد لا يبتلعها المستحقّ — تعميمُ درس ٢٩ أغسطس على البانيات العشر =====
+// كانت البانيات العشر كلُّها تكتب السطر نفسه: `due.concat(fresh).slice(0,N)`. فالمستحقّ
+// **يتقدّم دائماً**، فإن بلغ حجمَ الجلسة لم يصل عنصرٌ بكرٌ واحد **أبداً**.
+//
+// وهذا بعينه العطل الذي وُثِّق في ٢٩ أغسطس لـ`buildDailyPlan`/`buildFactPlan` وأُصلح
+// هناك — **ولم يُبحَث عن نظيره هنا**، وهو نقضٌ لقاعدة الإصلاح الشامل. وقياسه اليوم على
+// حالٍ تُحاكي حال إلياس (مستحقٌّ = الجلسة+٢، والباقي بكر): **صفرُ خانةٍ بكرٍ في عشرين
+// جلسة** في الكتابة والقواعد وSTEP وأزواج الاستماع والفيديو — وفي الأزواج تحديداً عشرون
+// عنصراً بكراً محبوسةً خلف عشرة مستحقّة.
+//
+// **وهو السبب الذي قاله صاحب المشروع بنفسه**: إلياس يخرج ويدخل ستّ مرّات علّ الأسئلة
+// تتغيّر، وهي لا تتغيّر لأن البكر لا يبلغ الجلسة أصلاً مهما أعاد.
+//
+// **والعلاج هو المعتمَد في المشروع نفسه لا رقمٌ جديد**: فصلُ حدّ الجديد عن حدّ المراجعة
+// (ممارسة Anki وتوثيق FSRS)، بالحصّة التي أُقرّت في ٢٩ أغسطس حرفياً — **الأدنى بين ما
+// يحتاجه الجديد فعلاً وربعِ الجلسة**. وفي غياب البكر تكون الحصّة **صفراً**، فلا تُقتطع
+// خانةٌ من المراجعة بلا جديدٍ يشغلها — والدالّة حينها تُعيد ما كان السطر القديم يُعيده
+// حرفاً بحرف (مُثبَتٌ باختبار في الحالتين: بلا بكر، وبلا مستحقّ).
+function planNewMix(due,fresh,N){
+  due=due||[];fresh=fresh||[];
+  if(!fresh.length)return due.slice(0,N);
+  const reserve=Math.min(fresh.length,Math.ceil(N/4));
+  const take=Math.max(0,N-reserve);
+  return due.slice(0,take)
+    .concat(fresh.slice(0,reserve))
+    .concat(due.slice(take))          // ما فاض من المستحقّ يُكمل الجلسة إن قصُر البكر
+    .concat(fresh.slice(reserve))
+    .slice(0,N);
+}
 function topUpPlan(out,POOL,N,domain){
   if(out.length>=N)return out;
   const have=new Set(out.map(function(i){return i.id}));
@@ -8150,7 +8179,7 @@ function buildListenPlan(){
   const st=listenSrsLoad(),today=srsToday(),POOL=bankStretched("listen",profileOf().level,listenBankFor);
   const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
   const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
-  let out=due.concat(fresh).slice(0,LISTEN_N);
+  let out=planNewMix(due,fresh,LISTEN_N);
   // بنكٌ ثابتٌ صغير (١٠/مستوى) يُستنفَد بجلسةٍ أو جلستين فتُقفَل «الاستماع» بلا سبب —
   // نفس ما تحلّه buildSpeakSession أصلاً: مراجعة حرّة من البنك كلّه بدل شاشة فارغة.
   // ونقصٌ لا خواءٌ تامّ (سؤالٌ واحد مستحقّ) يُكمَّل كذلك — topUpPlan لا حالة خاصّة.
@@ -8307,7 +8336,7 @@ function buildReadPlan(){
   const st=readSrsLoad(),today=srsToday(),POOL=bankStretched("read",profileOf().level,readBankFor);
   const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
   const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
-  let out=due.concat(fresh).slice(0,READ_N);
+  let out=planNewMix(due,fresh,READ_N);
   return planNoTwins(topUpPlan(out,POOL,READ_N,"read"),POOL,READ_N,"read");   // مراجعة حرّة إن استُنفد المستحقّ+الجديد، ثم لا توأمان في الجلسة
 }
 let readItems=[],readIdx=0,readPicked=-1,readLocked=false,readScore=0,readShownAt=0,readDone=false;
@@ -8573,7 +8602,7 @@ function buildWritePlan(){
   const st=writeSrsLoad(),today=srsToday(),POOL=bankStretched("write",profileOf().level,writeBankFor);
   const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
   const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
-  let out=due.concat(fresh).slice(0,WRITE_N);
+  let out=planNewMix(due,fresh,WRITE_N);
   return planNoTwins(topUpPlan(out,POOL,WRITE_N,"write"),POOL,WRITE_N,"write");   // مراجعة حرّة إن استُنفد المستحقّ+الجديد، ثم لا توأمان
 }
 function writeWordCount(t){const m=String(t||"").trim().match(/[A-Za-z']+/g);return m?m.length:0}
@@ -9486,7 +9515,7 @@ function buildGramPlan(){
   const st=gramSrsLoad(),today=srsToday(),POOL=bankStretched("gram",profileOf().level,gramBankFor);
   const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
   const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
-  let out=due.concat(fresh).slice(0,GRAM_N);
+  let out=planNewMix(due,fresh,GRAM_N);
   return planNoTwins(topUpPlan(out,POOL,GRAM_N,"gram"),POOL,GRAM_N,"gram");
 }
 let gramItems=[],gramIdx=0,gramOrder=[0,1,2,3],gramPicked=-1,gramLocked=false,gramScore=0,gramShownAt=0,gramDone=false;
@@ -9603,7 +9632,7 @@ function buildSecPlan(){
   const st=buildSrsLoad(),today=srsToday(),POOL=bankStretched("build",profileOf().level,buildBankFor);
   const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
   const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
-  let out=due.concat(fresh).slice(0,BUILD_N);
+  let out=planNewMix(due,fresh,BUILD_N);
   return planNoTwins(topUpPlan(out,POOL,BUILD_N,"build"),POOL,BUILD_N,"build");
 }
 let buildItems=[],buildIdx=0,buildScore=0,buildDone=false,buildShownAt=0;
@@ -10531,7 +10560,7 @@ function buildMath6Plan(){
   const st=math6SrsLoad(),today=srsToday(),POOL=math6Pool();
   const due=shuffle(POOL.filter(function(l){return st[l.id]&&st[l.id].due<=today}));
   const fresh=shuffle(POOL.filter(function(l){return !st[l.id]}));
-  let out=due.concat(fresh).slice(0,MATH6_N);
+  let out=planNewMix(due,fresh,MATH6_N);
   return topUpPlan(out,POOL,MATH6_N,"math6");   // نقصٌ لا خواء — درس ١٨ أغسطس
 }
 let math6Lessons_=[],math6Items=[],math6Idx=0,math6Picked=-1,math6Locked=false,
@@ -10969,7 +10998,7 @@ function buildStepPlan(){
   const st=stepSrsLoad(),today=srsToday(),POOL=bankStretched("step",profileOf().level,stepBankFor);
   const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
   const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
-  let out=due.concat(fresh).slice(0,STEP_N);
+  let out=planNewMix(due,fresh,STEP_N);
   out=topUpPlan(out,POOL,STEP_N,"step");   // البنك مستنفَد أو ناقصٌ: مراجعة حرّة لا جلسةٌ منقوصة
   // إسقاطُ التوائم **قبل** ضمان عنصر الترتيب لا بعده: عكسُه قد يُسقط العنصر المضمون
   // نفسه، وهو أثقل الأنواع وأقلّها عدداً فلولا الضمان لغاب بحكم الاحتمال وحده.
@@ -12397,7 +12426,7 @@ function buildStatPlan(){
   const st=statSrsLoad(),today=srsToday(),POOL=statBankFor(statChapter);
   const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
   const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
-  let out=due.concat(fresh).slice(0,STAT_N);
+  let out=planNewMix(due,fresh,STAT_N);
   out=topUpPlan(out,POOL,STAT_N,"stat");
   return shuffle(out);
 }
@@ -12762,7 +12791,7 @@ function buildMinpairPlan(){
   const st=minpairSrsLoad(),today=srsToday(),POOL=bankStretched("minpair",profileOf().level,minpairBankFor);
   const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
   const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
-  let out=due.concat(fresh).slice(0,MINPAIR_N);
+  let out=planNewMix(due,fresh,MINPAIR_N);
   return topUpPlan(out,POOL,MINPAIR_N,"minpair");
 }
 let minpairItems=[],minpairIdx=0,minpairTarget=0,minpairOrder=[0,1],minpairPicked=-1,minpairLocked=false,
@@ -12959,7 +12988,7 @@ function buildVideoPlan(){
   const st=videoSrsLoad(),today=srsToday(),POOL=bankStretched("video",profileOf().level,videoBankFor);
   const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
   const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
-  let out=due.concat(fresh).slice(0,VIDEO_N);
+  let out=planNewMix(due,fresh,VIDEO_N);
   return planNoTwins(topUpPlan(out,POOL,VIDEO_N,"video"),POOL,VIDEO_N,"video");   // مراجعة حرّة عند الاستنفاد، ثم لا توأمان
 }
 let videoItems=[],videoIdx=0,videoScene=0,videoQOn=false,videoPicked=-1,videoLocked=false,videoScore=0,videoPlays=0,videoShownAt=0,videoDone=false;

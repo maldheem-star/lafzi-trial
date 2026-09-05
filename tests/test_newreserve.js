@@ -111,6 +111,69 @@ console.log('\n٦) والنظير: طلاقة الحقائق كانت فيها �
   await p.close();
 }
 
+// ===== ٤) نفس العطل في البانيات العشر — كشفه إلياس، ٥ سبتمبر =====
+// قال صاحب المشروع: يخرج ويدخل ستّ مرّات علّ الأسئلة تتغيّر. ولا تتغيّر، لأن
+// `due.concat(fresh).slice(0,N)` يُقدّم المستحقّ دائماً — فإن بلغ حجمَ الجلسة لم
+// يصل عنصرٌ بكرٌ **أبداً**. وهو نفس عطل ٢٩ أغسطس أعلاه، لم يُبحَث عن نظيره حينها.
+console.log('\n٤) البانيات العشر: البكر يصل رغم تراكم المستحقّ');
+{
+  const p=await mk();
+  // ١) الدالّة نفسها — الحالتان اللتان يجب ألّا تتغيّرا إطلاقاً
+  const pure=await p.evaluate(()=>{
+    const D=[1,2,3,4,5,6,7,8].map(function(n){return{id:'d'+n}});
+    const F=[1,2,3,4,5].map(function(n){return{id:'f'+n}});
+    const ids=function(a){return a.map(function(x){return x.id}).join(',')};
+    return{
+      noFresh:ids(planNewMix(D,[],5)),      oldNoFresh:ids(D.concat([]).slice(0,5)),
+      noDue:ids(planNewMix([],F,5)),        oldNoDue:ids([].concat(F).slice(0,5)),
+      shortDue:ids(planNewMix(D.slice(0,2),F,5)), oldShortDue:ids(D.slice(0,2).concat(F).slice(0,5)),
+      mixed3:ids(planNewMix(D,F,3)),
+      mixed8:ids(planNewMix(D,F,8)),
+      empty:planNewMix([],[],5).length,
+    };
+  });
+  ok(pure.noFresh===pure.oldNoFresh,'بلا بكرٍ: الناتج كما كان حرفاً بحرف — '+pure.noFresh);
+  ok(pure.noDue===pure.oldNoDue,'وبلا مستحقٍّ كذلك — '+pure.noDue);
+  ok(pure.shortDue===pure.oldShortDue,'ومستحقٌّ أقصر من الجلسة: كما كان — '+pure.shortDue);
+  ok(/f1/.test(pure.mixed3),'وجلسةٌ من ٣ تحمل خانةً بكراً واحدة — '+pure.mixed3);
+  ok(pure.mixed3.split(',').length===3,'وحجمها لم ينكمش — '+pure.mixed3);
+  ok((pure.mixed8.match(/f\d/g)||[]).length===2,'وجلسةٌ من ٨ تحمل اثنتين (ربعُ الجلسة) — '+pure.mixed8);
+  ok(pure.mixed8.split(',').length===8,'وحجمها ثمانية — '+pure.mixed8);
+  ok(pure.empty===0,'وبلا شيءٍ إطلاقاً لا ينكسر');
+  // ٢) وعلى البانيات الحيّة بحالٍ تحاكي إلياس: مستحقٌّ = الجلسة+٢، والباقي بكر
+  const live=await p.evaluate(()=>{
+    const specs=[['الكتابة','buildWritePlan','WRITE_N','WRITE_SRS_KEY','writeBankFor'],
+                 ['القواعد','buildGramPlan','GRAM_N','GRAM_SRS_KEY','gramBankFor'],
+                 ['STEP','buildStepPlan','STEP_N','STEP_SRS_KEY','stepBankFor'],
+                 ['الأزواج','buildMinpairPlan','MINPAIR_N','MINPAIR_SRS_KEY','minpairBankFor'],
+                 ['الفيديو','buildVideoPlan','VIDEO_N','VIDEO_SRS_KEY','videoBankFor']];
+    const g=function(n){try{return eval(n)}catch(e){return null}};
+    return specs.map(function(s){
+      const build=g(s[1]),N=g(s[2]),KEY=g(s[3]),bankFor=g(s[4]);
+      const lv=profileOf().level||"A2",pool=bankFor(lv);
+      if(pool.length<N+3)return{name:s[0],skip:true};
+      const st={},today=srsToday(),seen=pool.slice(0,N+2),ids={};
+      seen.forEach(function(i){st[i.id]={box:2,seen:3,due:today-1,s:5,d:5,last:today-2};ids[i.id]=1});
+      lsSet(KEY,JSON.stringify(st));
+      let freshSlots=0,short=0;
+      for(let k=0;k<20;k++){
+        const plan=build()||[];
+        if(plan.length<N)short++;
+        plan.forEach(function(i){if(i&&!ids[i.id])freshSlots++});
+      }
+      lsSet(KEY,"{}");
+      return{name:s[0],N:N,fresh:pool.length-seen.length,freshSlots:freshSlots,short:short};
+    });
+  });
+  live.forEach(function(r){
+    if(r.skip)return;
+    ok(r.freshSlots>0,r.name+': البكر يصل رغم تراكم المستحقّ — '+r.freshSlots+' خانة في ٢٠ جلسة (كان صفراً)');
+    ok(r.short===0,r.name+': ولا جلسةَ نقصت عن حدّها — '+r.short);
+  });
+  ok(live.filter(x=>!x.skip).length>=4,'وقِيست أربع بانياتٍ فأكثر فعلاً — وإلّا فالفحص فارغ');
+  await p.close();
+}
+
 await b.close();
 console.log(fails?`\n=== ${fails} فشل ===`:'\n=== كل الاختبارات نجحت ===');
 process.exit(fails?1:0);
