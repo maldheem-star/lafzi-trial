@@ -412,6 +412,35 @@ function seenRank(key,seen,today){
   if(r.last===today)return 1e9;          // عُرض اليوم: الأخير دائماً — لا يجدوله FSRS أصلاً
   return seenBlockedFor(r)>0?1e6-(today-r.last):(today-r.last)*-1+1e3;
 }
+// ===== حصّةٌ للجديد لا يبتلعها المستحقّ — تعميمُ درس ٢٩ أغسطس على البانيات العشر =====
+// كانت البانيات العشر كلُّها تكتب السطر نفسه: `due.concat(fresh).slice(0,N)`. فالمستحقّ
+// **يتقدّم دائماً**، فإن بلغ حجمَ الجلسة لم يصل عنصرٌ بكرٌ واحد **أبداً**.
+//
+// وهذا بعينه العطل الذي وُثِّق في ٢٩ أغسطس لـ`buildDailyPlan`/`buildFactPlan` وأُصلح
+// هناك — **ولم يُبحَث عن نظيره هنا**، وهو نقضٌ لقاعدة الإصلاح الشامل. وقياسه اليوم على
+// حالٍ تُحاكي حال إلياس (مستحقٌّ = الجلسة+٢، والباقي بكر): **صفرُ خانةٍ بكرٍ في عشرين
+// جلسة** في الكتابة والقواعد وSTEP وأزواج الاستماع والفيديو — وفي الأزواج تحديداً عشرون
+// عنصراً بكراً محبوسةً خلف عشرة مستحقّة.
+//
+// **وهو السبب الذي قاله صاحب المشروع بنفسه**: إلياس يخرج ويدخل ستّ مرّات علّ الأسئلة
+// تتغيّر، وهي لا تتغيّر لأن البكر لا يبلغ الجلسة أصلاً مهما أعاد.
+//
+// **والعلاج هو المعتمَد في المشروع نفسه لا رقمٌ جديد**: فصلُ حدّ الجديد عن حدّ المراجعة
+// (ممارسة Anki وتوثيق FSRS)، بالحصّة التي أُقرّت في ٢٩ أغسطس حرفياً — **الأدنى بين ما
+// يحتاجه الجديد فعلاً وربعِ الجلسة**. وفي غياب البكر تكون الحصّة **صفراً**، فلا تُقتطع
+// خانةٌ من المراجعة بلا جديدٍ يشغلها — والدالّة حينها تُعيد ما كان السطر القديم يُعيده
+// حرفاً بحرف (مُثبَتٌ باختبار في الحالتين: بلا بكر، وبلا مستحقّ).
+function planNewMix(due,fresh,N){
+  due=due||[];fresh=fresh||[];
+  if(!fresh.length)return due.slice(0,N);
+  const reserve=Math.min(fresh.length,Math.ceil(N/4));
+  const take=Math.max(0,N-reserve);
+  return due.slice(0,take)
+    .concat(fresh.slice(0,reserve))
+    .concat(due.slice(take))          // ما فاض من المستحقّ يُكمل الجلسة إن قصُر البكر
+    .concat(fresh.slice(reserve))
+    .slice(0,N);
+}
 function topUpPlan(out,POOL,N,domain){
   if(out.length>=N)return out;
   const have=new Set(out.map(function(i){return i.id}));
@@ -1051,6 +1080,22 @@ function cachePut(type,arr){try{const c=JSON.parse(lsGet("gemini_cache")||"{}");
 function quizGenFail(type,why,detail){
   try{if(typeof genFailLog==="function")genFailLog("quiz:"+type,null,why,detail)}catch(e){}
 }
+// ===== ولا تُطرَق نافذةٌ ممتلئة ثلاث مرّات — درس ٥ سبتمبر =====
+// جلسة هيا: ثلاثة نداءات متتابعة خلال خمس ثوانٍ (تشبيه ⇐ منطق ⇐ مفردات)، كلُّها
+// ٤٢٩ من Groq. والأوّل وحده كان كافياً للحكم: سقفُ الرموز محسوبٌ **لكل دقيقة**،
+// فالثاني والثالث يقعان في نفس النافذة الممتلئة ويفشلان يقيناً — ثلاثة سطور فشلٍ
+// بدل واحد، وثلاثة طلباتٍ من حصّةٍ يومية محدودة أصلاً.
+// **ونفس قاطع الدائرة المعتمَد اليوم لصوت الخادم** (Nygard 2007) لا آليةٌ ثانية:
+// يُفتح عند ٤٢٩، ويُغلق بعد تهدئة — ومدّتها من رأس `Retry-After` حين يُرسله المزوّد
+// (معيار HTTP، RFC 9110 §10.2.3) لا من رقمٍ نختاره، وإلّا فدقيقةٌ كنافذة TPM نفسها.
+const QUIZ_COOL_DEFAULT=60000;
+let quizOpenedAt=0, quizCoolMs=QUIZ_COOL_DEFAULT;
+function quizRateOk(){return !quizOpenedAt||(Date.now()-quizOpenedAt)>=quizCoolMs}
+function quizRateTrip(retryAfter){
+  const s=parseInt(retryAfter,10);
+  quizCoolMs=(s>0&&s<600)?s*1000:QUIZ_COOL_DEFAULT;
+  quizOpenedAt=Date.now();
+}
 // يجلب أسئلة من المحرّك، مع تخزين الفائض وإعادة الاستخدام، واحترام الحد اليومي
 async function fetchGemini(type,need){
   const out=[];
@@ -1066,6 +1111,11 @@ async function fetchGemini(type,need){
     quizGenFail(type,"daily_cap","الحدّ اليومي "+DAILY_CAP+" · المتاح من الكاش: "+out.length);
     return out.map(tagAI(type)); // نكتفي بالمتاح
   }
+  // 2ب) ونافذةٌ ثبت امتلاؤها لا تُطرَق ثانيةً حتى تنقضي — يُسجَّل مرّةً كسببٍ مسمّى
+  if(!quizRateOk()){
+    quizGenFail(type,"rate_window","النافذة ممتلئة · تهدئة "+Math.round(quizCoolMs/1000)+"ث · المتاح من الكاش: "+out.length);
+    return out.map(tagAI(type));
+  }
   // 3) اطلب دفعة (3) لتقليل عدد النداءات
   try{
     const res=await fetch(FN_URL,{method:"POST",headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({type,count:3})});
@@ -1074,17 +1124,34 @@ async function fetchGemini(type,need){
       const qs=(data.questions||[]).map(normAI(type));
       // ردٌّ سليمٌ بلا أسئلة ليس نجاحاً: يقع حين يُسقط فلتر العربية كلَّ ما وُلِّد.
       if(!qs.length)quizGenFail(type,"no_questions",("محرّك:"+(data.engine||"?")+" · نموذج:"+(data.model||"?")).slice(0,200));
+      // الاستهلاك الفعلي يُسجَّل مرّةً — به يُضبط سقفُ الرموز بالقياس لا بالتقدير
+      quizUsageLog(data&&data.usage,type);
       const take=qs.slice(0,need-out.length);out.push(...take);cachePut(type,qs.slice(take.length));
     }else{
       // **التفصيل موجودٌ في الردّ ويُرمى** — نفس خطأ `coachSetFail` (١٧ أغسطس):
       // الدالّة تُعيد `errors` مفصَّلةً بالمحرّك والحالة ونصّ رفض المزوّد واسم النموذج،
       // وكان يُهمَل كلُّه. فيُقرأ الجسمُ ويُسجَّل، وبلا هذا يستحيل معرفة أيّ محرّكٍ سقط ولماذا.
-      let detail="";
-      try{const j=await res.json();detail=JSON.stringify(j&&j.errors?j.errors:j)}catch(e){detail=""}
+      let detail="",body=null;
+      try{body=await res.json();detail=JSON.stringify(body&&body.errors?body.errors:body)}catch(e){detail=""}
+      // ٤٢٩ من المزوّد يصل إلينا داخل ٥٠٢ من الدالّة — فيُقرأ من التفصيل لا من حالتنا
+      const g=body&&body.errors&&body.errors.groq;
+      if(g&&(g.status===429||/rate_limited|too_large|\b429\b/.test(String(g.detail||""))))
+        quizRateTrip(g.retryAfter||"");
       quizGenFail(type,"http_"+res.status,detail.slice(0,300));
     }
   }catch(e){quizGenFail(type,"network",(e&&e.message)||String(e))}
   return out.map(tagAI(type));
+}
+// سقفُ الرموز في الخادم مُقدَّرٌ من بنية العنصر (٢٦٠ لكل سؤال) لا مقاس. فالاستهلاك
+// الفعلي يُسجَّل مرّةً في الجلسة ليُضبط الثابت برقمٍ حقيقي — ومعه `finish_reason`
+// لأن «length» يعني أن السقف قُطع على الجواب فيُرفَع لا يُخفَّض (درس ١٧ أغسطس).
+let quizUsageLogged=false;
+function quizUsageLog(u,type){
+  if(quizUsageLogged||!u||u.used==null)return;
+  quizUsageLogged=true;
+  try{logAnswer("gen","gen_usage",null,"quiz:"+type+" · "+u.used+"/"+u.asked,null,null,
+    {q_text:("[استهلاك التوليد] المستعمَل:"+u.used+" · المطلوب سقفاً:"+u.asked
+      +" · finish:"+(u.finish||"?")).slice(0,300)})}catch(e){}
 }
 function cachePutReplace(type,arr){try{const c=JSON.parse(lsGet("gemini_cache")||"{}");c[type]=arr;lsSet("gemini_cache",JSON.stringify(c))}catch(e){}}
 function normAI(type){return q=>({d:aiDomain(type),q:q.q,c:q.choices,a:q.answer,w:q.why||"",qtype:type})}
@@ -2619,6 +2686,50 @@ function cubeScaleName(q,val){
   // ٢³ = ٨ والمختار ٢² = ٤ من الحجم الأصلي، أي نصف الصواب بالضبط
   return (val*2===correct)?"ضربتِ في ٤ (نسبة المساحات) والصواب ٨ (نسبة الأحجام)":null;
 }
+// ===== آليّتان كشفتهما جلسة هيا ٥ سبتمبر — تُسمّيان ولا تُبنى لهما بوّابة =====
+// عشرُ إجاباتٍ خاطئة متتالية (كمّي ٠/٤ ورياضيات ٦ ٠/٦) بأزمنةٍ منخرطة (٤٫٨-٣٢٫٩ث)،
+// وواحدةٌ فقط منها حملت اسم آلية (`metric_wrong_power`) — والتسع «فرقٌ» بلا اسم.
+// وفيها **عائلتان** لا زلّات: كلٌّ وقعت مرّتين بشكلٍ واحد بعينه.
+//
+// **والاسمان منشوران لا مخترَعان**:
+//   · الاستدلال الجمعي مكان الضربي — Hart 1981، وحقل Vergnaud الضربي المفاهيمي.
+//   · «الترجمة المباشرة»: انتقاءُ أعدادٍ من النصّ بلا بناء نموذجٍ للموقف —
+//     Hegarty, Mayer & Monk 1995، *Journal of Educational Psychology* 87:18.
+//
+// **وقياسٌ لا علاج** — بنفس قرار `quizErrDelta` (١٦ أغسطس): الاسم يدخل السطر ويُجمَّع
+// بالاستعلام، ولا يُشعل بوّابةً حتى يُثبت توزيعٌ حقيقي أنها عائلةٌ مستقرّة لا صدفة
+// مرّتين. فإن تكرّرت وُصلت ببوّابة كما وُصلت بوّابتا الطرح، وإلّا سقطت بلا كلفة.
+const MULT_ADD_BUG="mult_as_add";
+// «٣ أمثال ٢٥» ⇐ ٢٨ (٢٥+٣) · «اضربي في ٤ ثم أضيفي ٨، المُدخل ٥» ⇐ ١٧ (٥+٤+٨).
+// والشكل المشترك: **مجموع أعداد نصّ السؤال كلّها** حيث المطلوب ضربٌ — لا مجموع زوجٍ
+// منها، فمجموع الزوج يُصادف كثيراً ويُطلق بلاغاتٍ كاذبة (درس المقياس المصنوع باليد).
+function stemNums(t){
+  const m=String(t||"").replace(/[٠-٩]/g,function(d){return String("٠١٢٣٤٥٦٧٨٩".indexOf(d))}).match(/\d+/g);
+  return m?m.map(Number).filter(function(n){return isFinite(n)}):[];
+}
+function multAsAddName(q,val){
+  if(!q||val==null||!isFinite(val))return null;
+  const t=String(q.q||"");
+  if(!/أمثال|مثل[يَا]?\b|اضرب|ضاعف|×/.test(t))return null;     // نصٌّ ضربيٌّ صراحةً
+  const ns=stemNums(t);
+  if(ns.length<2)return null;
+  const sum=ns.reduce(function(a,b){return a+b},0);
+  const correct=parseArNum(q.c&&q.c[q.a]!=null?String(q.c[q.a]):null);
+  if(correct==null||!isFinite(correct)||correct===sum)return null;  // الصواب نفسه المجموع ⇒ لا دلالة
+  return (val===sum)?("جمعتِ أعداد السؤال ("+ns.map(toAr).join("+")+") والمطلوب ضرب"):null;
+}
+const STEM_NUM_BUG="stem_number";
+// «٥ أوراق … كم ورقة من فئة ٥٠؟» ⇐ ٥ · «٣ عمّال في ١٠ أيام … في ٥ أيام؟» ⇐ ٥.
+// عددٌ معروضٌ في النصّ يُختار كما هو. وشرطُه أن يكون **في النصّ وليس الصواب**، وألّا
+// يكون ناتجَ الجمع (وإلّا نُسب الخطأ لآليّتين معاً على نفس الإجابة).
+function stemNumberName(q,val){
+  if(!q||val==null||!isFinite(val))return null;
+  const ns=stemNums(q.q);
+  if(ns.indexOf(val)<0)return null;
+  const correct=parseArNum(q.c&&q.c[q.a]!=null?String(q.c[q.a]):null);
+  if(correct==null||correct===val)return null;
+  return "اخترتِ عدداً معروضاً في نصّ السؤال ("+toAr(val)+")";
+}
 // البوّابة تُسلَّح بتكرار الاسم لا بأوّل زلّة (SHAPE_ARM=2)، كبقيّة بوّابات المشروع،
 // وتنحلّ بالصواب — فلا تُعاقَب من لا تحتاجها. ونمطها نمط بوّابة النطاق في النسبة
 // (pctArm/pctPickBand) بالضبط: خطوةٌ واحدة تُقرّ قبل أن تُعرض الخيارات، لا أداةٌ جديدة.
@@ -3907,9 +4018,40 @@ try{["pointerdown","touchstart","click","keydown"].forEach(function(t){
 // المجانية تشمل التركيب، والاستهلاك يُقاس بالمحارف في السجلّ لا يُفترض.
 //
 // **ومشروطٌ**: لا يُطلب إلّا بعد أن يفشل نطق الجهاز فعلاً — فلا يُنفَق طلبٌ على
-// متعلّمٍ صوتُه يعمل. ونتيجةُ أوّل نداء تُحفظ للجلسة، فلا يُعاد اكتشافُ ما عُرف.
-let ttsServerOk=null;            // null=لم يُجرَّب · true=يعمل · false=فشل
+// متعلّمٍ صوتُه يعمل.
+//
+// ===== وفشلٌ واحد لا يُعدِم الجلسة — درس ٥ سبتمبر =====
+// كان `ttsServerOk=false` يُغلق المسار **للجلسة كلّها**. وقياسُ جلسة محمد (٥ سبتمبر)
+// أظهر الثمن بالرقم: فشلٌ شبكيّ واحد الساعة ١٠:٥٤:٣٠ أبقاه بلا صوت **٣١ دقيقة** —
+// ومنها لعبة الاستماع الساعة ١١:١١، فنالت ٢ من ٨ وهي تُقاس بلا صوتٍ أصلاً، أي أن
+// درجتها لا تعني شيئاً. والفشل كان `network`: عارضٌ بطبيعته، لا عطلٌ دائم.
+//
+// **والنمط منشورٌ مسمّى لا مخترَع**: قاطع الدائرة (Circuit Breaker، Nygard 2007،
+// *Release It!*) بحالاته الثلاث — مغلقٌ يمرّر، ومفتوحٌ يمنع بعد تتابع فشلٍ، ونصفُ
+// مفتوحٍ يسمح بمحاولةٍ واحدة بعد مهلة تهدئة فيُغلق بنجاحها أو يعود مفتوحاً بفشلها.
+// فلا هو إعدامٌ للجلسة بفشلٍ عارض، ولا هو طَرقٌ بلا حدٍّ على خادمٍ لا يستجيب.
+// والعتبتان من الحالة المقاسة: ثلاثُ فشلاتٍ متتالية (فواحدةٌ عارضة لا تُغلق شيئاً)،
+// وتهدئةُ دقيقة (فجلسةُ محمد كانت ستستردّ صوتها قبل لعبة الاستماع بستّ عشرة دقيقة).
+let ttsServerOk=null;            // null=لم يُجرَّب · true=يعمل · false=فشل آخرَ نداء
 let ttsServerChars=0, ttsServerCalls=0, ttsServerLogged=false;
+const TTS_CB_FAILS=3, TTS_CB_COOL=60000;
+let ttsServerFails=0, ttsServerOpenedAt=0;
+// هل يُسمح بنداءٍ الآن؟ مغلقٌ ⇒ نعم · مفتوحٌ ⇒ لا إلّا بعد التهدئة (محاولةُ تحسّس)
+function ttsServerAllow(){
+  if(ttsServerFails<TTS_CB_FAILS)return true;
+  return (Date.now()-ttsServerOpenedAt)>=TTS_CB_COOL;
+}
+function ttsServerFail(){
+  ttsServerOk=false;ttsServerFails++;
+  if(ttsServerFails>=TTS_CB_FAILS)ttsServerOpenedAt=Date.now();
+}
+function ttsServerWin(){
+  // النجاح **بعد** فشلٍ حدثٌ يستحقّ سطراً: بلاه يبقى السجلّ فشلاً بلا نهاية، فلا
+  // يُعرف أعاد المسارُ عملَه أم بقي ميّتاً — وهذا فرقٌ يبني عليه التشخيص القادم.
+  const wasBroken=ttsServerFails>0;
+  ttsServerOk=true;ttsServerFails=0;ttsServerOpenedAt=0;
+  return wasBroken;
+}
 const TTS_CACHE={};              // نصٌّ ⇐ رابط blob: الجملة الواحدة تُطلب مرّةً واحدة
 function ttsServerSpeak(text,onDone){
   const t=String(text||"").trim();
@@ -3952,29 +4094,34 @@ function ttsServerSpeak(text,onDone){
     // خطأٌ يعود JSON، ونجاحٌ يعود صوتاً — فالتفريق بالنوع لا بالحالة
     if(!res.ok||ct.indexOf("audio")<0){
       return res.json().catch(function(){return{error:"http_"+res.status}}).then(function(j){
-        ttsServerOk=false;
+        ttsServerFail();
         ttsServerLog(j&&j.error||("http_"+res.status),j&&j.detail);
         fire({ok:false,reason:'server',detail:(j&&j.error)||("http_"+res.status)});
       });
     }
     ttsServerChars+=t.length;ttsServerCalls++;
     return res.blob().then(function(b){
-      ttsServerOk=true;
+      const back=ttsServerWin();
       try{TTS_CACHE[t]=URL.createObjectURL(b)}catch(e){}
-      ttsServerLog("ok");
+      ttsServerLog(back?"ok_recovered":"ok");
       play(TTS_CACHE[t]||URL.createObjectURL(b));
     });
   })
   .catch(function(e){
     if(timer)clearTimeout(timer);
-    ttsServerOk=false;
+    ttsServerFail();
     ttsServerLog("network",String(e).slice(0,80));
     fire({ok:false,reason:'server_unreachable'});
   });
 }
-// يُسجَّل مرّةً واحدة لكل جلسة — الغرض معرفةُ أن المسار عمل وكم كلّف، لا إغراقُ السجلّ
+// الغرض معرفةُ أن المسار عمل وكم كلّف وأين تعثّر، لا إغراقُ السجلّ. والنجاح سطرٌ
+// واحد، **وكلُّ سببٍ فشلٍ سطران** — فقاطع الدائرة يُعيد المحاولة بعد التهدئة، ولولا
+// سقفٌ لكتب سطراً كل دقيقة. وسطران يكفيان لتمييز العارض من المستمرّ.
+const TTS_LOG_CAP=2, ttsLogSeen={};
 function ttsServerLog(why,detail){
   if(ttsServerLogged&&why==="ok")return;
+  const n=(ttsLogSeen[why]||0)+1;ttsLogSeen[why]=n;
+  if(n>TTS_LOG_CAP)return;
   ttsServerLogged=true;
   try{logAnswer("gen","tts_server",null,why,null,null,
     {q_text:("[صوت الخادم] "+why+" · نداءات:"+ttsServerCalls+" · محارف:"+ttsServerChars
@@ -4012,7 +4159,7 @@ function speakEnglish(text,onDone){
         // **الحالة المقاسة على جهاز هيا**: المحرّك يردّ `synthesis-failed` على كل
         // صوتٍ إنجليزي. فبعد استنفاد مسار الجهاز (الصوت المختار ثم البديل) يُطلب
         // الصوت من الخادم — وهو المسار الوحيد الباقي، ولا يُطلب قبل ذلك.
-        if(ttsServerOk!==false)return ttsServerSpeak(text,function(r){
+        if(ttsServerAllow())return ttsServerSpeak(text,function(r){
           if(r&&r.ok)return fire(r);
           fire(i);
         });
@@ -4055,8 +4202,9 @@ function speakEnglish(text,onDone){
         hasEnVoice:!!pv,voiceName:pv&&pv.name,localOnly:!!(pv&&pv.localService!==false),
         gesture:!!ttsGesture};
       ttsMark(false,info);
-      // جهازٌ صامت ⇒ يُجرَّب صوت الخادم مرّةً. ولا يُعاد إن ثبت فشله في هذه الجلسة.
-      if(ttsServerOk!==false)return ttsServerSpeak(text,function(r){
+      // جهازٌ صامت ⇒ يُجرَّب صوت الخادم. ويمنعه القاطعُ وحده بعد تتابع فشلٍ، حتى تنقضي
+      // التهدئة فيُسمح بمحاولة تحسّسٍ واحدة — لا إعدامٌ للجلسة بفشلٍ عارض.
+      if(ttsServerAllow())return ttsServerSpeak(text,function(r){
         if(r&&r.ok)return fire(r);
         fire(info);
       });
@@ -4214,16 +4362,17 @@ const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEn
   "logQueueLoad","logQueuePush","logQueueFlush","logSend",
   "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","piPickBand","piBandBoxHTML","piArm","piOk","piVals","piGateOn","piGated","piSig1","fsrsUpdate","fsrsIvl","fsrsR","fsrsInitS","fsrsInitD","fsrsNextD","fsrsClampD","fsrsRecallS","fsrsForgetS","tmplKey","spreadTemplates","drawSpread","qzErrRecord","qzDueKeys","qzInjectDue","qzErrOf","qzCardDone","fadeQText","fadeAnsText","fadeGateStart","fadeGateStop","fadeGateNeeded","copyAzRaw","esc","weakPhonemeStr","num0","profileBarHTML","renderHomeCoachOnly","learnerInfo","coachLevel","toMasc","genderizeText","genderizeNode","genderizeInit","lsGet","lsSet","lsDel","pkey","cxShuffleOrder","cxPreStart","cxPreChoose","cxPreNext","cxPreQuit","cxPreCur","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary","coachMode","coachAskHelp","coachEnd","coachReview","coachFixParse","weakClean","coachSaysNow","snapToSuggestion","editDist","coachShowSays","coachParse","coachTopicGo","coachTopicBack","coachTopicClean","coachFreeScene","wbStart","wbPick","wbUnpick","wbCheck","wbHTML","wbReady","wbSay","wbReset","wbNorm","wbDistract","wbStageGet","wbGrade","engBuildFor","dictErrRecord","dictIsBuild","dictCur","renderDictationBuild","planCheckBuild","echoRecord","echoArmed","coachBankOn","coachBankSync","coachBankCheck","fixCardSave","fixCardGrade","bugOf","basicsOpNow","basicsOperands","basicsBugNow","digitsOf","factDcpm","factDcpmBand","coachLeave","coachAutoReview","coachSetFail","coachHintNow","basicsErrDelta","shapeRecord","shapeArmed","ob1Arm","ob1Jump","ob1Back","ob1Complete","ob1BoxHTML","btArm","btBorrow","btComplete","btBoxHTML","basicsOb1Gated","basicsBtGated","basicsShapeLogRemedy","shapeLogRemedy","quotArm","quotGated","quotReset","listenBankFor","listenSrsUpdate","buildListenPlan","listenPlaysHint","startListen","listenPlay","listenChoose","listenNext","renderListen",
   "readBankFor","readSrsUpdate","buildReadPlan","startRead","readChoose","readNext","renderRead",
-  "genBankLoad","genBankAdd","parseGenBlock","fetchTutorGen","genTopUp","genCallsFor","genLogText","parseGenPickBlock","parseGenVideoBlock","errCollect","errDraw","errCount","errQuizCount","startErrors","errCheck","errChoose","errNext","errReplay","renderErrors",
+  "genBankLoad","genBankAdd","parseGenBlock","fetchTutorGen","genTopUp","genCallsFor","genFire","genSweepFlight","genGateLog","genLogText","parseGenPickBlock","parseGenVideoBlock","errCollect","errDraw","errCount","errQuizCount","startErrors","errCheck","errChoose","errNext","errReplay","renderErrors",
   "minpairBankFor","minpairSrsUpdate","buildMinpairPlan","startMinpair","minpairPlay","minpairChoose","minpairNext","renderMinpair",
   "gramBankFor","gramSrsUpdate","buildGramPlan","startGram","gramChoose","gramNext","renderGram","fetchTutorGenGram","gramGenTopUp",
   "stepBankFor","stepSrsUpdate","buildStepPlan","startStep","stepChoose","stepSeqPick","stepSeqUnpick","stepSeqSubmit","stepNext","renderStep","fetchTutorGenStep","stepGenTopUp","fetchTutorGenVideo","videoGenTopUp",
   "videoBankFor","videoSrsUpdate","buildVideoPlan","startVideo","videoPlay","videoNextScene","videoChoose","videoNext","renderVideo",
-  "statBidi","statBidiLine","statBankFor","statSrsUpdate","buildStatPlan","goStatMenu","startStat","statChoose","statNext","renderStat","renderStatMenu","renderStatResult",
+  "statBidi","statBidiLine","statBankFor","statSrsUpdate","buildStatPlan","goStatMenu","startStat","startStatWs","statChoose","statNext","renderStat","renderStatMenu","renderStatResult",
   "writeTokens","writeTtr","writeSim","writePrevLoad","writePrevAdd","writeSelfSim",
   "accLoad","accSave","accRecord","accRate","stretchOn","bankStretched",
   "seqStart","seqReset","seqPlanFor","seqWeek","seqCur","startSeq","seqCardHTML","renderSeq",
-  "loadKpi","kpiAgg","renderKpi","gjtNorm","gjtNoOxford","gjtWordBag","gjtIsRotation","gjtDefect","wbNeed","wbLeft",
+  "loadKpi","kpiAgg","renderKpi","gjtNorm","gjtNoOxford","gjtWordBag","gjtIsRotation","gjtDefect","gjtCondSplit","gjtSameVerb","gjtZeroFirst",
+  "ttsServerAllow","ttsServerFail","ttsServerWin","wbNeed","wbLeft",
   "azExpandWords",
   "bktLoad","bktSave","bktStep","bktKey","skOf","bktRecord","bktOf","bktMastered","bktToMastery",
   "writeLfp","mockBand","mockLogLoad","mockLogAdd","mockSeenRecently","mockPickFrom",
@@ -7730,10 +7879,53 @@ function genCallsFor(poolLen,N){
 // تُطلق بسقفٍ للطائر منها، وما يفيض يُهمَل بهدوء — النبضة التالية تُكمله.
 let genInFlight=0;
 const GEN_MAX_INFLIGHT=4;
+// ===== وعدّادُ الطائر كان يُسرَّب فيُغلق التوليد صامتاً — درس ٥ سبتمبر =====
+// سجلّ الخادم لجلسة إلياس (٥ سبتمبر، ١١:٢٥-١١:٣٥ ت.ع) يُظهر **صفرَ طلباتٍ إلى
+// `/functions/v1/tutor`** رغم ستّ جلسات كتابةٍ بدأها — والستّة كلّها تُسجَّل، فالطلبات
+// الست إلى `/rest/v1` وحدها. أي أن نداء التوليد **لم يغادر الجهاز أصلاً**، ولا سطرَ
+// واحد يقول لماذا: `genFire` كانت تُعيد `false` بصمتٍ تامّ.
+//
+// **والسبب المُثبَت هو الصمت، لا الآلية**: طلبٌ لا يُسوَّى — ومتصفّح سناب شات المدمج
+// (وهو متصفّحه، مؤكَّدٌ من بصمة الطلبات) يُجمّد المؤقّتات في الخلفية فلا يُطلق حتى
+// إجهاضَ `fetchTimeout` — يبقى محسوباً في العدّاد **إلى الأبد**، فيُقفل التوليد لكل
+// الأقسام بقيّة عمر الصفحة. وهذا نفس صنف عطل `ttsServerOk=false` المُصلَح اليوم:
+// حالةٌ تُغلق مساراً ولا تنعكس أبداً. **ولا أدّعي أنه سبب اليوم بعينه** — أدّعي أنه
+// المسار الصامت الوحيد الذي يُنتج هذه البصمة، وأنه عطلٌ بذاته على أيّ حال.
+//
+// فالعلاج طبقتان: **كنسٌ بعمرٍ مقاس** (ضِعف مهلة `fetchTimeout` وزيادة — فما تجاوزه
+// مُسرَّبٌ يقيناً لا بطيء)، **وسطرٌ حين يُمنع نداء** فلا يعود المنعُ غير قابلٍ للقياس.
+const GEN_INFLIGHT_TTL=45000;
+let genFlightAt=[];
+let genGateLogged=0;
+const GEN_GATE_LOG_CAP=2;
+function genGateLog(why,detail){
+  if(genGateLogged>=GEN_GATE_LOG_CAP)return;
+  genGateLogged++;
+  try{logAnswer("gen","gate",null,why,null,null,
+    {q_text:("[بوّابة التوليد:"+why+"] "+String(detail||"")).slice(0,300)})}catch(e){}
+}
+function genSweepFlight(){
+  const now=Date.now(),before=genFlightAt.length;
+  genFlightAt=genFlightAt.filter(function(t){return now-t<GEN_INFLIGHT_TTL});
+  const leaked=before-genFlightAt.length;
+  genInFlight=genFlightAt.length;
+  if(leaked>0)genGateLog("leak",leaked+" نداءً لم يُسوَّ خلال "+(GEN_INFLIGHT_TTL/1000)+"ث فأُعيد مكانه");
+}
 function genFire(mk){
-  if(genInFlight>=GEN_MAX_INFLIGHT)return false;
-  genInFlight++;
-  const done=function(){genInFlight=Math.max(0,genInFlight-1)};
+  genSweepFlight();
+  if(genFlightAt.length>=GEN_MAX_INFLIGHT){
+    genGateLog("busy",genFlightAt.length+" نداءات طائرة — السقف "+GEN_MAX_INFLIGHT);
+    return false;
+  }
+  const tok={};tok.t=Date.now();genFlightAt.push(tok.t);
+  genInFlight=genFlightAt.length;
+  let settled=false;
+  const done=function(){
+    if(settled)return;settled=true;
+    const i=genFlightAt.indexOf(tok.t);
+    if(i>=0)genFlightAt.splice(i,1);
+    genInFlight=genFlightAt.length;
+  };
   try{mk().then(done,done)}catch(e){done()}
   return true;
 }
@@ -7809,6 +8001,45 @@ function gjtIsRotation(a,b){
   }
   return false;
 }
+// ===== ٣) الشرط الصفريّ مقابل الأوّل — كلاهما إنجليزيةٌ سليمة (٥ سبتمبر) =====
+// عنصرٌ مولَّد حيّ (`ai_gram_mtg207jh_hvb6s`) عُرض على محمد وفيه صحيحتان:
+//   ١) If Haya mixes the vinegar with the baking soda, it bubbles up quickly.   ← صفريّ
+//   ٢) If Haya mixes the vinegar with the baking soda, it will bubble up quickly. ← أوّل ✓
+// فاختار الأولى فحُسبت خطأً، ودرجته الحقيقية ٥/٥ لا ٤/٥. والنوعان مقرَّران في وصف
+// كامبريدج للشرط (الصفريّ لحقيقةٍ عامّة، والأوّل لنتيجةٍ مستقبلية) وكلاهما في English
+// Profile — فالفرق **معنًى بلا سياق** لا نحو، وهذا بعينه ما يمنعه هذا الفحص أصلاً.
+//
+// **والحدّ يُقال**: الفحص على الشكل الأغلب في المولَّد — شرطٌ مُصدَّرٌ تفصله فاصلة.
+// وقيدُه صارمٌ عمداً كي لا يُسقط مموّهاً حقيقياً: تُشترَط **مطابقةٌ تامّة لجملة الشرط**،
+// فالخطأ داخلها (`If ... will mix`, `If ... mixed`) يبقى مموّهاً مشروعاً كما هو.
+const COND_LEAD=/^(if|when)$/;
+function gjtCondSplit(t){
+  const i=String(t||"").indexOf(",");
+  if(i<0)return null;
+  const head=gjtNorm(t.slice(0,i)).split(" ").filter(Boolean);
+  const tail=gjtNorm(t.slice(i+1)).split(" ").filter(Boolean);
+  if(!head.length||!tail.length||!COND_LEAD.test(head[0]))return null;
+  return {head:head.join(" "),tail:tail};
+}
+// هل الفعلان صيغتا فعلٍ واحد يفترقان بلاحقة الغائب المفرد وحدها؟
+function gjtSameVerb(a,b){
+  if(a===b)return true;
+  const p=a.length<b.length?a:b, q=a.length<b.length?b:a;
+  return q===p+"s"||q===p+"es"||(p.slice(-1)==="y"&&q===p.slice(0,-1)+"ies");
+}
+function gjtZeroFirst(a,b){
+  const A=gjtCondSplit(a),B=gjtCondSplit(b);
+  if(!A||!B||A.head!==B.head)return false;          // جملةُ الشرط نفسها حرفياً وإلّا فلا
+  if(/\bwill\b/.test(A.head))return false;          // «if ... will» خطأٌ حقيقي لا يُعفى
+  const w=A.tail.indexOf("will"),v=B.tail.indexOf("will");
+  if((w<0)===(v<0))return false;                    // أحدهما بـwill والآخر بدونها
+  const W=(w<0?B:A).tail.slice(),P=(w<0?A:B).tail.slice();
+  W.splice(W.indexOf("will"),1);                    // انزع will ثمّ قابل
+  if(W.length!==P.length)return false;
+  let diff=0;
+  for(let k=0;k<W.length;k++)if(W[k]!==P[k]){if(!gjtSameVerb(W[k],P[k]))return false;diff++}
+  return diff<=1;                                   // لا فرق إلّا تصريفُ الغائب المفرد
+}
 // يعود بسبب الرفض أو "" إن كان العنصر سليماً — سببٌ مسمّى لا رفضٌ غامض
 function gjtDefect(c){
   if(!c||c.length<2)return "shape";
@@ -7822,6 +8053,8 @@ function gjtDefect(c){
     // ٢) تقديمٌ مشروع: نفس الكلمات، وإحداهما دورانُ الأخرى بكتلةٍ ظرفية متّصلة
     if(gjtWordBag(x.t)===gjtWordBag(R)&&gjtNorm(x.t)!==gjtNorm(R)&&
        gjtIsRotation(R,x.t))return "clause_fronting";
+    // ٣) شرطٌ صفريّ مقابل أوّل — النوعان مقرَّران وكلاهما سليم
+    if(gjtZeroFirst(R,x.t))return "zero_vs_first_conditional";
   }
   return "";
 }
@@ -8028,7 +8261,7 @@ function buildListenPlan(){
   const st=listenSrsLoad(),today=srsToday(),POOL=bankStretched("listen",profileOf().level,listenBankFor);
   const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
   const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
-  let out=due.concat(fresh).slice(0,LISTEN_N);
+  let out=planNewMix(due,fresh,LISTEN_N);
   // بنكٌ ثابتٌ صغير (١٠/مستوى) يُستنفَد بجلسةٍ أو جلستين فتُقفَل «الاستماع» بلا سبب —
   // نفس ما تحلّه buildSpeakSession أصلاً: مراجعة حرّة من البنك كلّه بدل شاشة فارغة.
   // ونقصٌ لا خواءٌ تامّ (سؤالٌ واحد مستحقّ) يُكمَّل كذلك — topUpPlan لا حالة خاصّة.
@@ -8185,7 +8418,7 @@ function buildReadPlan(){
   const st=readSrsLoad(),today=srsToday(),POOL=bankStretched("read",profileOf().level,readBankFor);
   const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
   const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
-  let out=due.concat(fresh).slice(0,READ_N);
+  let out=planNewMix(due,fresh,READ_N);
   return planNoTwins(topUpPlan(out,POOL,READ_N,"read"),POOL,READ_N,"read");   // مراجعة حرّة إن استُنفد المستحقّ+الجديد، ثم لا توأمان في الجلسة
 }
 let readItems=[],readIdx=0,readPicked=-1,readLocked=false,readScore=0,readShownAt=0,readDone=false;
@@ -8451,7 +8684,7 @@ function buildWritePlan(){
   const st=writeSrsLoad(),today=srsToday(),POOL=bankStretched("write",profileOf().level,writeBankFor);
   const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
   const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
-  let out=due.concat(fresh).slice(0,WRITE_N);
+  let out=planNewMix(due,fresh,WRITE_N);
   return planNoTwins(topUpPlan(out,POOL,WRITE_N,"write"),POOL,WRITE_N,"write");   // مراجعة حرّة إن استُنفد المستحقّ+الجديد، ثم لا توأمان
 }
 function writeWordCount(t){const m=String(t||"").trim().match(/[A-Za-z']+/g);return m?m.length:0}
@@ -9227,7 +9460,7 @@ const GRAM_BANK=[
   {id:"gr_b1_3",lv:"B1",sk:"الشرط الأول",c:[
     {t:"If it will rain, I will stay home.",ok:false,why:"جملة الشرط (if) تأخذ مضارعاً بسيطاً لا will"},
     {t:"If it rains, I will stay home.",ok:true,why:"صحيحة — if+مضارع، وwill في الجواب"},
-    {t:"If it rains, I stay home.",ok:false,why:"جواب الشرط هنا توقّعٌ مستقبلي فيحتاج will"},
+    {t:"If it rain, I will stay home.",ok:false,why:"الغائب المفرد (it) يأخذ rains لا rain"},
     {t:"If it will rains, I will stay home.",ok:false,why:"will وs معاً على الفعل نفسه (will rains) لا يصحّان"}]},
   {id:"gr_b1_4",lv:"B1",sk:"الجمل الموصولة",c:[
     {t:"The man who he called me is my teacher.",ok:false,why:"بعد who لا نكرّر الفاعل بضمير (he) ثانية"},
@@ -9364,7 +9597,7 @@ function buildGramPlan(){
   const st=gramSrsLoad(),today=srsToday(),POOL=bankStretched("gram",profileOf().level,gramBankFor);
   const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
   const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
-  let out=due.concat(fresh).slice(0,GRAM_N);
+  let out=planNewMix(due,fresh,GRAM_N);
   return planNoTwins(topUpPlan(out,POOL,GRAM_N,"gram"),POOL,GRAM_N,"gram");
 }
 let gramItems=[],gramIdx=0,gramOrder=[0,1,2,3],gramPicked=-1,gramLocked=false,gramScore=0,gramShownAt=0,gramDone=false;
@@ -9481,7 +9714,7 @@ function buildSecPlan(){
   const st=buildSrsLoad(),today=srsToday(),POOL=bankStretched("build",profileOf().level,buildBankFor);
   const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
   const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
-  let out=due.concat(fresh).slice(0,BUILD_N);
+  let out=planNewMix(due,fresh,BUILD_N);
   return planNoTwins(topUpPlan(out,POOL,BUILD_N,"build"),POOL,BUILD_N,"build");
 }
 let buildItems=[],buildIdx=0,buildScore=0,buildDone=false,buildShownAt=0;
@@ -10409,7 +10642,7 @@ function buildMath6Plan(){
   const st=math6SrsLoad(),today=srsToday(),POOL=math6Pool();
   const due=shuffle(POOL.filter(function(l){return st[l.id]&&st[l.id].due<=today}));
   const fresh=shuffle(POOL.filter(function(l){return !st[l.id]}));
-  let out=due.concat(fresh).slice(0,MATH6_N);
+  let out=planNewMix(due,fresh,MATH6_N);
   return topUpPlan(out,POOL,MATH6_N,"math6");   // نقصٌ لا خواء — درس ١٨ أغسطس
 }
 let math6Lessons_=[],math6Items=[],math6Idx=0,math6Picked=-1,math6Locked=false,
@@ -10472,7 +10705,26 @@ function math6Choose(i){
   const bug=ok?null:m6BugOf(it,parseArNum(it.c[i]));
   if(bug){shapeRecord(bug,true);if(shapeArmed(bug))m6Arm(bug)}
   else if(ok&&it.bugs)Object.keys(it.bugs).forEach(function(k){shapeRecord(k,false)});
-  logAnswer("math6",it._l.id,ok,it.c[i]+(bug?" · "+bug+" ("+(M6_BUGS[bug]||{}).ar+")":""),it._l.id,Date.now()-math6ShownAt,
+  // ===== والعائلتان العامّتان تُسمَّيان هنا كذلك — درس ٥ سبتمبر =====
+  // حالتا «جمعتِ مكان أن تضربي» وقعتا في **هذا القسم** لا في الاختبار، و`choose()`
+  // لا تمرّ به إطلاقاً (له عارضه الخاصّ). فلو وُصلت الآلية بـ`choose` وحدها لَما
+  // سُمّيت الحالتان اللتان أوجبتاها أصلاً — كشفه الاختبار لا الفحص.
+  // وتُسمّى **بعد** آلية العنصر المؤلَّفة: تلك أخصُّ (محاكاةُ إجراءٍ مكسور بعينه).
+  const m6Got=ok?null:parseArNum(it.c[i]);
+  const m6Ma=(!ok&&!bug)?multAsAddName(it,m6Got):null;
+  const m6Sn=(!ok&&!bug&&!m6Ma)?stemNumberName(it,m6Got):null;
+  if(m6Ma)shapeRecord(MULT_ADD_BUG,true);
+  if(m6Sn)shapeRecord(STEM_NUM_BUG,true);
+  const extra=m6Ma?(" · "+MULT_ADD_BUG+" ("+m6Ma+")"):(m6Sn?(" · "+STEM_NUM_BUG+" ("+m6Sn+")"):"");
+  // ===== والفرقُ كان غائباً عن هذا القسم وحده — كشفه الاختبار، ٥ سبتمبر =====
+  // عُرفُ المشروع منذ ١٣ أغسطس: «٢٥ · الصواب ٢٦ · فرق −١» — بلا الفرق تُقرأ الإجابات
+  // الخاطئة ضعفاً عامّاً. و`choose()` تكتبه لكل أقسام الاختبار، و`math6Choose` **لا
+  // تكتبه إطلاقاً**: ستّ أخطاءٍ لهيا اليوم وصلت السجلَّ بنصّ الخيار وحده. ونفس
+  // `quizErrDelta` المشتركة — لا حسابٌ ثانٍ.
+  const m6Dlt=ok?null:quizErrDelta(String(it.c[i]),String(it.c[it.a]));
+  const m6Shape=String(it.c[i])+(m6Dlt!=null
+    ? " · الصواب "+it.c[it.a]+" · فرق "+(m6Dlt>0?"+":"−")+toAr(Math.abs(m6Dlt)) : "");
+  logAnswer("math6",it._l.id,ok,m6Shape+(bug?" · "+bug+" ("+(M6_BUGS[bug]||{}).ar+")":extra),it._l.id,Date.now()-math6ShownAt,
     {_sk:it._l.sk,
      q_text:(it._src?"["+it._src+"] ":"[مولَّد] ")+it.q+" · الخيارات: "+
        it.c.map(function(x,k){return (k+1)+") "+x+(k===it.a?" ✓":"")}).join(" | ")});
@@ -10847,7 +11099,7 @@ function buildStepPlan(){
   const st=stepSrsLoad(),today=srsToday(),POOL=bankStretched("step",profileOf().level,stepBankFor);
   const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
   const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
-  let out=due.concat(fresh).slice(0,STEP_N);
+  let out=planNewMix(due,fresh,STEP_N);
   out=topUpPlan(out,POOL,STEP_N,"step");   // البنك مستنفَد أو ناقصٌ: مراجعة حرّة لا جلسةٌ منقوصة
   // إسقاطُ التوائم **قبل** ضمان عنصر الترتيب لا بعده: عكسُه قد يُسقط العنصر المضمون
   // نفسه، وهو أثقل الأنواع وأقلّها عدداً فلولا الضمان لغاب بحكم الاحتمال وحده.
@@ -11042,9 +11294,14 @@ function renderStepResult(){
 // النسبة ٪ (U+066A) والفاصلة ، والأرقام الهندية ٠-٩ — وكلّها محايدةٌ أو ضعيفة في
 // خوارزمية الاتّجاه لا قويّة. ولو اعتُبرت قويّةً لانقلب سطرٌ كـ«= 0.527 × 100 ٪» كلّه.
 const STAT_AR_RE=/[\u0621-\u063A\u0641-\u064A\u0671-\u06D3\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]/;
+// و`**نصّ**` تُصيَّر عريضاً بدل أن تظهر نجمتين حرفيتين — كشفته لقطةُ شاشة لا اختبار،
+// وهو عيبٌ قائمٌ في البنك منذ ٢٥ أغسطس (عشراتُ المواضع في الحلول والشروح تكتبها
+// للتوكيد فتُقرأ رمزاً). والتحويل **بعد** `esc` لا قبله: النصّ صار مهرَّباً فلا يمكن
+// أن يحقن وسماً، والوسم الوحيد المُدخَل هنا من عندنا لا من البيانات.
+function statBold(s){return s.replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>')}
 function statBidiLine(line){
   const rtl=STAT_AR_RE.test(line);
-  return `<span style="display:block;direction:${rtl?"rtl":"ltr"};text-align:${rtl?"right":"left"};unicode-bidi:isolate">${esc(line)||"&nbsp;"}</span>`;
+  return `<span style="display:block;direction:${rtl?"rtl":"ltr"};text-align:${rtl?"right":"left"};unicode-bidi:isolate">${statBold(esc(line))||"&nbsp;"}</span>`;
 }
 function statBidi(s){return String(s==null?"":s).split("\n").map(statBidiLine).join("")}
 const STAT_BANK=[
@@ -11138,7 +11395,7 @@ const STAT_BANK=[
       {t:"5",ok:false,why:"2⁵ = 32 ولا تزال أقلّ من ٦٢"},
       {t:"6",ok:true,why:"صحيح — 2⁶ = 64 ≥ 62، وهو أصغر أُسٍّ يحقّق الشرط"},
       {t:"7",ok:false,why:"2⁷ = 128 يحقّق الشرط أيضاً لكنّه ليس الأصغر — والقاعدة تطلب الأصغر"}],
-   sol:"القاعدة: اختر أصغر k يحقّق 2^k ≥ n. هنا n = 62:\n2⁵ = 32 < 62 ✗\n2⁶ = 64 ≥ 62 ✓\nإذن k = 6."},
+   sol:"القاعدة: اختر أصغر أُسٍّ يحقّق المتباينة الآتية، وهنا عدد القيم 62:\n2^k ≥ n\n2⁵ = 32 < 62 ✗\n2⁶ = 64 ≥ 62 ✓\nإذن k = 6."},
   {id:"sa_tab_2",ch:"الجداول التكرارية",src:"ملف",
    q:"في جدول تكراري حدوده العملية 1−7 ، 8−14 ، 15−21 ، فإنّ الحدود الفعلية للفئة الثانية هي:",
    c:[{t:"8 → 14",ok:false,why:"هذه الحدود العملية كما كُتبت لا الفعلية"},
@@ -11221,7 +11478,7 @@ const STAT_BANK=[
    c:[{t:"5",ok:false,why:"هذا عدد المشاهدات"},
       {t:"15",ok:false,why:"جمعتَ ٥ + ١٠ — والعلاقة ضربٌ لا جمع"},
       {t:"50",ok:true,why:"صحيح — المجموع = n × x̄ = 5 × 10"},
-      {t:"2",ok:false,why:"قسمتَ ١٠ ÷ ٥ — وهذا مقلوب العلاقة"}],
+      {t:"2",ok:false,why:"قسمتَ ١٠ ÷ ٥ — وهذا مقلوب العلاقة",bug:"reversed_pair"}],
    sol:"من تعريف المتوسّط: x̄ = Σx ÷ n\nإذن Σx = n × x̄ = 5 × 10 = 50."},
   {id:"sa_cen_5",ch:"النزعة المركزية",src:"ملف",
    pre:"درجات طالب في ثلاثة مقرّرات: M = 82 (وزن 3) ، E = 65 (وزن 2) ، A = 90 (وزن 4)",
@@ -11263,7 +11520,7 @@ const STAT_BANK=[
       {t:"8",ok:true,why:"صحيح — الرتبة ٤٫٥ فيقع بين ٧ و٩ في المنتصف"},
       {t:"9",ok:false,why:"هذه أكبر قيمة، وQ₃ يقع دونها"},
       {t:"7",ok:false,why:"هذه القيمة x₄ بلا الجزء الكسري من الرتبة"}],
-   sol:"رتّب: 4، 4، 6، 7، 9 (n = 5).\nرتبة الربيعي:\nqᵣ = r(n+1) ÷ 4 = 3 × 6 ÷ 4 = 4.5\nالجزء الصحيح k = 4 والكسري S = 0.5\nQ₃ = x₄ + S(x₅ − x₄) = 7 + 0.5(9 − 7) = 7 + 1 = 8."},
+   sol:"رتّب القيم تصاعدياً وعددها خمس:\n4، 4، 6، 7، 9\nرتبة الربيعي:\nqᵣ = r(n+1) ÷ 4 = 3 × 6 ÷ 4 = 4.5\nالجزء الصحيح k = 4 والكسري S = 0.5\nQ₃ = x₄ + S(x₅ − x₄) = 7 + 0.5(9 − 7) = 7 + 1 = 8."},
   {id:"sa_qua_2",ch:"الربيعيات والمئينات",src:"ملف",
    pre:"البيانات: 10 ، 8 ، 6 ، 4 ، 2",
    q:"الربيعي الأوّل Q₁ يساوي:",
@@ -11271,7 +11528,7 @@ const STAT_BANK=[
       {t:"3",ok:true,why:"صحيح — 2 + 0.5(4 − 2) = 3"},
       {t:"3.5",ok:false,why:"لا يوافق الحساب"},
       {t:"4",ok:false,why:"هذه x₂ بلا الجزء الكسري"}],
-   sol:"رتّب: 2، 4، 6، 8، 10 (n = 5).\nqᵣ = 1(5+1) ÷ 4 = 1.5 → k = 1، S = 0.5\nQ₁ = x₁ + S(x₂ − x₁) = 2 + 0.5(4 − 2) = 2 + 1 = 3.\nوالخطأ الشائع الأكبر: كتابة الرتبة ١٫٥ نفسها جواباً."},
+   sol:"رتّب القيم تصاعدياً وعددها خمس:\n2، 4، 6، 8، 10\nqᵣ = 1(5+1) ÷ 4 = 1.5 → k = 1، S = 0.5\nQ₁ = x₁ + S(x₂ − x₁) = 2 + 0.5(4 − 2) = 2 + 1 = 3.\nوالخطأ الشائع الأكبر: كتابة الرتبة ١٫٥ نفسها جواباً."},
   {id:"sa_qua_3",ch:"الربيعيات والمئينات",src:"ملف",
    pre:"البيانات: 10 ، 8 ، 6 ، 4 ، 2",
    q:"المئين الخمسون P₅₀ يساوي:",
@@ -11331,7 +11588,7 @@ const STAT_BANK=[
    sol:"الانحراف المعياري ١٠ كبيرٌ إن كان المتوسّط ٢٠، وصغيرٌ إن كان المتوسّط ١٠٠٠. فالمقارنة تحتاج مقياساً نسبيّاً: CV = (S ÷ x̄) × 100٪ يقسم التشتّت على حجم البيانات نفسه، فيصير قابلاً للمقارنة."},
   {id:"sa_dis_5",ch:"التشتت",src:"مؤلَّف",
    q:"الانحراف المعياري S هو:",
-   c:[{t:"مربّع التباين",ok:false,why:"العكس — التباين هو مربّع الانحراف المعياري"},
+   c:[{t:"مربّع التباين",ok:false,why:"العكس — التباين هو مربّع الانحراف المعياري",bug:"reversed_pair"},
       {t:"الجذر التربيعي الموجب للتباين",ok:true,why:"صحيح — S = +√S²، ولذلك لا يكون سالباً أبداً"},
       {t:"الفرق بين أكبر وأصغر قيمة",ok:false,why:"هذا المدى"},
       {t:"متوسّط الانحرافات عن المتوسّط",ok:false,why:"مجموع الانحرافات عن المتوسّط صفرٌ دائماً، ولذلك تُربَّع أوّلاً"}],
@@ -11483,7 +11740,7 @@ const STAT_BANK=[
    q:"P(Ā) يساوي:",
    c:[{t:"1.7",ok:false,why:"جمعتَ ١ + ٠٫٧، والاحتمال لا يتجاوز ١"},
       {t:"1",ok:false,why:"هذا احتمال الفضاء كلّه"},
-      {t:"0.7",ok:false,why:"هذا P(A) نفسه لا متمّمته"},
+      {t:"0.7",ok:false,why:"هذا P(A) نفسه لا متمّمته",bug:"reversed_pair"},
       {t:"0.3",ok:true,why:"صحيح — 1 − 0.7"}],
    sol:"P(Ā) = 1 − P(A) = 1 − 0.7 = 0.3.\nلأن A ومتمّمتها يغطّيان الفضاء كلّه ولا يشتركان."},
   {id:"sa_prb_7",ch:"الاحتمال",src:"ملف",
@@ -11537,7 +11794,7 @@ const STAT_BANK=[
   {id:"sa_prb_13",ch:"الاحتمال",src:"ملف",
    pre:"في المسألة نفسها: نسب الإنتاج ٤٠٪ ، ١٠٪ ، ٥٠٪ ونسب العيب 0.02 ، 0.04 ، 0.01، واحتمال العيب الكلّي 0.017.",
    q:"إذا كانت الورقة المختارة معيبة، فاحتمال أن تكون من تصوير الآلة الثانية يساوي تقريباً:",
-   c:[{t:"0.040",ok:false,why:"هذه P(معيبة | الآلة الثانية) — الاتجاه المعاكس للمطلوب"},
+   c:[{t:"0.040",ok:false,why:"هذه P(معيبة | الآلة الثانية) — الاتجاه المعاكس للمطلوب",bug:"inverse_conditional"},
       {t:"0.100",ok:false,why:"هذه نسبة إنتاج الآلة الثانية قبل معرفة أن الورقة معيبة"},
       {t:"0.235",ok:true,why:"صحيح — 0.004 ÷ 0.017"},
       {t:"0.470",ok:false,why:"لا يوافق قسمة الحدّ على المجموع"}],
@@ -11553,10 +11810,10 @@ const STAT_BANK=[
   {id:"sa_prb_15",ch:"الاحتمال",src:"ملف",
    pre:"في المسألة نفسها: ٦٠٪ ذكور نسبة نجاحهم ٧٠٪ ، و٤٠٪ إناث نسبة نجاحهنّ ٩٠٪ ، واحتمال النجاح الكلّي 0.78.",
    q:"إذا كان الطالب المختار ناجحاً، فاحتمال أن يكون أنثى يساوي تقريباً:",
-   c:[{t:"0.90",ok:false,why:"هذه P(ناجح | أنثى) — الاتجاه المعاكس للمطلوب"},
+   c:[{t:"0.90",ok:false,why:"هذه P(ناجح | أنثى) — الاتجاه المعاكس للمطلوب",bug:"inverse_conditional"},
       {t:"0.40",ok:false,why:"هذه نسبة الإناث قبل معرفة النجاح"},
       {t:"0.46",ok:true,why:"صحيح — 0.36 ÷ 0.78"},
-      {t:"0.54",ok:false,why:"هذه متمّمة الجواب أي P(ذكر | ناجح)"}],
+      {t:"0.54",ok:false,why:"هذه متمّمة الجواب أي P(ذكر | ناجح) — حُسب الطرف المقابل من الزوج لا المطلوب",bug:"reversed_pair"}],
    sol:"صيغة بيز:\nP(أنثى | ناجح) = [P(أنثى) × P(ناجح | أنثى)] ÷ P(ناجح)\n= [0.40 × 0.90] ÷ 0.78\n= 0.36 ÷ 0.78\n= 0.46.\nوارتفعت النسبة من ٤٠٪ إلى ٤٦٪ لأن الإناث أعلى نجاحاً."},
 
   // ===== المتغير العشوائي المتقطع =====
@@ -11646,7 +11903,7 @@ const STAT_BANK=[
       {t:"p = 0.1 ، 0.1 ، 0.8",ok:false,why:"المجموع ١ — جدولٌ صحيح وإن تفاوتت القيم"},
       {t:"p = 0.4 ، −0.1 ، 0.7",ok:true,why:"صحيح أنه لا يصلح — فيه احتمالٌ سالب، والاحتمال لا يقلّ عن صفر"},
       {t:"p = 0 ، 0.5 ، 0.5",ok:false,why:"الصفر مسموح: يعني أن القيمة لا تقع، والمجموع ١"}],
-   sol:"شرطان لا ثالث لهما:\n(١) 0 ≤ pᵢ ≤ 1 لكل i\n(٢) Σpᵢ = 1\nالجدول الثالث يجمع إلى ١ (0.4 − 0.1 + 0.7 = 1) لكنّه يخرق الشرط الأوّل بوجود −0.1. فالمجموع وحده لا يكفي."},
+   sol:"شرطان لا ثالث لهما:\n(١) كل احتمالٍ بين الصفر والواحد\n0 ≤ pᵢ ≤ 1\n(٢) ومجموعها واحد\nΣpᵢ = 1\nالجدول الثالث يجمع إلى ١ (0.4 − 0.1 + 0.7 = 1) لكنّه يخرق الشرط الأوّل بوجود −0.1. فالمجموع وحده لا يكفي."},
 
   // العناصر الستّة الآتية مؤلَّفةٌ لتدريبٍ ورد في الملفّ **بلا حلّ ولا أسئلة** نصّاً:
   // «تدريب غير محلول: في تجربة القاء حجر النرد مرة واحدة، وكان المتغير العشوائي X
@@ -11688,7 +11945,7 @@ const STAT_BANK=[
   {id:"sa_rv_16",ch:"المتغير العشوائي",src:"مؤلَّف",
    pre:"في تجربة إلقاء قطعة نقود مرّتين، Ω = {HH, HT, TH, TT} وX عدد الصور",
    q:"عملية الإرفاق للمتغيّر العشوائي X تنطلق:",
-   c:[{t:"من المدى Ω* إلى المجال Ω",ok:false,why:"هذا الاتجاه المعاكس — وهو الصورة العكسية لا الإرفاق"},
+   c:[{t:"من المدى Ω* إلى المجال Ω",ok:false,why:"هذا الاتجاه المعاكس — وهو الصورة العكسية لا الإرفاق",bug:"reversed_pair"},
       {t:"من المجال Ω إلى المجال المقابل R",ok:true,why:"صحيح — X دالّةٌ تُرفِق كل حادثٍ ابتدائي بعددٍ حقيقي"},
       {t:"من R إلى R",ok:false,why:"مجال المتغيّر العشوائي هو Ω لا R"},
       {t:"من مجموعة القوّة 2^Ω إلى Ω",ok:false,why:"الإرفاق يعمل على عناصر Ω لا على مجموعاتها الجزئية"}],
@@ -11756,6 +12013,481 @@ const STAT_BANK=[
       {t:"احتمال النجاح p يتغيّر من محاولة إلى أخرى",ok:true,why:"صحيح أنه ليس شرطاً — بل نقيضه هو الشرط: p ثابتٌ في كل محاولة"},
       {t:"المحاولات مستقلّة بعضها عن بعض",ok:false,why:"شرطٌ أساسي — نتيجة محاولةٍ لا تؤثّر في التالية"}],
    sol:"شروط التوزيع الثنائي أربعة:\n(١) عدد المحاولات n ثابت.\n(٢) لكل محاولة نتيجتان: نجاح أو فشل.\n(٣) احتمال النجاح p **ثابت** في كل محاولة.\n(٤) المحاولات مستقلّة.\nوالخيار الثالث يقلب الشرط الثالث، فهو الشاذّ."},
+
+  // ═══════════════ ورقة العمل الأولى — الفصل الأول ١٤٤٨ (٥ سبتمبر) ═══════════════
+  // مرفوعةٌ محلولةً من صاحب المشروع. وشكل الورقة ستّة أسئلة: إكمال فراغ، واختيار من
+  // متعدّد، وصح/خطأ، وتحديد نوع العيّنة، وجدولا تصنيف. والبنك هنا أربعةُ خيارات لكل
+  // عنصر (قيدٌ قائم يحرسه `test_stat`)، فما لم يكن أصلاً بأربعة **حُوِّل شكلُه لا
+  // مضمونه**: الفراغ صار اختياراً بين أربعة مصطلحاتٍ من الدرس نفسه، وصح/خطأ صار
+  // اختياراً يعزل الآلية التي تُخطئ فيها العبارة. والمصدر يبقى «ملف» لأن المحتوى
+  // والجواب من الورقة، والتحويل في الشكل وحده — ويُقال هنا صراحةً بدل أن يُخفى.
+  {id:"sw1_c1",ch:"مفاهيم الإحصاء",src:"ملف",ws:"١",
+   q:"«مجموعة العناصر التي سُحبت من مجتمع إحصائي بغية إخضاعها لدراسة إحصائية محددة» — هذا تعريف:",
+   c:[{t:"العيّنة",ok:true,why:"صحيح — العيّنة جزءٌ مسحوبٌ من المجتمع لتُدرَس"},
+      {t:"المجتمع الإحصائي",ok:false,why:"المجتمع هو الكلّ الذي يُسحَب منه، لا الجزء المسحوب",bug:"reversed_pair"},
+      {t:"المعاينة",ok:false,why:"المعاينة عملية الاختيار نفسها، لا المجموعة الناتجة عنها"},
+      {t:"المعلَمة",ok:false,why:"المعلَمة رقمٌ يصف المجتمع، لا مجموعة عناصر"}],
+   sol:"العيّنة = جزءٌ من المجتمع.\nوالفرق بينها وبين «المعاينة»: العيّنة **نتيجة**، والمعاينة **عملية**."},
+  {id:"sw1_c2",ch:"مفاهيم الإحصاء",src:"ملف",ws:"١",
+   q:"«عملية اختيار جزء من مجتمع لإجراء دراسة عليه» تُعرَف بـ:",
+   c:[{t:"المعاينة",ok:true,why:"صحيح — هي عملية الاختيار"},
+      {t:"العيّنة",ok:false,why:"العيّنة هي ناتج العملية لا العملية نفسها",bug:"reversed_pair"},
+      {t:"المسح الشامل",ok:false,why:"المسح الشامل يدرس المجتمع كلّه، فلا اختيار جزءٍ فيه"},
+      {t:"الإحصاء الاستدلالي",ok:false,why:"ذاك تحليل البيانات واتخاذ القرار، لا اختيار العناصر"}],
+   sol:"المعاينة (Sampling) اسمٌ لِـ**فعل** الاختيار.\nوالعيّنة (Sample) اسمٌ لِـ**ناتجه**."},
+  {id:"sw1_c3",ch:"مفاهيم الإحصاء",src:"ملف",ws:"١",
+   q:"«تجمّع لأشياء أو كائنات تشترك فيما بينها بصفة واحدة على الأقلّ، وتكون محل دراسة لهدف محدد» هو:",
+   c:[{t:"المجتمع الإحصائي",ok:true,why:"صحيح — كل الوحدات التي تشترك في الصفة محل الدراسة"},
+      {t:"العيّنة",ok:false,why:"العيّنة جزءٌ منه لا هو",bug:"reversed_pair"},
+      {t:"البيانات الإحصائية",ok:false,why:"البيانات هي القيم المسجَّلة عن الوحدات، لا الوحدات نفسها"},
+      {t:"الإحصاءة",ok:false,why:"الإحصاءة رقمٌ يُحسب من العيّنة"}],
+   sol:"شرطا المجتمع الإحصائي:\n(١) صفةٌ مشتركة واحدة على الأقلّ.\n(٢) هدفُ دراسةٍ محدَّد.\nفـ«طلاب جامعة الملك سعود» مجتمعٌ إحصائي، و«الطلاب» بلا تحديدٍ ليس كذلك."},
+  {id:"sw1_c4",ch:"المتغيرات",src:"ملف",ws:"١",
+   q:"«كل ما يميز العيّنة، سواء كان كمياً أو نوعياً» يسمّى:",
+   c:[{t:"المتغيّر",ok:true,why:"صحيح — الصفة التي تختلف قيمتها من وحدةٍ إلى أخرى"},
+      {t:"المعلَمة",ok:false,why:"المعلَمة رقمٌ ثابت يصف المجتمع لا صفةً متغيّرة"},
+      {t:"الإحصاءة",ok:false,why:"الإحصاءة رقمٌ محسوبٌ من العيّنة لا الصفة المدروسة"},
+      {t:"المسح الشامل",ok:false,why:"هذا أسلوب جمع بيانات لا صفة"}],
+   sol:"المتغيّر صفةٌ تُقاس على وحدات الدراسة وتختلف قيمتها بينها: الطول، الجنس، عدد الإخوة."},
+  {id:"sw1_c5",ch:"مفاهيم الإحصاء",src:"ملف",ws:"١",
+   q:"«عملية دراسة جميع عناصر المجتمع الإحصائي دون استثناء» تسمّى:",
+   c:[{t:"المسح الشامل",ok:true,why:"صحيح — الحصر الكامل لعناصر المجتمع"},
+      {t:"المعاينة",ok:false,why:"المعاينة تدرس جزءاً لا الكلّ",bug:"reversed_pair"},
+      {t:"العيّنة العشوائية",ok:false,why:"هذه أسلوب سحب جزء، ونقيض دراسة الكلّ"},
+      {t:"الإحصاء الوصفي",ok:false,why:"هذا فرعٌ من الإحصاء لا أسلوب جمع"}],
+   sol:"المسح الشامل (التعداد) يشمل كل وحدة، فلا ينتج عنه **خطأ معاينة** — لكنه أعلى كلفةً ووقتاً."},
+  {id:"sw1_c6",ch:"مفاهيم الإحصاء",src:"ملف",ws:"١",
+   q:"«الفرع الذي يهتم بتحليل البيانات واستقرائها واتخاذ القرارات المناسبة بشأنها» يسمّى:",
+   c:[{t:"الإحصاء الاستدلالي",ok:true,why:"صحيح — يستدلّ من العيّنة على المجتمع ويتّخذ القرار"},
+      {t:"الإحصاء الوصفي",ok:false,why:"الوصفي يجمع البيانات وينظّمها ويعرضها فقط، بلا استدلال"},
+      {t:"المعاينة",ok:false,why:"المعاينة أسلوب اختيار لا فرعٌ علمي"},
+      {t:"المسح الشامل",ok:false,why:"أسلوب جمعٍ لا فرعٌ علمي"}],
+   sol:"الإحصاء فرعان:\n**وصفي**: جمعٌ وتنظيمٌ وعرضٌ وتلخيص.\n**استدلالي**: تعميمٌ من العيّنة إلى المجتمع، واتخاذ قرار."},
+  {id:"sw1_m1",ch:"مفاهيم الإحصاء",src:"ملف",ws:"١",
+   q:"أراد باحث دراسة مستوى رضا جميع طلاب جامعة ما، فاختار ٥٠٠ طالب لإجراء الدراسة عليهم. فإن الـ٥٠٠ طالب يمثلون:",
+   c:[{t:"عيّنة",ok:true,why:"صحيح — جزءٌ مختارٌ من مجتمع «جميع طلاب الجامعة»"},
+      {t:"مجتمعاً إحصائياً",ok:false,why:"المجتمع هنا جميع طلاب الجامعة، والخمسمئة جزءٌ منه",bug:"reversed_pair"},
+      {t:"معلَمة",ok:false,why:"المعلَمة رقمٌ يصف المجتمع لا مجموعة أفراد"},
+      {t:"إحصاءة",ok:false,why:"الإحصاءة رقمٌ يُحسب من العيّنة لا العيّنة نفسها"}],
+   sol:"المجتمع: جميع طلاب الجامعة.\nالعيّنة: الـ٥٠٠ المختارون.\nوالمفتاح في السؤال كلمة «جميع» — فهي تُعيّن المجتمع، وما اختير منه عيّنة."},
+  {id:"sw1_m2",ch:"مفاهيم الإحصاء",src:"ملف",ws:"١",
+   q:"أظهرت دراسة شملت جميع طلاب إحدى الجامعات أن ٣٥٪ منهم يستخدمون وسائل النقل العام. فإن هذه النسبة تُمثّل:",
+   c:[{t:"معلَمة",ok:true,why:"صحيح — رقمٌ محسوبٌ من **جميع** عناصر المجتمع"},
+      {t:"إحصاءة",ok:false,why:"الإحصاءة تُحسب من عيّنة، والدراسة هنا شملت الجميع",bug:"reversed_pair"},
+      {t:"عيّنة",ok:false,why:"النسبة رقمٌ لا مجموعة أفراد"},
+      {t:"بيانات إحصائية",ok:false,why:"البيانات هي القيم الخام قبل التلخيص، والنسبة ملخَّصٌ لها"}],
+   sol:"القاعدة الفاصلة:\nرقمٌ من **المجتمع كلّه** ⟵ معلَمة (Parameter).\nرقمٌ من **عيّنة** ⟵ إحصاءة (Statistic).\nوهنا «شملت جميع الطلاب» فهي معلَمة."},
+  {id:"sw1_m3",ch:"مفاهيم الإحصاء",src:"ملف",ws:"١",
+   q:"إذا حُسب متوسط الإنفاق الشهري لعيّنة من ٣٠٠ أسرة مختارة عشوائياً، فإن المتوسط المحسوب يمثل:",
+   c:[{t:"إحصاءة",ok:true,why:"صحيح — رقمٌ حُسب من عيّنة"},
+      {t:"معلَمة",ok:false,why:"المعلَمة تُحسب من المجتمع كلّه، والحساب هنا من ٣٠٠ أسرة فقط",bug:"reversed_pair"},
+      {t:"مجتمعاً إحصائياً",ok:false,why:"المتوسط رقمٌ لا مجموعة وحدات"},
+      {t:"مسحاً شاملاً",ok:false,why:"المسح الشامل أسلوب جمع، والسؤال عن نوع الرقم"}],
+   sol:"نفس القاعدة معكوسة الاتّجاه:\nمن عيّنة ⟵ **إحصاءة**.\nوكلمة «عيّنة» في نصّ السؤال هي الدليل."},
+  {id:"sw1_m4",ch:"مفاهيم الإحصاء",src:"ملف",ws:"١",
+   q:"إذا أجرت جهة رسمية دراسة شملت جميع المنشآت التجارية في مدينة الرياض، فإن طريقة هذه الدراسة تُدعى بـ:",
+   c:[{t:"المسح الشامل",ok:true,why:"صحيح — شملت كل وحدات المجتمع بلا استثناء"},
+      {t:"المعاينة",ok:false,why:"المعاينة تختار جزءاً، والدراسة هنا شملت الجميع",bug:"reversed_pair"},
+      {t:"العيّنة العشوائية",ok:false,why:"لا سحب عشوائياً هنا — أُخذت كل المنشآت"},
+      {t:"الإحصاء الاستدلالي",ok:false,why:"الاستدلال يُعمّم من جزءٍ إلى كلّ، ولا حاجة له حين يُدرَس الكلّ"}],
+   sol:"كلمة «جميع» في نصّ السؤال تحسم النوع: مسحٌ شامل لا معاينة."},
+  {id:"sw1_m5",ch:"المتغيرات",src:"ملف",ws:"١",
+   q:"القيم المسجَّلة لعدد ساعات المذاكرة الأسبوعية لدى ٣٠ طالباً من طلاب جامعة الملك سعود تمثل:",
+   c:[{t:"البيانات الإحصائية",ok:true,why:"صحيح — القيم المسجَّلة نفسها هي البيانات"},
+      {t:"العيّنة",ok:false,why:"العيّنة هي الثلاثون **طالباً**، والقيم بياناتٌ عنهم"},
+      {t:"المجتمع الإحصائي",ok:false,why:"المجتمع جميع طلاب الجامعة لا ثلاثين منهم"},
+      {t:"المعلَمة",ok:false,why:"المعلَمة رقمٌ واحد يصف المجتمع لا مجموعة قيم"}],
+   sol:"فرِّق بين ثلاثة في الجملة الواحدة:\nالوحدات ⟵ ٣٠ طالباً (عيّنة).\nالصفة المقيسة ⟵ ساعات المذاكرة (متغيّر).\nالقيم المسجَّلة ⟵ **البيانات**."},
+  {id:"sw1_t1",ch:"مفاهيم الإحصاء",src:"ملف",ws:"١",
+   q:"«إذا كان المتوسط محسوباً من جميع عناصر المجتمع فإنه يُعدّ معلَمة» — العبارة:",
+   c:[{t:"صحيحة",ok:true,why:"صحيح — المحسوب من المجتمع كلّه معلَمة بالتعريف"},
+      {t:"خاطئة، بل يُعدّ إحصاءة",ok:false,why:"الإحصاءة من العيّنة لا من المجتمع",bug:"reversed_pair"},
+      {t:"خاطئة، بل يُعدّ بياناتٍ إحصائية",ok:false,why:"البيانات قيمٌ خام، والمتوسط ملخَّصٌ محسوبٌ منها"},
+      {t:"خاطئة، بل يُعدّ متغيّراً",ok:false,why:"المتغيّر صفةٌ تُقاس، لا رقمٌ ناتج عن الحساب"}],
+   sol:"معلَمة ⟵ من المجتمع · إحصاءة ⟵ من العيّنة.\nوالعبارة تطابق التعريف، فهي صحيحة (✓)."},
+  {id:"sw1_t2",ch:"مفاهيم الإحصاء",src:"ملف",ws:"١",
+   q:"«العيّنة هي جميع عناصر المجتمع الإحصائي محل الدراسة» — العبارة:",
+   c:[{t:"خاطئة — العيّنة **جزء** من المجتمع لا كلّه",ok:true,why:"صحيح — ولو كانت الكلّ لكانت مسحاً شاملاً"},
+      {t:"صحيحة",ok:false,why:"لو صحّت لما كان بين العيّنة والمجتمع فرق أصلاً",bug:"reversed_pair"},
+      {t:"صحيحة إذا كان المجتمع صغيراً",ok:false,why:"صِغَر المجتمع يجعل المسح الشامل ممكناً، ولا يُغيّر تعريف العيّنة"},
+      {t:"صحيحة إذا كان السحب عشوائياً",ok:false,why:"العشوائية صفةٌ في طريقة السحب لا في حجم المسحوب"}],
+   sol:"العيّنة ⊂ المجتمع، ولا تساويه.\nودراسةُ الكلِّ اسمها المسح الشامل، فالعبارة خاطئة (✗)."},
+  {id:"sw1_t3",ch:"مفاهيم الإحصاء",src:"ملف",ws:"١",
+   q:"«المعاينة تكون مناسبة عادةً عندما يكون المجتمع كبيراً» — العبارة:",
+   c:[{t:"صحيحة",ok:true,why:"صحيح — كِبَر المجتمع يجعل حصره مكلفاً وبطيئاً، فتُختار عيّنة"},
+      {t:"خاطئة — المعاينة تصلح للمجتمعات الصغيرة وحدها",ok:false,why:"عكس الواقع: المجتمع الصغير يُحصَر كلّه بسهولة فلا يحتاج معاينة"},
+      {t:"خاطئة — المعاينة لا تُستعمل إلا مع المجتمعات المتجانسة",ok:false,why:"التجانس يُبسّط اختيار الأسلوب، ولا يشترطه"},
+      {t:"خاطئة — المعاينة أدقّ دائماً من المسح الشامل",ok:false,why:"المعاينة أسرع وأرخص، لكنها تُدخِل خطأ معاينة لا يقع في المسح الشامل"}],
+   sol:"لماذا نُعاين؟ الكلفة والوقت وتعذّر الحصر (وأحياناً كون الفحص متلِفاً للوحدة).\nوكل هذه تشتدّ كلّما كبر المجتمع."},
+  {id:"sw1_t4",ch:"مفاهيم الإحصاء",src:"ملف",ws:"١",
+   q:"«المسح الشامل لا ينتج عنه خطأ معاينة» — العبارة:",
+   c:[{t:"صحيحة",ok:true,why:"صحيح — خطأ المعاينة ينشأ من الاكتفاء بجزء، ولا جزء هنا"},
+      {t:"خاطئة — خطؤه أكبر من خطأ المعاينة",ok:false,why:"قد تقع فيه أخطاء تنفيذٍ وتسجيل، لكنها ليست **خطأ معاينة**"},
+      {t:"خاطئة — كل دراسة ينتج عنها خطأ معاينة",ok:false,why:"خطأ المعاينة مشروطٌ بوجود معاينة أصلاً"},
+      {t:"صحيحة فقط إذا كان المجتمع متجانساً",ok:false,why:"لا شرط: انعدام خطأ المعاينة نتيجةُ حصر الكلّ لا نتيجة التجانس"}],
+   sol:"خطأ المعاينة = فرقٌ ينشأ **لأننا درسنا جزءاً**.\nوالمسح الشامل يدرس الكلّ، فلا موضع لهذا الخطأ فيه (✓)."},
+  {id:"sw1_t5",ch:"مفاهيم الإحصاء",src:"ملف",ws:"١",
+   q:"«تُعدّ عملية جمع البيانات ومعالجتها من مهام الإحصاء الاستدلالي» — العبارة:",
+   c:[{t:"خاطئة — الجمع والمعالجة من مهام الإحصاء **الوصفي**",ok:true,why:"صحيح — الوصفي يجمع وينظّم ويعرض، والاستدلالي يأتي بعده"},
+      {t:"صحيحة",ok:false,why:"الاستدلالي يبدأ حيث ينتهي الوصفي: من البيانات المنظَّمة إلى القرار",bug:"reversed_pair"},
+      {t:"صحيحة إذا كانت البيانات من عيّنة",ok:false,why:"مصدر البيانات لا يُغيّر أن **الجمع** نفسه مهمّة وصفية"},
+      {t:"خاطئة — الجمع والمعالجة ليسا من الإحصاء أصلاً",ok:false,why:"بل هما أوّل خطواته، وعليهما يقوم كل ما بعدهما"}],
+   sol:"الترتيب: جمعٌ ⟵ تنظيمٌ ⟵ عرضٌ وتلخيص (**وصفي**) ⟵ استدلالٌ وقرار (**استدلالي**).\nفالعبارة خاطئة (✗)."},
+  {id:"sw1_s1",ch:"مفاهيم الإحصاء",src:"ملف",ws:"١",
+   q:"اختيار مراجعٍ واحد من كل ٢٠ مراجعاً في قائمة مرتبة من مراجعي إحدى المستشفيات، بعد تحديد نقطة بداية عشوائياً. نوع العيّنة:",
+   c:[{t:"عيّنة منتظمة",ok:true,why:"صحيح — بدايةٌ عشوائية ثم خطوةٌ ثابتة k=٢٠"},
+      {t:"عيّنة عشوائية بسيطة",ok:false,why:"البسيطة تُسحب بلا ترتيبٍ ولا خطوة، وكل عنصرٍ مستقلٌّ عن موضعه"},
+      {t:"عيّنة طبقية",ok:false,why:"الطبقية تشترط تقسيم المجتمع إلى طبقات ثم السحب من كلٍّ"},
+      {t:"عيّنة عنقودية",ok:false,why:"العنقودية تسحب **مجموعات** كاملة لا أفراداً بخطوة"}],
+   sol:"علامة المنتظمة: قائمةٌ مرتَّبة + نقطة بداية عشوائية + خطوة ثابتة.\nوهنا الخطوة k = ٢٠."},
+  {id:"sw1_s2",ch:"مفاهيم الإحصاء",src:"ملف",ws:"١",
+   q:"أرادت جامعة دراسة رضا طلابها، فقسّمت الطلاب حسب السنة الدراسية، ثم اختارت عشوائياً عدداً من الطلاب من كل سنة. نوع العيّنة:",
+   c:[{t:"العيّنة الطبقية",ok:true,why:"صحيح — تقسيمٌ إلى طبقات متجانسة ثم سحبٌ **من كل** طبقة"},
+      {t:"عيّنة عنقودية",ok:false,why:"العنقودية تختار بعض المجموعات وتُهمل الباقي، وهنا سُحب من كل سنة",bug:"reversed_pair"},
+      {t:"عيّنة منتظمة",ok:false,why:"لا خطوة ثابتة ولا قائمة مرتَّبة هنا"},
+      {t:"عيّنة عشوائية بسيطة",ok:false,why:"البسيطة بلا تقسيمٍ مسبق"}],
+   sol:"الفرق الحاسم بين الطبقية والعنقودية:\n**الطبقية**: تُقسَّم ثم يُسحَب من **كل** قسم.\n**العنقودية**: تُقسَّم ثم تُختار **بعض** الأقسام كاملةً."},
+  {id:"sw1_s3",ch:"مفاهيم الإحصاء",src:"ملف",ws:"١",
+   q:"تريد وزارة الصحة دراسة معدل تطعيم الأطفال في مدينة، فقسّمت المدينة إلى ٥٠ حياً سكنياً، ثم اختارت عشوائياً ٥ أحياء، وجمعت البيانات من جميع الأطفال في الأحياء المختارة. نوع العيّنة:",
+   c:[{t:"عيّنة عنقودية",ok:true,why:"صحيح — اختيرت **بعض** المجموعات ثم أُخذت كاملةً"},
+      {t:"العيّنة الطبقية",ok:false,why:"الطبقية تسحب من كل الأحياء الخمسين لا من خمسةٍ منها",bug:"reversed_pair"},
+      {t:"عيّنة منتظمة",ok:false,why:"لا خطوة ثابتة على قائمة مرتَّبة"},
+      {t:"عيّنة عشوائية بسيطة",ok:false,why:"الأطفال لم يُسحبوا أفراداً بل جاؤوا تبعاً لحيّهم"}],
+   sol:"علامتان للعنقودية معاً:\n(١) وحدةُ السحب **مجموعة** لا فرد.\n(٢) تُؤخذ المجموعة المختارة **بكاملها**.\nوكلتاهما في نصّ السؤال."},
+  {id:"sw1_s4",ch:"مفاهيم الإحصاء",src:"ملف",ws:"١",
+   q:"اختيار ١٠٠ طالب عشوائياً باستخدام مولّد الأرقام العشوائية من قائمة تضمّ جميع طلاب الجامعة. نوع العيّنة:",
+   c:[{t:"العيّنة العشوائية البسيطة",ok:true,why:"صحيح — لكل طالبٍ الفرصة نفسها، بلا تقسيمٍ ولا خطوة"},
+      {t:"عيّنة منتظمة",ok:false,why:"المنتظمة تختار بخطوةٍ ثابتة، والمولّد لا يلتزم خطوة"},
+      {t:"العيّنة الطبقية",ok:false,why:"لا تقسيم للمجتمع إلى طبقات هنا"},
+      {t:"عيّنة عنقودية",ok:false,why:"لا مجموعات تُسحب — السحب أفرادٌ من قائمةٍ واحدة"}],
+   sol:"شرط البسيطة: **إطارٌ كامل** (قائمة بكل الوحدات) + فرصةٌ متساوية لكل وحدة.\nومولّد الأرقام العشوائية هو أداة تحقيق الشرط الثاني."},
+  {id:"sw1_v1",ch:"المتغيرات",src:"ملف",ws:"١",
+   q:"«وسيلة النقل المستخدمة للوصول إلى الجامعة» متغيّرٌ:",
+   c:[{t:"نوعي",ok:true,why:"صحيح — قيمُه أسماءٌ (حافلة، سيارة، مشي) لا أعداد تُحسب"},
+      {t:"كمّي متقطّع",ok:false,why:"لا عدد يُحصى هنا — الجواب اسمُ وسيلةٍ لا رقم"},
+      {t:"كمّي مستمرّ",ok:false,why:"المستمرّ يُقاس ويقبل الكسور، ووسيلة النقل لا تُقاس"},
+      {t:"كمّي مستمرّ إذا قيس بالدقائق",ok:false,why:"الدقائق متغيّرٌ **آخر** (زمن الوصول) لا وسيلة النقل"}],
+   sol:"السؤال الفاصل: هل الجواب **رقمٌ** أم **اسم**؟\nاسمٌ ⟵ نوعي. رقمٌ ⟵ كمّي، ثم يُسأل: يُعدّ (متقطّع) أم يُقاس (مستمرّ)؟"},
+  {id:"sw1_v2",ch:"المتغيرات",src:"ملف",ws:"١",
+   q:"«الزمن المستغرق للوصول إلى الجامعة بالدقائق» متغيّرٌ:",
+   c:[{t:"كمّي مستمرّ",ok:true,why:"صحيح — الزمن يُقاس ويقبل الكسور (١٢٫٥ دقيقة)"},
+      {t:"كمّي متقطّع",ok:false,why:"المتقطّع يقفز بقيمٍ صحيحة، والزمن لا يقفز"},
+      {t:"نوعي",ok:false,why:"القيمة رقمٌ يقبل الحساب لا اسم فئة"},
+      {t:"نوعي رتبي",ok:false,why:"الرتبي ترتيبٌ بلا مسافةٍ متساوية، والدقائق مسافاتها متساوية"}],
+   sol:"المستمرّ يقبل **أي قيمة** داخل مجال: بين ١٢ و١٣ دقيقة قيمٌ لا تُحصى.\nوهذا هو الفاصل عن المتقطّع."},
+  {id:"sw1_v3",ch:"المتغيرات",src:"ملف",ws:"١",
+   q:"«رقم القاعة الدراسية» متغيّرٌ:",
+   c:[{t:"نوعي — رقمٌ يُستعمل اسماً لا كمّية",ok:true,why:"صحيح — لا معنى لجمع أرقام القاعات ولا لمتوسّطها"},
+      {t:"كمّي متقطّع",ok:false,why:"شكلُه رقمٌ صحيح، لكنه **تسمية** لا كمّية تُحسب"},
+      {t:"كمّي مستمرّ",ok:false,why:"لا يُقاس ولا يقبل الكسور"},
+      {t:"كمّي متقطّع لأنه عددٌ صحيح",ok:false,why:"كون القيمة عدداً صحيحاً لا يجعلها كمّية — المعيار أن تدلّ على **مقدار**"}],
+   sol:"فخُّ الأرقام التي ليست كمّيات: رقم القاعة، رقم اللاعب، رقم الجوّال.\nالاختبار العملي: هل لجمعها أو لمتوسّطها معنى؟ إن لم يكن فهي **نوعية** (مقياسها اسمي)."},
+  {id:"sw1_v4",ch:"المتغيرات",src:"ملف",ws:"١",
+   q:"«وزن حقيبة الطالب بالكيلوغرام» متغيّرٌ:",
+   c:[{t:"كمّي مستمرّ",ok:true,why:"صحيح — الوزن يُقاس ويقبل الكسور (٣٫٤ كغم)"},
+      {t:"كمّي متقطّع",ok:false,why:"لو كان متقطّعاً لما وُجد وزنٌ بين ٣ و٤ كغم، وهو موجود"},
+      {t:"نوعي",ok:false,why:"القيمة مقدارٌ يُقاس لا اسم فئة"},
+      {t:"نوعي رتبي",ok:false,why:"الرتبي كـ«خفيف/متوسط/ثقيل»، أمّا الكيلوغرام فمقياسٌ نسبي"}],
+   sol:"كل ما **يُقاس** بأداة (ميزان، مسطرة، ساعة) مستمرٌّ عادةً.\nوكل ما **يُعدّ** بالأرقام الصحيحة متقطّع."},
+  {id:"sw1_v5",ch:"المتغيرات",src:"ملف",ws:"١",
+   q:"«عدد الرسائل التي يستقبلها الطالب في يوم» متغيّرٌ:",
+   c:[{t:"كمّي متقطّع",ok:true,why:"صحيح — يُعدّ بقيمٍ صحيحة، ولا توجد ٧٫٥ رسالة"},
+      {t:"كمّي مستمرّ",ok:false,why:"المستمرّ يقبل الكسور، والرسائل لا تتجزّأ"},
+      {t:"نوعي",ok:false,why:"القيمة عددٌ يقبل الجمع والمتوسّط، فهي كمّية"},
+      {t:"نوعي اسمي",ok:false,why:"الاسمي تسميةٌ بلا مقدار، والعدد هنا مقدارٌ حقيقي"}],
+   sol:"سؤال الفصل بين المتقطّع والمستمرّ: **هل للقيمة نصف؟**\nنصف رسالة لا معنى له ⟵ متقطّع.\nنصف دقيقة له معنى ⟵ مستمرّ."},
+  {id:"sw1_l1",ch:"المتغيرات",src:"ملف",ws:"١",
+   q:"مقياس المستوى المناسب لمتغيّر «فصيلة الدم» هو:",
+   c:[{t:"اسمي",ok:true,why:"صحيح — تسمياتٌ بلا ترتيبٍ ولا مسافة: A و B و AB و O"},
+      {t:"رتبي",ok:false,why:"الرتبي يستلزم ترتيباً معنوياً، ولا فصيلةَ «أعلى» من أخرى"},
+      {t:"فترة",ok:false,why:"الفترة تستلزم مسافاتٍ متساوية قابلة للطرح"},
+      {t:"نسبي",ok:false,why:"النسبي يستلزم صفراً حقيقياً ونسباً ذات معنى"}],
+   sol:"سلّم المقاييس الأربعة صاعداً:\n**اسمي** تسميةٌ فقط ⟵ **رتبي** يُضيف الترتيب ⟵ **فترة** يُضيف تساوي المسافات ⟵ **نسبي** يُضيف الصفر الحقيقي."},
+  {id:"sw1_l2",ch:"المتغيرات",src:"ملف",ws:"١",
+   q:"مقياس المستوى المناسب لمتغيّر «درجة الحرارة بالسيلسيوس» هو:",
+   c:[{t:"فترة",ok:true,why:"صحيح — الفروق ذات معنى، لكن صفر سيلسيوس ليس انعداماً للحرارة"},
+      {t:"نسبي",ok:false,why:"النسبي يشترط صفراً حقيقياً، و٢٠° ليست ضعف ١٠° حرارةً"},
+      {t:"رتبي",ok:false,why:"الرتبي لا تتساوى فيه المسافات، وهنا تتساوى"},
+      {t:"اسمي",ok:false,why:"الدرجة مقدارٌ مرتَّب لا تسمية"}],
+   sol:"الفاصل بين الفترة والنسبي: **الصفر**.\nصفر السيلسيوس اصطلاحيّ (نقطة تجمّد الماء) لا انعدام، فالنسبة «ضعف» لا تصحّ ⟵ فترة.\nوصفر كلفن حقيقي، فمقياسه نسبي."},
+  {id:"sw1_l3",ch:"المتغيرات",src:"ملف",ws:"١",
+   q:"مقياس المستوى المناسب لمتغيّر «الزمن المستغرق لإنجاز مهمة ما» هو:",
+   c:[{t:"نسبي",ok:true,why:"صحيح — الصفر يعني انعدام الزمن فعلاً، و٢٠ دقيقة ضعف ١٠"},
+      {t:"فترة",ok:false,why:"الفترة تنقصها حقيقيّة الصفر، وزمن الإنجاز صفرُه حقيقي"},
+      {t:"رتبي",ok:false,why:"الرتبي بلا مسافاتٍ متساوية، ودقائق الزمن متساوية"},
+      {t:"اسمي",ok:false,why:"الزمن مقدارٌ يُقاس لا تسمية"}],
+   sol:"الاختبار: هل للصفر معنى «لا شيء»؟\nزمنٌ = ٠ يعني لم يستغرق شيئاً ⟵ صفرٌ حقيقي ⟵ **نسبي**."},
+  {id:"sw1_l4",ch:"المتغيرات",src:"ملف",ws:"١",
+   q:"مقياس المستوى المناسب لمتغيّر «مستوى رضا العميل: منخفض، متوسط، مرتفع» هو:",
+   c:[{t:"رتبي",ok:true,why:"صحيح — ترتيبٌ واضح، والمسافة بين الدرجات غير معلومة"},
+      {t:"اسمي",ok:false,why:"الاسمي بلا ترتيب، وهنا «مرتفع» أعلى من «منخفض» يقيناً"},
+      {t:"فترة",ok:false,why:"الفترة تشترط تساوي المسافات، ولا نعرف أن الفرق منخفض⟵متوسط يساوي متوسط⟵مرتفع"},
+      {t:"نسبي",ok:false,why:"لا صفر حقيقي ولا نسبٌ ذات معنى بين الدرجات"}],
+   sol:"الرتبي يعطي **الترتيب** ويمنع **الطرح**.\nفـ«مرتفع أعلى من متوسط» صحيح، و«الفرق بينهما يساوي الفرق بين متوسط ومنخفض» غير مضمون."},
+  {id:"sw1_l5",ch:"المتغيرات",src:"ملف",ws:"١",
+   q:"مقياس المستوى المناسب لمتغيّر «الوزن بالكيلوغرام» هو:",
+   c:[{t:"نسبي",ok:true,why:"صحيح — صفرُ الكيلوغرام انعدامُ وزن، و٦٠ كغم ضعف ٣٠ فعلاً"},
+      {t:"فترة",ok:false,why:"لو كان فترةً لما صحّ قول «ضعف»، وهو صحيحٌ في الوزن"},
+      {t:"رتبي",ok:false,why:"الرتبي لا يقبل الطرح ولا القسمة، والوزن يقبلهما"},
+      {t:"اسمي",ok:false,why:"الوزن مقدارٌ مقيسٌ لا تسمية"}],
+   sol:"أعلى المقاييس الأربعة هو **النسبي**: يقبل كل العمليات.\nوعلامته الحاسمة أن الصفر يعني «لا شيء» — كالوزن والطول والزمن والدخل."},
+
+  // ═══════════════ ورقة العمل الثانية — الفصل الثاني ١٤٤٨ (٥ سبتمبر) ═══════════════
+  // الجداول التكرارية والعرض البياني. وأربعة رسومٍ فيها مولَّدةٌ **من بيانات السؤال
+  // نفسها** بسكربت `node` (زوايا القرص من النسب، وأعمدة المدرّج من التكرارات، ونقاط
+  // المضلّع من التكرار المتجمّع) — لا رسمٌ مُقدَّرٌ بالعين. ومنها اثنان يُعرضان مع
+  // السؤال (`svg`: القرص والمدرّج، فهما معطياتٌ تُقرأ) واثنان بعد القفل
+  // (`svgSol`: الشرائطي والمضلّع، فهما **جواب** مهمّة تمثيلٍ يُفشيها عرضُها قبلها).
+  {id:"sw2_q1",ch:"الجداول التكرارية",src:"ملف",ws:"٢",
+   q:"في دراسة إحصائية، إذا كان عدد البيانات الكمية يساوي 90، فإن عدد الفئات المناسب لإنشاء جدول توزيع تكراري يساوي:",
+   c:[{t:"7",ok:true,why:"صحيح — أصغر أُسٍّ يحقّق المتباينة، وقاعدة Sturges تعطي 7.49 كذلك"},
+      {t:"6",ok:false,why:"هذا ناتجُ قلب المتباينة — أكبر أُسٍّ بدل أصغره. و2⁶ = 64 أقلّ من 90 فلا يكفي",bug:"reversed_pair"},
+      {t:"5",ok:false,why:"2⁵ = 32، وهو أبعد عن 90"},
+      {t:"12",ok:false,why:"عددٌ كبيرٌ يُفرِغ أكثر الفئات، و2¹² = 4096 أكبر بكثير من الحاجة"}],
+   sol:"قاعدة ‎2^k ≥ n‎ (وتوافقها Sturges):\n2^6 = 64 < 90\n2^7 = 128 ≥ 90\nإذن k = 7.\nوقاعدة Sturges تعطي العدد نفسه:\nk = 1 + 3.322 × log(90) = 7.49\n**تنبيه**: مفتاح الحلّ في الورقة المرفوعة أشّر على 6، ولا تُنتجه أيٌّ من القاعدتين — راجعه مع مدرّسك إن نصّت ملزمتكم على قاعدةٍ ثالثة."},
+  {id:"sw2_q2",ch:"الجداول التكرارية",src:"ملف",ws:"٢",
+   q:"إذا صُبّت بيانات كمية أصغرها 8 وأكبرها 63 في توزيع تكراري مكوّن من 7 فئات، فإن سعة الفئة تساوي:",
+   c:[{t:"8",ok:true,why:"صحيح — المدى 55 مقسوماً على 7 يساوي 7.86، ويُقرَّب لأعلى إلى 8"},
+      {t:"7",ok:false,why:"هذا تقريبٌ لأسفل، فتضيع القيم الكبرى خارج آخر فئة",bug:"round_down"},
+      {t:"6",ok:false,why:"أصغر من الناتج، فلا تتّسع الفئات السبع للمدى كلّه"},
+      {t:"5",ok:false,why:"5 × 7 = 35 وهو أقلّ من المدى 55"}],
+   sol:"المدى = 63 − 8 = 55\nسعة الفئة = المدى ÷ عدد الفئات = 55 ÷ 7 = 7.86\nوتُقرَّب **لأعلى** دائماً (8) — فالتقريب لأسفل يترك بياناتٍ خارج الجدول."},
+  {id:"sw2_q3",ch:"الجداول التكرارية",src:"ملف",ws:"٢",
+   q:"في توزيع تكراري مكوّن من 5 فئات، إذا كانت الحدود العملية للفئة الأولى هي 2 − 9، فإن الحد الفعلي الأدنى للفئة الثانية هو:",
+   c:[{t:"9.5",ok:true,why:"صحيح — الحد العملي الأدنى للفئة الثانية 10، ويُنقَص منه 0.5"},
+      {t:"9",ok:false,why:"هذا الحدّ العملي الأعلى للفئة الأولى لا الحدّ الفعلي الأدنى للثانية"},
+      {t:"10.5",ok:false,why:"زدتَ 0.5 بدل أن تُنقصها — والحدّ الأدنى يُنقَص",bug:"reversed_pair"},
+      {t:"8.5",ok:false,why:"هذا الحدّ الفعلي الأدنى للفئة **الأولى** لا الثانية"}],
+   sol:"سعة الفئة = 8، فالفئة الثانية عملياً 10 − 17.\nوالحدود الفعلية تُزيل الفجوة بين 9 و10:\nالحدّ الفعلي الأدنى = 10 − 0.5 = 9.5\nوهو نفسه الحدّ الفعلي الأعلى للفئة الأولى."},
+  {id:"sw2_q4",ch:"الجداول التكرارية",src:"ملف",ws:"٢",
+   q:"إذا كان العدد 8 هو مركز الفئة الثانية في توزيع تكراري طول كل فئة من فئاته يساوي 5، فإن مركز الفئة الخامسة هو:",
+   c:[{t:"23",ok:true,why:"صحيح — بين الثانية والخامسة ثلاث خطوات: 8 + 3 × 5"},
+      {t:"28",ok:false,why:"هذا يفترض أربع خطوات، وبين الفئة 2 و5 ثلاثٌ لا أربع",bug:"count_all_not_gaps"},
+      {t:"18",ok:false,why:"خطوتان فقط — يقف عند مركز الفئة الرابعة"},
+      {t:"33",ok:false,why:"خمس خطوات، أي مركز الفئة السابعة"}],
+   sol:"المراكز تتباعد بمقدار سعة الفئة:\n8 → 13 → 18 → 23\nأي مركز الفئة الخامسة = 8 + (5 − 2) × 5 = 23.\nوالفخّ: عدُّ **الفئات** بدل عدّ **الفجوات** بينها."},
+  {id:"sw2_q5",ch:"الجداول التكرارية",src:"ملف",ws:"٢",
+   q:"إذا كان العدد 9 هو مركز الفئة الأولى في توزيع تكراري سعة فئاته 5، فإن الحدود الفعلية للفئة الثانية هي:",
+   c:[{t:"11.5 → 16.5",ok:true,why:"صحيح — الفئة الأولى فعلياً 6.5 → 11.5، فالثانية تليها بسعة 5"},
+      {t:"6.5 → 11.5",ok:false,why:"هذه حدود الفئة **الأولى** لا الثانية"},
+      {t:"12.5 → 17.5",ok:false,why:"بدأتَ من 12.5 بدل 11.5، فتركتَ فجوةً بين الفئتين"},
+      {t:"12 → 26",ok:false,why:"سعةٌ قدرها 14 لا 5، ولا حدود فعلية بنصف وحدة"}],
+   sol:"من المركز إلى الحدود: نصف السعة يميناً ويساراً.\nالفئة الأولى: 9 ± 2.5 ⟵ 6.5 → 11.5\nوالفئات الفعلية متلاصقة، فالثانية تبدأ حيث انتهت الأولى:\n11.5 → 16.5"},
+  {id:"sw2_q6",ch:"العرض البياني",src:"ملف",ws:"٢",
+   q:"مُثّلت بيانات خام عددها 108 بقرص دائري. إذا كان قياس زاوية أحد القطاعات يساوي 50°، فإن عدد بياناته يساوي:",
+   c:[{t:"15",ok:true,why:"صحيح — نسبة الزاوية إلى 360 مضروبةً في 108"},
+      {t:"12",ok:false,why:"يقابل زاوية 40° تقريباً لا 50°"},
+      {t:"9",ok:false,why:"يقابل 30° — قسمتَ على 12 بدل النسبة الصحيحة"},
+      {t:"24",ok:false,why:"يقابل 80°، أي ضِعف المطلوب تقريباً"}],
+   sol:"زاوية القطاع = (تكرار الفئة ÷ المجموع) × 360\nنعكسها:\nالتكرار = (50 ÷ 360) × 108 = 15"},
+  {id:"sw2_q7",ch:"العرض البياني",src:"ملف",ws:"٢",
+   q:"تُرسم نقاط مضلّع التكرار المتجمّع الصاعد بتمثيل التكرار المتجمّع الصاعد مقابل:",
+   c:[{t:"الحد الأعلى للفئة",ok:true,why:"صحيح — التجمّع الصاعد يكتمل عند نهاية الفئة لا قبلها"},
+      {t:"مركز الفئة",ok:false,why:"المركز يُستعمل في **المضلّع التكراري** العادي لا المتجمّع",bug:"reversed_pair"},
+      {t:"الحد الأدنى للفئة",ok:false,why:"هذا موضع المتجمّع **النازل** لا الصاعد"},
+      {t:"سعة الفئة",ok:false,why:"السعة عددٌ ثابت لا موضعٌ على المحور"}],
+   sol:"المعنى يفرض الموضع: «كم قيمةً تقلّ عن كذا؟»\nولا يكتمل عدُّ فئةٍ إلا عند **حدّها الأعلى** (الفعلي)، فهناك تُرسم النقطة."},
+  {id:"sw2_q8",ch:"العرض البياني",src:"ملف",ws:"٢",
+   q:"أيّ التمثيلات البيانية الآتية يُستخدم لتمثيل تقديرات عينة من 25 طالباً:",
+   c:[{t:"العرض الشرائطي",ok:true,why:"صحيح — التقديرات بياناتٌ نوعية، والشرائطي للنوعي"},
+      {t:"المدرّج التكراري",ok:false,why:"المدرّج للبيانات الكمّية المستمرّة، وأعمدته متلاصقة لأن الفئات متّصلة",bug:"reversed_pair"},
+      {t:"المضلّع التكراري",ok:false,why:"يصل مراكز فئاتٍ كمّية، ولا مراكز للتقديرات"},
+      {t:"مضلّع التكرار المتجمّع الصاعد",ok:false,why:"يفترض ترتيباً كمّياً متّصلاً يُجمَع تصاعدياً"}],
+   sol:"القاعدة الفاصلة:\n**نوعي** ⟵ عرضٌ شرائطي (أعمدةٌ متباعدة) أو قرصٌ دائري.\n**كمّي متّصل** ⟵ مدرّجٌ تكراري (أعمدةٌ متلاصقة) أو مضلّع.\nوالتقدير (ممتاز، جيد جداً…) نوعيّ رتبي."},
+  {id:"sw2_q9",ch:"الجداول التكرارية",src:"ملف",ws:"٢",
+   q:"في توزيع تكراري من خمس فئات، إذا كان مجموع التكرارات يساوي 125، وكانت تكرارات أربع من الفئات هي: 15، 20، 25، 10، فإن التكرار النسبي للفئة الخامسة يساوي:",
+   c:[{t:"0.44",ok:true,why:"صحيح — تكرارها 55، و55 ÷ 125 = 0.44"},
+      {t:"0.45",ok:false,why:"قريبٌ لكن لا يطابق: 0.45 × 125 = 56.25 وهو ليس عدداً صحيحاً"},
+      {t:"0.55",ok:false,why:"هذا **التكرار** 55 لا نسبته — نسيتَ القسمة على المجموع",bug:"reversed_pair"},
+      {t:"0.54",ok:false,why:"لا يقابل تكراراً صحيحاً: 0.54 × 125 = 67.5"}],
+   sol:"تكرار الفئة الخامسة = المجموع ناقص الأربع المعلومة:\n125 − (15 + 20 + 25 + 10) = 55\nثم التكرار النسبي:\n55 ÷ 125 = 0.44"},
+  {id:"sw2_q10",ch:"العرض البياني",src:"ملف",ws:"٢",
+   q:"في توزيع تكراري، إذا كانت الفئة 12 → 18 تكرارها 8، فإن النقطة المقابلة لهذه الفئة في المضلّع التكراري هي:",
+   c:[{t:"(15 , 8)",ok:true,why:"صحيح — الإحداثي السيني مركز الفئة، والصادي تكرارها"},
+      {t:"(12 , 8)",ok:false,why:"12 حدُّ الفئة الأدنى لا مركزها"},
+      {t:"(18 , 8)",ok:false,why:"18 حدُّها الأعلى — وهو موضع المتجمّع الصاعد لا المضلّع التكراري"},
+      {t:"(8 , 18)",ok:false,why:"قلبتَ الإحداثيين: التكرار على المحور الصادي لا السيني",bug:"reversed_pair"},],
+   sol:"مركز الفئة = (12 + 18) ÷ 2 = 15\nفالنقطة = (المركز , التكرار) = (15 , 8)"},
+
+  // ── السؤال الثاني: جدول تقييمات ٢٠٠ مستفيد (`pre` مشتركٌ بين أربعة عناصر) ──
+  {id:"sw2_r1",ch:"الجداول التكرارية",src:"ملف",ws:"٢",
+   pre:"تقييمات 200 مستفيد لجودة الخدمة — ممتاز 50 · جيد جداً 60 · جيد 20 · متوسط 40 · ضعيف 30.",
+   q:"كم عدد المستفيدين الذين منحوا المؤسسة تقييماً «لا يقلّ عن جيد»؟",
+   c:[{t:"130",ok:true,why:"صحيح — جيد وما فوقه: 20 + 60 + 50"},
+      {t:"20",ok:false,why:"هذا تقييم «جيد» وحده، و«لا يقلّ عن» تشمله وما فوقه",bug:"reversed_pair"},
+      {t:"70",ok:false,why:"هذا ما **يقلّ** عن جيد (متوسط + ضعيف)"},
+      {t:"110",ok:false,why:"أسقطتَ فئة «جيد» نفسها من الجمع"}],
+   sol:"«لا يقلّ عن جيد» = جيد + جيد جداً + ممتاز\n= 20 + 60 + 50 = 130"},
+  {id:"sw2_r2",ch:"الجداول التكرارية",src:"ملف",ws:"٢",
+   pre:"تقييمات 200 مستفيد لجودة الخدمة — ممتاز 50 · جيد جداً 60 · جيد 20 · متوسط 40 · ضعيف 30.",
+   q:"احسب التكرار النسبي للمستفيدين الذين منحوا المؤسسة تقييم «ممتاز».",
+   c:[{t:"0.25",ok:true,why:"صحيح — 50 ÷ 200"},
+      {t:"25",ok:false,why:"هذه النسبة المئوية لا التكرار النسبي — النسبي كسرٌ بين صفر وواحد"},
+      {t:"0.30",ok:false,why:"يقابل تكراراً 60 وهو «جيد جداً» لا «ممتاز»"},
+      {t:"0.50",ok:false,why:"قسمتَ 50 على 100 لا على المجموع 200",bug:"wrong_denominator"}],
+   sol:"التكرار النسبي = تكرار الفئة ÷ مجموع التكرارات\n= 50 ÷ 200 = 0.25\nومجموع التكرارات النسبية لكل الفئات يساوي 1 دائماً."},
+  {id:"sw2_r3",ch:"الجداول التكرارية",src:"ملف",ws:"٢",
+   pre:"تقييمات 200 مستفيد لجودة الخدمة — ممتاز 50 · جيد جداً 60 · جيد 20 · متوسط 40 · ضعيف 30.",
+   q:"احسب النسبة المئوية للمستفيدين الذين منحوا المؤسسة تقييماً «أقلّ من جيد».",
+   c:[{t:"35%",ok:true,why:"صحيح — متوسط وضعيف: 40 + 30 = 70، و70 ÷ 200 = 35%"},
+      {t:"45%",ok:false,why:"أدخلتَ «جيد» في العدّ، و«أقلّ من» لا تشمله",bug:"reversed_pair"},
+      {t:"15%",ok:false,why:"هذا «ضعيف» وحده"},
+      {t:"65%",ok:false,why:"هذا المتمّم — أي «لا يقلّ عن جيد» بالنسبة المئوية",bug:"reversed_pair"}],
+   sol:"«أقلّ من جيد» = متوسط + ضعيف = 40 + 30 = 70\nالنسبة المئوية = (70 ÷ 200) × 100 = 35%"},
+  {id:"sw2_r4",ch:"العرض البياني",src:"ملف",ws:"٢",
+   pre:"تقييمات 200 مستفيد لجودة الخدمة — ممتاز 50 · جيد جداً 60 · جيد 20 · متوسط 40 · ضعيف 30.",
+   q:"احسب زاوية القطاع الممثّل للمستفيدين الذين منحوا تقييم «جيد جداً»، إذا أردنا تمثيل البيانات بقرص دائري.",
+   c:[{t:"108°",ok:true,why:"صحيح — (60 ÷ 200) × 360"},
+      {t:"90°",ok:false,why:"يقابل تكراراً 50 أي «ممتاز»"},
+      {t:"60°",ok:false,why:"أخذتَ التكرار نفسه زاويةً بلا حساب",bug:"reversed_pair"},
+      {t:"30%",ok:false,why:"هذه نسبةٌ مئوية لا زاوية — والمطلوب قياسٌ بالدرجات"}],
+   sol:"زاوية القطاع = (تكرار الفئة ÷ المجموع) × 360\n= (60 ÷ 200) × 360 = 0.3 × 360 = 108\nومجموع زوايا القطاعات 360 درجة."},
+
+  // ── السؤال الثالث: القرص الدائري (رسمٌ يُقرأ قبل الإجابة) ──
+  {id:"sw2_p1",ch:"العرض البياني",src:"ملف",ws:"٢",
+   q:"بالاعتماد على القرص الدائري الآتي لفصائل الدم لعينة من 80 شخصاً: كم عدد الأشخاص الحاملين لفصيلة الدم AB؟",
+   svg:"<svg viewBox=\"0 0 220 250\" width=\"220\" height=\"250\" role=\"img\" aria-label=\"قرص دائري لفصائل الدم\"><path d=\"M 110 110 L 110 22 A 88 88 0 0 1 193.69 82.81 Z\" fill=\"#2563EB\" fill-opacity=\".85\" stroke=\"#fff\" stroke-width=\"2\"/><path d=\"M 110 110 L 193.69 82.81 A 88 88 0 0 1 137.19 193.69 Z\" fill=\"#059669\" fill-opacity=\".85\" stroke=\"#fff\" stroke-width=\"2\"/><path d=\"M 110 110 L 137.19 193.69 A 88 88 0 0 1 38.81 58.27 Z\" fill=\"#D97706\" fill-opacity=\".85\" stroke=\"#fff\" stroke-width=\"2\"/><path d=\"M 110 110 L 38.81 58.27 A 88 88 0 0 1 110 22 Z\" fill=\"#DC2626\" fill-opacity=\".85\" stroke=\"#fff\" stroke-width=\"2\"/><text x=\"142.07\" y=\"65.86\" text-anchor=\"middle\" dominant-baseline=\"middle\" font-size=\"15\" font-weight=\"700\" fill=\"#fff\">A</text><text x=\"158.61\" y=\"134.77\" text-anchor=\"middle\" dominant-baseline=\"middle\" font-size=\"15\" font-weight=\"700\" fill=\"#fff\">O</text><text x=\"65.86\" y=\"142.07\" text-anchor=\"middle\" dominant-baseline=\"middle\" font-size=\"15\" font-weight=\"700\" fill=\"#fff\">AB</text><text x=\"85.23\" y=\"61.39\" text-anchor=\"middle\" dominant-baseline=\"middle\" font-size=\"15\" font-weight=\"700\" fill=\"#fff\">B</text><text x=\"110\" y=\"18\" text-anchor=\"middle\" font-size=\"13\" font-weight=\"700\" fill=\"#0F172A\">Blood types (n = 80)</text><text x=\"110\" y=\"232\" text-anchor=\"middle\" font-size=\"12\" fill=\"#475569\">A = 72°  ·  AB = 40%  ·  O = 25%</text></svg>",
+   c:[{t:"32",ok:true,why:"صحيح — 40% من 80"},
+      {t:"40",ok:false,why:"هذه النسبة المئوية نفسها لا عدد الأشخاص",bug:"reversed_pair"},
+      {t:"20",ok:false,why:"هذا عدد حاملي O (25%)"},
+      {t:"16",ok:false,why:"هذا عدد حاملي A (زاويته 72°)"}],
+   sol:"العدد = النسبة × حجم العينة\n= 0.40 × 80 = 32"},
+  {id:"sw2_p2",ch:"العرض البياني",src:"ملف",ws:"٢",
+   q:"بالاعتماد على القرص الدائري الآتي (عينة من 80 شخصاً): ما النسبة المئوية للأشخاص الحاملين لفصيلة الدم A؟",
+   svg:"<svg viewBox=\"0 0 220 250\" width=\"220\" height=\"250\" role=\"img\" aria-label=\"قرص دائري لفصائل الدم\"><path d=\"M 110 110 L 110 22 A 88 88 0 0 1 193.69 82.81 Z\" fill=\"#2563EB\" fill-opacity=\".85\" stroke=\"#fff\" stroke-width=\"2\"/><path d=\"M 110 110 L 193.69 82.81 A 88 88 0 0 1 137.19 193.69 Z\" fill=\"#059669\" fill-opacity=\".85\" stroke=\"#fff\" stroke-width=\"2\"/><path d=\"M 110 110 L 137.19 193.69 A 88 88 0 0 1 38.81 58.27 Z\" fill=\"#D97706\" fill-opacity=\".85\" stroke=\"#fff\" stroke-width=\"2\"/><path d=\"M 110 110 L 38.81 58.27 A 88 88 0 0 1 110 22 Z\" fill=\"#DC2626\" fill-opacity=\".85\" stroke=\"#fff\" stroke-width=\"2\"/><text x=\"142.07\" y=\"65.86\" text-anchor=\"middle\" dominant-baseline=\"middle\" font-size=\"15\" font-weight=\"700\" fill=\"#fff\">A</text><text x=\"158.61\" y=\"134.77\" text-anchor=\"middle\" dominant-baseline=\"middle\" font-size=\"15\" font-weight=\"700\" fill=\"#fff\">O</text><text x=\"65.86\" y=\"142.07\" text-anchor=\"middle\" dominant-baseline=\"middle\" font-size=\"15\" font-weight=\"700\" fill=\"#fff\">AB</text><text x=\"85.23\" y=\"61.39\" text-anchor=\"middle\" dominant-baseline=\"middle\" font-size=\"15\" font-weight=\"700\" fill=\"#fff\">B</text><text x=\"110\" y=\"18\" text-anchor=\"middle\" font-size=\"13\" font-weight=\"700\" fill=\"#0F172A\">Blood types (n = 80)</text><text x=\"110\" y=\"232\" text-anchor=\"middle\" font-size=\"12\" fill=\"#475569\">A = 72°  ·  AB = 40%  ·  O = 25%</text></svg>",
+   c:[{t:"20%",ok:true,why:"صحيح — الزاوية 72°، و(72 ÷ 360) × 100 = 20%"},
+      {t:"72%",ok:false,why:"هذه الزاوية بالدرجات لا النسبة المئوية",bug:"reversed_pair"},
+      {t:"25%",ok:false,why:"هذه نسبة O المكتوبة على القرص"},
+      {t:"15%",ok:false,why:"هذه نسبة B — الباقية بعد A وAB وO"}],
+   sol:"النسبة المئوية = (الزاوية ÷ 360) × 100\n= (72 ÷ 360) × 100 = 20%"},
+  {id:"sw2_p3",ch:"العرض البياني",src:"ملف",ws:"٢",
+   q:"بالاعتماد على القرص الدائري الآتي (عينة من 80 شخصاً): كم عدد الأشخاص الحاملين لفصيلة الدم B؟",
+   svg:"<svg viewBox=\"0 0 220 250\" width=\"220\" height=\"250\" role=\"img\" aria-label=\"قرص دائري لفصائل الدم\"><path d=\"M 110 110 L 110 22 A 88 88 0 0 1 193.69 82.81 Z\" fill=\"#2563EB\" fill-opacity=\".85\" stroke=\"#fff\" stroke-width=\"2\"/><path d=\"M 110 110 L 193.69 82.81 A 88 88 0 0 1 137.19 193.69 Z\" fill=\"#059669\" fill-opacity=\".85\" stroke=\"#fff\" stroke-width=\"2\"/><path d=\"M 110 110 L 137.19 193.69 A 88 88 0 0 1 38.81 58.27 Z\" fill=\"#D97706\" fill-opacity=\".85\" stroke=\"#fff\" stroke-width=\"2\"/><path d=\"M 110 110 L 38.81 58.27 A 88 88 0 0 1 110 22 Z\" fill=\"#DC2626\" fill-opacity=\".85\" stroke=\"#fff\" stroke-width=\"2\"/><text x=\"142.07\" y=\"65.86\" text-anchor=\"middle\" dominant-baseline=\"middle\" font-size=\"15\" font-weight=\"700\" fill=\"#fff\">A</text><text x=\"158.61\" y=\"134.77\" text-anchor=\"middle\" dominant-baseline=\"middle\" font-size=\"15\" font-weight=\"700\" fill=\"#fff\">O</text><text x=\"65.86\" y=\"142.07\" text-anchor=\"middle\" dominant-baseline=\"middle\" font-size=\"15\" font-weight=\"700\" fill=\"#fff\">AB</text><text x=\"85.23\" y=\"61.39\" text-anchor=\"middle\" dominant-baseline=\"middle\" font-size=\"15\" font-weight=\"700\" fill=\"#fff\">B</text><text x=\"110\" y=\"18\" text-anchor=\"middle\" font-size=\"13\" font-weight=\"700\" fill=\"#0F172A\">Blood types (n = 80)</text><text x=\"110\" y=\"232\" text-anchor=\"middle\" font-size=\"12\" fill=\"#475569\">A = 72°  ·  AB = 40%  ·  O = 25%</text></svg>",
+   c:[{t:"12",ok:true,why:"صحيح — نسبتها 15% الباقية، و0.15 × 80 = 12"},
+      {t:"15",ok:false,why:"هذه نسبتها المئوية لا عددها",bug:"reversed_pair"},
+      {t:"20",ok:false,why:"هذا عدد حاملي O"},
+      {t:"16",ok:false,why:"هذا عدد حاملي A"}],
+   sol:"نسبة B هي الباقية بعد الفصائل الثلاث:\n100% − (20% + 40% + 25%) = 15%\nثم العدد:\n0.15 × 80 = 12\nوبالزوايا كذلك:\n360 − 72 − 144 − 90 = 54"},
+  {id:"sw2_p4",ch:"العرض البياني",src:"ملف",ws:"٢",
+   q:"بالاعتماد على القرص الدائري الآتي (عينة من 80 شخصاً): ما قياس زاوية القطاع الممثّل لحاملي فصيلة الدم O؟",
+   svg:"<svg viewBox=\"0 0 220 250\" width=\"220\" height=\"250\" role=\"img\" aria-label=\"قرص دائري لفصائل الدم\"><path d=\"M 110 110 L 110 22 A 88 88 0 0 1 193.69 82.81 Z\" fill=\"#2563EB\" fill-opacity=\".85\" stroke=\"#fff\" stroke-width=\"2\"/><path d=\"M 110 110 L 193.69 82.81 A 88 88 0 0 1 137.19 193.69 Z\" fill=\"#059669\" fill-opacity=\".85\" stroke=\"#fff\" stroke-width=\"2\"/><path d=\"M 110 110 L 137.19 193.69 A 88 88 0 0 1 38.81 58.27 Z\" fill=\"#D97706\" fill-opacity=\".85\" stroke=\"#fff\" stroke-width=\"2\"/><path d=\"M 110 110 L 38.81 58.27 A 88 88 0 0 1 110 22 Z\" fill=\"#DC2626\" fill-opacity=\".85\" stroke=\"#fff\" stroke-width=\"2\"/><text x=\"142.07\" y=\"65.86\" text-anchor=\"middle\" dominant-baseline=\"middle\" font-size=\"15\" font-weight=\"700\" fill=\"#fff\">A</text><text x=\"158.61\" y=\"134.77\" text-anchor=\"middle\" dominant-baseline=\"middle\" font-size=\"15\" font-weight=\"700\" fill=\"#fff\">O</text><text x=\"65.86\" y=\"142.07\" text-anchor=\"middle\" dominant-baseline=\"middle\" font-size=\"15\" font-weight=\"700\" fill=\"#fff\">AB</text><text x=\"85.23\" y=\"61.39\" text-anchor=\"middle\" dominant-baseline=\"middle\" font-size=\"15\" font-weight=\"700\" fill=\"#fff\">B</text><text x=\"110\" y=\"18\" text-anchor=\"middle\" font-size=\"13\" font-weight=\"700\" fill=\"#0F172A\">Blood types (n = 80)</text><text x=\"110\" y=\"232\" text-anchor=\"middle\" font-size=\"12\" fill=\"#475569\">A = 72°  ·  AB = 40%  ·  O = 25%</text></svg>",
+   c:[{t:"90°",ok:true,why:"صحيح — 25% من 360 درجة"},
+      {t:"25°",ok:false,why:"هذه النسبة المئوية قُرئت درجاتٍ بلا ضرب في 360",bug:"reversed_pair"},
+      {t:"144°",ok:false,why:"هذه زاوية AB (40%)"},
+      {t:"72°",ok:false,why:"هذه زاوية A المكتوبة على القرص"}],
+   sol:"الزاوية = النسبة × 360\n= 0.25 × 360 = 90 درجة\nوربعُ القرص يقابل ربع البيانات — والزاوية القائمة علامته."},
+
+  // ── السؤال الرابع: بياناتٌ خام ⟵ جدولٌ تكراري (وحلُّه رسمٌ شرائطي بعد القفل) ──
+  {id:"sw2_d1",ch:"الجداول التكرارية",src:"ملف",ws:"٢",
+   pre:"المعدّلات الجامعية لعينة من 40 طالباً:\n2, 1, 3, 4, 3, 1, 2, 1, 5, 3, 1, 2, 3, 5, 4, 4, 3, 2, 2, 1\n3, 4, 3, 4, 1, 4, 4, 3, 2, 5, 3, 3, 2, 4, 3, 3, 2, 5, 1, 5",
+   q:"عند تنظيم هذه البيانات في جدول تكراري، كم يساوي تكرار الممثّل 3؟",
+   c:[{t:"12",ok:true,why:"صحيح — وهي أكثر القيم تكراراً في العينة"},
+      {t:"8",ok:false,why:"هذا تكرار الممثّل 2 وكذلك 4"},
+      {t:"7",ok:false,why:"هذا تكرار الممثّل 1"},
+      {t:"5",ok:false,why:"هذا تكرار الممثّل 5، وهو الأقلّ"}],
+   sol:"بالعدّ المنظَّم (شرطة لكل ظهور):\n1 → 7\n2 → 8\n3 → 12\n4 → 8\n5 → 5\nوالمجموع 40 — وهذا هو التحقّق: إن لم يساوِ حجم العينة فالعدّ خاطئ."},
+  {id:"sw2_d2",ch:"الجداول التكرارية",src:"ملف",ws:"٢",
+   pre:"جدول معدّلات 40 طالباً — تكرارات الممثّلات 1، 2، 3، 4، 5 على الترتيب: 7، 8، 12، 8، 5.",
+   q:"ما التكرار النسبي للممثّل 1؟",
+   c:[{t:"0.175",ok:true,why:"صحيح — 7 ÷ 40"},
+      {t:"0.7",ok:false,why:"قسمتَ على 10 لا على 40",bug:"wrong_denominator"},
+      {t:"0.2",ok:false,why:"هذا التكرار النسبي للممثّل 2 (أو 4)"},
+      {t:"17.5",ok:false,why:"هذه النسبة المئوية لا التكرار النسبي"}],
+   sol:"التكرار النسبي = 7 ÷ 40 = 0.175\nوتحقّقٌ سريع: مجموع النسبية كلّها\n0.175 + 0.20 + 0.30 + 0.20 + 0.125 = 1"},
+  {id:"sw2_d3",ch:"العرض البياني",src:"ملف",ws:"٢",
+   pre:"جدول معدّلات 40 طالباً — تكرارات الممثّلات 1، 2، 3، 4، 5 على الترتيب: 7، 8، 12، 8، 5.",
+   q:"عند تمثيل هذه البيانات بالعرض الشرائطي، أيّ العبارات صحيحة؟",
+   c:[{t:"أعمدةٌ متباعدة، أطولها عند الممثّل 3",ok:true,why:"صحيح — البيانات نوعية/رتبية فالأعمدة متباعدة، وأكبر تكرار 12 عند 3"},
+      {t:"أعمدةٌ متلاصقة، أطولها عند الممثّل 3",ok:false,why:"التلاصق علامة المدرّج التكراري للبيانات المستمرّة لا الشرائطي",bug:"reversed_pair"},
+      {t:"أعمدةٌ متباعدة، أطولها عند الممثّل 5",ok:false,why:"تكرار 5 هو الأقلّ (5) لا الأكثر"},
+      {t:"خطٌّ متّصل يصل مراكز الفئات",ok:false,why:"هذا المضلّع التكراري لا العرض الشرائطي"}],
+   sol:"العرض الشرائطي: عمودٌ لكل فئة، ارتفاعه تكرارها، **وبينها فراغ** لأن الفئات منفصلة.\nوأطول عمودٍ هنا عند الممثّل 3 بتكرار 12.",
+   svgSol:"<svg viewBox=\"0 0 260 200\" width=\"260\" height=\"200\" role=\"img\" aria-label=\"عرض شرائطي للمعدّلات\"><line x1=\"45\" y1=\"160\" x2=\"235\" y2=\"160\" stroke=\"#94A3B8\"/><line x1=\"45\" y1=\"160\" x2=\"45\" y2=\"25\" stroke=\"#94A3B8\"/><rect x=\"51\" y=\"93.5\" width=\"26\" height=\"66.5\" fill=\"#059669\" fill-opacity=\".8\" stroke=\"#065F46\"/><text x=\"64\" y=\"88.5\" text-anchor=\"middle\" font-size=\"12\" font-weight=\"700\" fill=\"#065F46\">7</text><rect x=\"89\" y=\"84\" width=\"26\" height=\"76\" fill=\"#059669\" fill-opacity=\".8\" stroke=\"#065F46\"/><text x=\"102\" y=\"79\" text-anchor=\"middle\" font-size=\"12\" font-weight=\"700\" fill=\"#065F46\">8</text><rect x=\"127\" y=\"46\" width=\"26\" height=\"114\" fill=\"#059669\" fill-opacity=\".8\" stroke=\"#065F46\"/><text x=\"140\" y=\"41\" text-anchor=\"middle\" font-size=\"12\" font-weight=\"700\" fill=\"#065F46\">12</text><rect x=\"165\" y=\"84\" width=\"26\" height=\"76\" fill=\"#059669\" fill-opacity=\".8\" stroke=\"#065F46\"/><text x=\"178\" y=\"79\" text-anchor=\"middle\" font-size=\"12\" font-weight=\"700\" fill=\"#065F46\">8</text><rect x=\"203\" y=\"112.5\" width=\"26\" height=\"47.5\" fill=\"#059669\" fill-opacity=\".8\" stroke=\"#065F46\"/><text x=\"216\" y=\"107.5\" text-anchor=\"middle\" font-size=\"12\" font-weight=\"700\" fill=\"#065F46\">5</text><text x=\"64\" y=\"176\" text-anchor=\"middle\" font-size=\"12\" fill=\"#475569\">1</text><text x=\"102\" y=\"176\" text-anchor=\"middle\" font-size=\"12\" fill=\"#475569\">2</text><text x=\"140\" y=\"176\" text-anchor=\"middle\" font-size=\"12\" fill=\"#475569\">3</text><text x=\"178\" y=\"176\" text-anchor=\"middle\" font-size=\"12\" fill=\"#475569\">4</text><text x=\"216\" y=\"176\" text-anchor=\"middle\" font-size=\"12\" fill=\"#475569\">5</text><text x=\"130\" y=\"18\" text-anchor=\"middle\" font-size=\"12\" font-weight=\"700\" fill=\"#0F172A\">Frequency · n = 40</text><text x=\"130\" y=\"192\" text-anchor=\"middle\" font-size=\"11\" fill=\"#475569\">GPA level</text></svg>"},
+
+  // ── السؤال الخامس: توزيعٌ تكراري لأعمار المراجعين (`pre` مشتركٌ بين ستّة) ──
+  {id:"sw2_f1",ch:"الجداول التكرارية",src:"ملف",ws:"٢",
+   pre:"أعمار المراجعين في أحد المراكز الصحية:\n8 − 14 : 20\n15 − 21 : 15\n22 − 28 : 10\n29 − 35 : 10\n36 − 42 : 5",
+   q:"احسب سعة الفئة.",
+   c:[{t:"7",ok:true,why:"صحيح — 15 − 8 = 7، وهي المسافة بين حدَّين أدنيين متتاليين"},
+      {t:"6",ok:false,why:"هذا 14 − 8، أي الفرق داخل الفئة الواحدة لا سعتها",bug:"count_all_not_gaps"},
+      {t:"5",ok:false,why:"لا يوافق أيّ فرقٍ في الجدول"},
+      {t:"8",ok:false,why:"هذا الحدّ الأدنى للفئة الأولى لا السعة"}],
+   sol:"سعة الفئة = الفرق بين حدَّين أدنيين متتاليين\n= 15 − 8 = 7\nأو بالحدود الفعلية: 14.5 − 7.5 = 7.\nوالفخّ الشائع: حساب 14 − 8 = 6، وهو يُسقط الطرف الأخير من العدّ."},
+  {id:"sw2_f2",ch:"الجداول التكرارية",src:"ملف",ws:"٢",
+   pre:"أعمار المراجعين في أحد المراكز الصحية:\n8 − 14 : 20\n15 − 21 : 15\n22 − 28 : 10\n29 − 35 : 10\n36 − 42 : 5",
+   q:"ما هي الحدود الفعلية للفئة الرابعة؟",
+   c:[{t:"28.5 → 35.5",ok:true,why:"صحيح — الفئة الرابعة 29 − 35، فتُنقَص 0.5 وتُزاد 0.5"},
+      {t:"29 → 35",ok:false,why:"هذه الحدود **العملية** كما كُتبت في الجدول لا الفعلية"},
+      {t:"21.5 → 28.5",ok:false,why:"هذه حدود الفئة الثالثة"},
+      {t:"29.5 → 34.5",ok:false,why:"عكستَ الاتّجاه: الأدنى يُنقَص والأعلى يُزاد لا العكس",bug:"reversed_pair"}],
+   sol:"الفئة الرابعة عملياً: 29 − 35\nالحدّ الفعلي الأدنى = 29 − 0.5 = 28.5\nالحدّ الفعلي الأعلى = 35 + 0.5 = 35.5\nوالغرض إزالة الفجوة بين 28 و29 فتتّصل الفئات."},
+  {id:"sw2_f3",ch:"الجداول التكرارية",src:"ملف",ws:"٢",
+   pre:"أعمار المراجعين في أحد المراكز الصحية:\n8 − 14 : 20\n15 − 21 : 15\n22 − 28 : 10\n29 − 35 : 10\n36 − 42 : 5",
+   q:"كم عدد المراجعين الذين تقلّ أعمارهم عن 21.5 عاماً؟",
+   c:[{t:"35",ok:true,why:"صحيح — 21.5 هو الحدّ الفعلي الأعلى للفئة الثانية، فيُجمع 20 + 15"},
+      {t:"15",ok:false,why:"هذا تكرار الفئة الثانية وحدها بلا ما قبلها",bug:"reversed_pair"},
+      {t:"20",ok:false,why:"هذا تكرار الفئة الأولى وحدها"},
+      {t:"45",ok:false,why:"أضفتَ الفئة الثالثة، وهي تبدأ **بعد** 21.5"}],
+   sol:"21.5 = الحدّ الفعلي الأعلى للفئة 15 − 21.\nفالمطلوب هو التكرار المتجمّع الصاعد عندها:\n20 + 15 = 35"},
+  {id:"sw2_f4",ch:"الجداول التكرارية",src:"ملف",ws:"٢",
+   pre:"أعمار المراجعين في أحد المراكز الصحية:\n8 − 14 : 20\n15 − 21 : 15\n22 − 28 : 10\n29 − 35 : 10\n36 − 42 : 5",
+   q:"ما هو مركز الفئة الأقلّ تكراراً؟",
+   c:[{t:"39",ok:true,why:"صحيح — أقلّ تكرارٍ هو 5 في الفئة 36 − 42، ومركزها (36+42)÷2"},
+      {t:"5",ok:false,why:"هذا **التكرار** نفسه لا مركز الفئة",bug:"reversed_pair"},
+      {t:"11",ok:false,why:"هذا مركز الفئة الأولى — وهي الأكثر تكراراً لا الأقلّ"},
+      {t:"32",ok:false,why:"هذا مركز الفئة الرابعة (29 − 35)"}],
+   sol:"خطوتان لا واحدة:\n(١) أيّ فئةٍ الأقلّ تكراراً؟ ⟵ 36 − 42 بتكرار 5.\n(٢) مركزها = (36 + 42) ÷ 2 = 39."},
+  {id:"sw2_f5",ch:"الجداول التكرارية",src:"ملف",ws:"٢",
+   pre:"أعمار المراجعين في أحد المراكز الصحية:\n8 − 14 : 20\n15 − 21 : 15\n22 − 28 : 10\n29 − 35 : 10\n36 − 42 : 5",
+   q:"احسب التكرار المئوي للمراجعين الذين تتراوح أعمارهم ما بين 14.5 و 35.5 عاماً.",
+   c:[{t:"58.33%",ok:true,why:"صحيح — ثلاث فئات (15+10+10 = 35) من مجموع 60"},
+      {t:"35%",ok:false,why:"هذا **التكرار** 35 قُرئ نسبةً بلا قسمةٍ على المجموع",bug:"reversed_pair"},
+      {t:"41.67%",ok:false,why:"هذا المتمّم — أي من هم خارج هذا المدى",bug:"reversed_pair"},
+      {t:"75%",ok:false,why:"يقابل 45 مراجعاً، أي بإدخال فئةٍ رابعة في العدّ"}],
+   sol:"الحدّان الفعليان 14.5 و35.5 يحصران ثلاث فئات كاملة:\n15 − 21 · 22 − 28 · 29 − 35\nتكرارها = 15 + 10 + 10 = 35\nالمجموع الكلّي = 20 + 15 + 10 + 10 + 5 = 60\nالتكرار المئوي = (35 ÷ 60) × 100 = 58.33%"},
+  {id:"sw2_f6",ch:"العرض البياني",src:"ملف",ws:"٢",
+   pre:"أعمار المراجعين في أحد المراكز الصحية:\n8 − 14 : 20\n15 − 21 : 15\n22 − 28 : 10\n29 − 35 : 10\n36 − 42 : 5",
+   q:"عند تمثيل البيانات بمضلّع التكرار المتجمّع الصاعد، ما إحداثيا النقطة الثانية؟",
+   c:[{t:"(14.5 , 20)",ok:true,why:"صحيح — الحدّ الفعلي الأعلى للفئة الأولى، والتجمّع عنده 20"},
+      {t:"(11 , 20)",ok:false,why:"11 مركز الفئة — وهو موضع المضلّع التكراري العادي لا المتجمّع",bug:"reversed_pair"},
+      {t:"(14.5 , 35)",ok:false,why:"35 تجمّعُ الفئتين الأولى والثانية، ويقع عند 21.5"},
+      {t:"(7.5 , 20)",ok:false,why:"7.5 موضع النقطة **الأولى** وتجمّعها صفر"}],
+   sol:"يُرسم المضلّع المتجمّع الصاعد عند **الحدود الفعلية العليا**، ويبدأ من الحدّ الفعلي الأدنى للفئة الأولى بتجمّعٍ صفر:\n(7.5 , 0) → (14.5 , 20) → (21.5 , 35) → (28.5 , 45) → (35.5 , 55) → (42.5 , 60)",
+   svgSol:"<svg viewBox=\"0 0 275 200\" width=\"275\" height=\"200\" role=\"img\" aria-label=\"مضلّع التكرار المتجمّع الصاعد\"><line x1=\"48\" y1=\"165\" x2=\"258\" y2=\"165\" stroke=\"#94A3B8\"/><line x1=\"48\" y1=\"165\" x2=\"48\" y2=\"28\" stroke=\"#94A3B8\"/><polyline points=\"48,165 88,123.33 128,92.08 168,71.25 208,50.42 248,40\" fill=\"none\" stroke=\"#DC2626\" stroke-width=\"2\"/><circle cx=\"48\" cy=\"165\" r=\"3.5\" fill=\"#DC2626\"/><circle cx=\"88\" cy=\"123.33\" r=\"3.5\" fill=\"#DC2626\"/><circle cx=\"128\" cy=\"92.08\" r=\"3.5\" fill=\"#DC2626\"/><circle cx=\"168\" cy=\"71.25\" r=\"3.5\" fill=\"#DC2626\"/><circle cx=\"208\" cy=\"50.42\" r=\"3.5\" fill=\"#DC2626\"/><circle cx=\"248\" cy=\"40\" r=\"3.5\" fill=\"#DC2626\"/><text x=\"48\" y=\"180\" text-anchor=\"middle\" font-size=\"10\" fill=\"#475569\">7.5</text><text x=\"88\" y=\"180\" text-anchor=\"middle\" font-size=\"10\" fill=\"#475569\">14.5</text><text x=\"128\" y=\"180\" text-anchor=\"middle\" font-size=\"10\" fill=\"#475569\">21.5</text><text x=\"168\" y=\"180\" text-anchor=\"middle\" font-size=\"10\" fill=\"#475569\">28.5</text><text x=\"208\" y=\"180\" text-anchor=\"middle\" font-size=\"10\" fill=\"#475569\">35.5</text><text x=\"248\" y=\"180\" text-anchor=\"middle\" font-size=\"10\" fill=\"#475569\">42.5</text><text x=\"40\" y=\"169\" text-anchor=\"end\" font-size=\"10\" fill=\"#475569\">0</text><text x=\"40\" y=\"127.33\" text-anchor=\"end\" font-size=\"10\" fill=\"#475569\">20</text><text x=\"40\" y=\"85.67\" text-anchor=\"end\" font-size=\"10\" fill=\"#475569\">40</text><text x=\"40\" y=\"44\" text-anchor=\"end\" font-size=\"10\" fill=\"#475569\">60</text><text x=\"140\" y=\"18\" text-anchor=\"middle\" font-size=\"12\" font-weight=\"700\" fill=\"#0F172A\">Cumulative frequency</text><text x=\"140\" y=\"192\" text-anchor=\"middle\" font-size=\"10\" fill=\"#475569\">upper real limits</text></svg>"},
+
+  // ── السؤال السادس: المدرّج التكراري (رسمٌ يُقرأ قبل الإجابة) ──
+  {id:"sw2_h1",ch:"العرض البياني",src:"ملف",ws:"٢",
+   q:"بناءً على المدرّج التكراري الآتي لأزمنة انتظار 50 عميلاً (بالدقائق): كم عدد العملاء الذين انتظروا أقلّ من 25 دقيقة؟",
+   svg:"<svg viewBox=\"0 0 280 210\" width=\"280\" height=\"210\" role=\"img\" aria-label=\"مدرّج تكراري لأزمنة الانتظار\"><line x1=\"40\" y1=\"170\" x2=\"260\" y2=\"170\" stroke=\"#94A3B8\"/><line x1=\"40\" y1=\"170\" x2=\"40\" y2=\"25\" stroke=\"#94A3B8\"/><rect x=\"40\" y=\"150.8\" width=\"44\" height=\"19.2\" fill=\"#2563EB\" fill-opacity=\".8\" stroke=\"#1E40AF\"/><text x=\"62\" y=\"145.8\" text-anchor=\"middle\" font-size=\"12\" font-weight=\"700\" fill=\"#1E40AF\">3</text><rect x=\"84\" y=\"112.4\" width=\"44\" height=\"57.6\" fill=\"#2563EB\" fill-opacity=\".8\" stroke=\"#1E40AF\"/><text x=\"106\" y=\"107.4\" text-anchor=\"middle\" font-size=\"12\" font-weight=\"700\" fill=\"#1E40AF\">9</text><rect x=\"128\" y=\"42\" width=\"44\" height=\"128\" fill=\"#2563EB\" fill-opacity=\".8\" stroke=\"#1E40AF\"/><text x=\"150\" y=\"37\" text-anchor=\"middle\" font-size=\"12\" font-weight=\"700\" fill=\"#1E40AF\">20</text><rect x=\"172\" y=\"93.2\" width=\"44\" height=\"76.8\" fill=\"#2563EB\" fill-opacity=\".8\" stroke=\"#1E40AF\"/><text x=\"194\" y=\"88.2\" text-anchor=\"middle\" font-size=\"12\" font-weight=\"700\" fill=\"#1E40AF\">12</text><rect x=\"216\" y=\"131.6\" width=\"44\" height=\"38.4\" fill=\"#2563EB\" fill-opacity=\".8\" stroke=\"#1E40AF\"/><text x=\"238\" y=\"126.6\" text-anchor=\"middle\" font-size=\"12\" font-weight=\"700\" fill=\"#1E40AF\">6</text><text x=\"40\" y=\"185\" text-anchor=\"middle\" font-size=\"11\" fill=\"#475569\">10</text><text x=\"84\" y=\"185\" text-anchor=\"middle\" font-size=\"11\" fill=\"#475569\">15</text><text x=\"128\" y=\"185\" text-anchor=\"middle\" font-size=\"11\" fill=\"#475569\">20</text><text x=\"172\" y=\"185\" text-anchor=\"middle\" font-size=\"11\" fill=\"#475569\">25</text><text x=\"216\" y=\"185\" text-anchor=\"middle\" font-size=\"11\" fill=\"#475569\">30</text><text x=\"260\" y=\"185\" text-anchor=\"middle\" font-size=\"11\" fill=\"#475569\">35</text><text x=\"150\" y=\"18\" text-anchor=\"middle\" font-size=\"12\" font-weight=\"700\" fill=\"#0F172A\">Waiting time (min) · n = 50</text><text x=\"150\" y=\"203\" text-anchor=\"middle\" font-size=\"11\" fill=\"#475569\">minutes</text></svg>",
+   c:[{t:"32",ok:true,why:"صحيح — 3 + 9 + 20"},
+      {t:"20",ok:false,why:"هذا عمود الفئة 20 − 25 وحده",bug:"reversed_pair"},
+      {t:"12",ok:false,why:"هذا عمود الفئة 25 − 30، وهي **بعد** الحدّ لا قبله"},
+      {t:"44",ok:false,why:"أدخلتَ الفئة 25 − 30 في العدّ، وهي تبدأ عند الحدّ لا قبله"}],
+   sol:"الفئات دون 25 دقيقة ثلاث:\n10 − 15 : 3\n15 − 20 : 9\n20 − 25 : 20\nالمجموع = 32"},
+  {id:"sw2_h2",ch:"العرض البياني",src:"ملف",ws:"٢",
+   q:"بناءً على المدرّج التكراري الآتي (50 عميلاً): احسب التكرار النسبي للعملاء الذين انتظروا مدةً لا تقلّ عن 20 دقيقة.",
+   svg:"<svg viewBox=\"0 0 280 210\" width=\"280\" height=\"210\" role=\"img\" aria-label=\"مدرّج تكراري لأزمنة الانتظار\"><line x1=\"40\" y1=\"170\" x2=\"260\" y2=\"170\" stroke=\"#94A3B8\"/><line x1=\"40\" y1=\"170\" x2=\"40\" y2=\"25\" stroke=\"#94A3B8\"/><rect x=\"40\" y=\"150.8\" width=\"44\" height=\"19.2\" fill=\"#2563EB\" fill-opacity=\".8\" stroke=\"#1E40AF\"/><text x=\"62\" y=\"145.8\" text-anchor=\"middle\" font-size=\"12\" font-weight=\"700\" fill=\"#1E40AF\">3</text><rect x=\"84\" y=\"112.4\" width=\"44\" height=\"57.6\" fill=\"#2563EB\" fill-opacity=\".8\" stroke=\"#1E40AF\"/><text x=\"106\" y=\"107.4\" text-anchor=\"middle\" font-size=\"12\" font-weight=\"700\" fill=\"#1E40AF\">9</text><rect x=\"128\" y=\"42\" width=\"44\" height=\"128\" fill=\"#2563EB\" fill-opacity=\".8\" stroke=\"#1E40AF\"/><text x=\"150\" y=\"37\" text-anchor=\"middle\" font-size=\"12\" font-weight=\"700\" fill=\"#1E40AF\">20</text><rect x=\"172\" y=\"93.2\" width=\"44\" height=\"76.8\" fill=\"#2563EB\" fill-opacity=\".8\" stroke=\"#1E40AF\"/><text x=\"194\" y=\"88.2\" text-anchor=\"middle\" font-size=\"12\" font-weight=\"700\" fill=\"#1E40AF\">12</text><rect x=\"216\" y=\"131.6\" width=\"44\" height=\"38.4\" fill=\"#2563EB\" fill-opacity=\".8\" stroke=\"#1E40AF\"/><text x=\"238\" y=\"126.6\" text-anchor=\"middle\" font-size=\"12\" font-weight=\"700\" fill=\"#1E40AF\">6</text><text x=\"40\" y=\"185\" text-anchor=\"middle\" font-size=\"11\" fill=\"#475569\">10</text><text x=\"84\" y=\"185\" text-anchor=\"middle\" font-size=\"11\" fill=\"#475569\">15</text><text x=\"128\" y=\"185\" text-anchor=\"middle\" font-size=\"11\" fill=\"#475569\">20</text><text x=\"172\" y=\"185\" text-anchor=\"middle\" font-size=\"11\" fill=\"#475569\">25</text><text x=\"216\" y=\"185\" text-anchor=\"middle\" font-size=\"11\" fill=\"#475569\">30</text><text x=\"260\" y=\"185\" text-anchor=\"middle\" font-size=\"11\" fill=\"#475569\">35</text><text x=\"150\" y=\"18\" text-anchor=\"middle\" font-size=\"12\" font-weight=\"700\" fill=\"#0F172A\">Waiting time (min) · n = 50</text><text x=\"150\" y=\"203\" text-anchor=\"middle\" font-size=\"11\" fill=\"#475569\">minutes</text></svg>",
+   c:[{t:"0.76",ok:true,why:"صحيح — (20 + 12 + 6) ÷ 50 = 38 ÷ 50"},
+      {t:"38",ok:false,why:"هذا **العدد** لا التكرار النسبي",bug:"reversed_pair"},
+      {t:"0.24",ok:false,why:"هذا المتمّم — من انتظر أقلّ من 20 دقيقة",bug:"reversed_pair"},
+      {t:"0.40",ok:false,why:"هذا نصيب الفئة 20 − 25 وحدها"}],
+   sol:"«لا تقلّ عن 20» تشمل الفئات من 20 فصاعداً:\n20 + 12 + 6 = 38\nالتكرار النسبي = 38 ÷ 50 = 0.76"},
+  {id:"sw2_h3",ch:"العرض البياني",src:"ملف",ws:"٢",
+   q:"بناءً على المدرّج التكراري الآتي (50 عميلاً): احسب النسبة المئوية للعملاء الذين انتظروا بين 20 و 30 دقيقة.",
+   svg:"<svg viewBox=\"0 0 280 210\" width=\"280\" height=\"210\" role=\"img\" aria-label=\"مدرّج تكراري لأزمنة الانتظار\"><line x1=\"40\" y1=\"170\" x2=\"260\" y2=\"170\" stroke=\"#94A3B8\"/><line x1=\"40\" y1=\"170\" x2=\"40\" y2=\"25\" stroke=\"#94A3B8\"/><rect x=\"40\" y=\"150.8\" width=\"44\" height=\"19.2\" fill=\"#2563EB\" fill-opacity=\".8\" stroke=\"#1E40AF\"/><text x=\"62\" y=\"145.8\" text-anchor=\"middle\" font-size=\"12\" font-weight=\"700\" fill=\"#1E40AF\">3</text><rect x=\"84\" y=\"112.4\" width=\"44\" height=\"57.6\" fill=\"#2563EB\" fill-opacity=\".8\" stroke=\"#1E40AF\"/><text x=\"106\" y=\"107.4\" text-anchor=\"middle\" font-size=\"12\" font-weight=\"700\" fill=\"#1E40AF\">9</text><rect x=\"128\" y=\"42\" width=\"44\" height=\"128\" fill=\"#2563EB\" fill-opacity=\".8\" stroke=\"#1E40AF\"/><text x=\"150\" y=\"37\" text-anchor=\"middle\" font-size=\"12\" font-weight=\"700\" fill=\"#1E40AF\">20</text><rect x=\"172\" y=\"93.2\" width=\"44\" height=\"76.8\" fill=\"#2563EB\" fill-opacity=\".8\" stroke=\"#1E40AF\"/><text x=\"194\" y=\"88.2\" text-anchor=\"middle\" font-size=\"12\" font-weight=\"700\" fill=\"#1E40AF\">12</text><rect x=\"216\" y=\"131.6\" width=\"44\" height=\"38.4\" fill=\"#2563EB\" fill-opacity=\".8\" stroke=\"#1E40AF\"/><text x=\"238\" y=\"126.6\" text-anchor=\"middle\" font-size=\"12\" font-weight=\"700\" fill=\"#1E40AF\">6</text><text x=\"40\" y=\"185\" text-anchor=\"middle\" font-size=\"11\" fill=\"#475569\">10</text><text x=\"84\" y=\"185\" text-anchor=\"middle\" font-size=\"11\" fill=\"#475569\">15</text><text x=\"128\" y=\"185\" text-anchor=\"middle\" font-size=\"11\" fill=\"#475569\">20</text><text x=\"172\" y=\"185\" text-anchor=\"middle\" font-size=\"11\" fill=\"#475569\">25</text><text x=\"216\" y=\"185\" text-anchor=\"middle\" font-size=\"11\" fill=\"#475569\">30</text><text x=\"260\" y=\"185\" text-anchor=\"middle\" font-size=\"11\" fill=\"#475569\">35</text><text x=\"150\" y=\"18\" text-anchor=\"middle\" font-size=\"12\" font-weight=\"700\" fill=\"#0F172A\">Waiting time (min) · n = 50</text><text x=\"150\" y=\"203\" text-anchor=\"middle\" font-size=\"11\" fill=\"#475569\">minutes</text></svg>",
+   c:[{t:"64%",ok:true,why:"صحيح — (20 + 12) ÷ 50 = 0.64"},
+      {t:"40%",ok:false,why:"هذه الفئة 20 − 25 وحدها"},
+      {t:"32%",ok:false,why:"هذا **العدد** 32 قُرئ نسبةً مئوية",bug:"reversed_pair"},
+      {t:"76%",ok:false,why:"أدخلتَ الفئة 30 − 35 وهي خارج المدى"}],
+   sol:"الفئتان داخل المدى:\n20 − 25 : 20\n25 − 30 : 12\nالمجموع = 32\nالنسبة المئوية = (32 ÷ 50) × 100 = 64%"},
+  {id:"sw2_h4",ch:"العرض البياني",src:"ملف",ws:"٢",
+   q:"بناءً على المدرّج التكراري الآتي (50 عميلاً): احسب مركز الفئة الأكثر تكراراً.",
+   svg:"<svg viewBox=\"0 0 280 210\" width=\"280\" height=\"210\" role=\"img\" aria-label=\"مدرّج تكراري لأزمنة الانتظار\"><line x1=\"40\" y1=\"170\" x2=\"260\" y2=\"170\" stroke=\"#94A3B8\"/><line x1=\"40\" y1=\"170\" x2=\"40\" y2=\"25\" stroke=\"#94A3B8\"/><rect x=\"40\" y=\"150.8\" width=\"44\" height=\"19.2\" fill=\"#2563EB\" fill-opacity=\".8\" stroke=\"#1E40AF\"/><text x=\"62\" y=\"145.8\" text-anchor=\"middle\" font-size=\"12\" font-weight=\"700\" fill=\"#1E40AF\">3</text><rect x=\"84\" y=\"112.4\" width=\"44\" height=\"57.6\" fill=\"#2563EB\" fill-opacity=\".8\" stroke=\"#1E40AF\"/><text x=\"106\" y=\"107.4\" text-anchor=\"middle\" font-size=\"12\" font-weight=\"700\" fill=\"#1E40AF\">9</text><rect x=\"128\" y=\"42\" width=\"44\" height=\"128\" fill=\"#2563EB\" fill-opacity=\".8\" stroke=\"#1E40AF\"/><text x=\"150\" y=\"37\" text-anchor=\"middle\" font-size=\"12\" font-weight=\"700\" fill=\"#1E40AF\">20</text><rect x=\"172\" y=\"93.2\" width=\"44\" height=\"76.8\" fill=\"#2563EB\" fill-opacity=\".8\" stroke=\"#1E40AF\"/><text x=\"194\" y=\"88.2\" text-anchor=\"middle\" font-size=\"12\" font-weight=\"700\" fill=\"#1E40AF\">12</text><rect x=\"216\" y=\"131.6\" width=\"44\" height=\"38.4\" fill=\"#2563EB\" fill-opacity=\".8\" stroke=\"#1E40AF\"/><text x=\"238\" y=\"126.6\" text-anchor=\"middle\" font-size=\"12\" font-weight=\"700\" fill=\"#1E40AF\">6</text><text x=\"40\" y=\"185\" text-anchor=\"middle\" font-size=\"11\" fill=\"#475569\">10</text><text x=\"84\" y=\"185\" text-anchor=\"middle\" font-size=\"11\" fill=\"#475569\">15</text><text x=\"128\" y=\"185\" text-anchor=\"middle\" font-size=\"11\" fill=\"#475569\">20</text><text x=\"172\" y=\"185\" text-anchor=\"middle\" font-size=\"11\" fill=\"#475569\">25</text><text x=\"216\" y=\"185\" text-anchor=\"middle\" font-size=\"11\" fill=\"#475569\">30</text><text x=\"260\" y=\"185\" text-anchor=\"middle\" font-size=\"11\" fill=\"#475569\">35</text><text x=\"150\" y=\"18\" text-anchor=\"middle\" font-size=\"12\" font-weight=\"700\" fill=\"#0F172A\">Waiting time (min) · n = 50</text><text x=\"150\" y=\"203\" text-anchor=\"middle\" font-size=\"11\" fill=\"#475569\">minutes</text></svg>",
+   c:[{t:"22.5",ok:true,why:"صحيح — أعلى عمودٍ هو 20 − 25، ومركزه (20+25)÷2"},
+      {t:"20",ok:false,why:"هذا **التكرار** الأكبر لا مركز فئته",bug:"reversed_pair"},
+      {t:"25",ok:false,why:"هذا الحدّ الأعلى للفئة لا مركزها"},
+      {t:"27.5",ok:false,why:"هذا مركز الفئة 25 − 30، وتكرارها 12 لا 20"}],
+   sol:"أعلى عمودٍ في المدرّج هو الفئة 20 − 25 بتكرار 20.\nمركزها = (20 + 25) ÷ 2 = 22.5"},
 ];
 const STAT_CHAPTERS=["المجموعات","مفاهيم الإحصاء","المتغيرات","الجداول التكرارية","العرض البياني",
   "النزعة المركزية","الربيعيات والمئينات","التشتت","الانحدار والارتباط","العدّ والتباديل",
@@ -11763,7 +12495,18 @@ const STAT_CHAPTERS=["المجموعات","مفاهيم الإحصاء","الم�
 // اختيار فصلٍ بعينه ليس ترفاً: المقرّر ١٣ فصلاً ومحمد يستعدّ لاختبارٍ نهائي، فالمراجعة
 // تجري فصلاً فصلاً كما يذاكر أيّ طالب. و"" تعني كل الفصول (الوضع الافتراضي).
 let statChapter="";
+// ===== أوراق العمل صفحةٌ مستقلّة لكلٍّ — طلبٌ صريح، ٥ سبتمبر =====
+// «أضفهما للبنك على أن تكون كلٌّ منهما في صفحة منفصلة». فالعناصر **داخل البنك** فعلاً
+// (تدخل الجلسة الشاملة ومراجعة فصولها كسائر العناصر، وتجدولها FSRS نفسها)، ولكلّ ورقةٍ
+// **مدخلٌ خاصّ** يقصر الجلسة عليها — فلا تختلط ورقةٌ بأخرى، وهو ما تعنيه «صفحة منفصلة».
+// و`statScope` بدل توسيع `statChapter` بقيمٍ ليست فصولاً: خلطُ معنيين في متغيّرٍ واحد
+// هو بعينه ما يُنتج أعطالاً صامتة لاحقاً.
+let statScope="";
 function statBankFor(ch){
+  if(statScope){
+    const w=STAT_BANK.filter(function(x){return x.ws===statScope});
+    if(w.length)return w;
+  }
   if(!ch)return STAT_BANK;
   const sub=STAT_BANK.filter(function(x){return x.ch===ch});
   return sub.length?sub:STAT_BANK;
@@ -11784,7 +12527,7 @@ function buildStatPlan(){
   const st=statSrsLoad(),today=srsToday(),POOL=statBankFor(statChapter);
   const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
   const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
-  let out=due.concat(fresh).slice(0,STAT_N);
+  let out=planNewMix(due,fresh,STAT_N);
   out=topUpPlan(out,POOL,STAT_N,"stat");
   return shuffle(out);
 }
@@ -11792,7 +12535,14 @@ let statItems=[],statIdx=0,statOrder=[0,1,2,3],statPicked=-1,statLocked=false,st
   statShownAt=0,statDone=false;
 function goStatMenu(){mode="statMenu";window.scrollTo(0,0);render()}
 function startStat(ch){
-  statChapter=ch||"";
+  statScope="";statChapter=ch||"";
+  statItems=buildStatPlan();statIdx=0;statScore=0;statDone=false;
+  mode="stat";statSetupRound();window.scrollTo(0,0);render();
+}
+// جلسةٌ مقصورةٌ على ورقةٍ بعينها. وحجم الجلسة يبقى STAT_N ثمانيةً كما هو، فالورقة
+// الواحدة ثلاثون عنصراً فأكثر — أي أربع جلساتٍ بلا تكرار، ثمّ يتولّى FSRS الإعادة.
+function startStatWs(ws){
+  statScope=String(ws||"");statChapter="";
   statItems=buildStatPlan();statIdx=0;statScore=0;statDone=false;
   mode="stat";statSetupRound();window.scrollTo(0,0);render();
 }
@@ -11825,16 +12575,28 @@ function statChoose(i){
   // والوسم بيانٌ على المموّه نفسه (`bug`) لا كاشفٌ يُخمّن — إضافةُ آليةٍ سطرٌ لا أداة.
   const bug=it.c[i].bug||"";
   if(bug&&!ok)shapeRecord(bug,true);
+  // والرسم يدخل السطر **بوسمه لا بشيفرته** — نفس عُرف `[رسم]` في أسئلة الكمّي:
+  // مئات محارف SVG تُغرق السجلّ وتُخفي نصّ السؤال الذي يقوم عليه كل تشخيص.
+  // وورقةُ العمل تُوسَم كذلك، فتُقاس على حدة (`ws:`) بلا جدولٍ ثانٍ.
   logAnswer("stat",it.ch,ok,"موضع "+toAr(posStat)+" · "+it.c[i].t+(bug&&!ok?" · "+bug:""),it.id,Date.now()-statShownAt,
-    {q_text:("["+it.ch+" · "+it.src+"] "+(it.pre?it.pre+" · ":"")+it.q+" · "+shownStat).slice(0,1200)});
+    {q_text:("["+it.ch+" · "+it.src+(it.ws?" · ws:"+it.ws:"")+"] "+(it.svg?"[رسم] ":"")+(it.pre?it.pre+" · ":"")+it.q+" · "+shownStat).slice(0,1200)});
   render();
 }
 function statNext(){
   if(statIdx+1>=statItems.length){statDone=true;render();return}
   statIdx++;statSetupRound();render();
 }
+const STAT_WS=[
+  {ws:"١",t:"ورقة العمل الأولى",sub:"مفاهيم الإحصاء · المجتمع والعيّنة · أنواع العيّنات · المتغيّرات ومقاييس المستوى"},
+  {ws:"٢",t:"ورقة العمل الثانية",sub:"الجداول التكرارية · الحدود والمراكز · القرص الدائري والمدرّج والمضلّع"},
+];
 function renderStatMenu(){
   const counts={};STAT_BANK.forEach(function(x){counts[x.ch]=(counts[x.ch]||0)+1});
+  const wsRows=STAT_WS.map(function(w){
+    const n=STAT_BANK.filter(function(x){return x.ws===w.ws}).length;
+    return `<button class="mode full" style="background:#0E7490;border-color:#0E7490" onclick="startStatWs('${esc(w.ws)}')">
+      <span class="m-name">📝 ${esc(w.t)}</span><div class="m-sub">${toAr(n)} سؤالاً من الورقة وحدها · ${esc(w.sub)}</div></button>`;
+  }).join("");
   const rows=STAT_CHAPTERS.map(function(ch){
     return `<button class="mode full" style="background:#065F46;border-color:#065F46" onclick="startStat('${esc(ch)}')">
       <span class="m-name">${esc(ch)}</span><div class="m-sub">${toAr(counts[ch]||0)} سؤالاً في هذا الفصل</div></button>`;
@@ -11849,6 +12611,8 @@ function renderStatMenu(){
     <button class="mode full" style="background:#059669;border-color:#059669" onclick="startStat('')">
       <span class="m-name">🎲 جلسة شاملة — كل الفصول</span><div class="m-sub">${toAr(STAT_N)} أسئلة مخلوطة من المقرّر كلّه، كما يخلطها الاختبار النهائي</div></button>
   </div>
+  <div class="section-title"><span>أوراق العمل — الفصل الأول ١٤٤٨</span></div>
+  <div class="modes">${wsRows}</div>
   <div class="section-title"><span>أو راجع فصلاً بعينه</span></div>
   <div class="modes">${rows}</div>`;
 }
@@ -11867,19 +12631,30 @@ function renderStat(){
     return `<button class="choice" style="background:${bg};border-color:${bd};color:${col};display:block;text-align:start" onclick="statChoose(${wi})" ${statLocked?"disabled":""}>${statBidi(opt.t)}${why}</button>`;
   }).join("");
   const pre=it.pre?`<div style="background:#F0FDF4;border-right:4px solid #10B981;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:14.5px;line-height:1.9;color:#065F46">${statBidi(it.pre)}</div>`:"";
+  // ===== الرسوم: أوراق العمل تسأل عن قرصٍ دائري ومدرّجٍ ومضلّع — ٥ سبتمبر =====
+  // ولا يُغني عنها وصفٌ نصّي: السؤال نفسه «بالاعتماد على الرسم البياني». وحقلان لا
+  // واحد لأن موضعيهما يختلفان في المعنى: `svg` معطياتٌ تُقرأ **قبل** الإجابة (القرص،
+  // المدرّج)، و`svgSol` جوابُ مهمّة تمثيلٍ تُعرض **بعد** القفل (العرض الشرائطي،
+  // المضلّع المتجمّع) — فعرضُه قبلها يُفشي الجواب.
+  // ويُحاطان بـ`ltr` لأن محاور الرسم إنجليزية/رقمية، وبـ`overflow-x:auto` فلا يدفع
+  // عرضُ الرسم الصفحةَ أفقياً على الهاتف.
+  const fig=function(s){return `<div style="direction:ltr;text-align:center;overflow-x:auto;margin:10px 0">${s}</div>`};
+  const svgQ=it.svg?fig(it.svg):"";
   const sol=statLocked?`<div style="margin-top:14px;background:#EFF6FF;border-radius:12px;padding:12px 14px">
       <div style="font-weight:800;color:#1E40AF;margin-bottom:8px;font-size:14px">📘 الحلّ خطوةً خطوة</div>
       <div style="font-size:14px;line-height:2;color:#0F172A;overflow-x:auto">${statBidi(it.sol)}</div>
+      ${it.svgSol?fig(it.svgSol):""}
     </div>`:"";
   app.innerHTML=`
   <button class="link-btn" onclick="goStatMenu()">→ رجوع للفصول</button>
   ${prog}
-  <div class="meta"><span>${toAr(statIdx+1)} من ${toAr(statItems.length)}</span><span>إحصاء ١٠٢ · ${esc(it.src)}</span></div>
+  <div class="meta"><span>${toAr(statIdx+1)} من ${toAr(statItems.length)}</span><span>${statScope?"ورقة العمل "+esc(statScope):"إحصاء ١٠٢"} · ${esc(it.src)}</span></div>
   <div class="card">
     <span class="tag" style="background:#D1FAE5;color:#065F46">📊 ${esc(it.ch)}</span>
     <div style="margin-top:12px">
       ${pre}
       <div style="font-size:16.5px;line-height:2;color:#0F172A;margin-bottom:12px">${statBidi(it.q)}</div>
+      ${svgQ}
       <div class="choices">${choices}</div>
       ${sol}
     </div>
@@ -11892,8 +12667,9 @@ function renderStatResult(){
   <div class="card">
     <div class="score-row"><span class="score-big" style="color:${pct>=70?'#059669':pct>=50?'#D97706':'#DC2626'}">${toAr(statScore)}</span><span class="score-total">/ ${toAr(statItems.length)}</span><span class="score-pct">${toAr(pct)}%</span></div>
     <div style="color:#64748B;font-size:15px;margin-bottom:14px">${pct>=85?"ممتاز — المقرّر تحت السيطرة 🌟":pct>=60?"جيّد، والأخطاء تعود عند حافّة النسيان 💪":"راجع الحلول خطوةً خطوة، ثم أعِد الجلسة 🌱"}</div>
-    ${statChapter?`<div style="font-size:13px;color:#065F46;background:#ECFDF5;border-radius:10px;padding:10px 12px;margin-bottom:12px">فصل: ${esc(statChapter)}</div>`:""}
-    <button class="btn" style="background:#059669" onclick="startStat(statChapter)">🔁 جلسة أخرى</button>
+    ${statScope?`<div style="font-size:13px;color:#155E75;background:#ECFEFF;border-radius:10px;padding:10px 12px;margin-bottom:12px">ورقة العمل ${esc(statScope)}</div>`
+      :statChapter?`<div style="font-size:13px;color:#065F46;background:#ECFDF5;border-radius:10px;padding:10px 12px;margin-bottom:12px">فصل: ${esc(statChapter)}</div>`:""}
+    <button class="btn" style="background:#059669" onclick="${statScope?`startStatWs('${esc(statScope)}')`:"startStat(statChapter)"}">🔁 جلسة أخرى</button>
     <button class="link-btn" onclick="goStatMenu()">→ اختيار فصلٍ آخر</button>
     <button class="link-btn" onclick="home()">→ الرئيسية</button>
   </div>`;
@@ -12116,7 +12892,7 @@ function buildMinpairPlan(){
   const st=minpairSrsLoad(),today=srsToday(),POOL=bankStretched("minpair",profileOf().level,minpairBankFor);
   const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
   const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
-  let out=due.concat(fresh).slice(0,MINPAIR_N);
+  let out=planNewMix(due,fresh,MINPAIR_N);
   return topUpPlan(out,POOL,MINPAIR_N,"minpair");
 }
 let minpairItems=[],minpairIdx=0,minpairTarget=0,minpairOrder=[0,1],minpairPicked=-1,minpairLocked=false,
@@ -12313,7 +13089,7 @@ function buildVideoPlan(){
   const st=videoSrsLoad(),today=srsToday(),POOL=bankStretched("video",profileOf().level,videoBankFor);
   const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
   const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
-  let out=due.concat(fresh).slice(0,VIDEO_N);
+  let out=planNewMix(due,fresh,VIDEO_N);
   return planNoTwins(topUpPlan(out,POOL,VIDEO_N,"video"),POOL,VIDEO_N,"video");   // مراجعة حرّة عند الاستنفاد، ثم لا توأمان
 }
 let videoItems=[],videoIdx=0,videoScene=0,videoQOn=false,videoPicked=-1,videoLocked=false,videoScore=0,videoPlays=0,videoShownAt=0,videoDone=false;
@@ -13366,6 +14142,19 @@ function choose(i){
     shapeRecord(CUBE_SCALE_BUG,true);
   }else if(ok&&/مكعّب/.test(String(q.q||""))&&/ضاعف/.test(String(q.q||""))){
     shapeRecord(CUBE_SCALE_BUG,false);
+  }
+  // والعائلتان الجديدتان بنفس العُرف — قياسٌ لا بوّابة (٥ سبتمبر).
+  // والترتيب مقصود: الجمعُ الضربيّ أخصُّ، فإن انطبق لم يُنسَب الخطأ لعددِ النصّ أيضاً.
+  const gotNum=!ok?parseArNum(ansTxt):null;
+  const maName=!ok?multAsAddName(q,gotNum):null;
+  const snName=(!ok&&!maName)?stemNumberName(q,gotNum):null;
+  if(maName){
+    ansShape=(ansShape||"")+" · "+MULT_ADD_BUG+" ("+maName+")";
+    shapeRecord(MULT_ADD_BUG,true);
+  }
+  if(snName){
+    ansShape=(ansShape||"")+" · "+STEM_NUM_BUG+" ("+snName+")";
+    shapeRecord(STEM_NUM_BUG,true);
   }
   // ===== ومعرّفٌ للسؤال: بلاه لا تباعد ولا منعَ تكرار ولا تمدّد — درس ٢٩ أغسطس =====
   // كان `item_id` فارغاً في كل صفوف اللفظي والعلمي والكمّي والمرونة (١٢٢ صفّاً عند هيا

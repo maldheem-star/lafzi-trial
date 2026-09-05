@@ -111,16 +111,57 @@ ok(spoken.plays===1,'وعدّاد الاستماعات زاد');
 
 console.log('\n٤) اختيار صحيح يُحتسب، وتظهر الجملة الشارحة والمعنى العربي بعد القفل');
 await page.evaluate(()=>startMinpair());
+// ===== الدعوى رُوجعت ولم تُدهَس — ٥ سبتمبر =====
+// كانت تشترط ظهور الجملة **المؤلَّفة** بعينها (`it.s[target]`)، وكانت تنجح **بحظّ
+// القرعة لا بالتصميم**: `minpairChoose` يختار عشوائياً من المؤلَّف **والمولَّد معاً**
+// (تنويعٌ مقصودٌ ومكتوبٌ في الشيفرة منذ ١٧ أغسطس). فما دام التوليد لم يصل بعد كان
+// المرشَّح واحداً فتنجح؛ وتحت حمل الجولة الكاملة تكون جملةٌ مولَّدة قد استقرّت في
+// المخزون من نداءٍ سابق في الصفحة نفسها، فتقع القرعة عليها فيسقط الاختبار — وهو
+// **سقوطٌ على سلوكٍ سليم**. فصارت الدعوى على الثابت الحقيقي: المعروضُ هو ما اختاره
+// `minpairShowSent`، وهو **من مجموعة المرشَّحين المشروعة**، وفيه الكلمة الهدف.
+// (اختبارٌ يتقلّب بالقرعة أسوأ من اختبارٍ يسقط — الدرس نفسه ثالث مرّة اليوم.)
 let r=await page.evaluate(()=>{
   const it=minpairCur();gateLeft=0;gateStop();minpairChoose(minpairTarget);
   return{picked:minpairPicked,locked:minpairLocked,ok:minpairPicked===minpairTarget,score:minpairScore,
-    sentence:it.s[minpairTarget],meaning:it.m[minpairTarget],word:it.w[minpairTarget]};
+    shown:minpairShowSent,cands:minpairSentencesFor(it,minpairTarget),
+    authored:it.s[minpairTarget],meaning:it.m[minpairTarget],word:it.w[minpairTarget]};
 });
 ok(r.ok&&r.score===1,'الإجابة الصحيحة تُحتسب');
 let t=await page.textContent('#app');
-ok(t.includes(r.sentence),'والجملة الشارحة ظاهرة على الشاشة');
+ok(t.includes(r.shown),'والجملة الشارحة ظاهرة على الشاشة — '+String(r.shown).slice(0,60));
+ok(r.cands.indexOf(r.shown)>=0,'وهي من مجموعة المرشَّحين المشروعة لا من فراغ');
+ok(r.cands[0]===r.authored,'والمؤلَّفة أوّل المرشَّحين دائماً — القاع لا يسقط');
+ok(new RegExp("\\b"+String(r.word).replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\b","i").test(String(r.shown)),
+  'والكلمة الهدف داخلها بحدود الكلمة — الثابت الحقيقي مهما كان مصدرها');
 ok(t.includes(r.meaning)&&t.includes(r.word),`والمعنى العربي ظاهر مع الكلمة («${r.meaning} = ${r.word}») — سبب طلب صاحب المشروع`);
 ok(t.includes('سمعتِها صح'),'ورسالة النجاح ظاهرة');
+
+// ===== وحالةُ المولَّد تُجرَّب حتميّاً لا تُنتظَر من القرعة =====
+// إرخاءُ الدعوى أعلاه بلا هذا الفحص كان سيُخفي الحالة التي أسقطت الاختبار أصلاً:
+// فتُبذَر جملةٌ مولَّدة في المخزون، ويُعاد القفل حتى تقع القرعة عليها فعلاً.
+{
+  const g=await page.evaluate(()=>{
+    const it=minpairCur(),w=it.w[minpairTarget];
+    const seeded="A generated line with "+w+" inside it.";
+    const m=minpairExtraLoad();m[minpairExtraKey(it.id,minpairTarget)]=[seeded];
+    lsSet(MINPAIR_EXTRA_KEY,JSON.stringify(m));
+    let sawSeeded=false,sawAuthored=false,allLegit=true;
+    for(let k=0;k<40;k++){
+      minpairLocked=false;minpairPicked=-1;
+      gateLeft=0;gateStop();minpairChoose(minpairTarget);
+      const cands=minpairSentencesFor(it,minpairTarget);
+      if(cands.indexOf(minpairShowSent)<0)allLegit=false;
+      if(minpairShowSent===seeded)sawSeeded=true;
+      if(minpairShowSent===it.s[minpairTarget])sawAuthored=true;
+    }
+    const m2=minpairExtraLoad();delete m2[minpairExtraKey(it.id,minpairTarget)];
+    lsSet(MINPAIR_EXTRA_KEY,JSON.stringify(m2));
+    return{sawSeeded,sawAuthored,allLegit,seeded};
+  });
+  ok(g.sawSeeded,'جملةٌ مولَّدة تُعرض فعلاً حين تكون في المخزون — الحالة التي أسقطت الاختبار');
+  ok(g.sawAuthored,'والمؤلَّفة تُعرض كذلك — لا يُقصى أحدهما');
+  ok(g.allLegit,'وكلُّ معروضٍ في أربعين قفلاً من المرشَّحين — لا نصَّ من فراغ');
+}
 
 console.log('\n٥) اختيار خاطئ لا يُحتسب، والصحيحة تلوّن بالأخضر');
 await page.evaluate(()=>startMinpair());

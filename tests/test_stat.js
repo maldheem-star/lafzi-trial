@@ -111,8 +111,24 @@ const rec=L[0]||{};
 ok(!!rec.q_text&&rec.q_text.length>30,'ومعه نصّ السؤال');
 ok(/✓/.test(rec.q_text||''),'وموضع الصواب موسومٌ داخل الخيارات');
 ok((rec.q_text||'').split('|').length>=3,'وكل الخيارات مسجَّلة لا الصحيح وحده');
-ok(/\[.+ · (ملف|مؤلَّف)\]/.test(rec.q_text||''),'والفصل والمصدر في أوّل السطر — فيُقاس أيّ الصنفين أنفع');
+// ===== الدعوى صحيحة والمطابقة كانت ضيّقة — رُوجعت ٥ سبتمبر =====
+// عناصر أوراق العمل تُلحق ` · ws:١` بعد المصدر، فكان `…(ملف|مؤلَّف)\]` يشترط قوساً
+// مغلقاً بعده مباشرةً — فيسقط الاختبار **حين تقع القرعة على عنصر ورقة** وينجح حين
+// لا تقع. واختبارٌ يتقلّب بالقرعة أسوأ من اختبارٍ يسقط (درس ٥ سبتمبر). فوُسِّعت
+// المطابقة للاحقة الاختيارية، وأُضيف فحصٌ **حتميّ** لعنصر ورقةٍ بعينه بدل انتظار القرعة.
+ok(/\[[^\]]+ · (ملف|مؤلَّف)( · ws:.+)?\]/.test(rec.q_text||''),'والفصل والمصدر في أوّل السطر — فيُقاس أيّ الصنفين أنفع');
 ok(!!rec.response&&!!rec.item_id&&rec.is_correct===true,'والإجابة والمعرّف والصواب');
+{
+  logs=[];
+  await m.evaluate(()=>{
+    const it=STAT_BANK.find(x=>x.ws==='٢');
+    startStatWs('٢');statItems=[it];statIdx=0;statSetupRound();
+    statChoose(statOrder.find(w=>statCur().c[w].ok));
+  });
+  await m.waitForTimeout(300);
+  const w=(logs.filter(x=>x.domain==='stat').pop()||{}).q_text||'';
+  ok(/ · ws:٢\]/.test(w),'وعنصرُ ورقةٍ يحمل رقم ورقته في السطر — '+w.slice(0,60));
+}
 
 console.log('\n٨) جلسة كاملة بنقرات حقيقية حتى شاشة النتيجة');
 await m.evaluate(()=>startStat(''));
@@ -166,6 +182,159 @@ const shown=await m.evaluate(()=>{
 });
 ok(/direction:ltr[^"]*">= 736 ÷ 9 = 81\.78\./.test(shown.replace(/&nbsp;/g,' ')),
   'وسطر الحلّ النهائي معروضٌ فعلاً من اليسار في DOM الحيّ لا في الدالّة وحدها');
+
+// ═══ ٩ب) أوراق العمل: صفحةٌ لكلٍّ، ورسومٌ، ولا سطرَ مقلوب — ٥ سبتمبر ═══
+// والانقلاب يُقاس **بالإحداثيات لا بالنظر**: في سطرٍ عربيّ (RTL) يجب أن تتناقص
+// مواضع الأرقام يميناً إلى يسار. وكاشفٌ نصّي وحده لا يكفي — جُرِّب فأبلغ عن ٦٤ سطراً
+// المقلوب منها **اثنان**، وهي نسبةُ بلاغٍ كاذبٍ لا تحرس شيئاً (درس ٢٥ أغسطس).
+console.log('\n٩ب) أوراق العمل ١٤٤٨: الصفحتان والرسوم واتّجاه كل سطر');
+{
+  const menu=await m.evaluate(()=>{goStatMenu();return document.body.innerText});
+  ok(/ورقة العمل الأولى/.test(menu)&&/ورقة العمل الثانية/.test(menu),'الورقتان لهما مدخلان مستقلّان');
+  const scoped=await m.evaluate(()=>{
+    const out={};
+    ['١','٢'].forEach(function(w){
+      let pure=true,n=0;
+      for(let s=0;s<3;s++){startStatWs(w);statItems.forEach(function(x){n++;if(x.ws!==w)pure=false})}
+      out[w]={pure:pure,n:n};
+    });
+    startStat('المجموعات');out.chapterClean=statItems.every(function(x){return x.ch==='المجموعات'});
+    startStat('');out.bankHasWs=statItems.length>0&&STAT_BANK.some(function(x){return x.ws});
+    return out;
+  });
+  ok(scoped['١'].pure&&scoped['٢'].pure,'وجلسةُ كلٍّ مقصورةٌ على ورقتها');
+  ok(scoped.chapterClean,'ولا تُسرَّب الورقة إلى جلسة فصلٍ بعينه');
+  ok(scoped.bankHasWs,'والعناصر داخل البنك فعلاً كما طُلب — لا بنكٌ ثانٍ');
+  const figs=await m.evaluate(()=>({
+    svg:STAT_BANK.filter(function(x){return x.svg}).length,
+    svgSol:STAT_BANK.filter(function(x){return x.svgSol}).length,
+    wellFormed:STAT_BANK.every(function(x){return (!x.svg||/^<svg[\s\S]*<\/svg>$/.test(x.svg))&&(!x.svgSol||/^<svg[\s\S]*<\/svg>$/.test(x.svgSol))}),
+  }));
+  ok(figs.svg>=6&&figs.svgSol>=2,`رسومٌ مع السؤال ${figs.svg} ومع الحلّ ${figs.svgSol}`);
+  ok(figs.wellFormed,'وكلّها عناصر svg مغلقة');
+  // الرسم يظهر فعلاً في DOM، ولا يدخل السجلّ إلّا بوسمه
+  const live=await m.evaluate(()=>{
+    const it=STAT_BANK.find(function(x){return x.id==='sw2_h1'});
+    startStatWs('٢');statItems=[it];statIdx=0;statDone=false;statSetupRound();render();
+    return{svgInDom:!!document.querySelector('#app svg'),hasSvgSolBefore:!!document.querySelector('#app svg')&&document.querySelectorAll('#app svg').length};
+  });
+  ok(live.svgInDom,'والرسم مرسومٌ في الصفحة لا نصّاً مهرَّباً');
+  ok(live.hasSvgSolBefore===1,'ورسمُ الحلّ لا يظهر قبل القفل — فلا يُفشي الجواب');
+  // ═══ الانقلاب: قياسٌ على كل سطرٍ يخلط عربيةً بتعبيرٍ رياضي ═══
+  const bidi=await m.evaluate(()=>{
+    const AR=/[ء-غف-ي]/, MATH=/[0-9][0-9\s.,()%°]*\s*[÷×=+−]\s*[0-9(]/;
+    const host=document.createElement('div');
+    host.style.cssText='width:360px;font-size:14px;line-height:2';document.body.appendChild(host);
+    const bad=[];let checked=0;
+    STAT_BANK.filter(function(x){return x.ws}).forEach(function(it){
+      const fields=[it.q,it.sol,it.pre].concat(it.c.map(function(o){return o.t})).concat(it.c.map(function(o){return o.why}));
+      fields.filter(Boolean).forEach(function(f){
+        String(f).split('\n').forEach(function(line){
+          if(!(AR.test(line)&&MATH.test(line)))return;
+          host.innerHTML=statBidiLine(line);
+          const el=host.firstChild,node=el.firstChild,txt=el.textContent;
+          const nums=[];const re=/\d+(?:\.\d+)?/g;let mm;
+          while((mm=re.exec(txt))){const r=document.createRange();
+            r.setStart(node,mm.index);r.setEnd(node,mm.index+mm[0].length);
+            const bb=r.getBoundingClientRect();nums.push({x:bb.left+bb.width/2,y:Math.round(bb.top)});}
+          if(nums.length<2)return;
+          const y0=nums[0].y,row=nums.filter(function(n){return n.y===y0});
+          if(row.length<2)return;
+          checked++;
+          const rtl=getComputedStyle(el).direction==='rtl';
+          for(let z=1;z<row.length;z++){
+            if(rtl?row[z].x>=row[z-1].x:row[z].x<=row[z-1].x){bad.push(it.id+' :: '+line.slice(0,70));break}
+          }
+        });
+      });
+    });
+    host.remove();
+    return{checked:checked,bad:bad};
+  });
+  ok(bidi.checked>=40,`أسطرٌ قِيس اتّجاهها فعلاً: ${bidi.checked} — وإلّا فالفحص فارغ`);
+  ok(bidi.bad.length===0,'ولا سطرَ يُعرض مقلوباً'+(bidi.bad.length?': '+bidi.bad.slice(0,3).join(' / '):''));
+
+  // ═══ ٩ج) المعادلة لا تنشقّ — على **البنك كلّه** لا أوراق العمل وحدها ═══
+  // القياس الرقميّ وحده لا يكفي: «2^k ≥ 90» تُعرض «2^90 ≥ k» — وأرقامها بترتيبها،
+  // والمُبدَّل حرفٌ برقم. والمعيار الصحيح ليس «يُقرأ من اليسار كما كُتب» (فذاك يُبلّغ
+  // كاذباً عن ١٤٦ مقطعاً سليماً يقرؤها العربيّ من اليمين)، بل: **إمّا مطابقٌ للمصدر
+  // (مقطعٌ لاتينيّ كامل) وإمّا معكوسُ الترتيب تماماً (مقطعٌ رقميّ داخل سطرٍ عربيّ)**.
+  // وما بينهما معادلةٌ انشقّت. وقد كشف هذا أربعة مواضع **قديمة** شُحنت ٢٥ أغسطس،
+  // منها «0 ≤ pᵢ ≤ 1» تُعرض «0 ≤ 1 ≤ pᵢ» — أي شرطٌ خاطئ يُدرَّس.
+  const math=await m.evaluate(()=>{
+    const AR=/[ء-غف-ي]/;
+    const SEG=/[A-Za-z0-9][A-Za-z0-9^()≥≤=<>÷×+−·²ᵢ.,  ]*[A-Za-z0-9)²]/g;
+    const OPS=/[≥≤=<>÷×+−^]/;
+    const tok=function(x){return (x.match(/[A-Za-z]+|[0-9]+(?:\.[0-9]+)?/g)||[]).join('|')};
+    const host=document.createElement('div');
+    host.style.cssText='width:360px;font-size:14px;line-height:2';document.body.appendChild(host);
+    const bad=[];let checked=0;
+    STAT_BANK.forEach(function(it){
+      const fields=[it.q,it.sol,it.pre].concat(it.c.map(function(o){return o.t}))
+        .concat(it.c.map(function(o){return o.why}));
+      fields.filter(Boolean).forEach(function(f){
+        String(f).split('\n').forEach(function(line){
+          if(!AR.test(line))return;                 // الأسطر بلا عربية تُرسَم LTR أصلاً
+          host.innerHTML=statBidiLine(line);
+          const el=host.firstChild,node=el.firstChild,txt=el.textContent;
+          let mm;SEG.lastIndex=0;
+          while((mm=SEG.exec(txt))){
+            const seg=mm[0];
+            if(seg.trim().length<3||!OPS.test(seg))continue;
+            const chars=[];
+            for(let i=mm.index;i<mm.index+seg.length;i++){
+              if(/\s/.test(txt[i]))continue;
+              const r=document.createRange();r.setStart(node,i);r.setEnd(node,i+1);
+              const bb=r.getBoundingClientRect();
+              chars.push({ch:txt[i],x:bb.left,y:Math.round(bb.top)});
+            }
+            if(chars.length<3)continue;
+            const y0=chars[0].y,row=chars.filter(function(c){return c.y===y0});
+            if(row.length<chars.length)continue;    // ملتفٌّ على سطرين — لا يُقاس
+            const visual=row.slice().sort(function(a,b2){return a.x-b2.x}).map(function(c){return c.ch}).join('');
+            const T=tok(seg.replace(/\s/g,'')),V=tok(visual);
+            const Trev=T.split('|').reverse().join('|');
+            checked++;
+            if(V!==T&&V!==Trev)bad.push(it.id+': «'+seg.trim()+'» ⟵ «'+visual+'»');
+          }
+        });
+      });
+    });
+    host.remove();
+    return{checked:checked,bad:bad};
+  });
+  ok(math.checked>=150,`مقاطع رياضية قِيست في البنك كلّه: ${math.checked}`);
+  ok(math.bad.length===0,'ولا معادلةَ انشقّت'+(math.bad.length?': '+math.bad.slice(0,3).join(' / '):''));
+}
+
+console.log('\n٩د) آليةُ الخطأ تُسمّى حيث تكون عائلةً — لا «فرقٌ فقط» يُقرأ ضعفاً عامّاً');
+{
+  // محمد أخطأ `sa_prb_15` بـ0.54 — وهي P(ذكر | ناجح)، أي الطرفُ المقابل من الزوج
+  // لا المطلوب. وهي نفس آلية `reversed_pair` المسمّاة ٢٩ أغسطس (A ⊆ B ⇐ B ⊆ A،
+  // والإحصاءة/المعلَمة) — كانت بلا وسمٍ فتُقرأ خطأً عابراً لا عائلةً تُجمَّع بالاستعلام.
+  //
+  // **والحكم على الشرح لا على الوسم**: يُبحَث في البنك كلّه عن كل مموّهٍ يصف قلباً
+  // (متمّم · معاكس · مقابل · مقلوب) ويُشترَط أن يحمل اسماً — فلا يُثبَّت عددٌ مكتوب
+  // يكسره كل عنصرٍ جديد مشروع (درس «الأعداد المكتوبة في الاختبارات فخّ صامت»).
+  const r=await m.evaluate(()=>{
+    const RE=/متمّم|معاكس|المقابل|مقلوب|العكس/;
+    const un=[],named={};
+    STAT_BANK.forEach(function(it){
+      (it.c||[]).forEach(function(x){
+        if(x.ok||!RE.test(String(x.why||"")))return;
+        if(x.bug)named[x.bug]=(named[x.bug]||0)+1;else un.push(it.id+' · '+x.t);
+      });
+    });
+    const p15=(STAT_BANK.find(x=>x.id==='sa_prb_15')||{c:[]}).c.find(x=>x.t==='0.54');
+    return{un:un,named:named,p15:p15&&p15.bug};
+  });
+  ok(r.p15==='reversed_pair','مموّه محمد بعينه موسومٌ بآليته — '+r.p15);
+  ok(r.un.length===0,'ولا مموّهَ يصف قلباً بلا اسم — '+r.un.join(' | '));
+  ok((r.named.reversed_pair|0)>=7,'وعائلةُ قلب الزوج مجمَّعةٌ باسمها — '+r.named.reversed_pair);
+  // وخلطُ اتّجاه الشرط آليةٌ **أخرى** منشورةٌ مسمّاة (Eddy 1982، confusion of the
+  // inverse): P(B|A) مكان P(A|B). ولا تُدمَج في reversed_pair وإلّا ضاع الفرق.
+  ok((r.named.inverse_conditional|0)>=2,'وخلطُ اتّجاه الشرط باسمه هو لا مدموجاً — '+r.named.inverse_conditional);
+}
 
 console.log('\n١٠) لا انحدار في بقيّة الأقسام');
 ok((await m.evaluate(()=>censusMissing())).length===0,'وكل دوال التطبيق معرَّفة');

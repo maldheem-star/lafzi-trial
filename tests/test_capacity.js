@@ -83,6 +83,46 @@ async function mk(browser,q){
     await page.close();
   }
 
+  // ===== ٢ب) نداءٌ **لا يُسوَّى أبداً** لا يُقفل التوليد بقيّة عمر الصفحة =====
+  // سجلّ الخادم لجلسة إلياس (٥ سبتمبر): ستّ جلسات كتابةٍ بدأها، و**صفرُ طلباتٍ إلى
+  // functions/v1/tutor** — النداء لم يغادر الجهاز، ولا سطرَ يقول لماذا. والوعدُ الذي
+  // لا يُسوَّى (متصفّح مدمج يُجمّد المؤقّتات فلا يُطلق حتى إجهاض fetchTimeout) هو
+  // المسار الصامت الوحيد الذي يُنتج هذه البصمة. فيُكنَس بعمرٍ مقاس، ويُسجَّل المنع.
+  {
+    const page=await mk(browser,'?p=elias');
+    const posted=[];
+    await page.route('**/rest/v1/**',async r=>{
+      if(r.request().method()==='POST'){
+        let x={};try{x=JSON.parse(r.request().postData()||'{}')}catch(e){}
+        posted.push(x);
+      }
+      r.fulfill({status:201,contentType:'application/json',body:'[]'});
+    });
+    const r=await page.evaluate(async()=>{
+      const never=function(){return new Promise(function(){})};   // لا يُسوَّى أبداً
+      const first=[];
+      for(let i=0;i<GEN_MAX_INFLIGHT;i++)first.push(genFire(never));
+      const blocked=genFire(never);                 // السقف بلغ ⇒ يُمنع
+      // ثم يمضي الوقت أكثر من العمر المقاس، فيُكنَس المُسرَّب ويعود المكان
+      genFlightAt=genFlightAt.map(function(t){return t-(GEN_INFLIGHT_TTL+1000)});
+      const afterTtl=genFire(function(){return Promise.resolve()});
+      await new Promise(function(r){setTimeout(r,40)});
+      return{accepted:first.filter(Boolean).length,blocked:blocked,
+        afterTtl:afterTtl,inFlight:genInFlight,ttl:GEN_INFLIGHT_TTL};
+    });
+    ok(r.accepted===4,'أربعةُ نداءاتٍ معلَّقة تملأ السقف — '+r.accepted);
+    ok(r.blocked===false,'والخامس يُمنع كما صُمِّم');
+    ok(r.afterTtl===true,'وبعد انقضاء العمر المقاس يُكنَس المُسرَّب فيُقبل نداءٌ جديد — لا إقفالَ للأبد');
+    ok(r.inFlight===0,'والعدّاد نظيف بعده — '+r.inFlight);
+    ok(r.ttl>=30000,'والعمر ضِعفُ مهلة الشبكة وزيادة فلا يُكنَس بطيءٌ سليم — '+r.ttl);
+    await page.waitForTimeout(300);
+    const gate=posted.filter(x=>x&&x.qtype==='gate').map(x=>String(x.response||''));
+    ok(gate.indexOf('busy')>=0,'والمنعُ يصل السجلّ باسمه لا صامتاً — '+gate.join(' | '));
+    ok(gate.indexOf('leak')>=0,'والتسريبُ كذلك — '+gate.join(' | '));
+    ok(gate.length<=2,'وبسقفِ ضجيجٍ فلا يُغرق السجلّ — '+gate.length);
+    await page.close();
+  }
+
   // ===== ٣) النبضة أثناء الجلسة =====
   console.log('\n٣) النبضة أثناء الجلسة');
   {

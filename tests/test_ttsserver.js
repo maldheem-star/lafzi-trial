@@ -137,19 +137,54 @@ console.log('\n٤) وفشلُ الخادم لا يُنتج نجاحاً كاذب
   await p.close();
 }
 
-console.log('\n٥) وتعذّرُ الشبكة يُسمّى كذلك، ولا يُعاد النداء بعد ثبوت الفشل');
+console.log('\n٥) وتعذّرُ الشبكة يُسمّى، وفشلٌ واحد **لا يُعدِم الجلسة** — قاطع الدائرة');
 {
+  // ===== دعوى هذا القسم رُوجعت ولم تُدهَس — ٥ سبتمبر =====
+  // كان يقول: «ولا نداءَ ثانٍ بعد ثبوت الفشل في الجلسة». وغرضُه صحيح (ألّا يُطرَق
+  // خادمٌ لا يستجيب بلا حدّ) لكن تنفيذه كان يُغلق المسار **للأبد** بفشلٍ واحد —
+  // وكذّبته جلسة محمد الحيّة (٥ سبتمبر): فشلٌ شبكيّ واحد الساعة ١٠:٥٤:٣٠ أبقاه بلا
+  // صوتٍ ٣١ دقيقة، ومنها لعبة الاستماع فنالت ٢/٨ وهي تُقاس بلا صوت أصلاً.
+  // فالغرضُ يبقى بحرفه — لا طَرقَ بلا حدّ — ويُقاس الآن بقاطع الدائرة: ثلاثُ فشلاتٍ
+  // متتالية تفتحه، وما بعدها يُمنع حتى تنقضي التهدئة.
   const p=await mk('error','down');
-  await p.evaluate(()=>new Promise(res=>{
-    speakEnglish('One.',function(){res(1)});setTimeout(()=>res(0),6000);}));
-  const first=p._calls.length;
-  await p.evaluate(()=>new Promise(res=>{
-    speakEnglish('Two.',function(){res(1)});setTimeout(()=>res(0),6000);}));
-  ok(first===1,'نداءٌ أوّل — '+first);
-  ok(p._calls.length===1,'ولا نداءَ ثانٍ بعد ثبوت الفشل في الجلسة — '+p._calls.length);
+  const say=(t)=>p.evaluate((t)=>new Promise(res=>{
+    speakEnglish(t,function(){res(1)});setTimeout(()=>res(0),6000);}),t);
+  await say('One.');   const c1=p._calls.length;
+  await say('Two.');   const c2=p._calls.length;
+  await say('Three.'); const c3=p._calls.length;
+  await say('Four.');  const c4=p._calls.length;
+  ok(c1===1,'نداءٌ أوّل — '+c1);
+  ok(c2===2,'وفشلٌ واحد لا يُغلق المسار — النداء الثاني وقع فعلاً ('+c2+')');
+  ok(c3===3,'ولا الثاني — '+c3);
+  ok(c4===3,'وبعد ثلاث فشلاتٍ متتالية يُفتَح القاطع فيُمنع الرابع — '+c4);
+  // وتنقضي التهدئة ⇒ محاولةُ تحسّسٍ واحدة تُسمح، فلا تبقى الجلسة صامتةً إلى الأبد
+  await p.evaluate(()=>{ttsServerOpenedAt=Date.now()-TTS_CB_COOL-1000});
+  await say('Five.');
+  ok(p._calls.length===4,'وبعد التهدئة تُسمح محاولةُ تحسّس — '+p._calls.length);
   await p.waitForTimeout(300);
-  const row=p._logs.filter(x=>x&&x.qtype==='tts_server').pop();
-  ok(row&&/network/.test(String(row.response||'')),'والسبب مسمّى — '+(row&&row.response));
+  const rows=p._logs.filter(x=>x&&x.qtype==='tts_server').map(x=>String(x.response||''));
+  ok(rows.indexOf('network')>=0,'والسبب مسمّى — '+rows.join(' | '));
+  // وسقفُ الضجيج: القاطع يُعيد المحاولة، فلولا سقفٌ لكتب سطراً كل مرّة
+  ok(rows.filter(x=>x==='network').length<=2,'وسطران للسبب الواحد لا أكثر — '+rows.length);
+  await p.close();
+}
+
+console.log('\n٥ب) والخادم يعود ⇒ يُغلق القاطع ويُسجَّل رجوعه صراحةً');
+{
+  // بلا سطرٍ للرجوع يبقى السجلّ فشلاً بلا نهاية، فلا يُعرف أعاد المسارُ عملَه أم لا.
+  const p=await mk('error','down');
+  await p.evaluate(()=>new Promise(res=>{speakEnglish('A.',()=>res(1));setTimeout(()=>res(0),6000)}));
+  ok(await p.evaluate(()=>ttsServerFails)===1,'فشلةٌ واحدة مُحصاة');
+  // يعود الخادم للعمل
+  await p.unroute('**/functions/v1/assess-azure');
+  await p.route('**/functions/v1/assess-azure',r=>r.fulfill({status:200,contentType:'audio/mpeg',
+    headers:{'X-Tts-Chars':'2'},body:'ID3AUDIOBYTES'}));
+  const r=await p.evaluate(()=>new Promise(res=>{speakEnglish('B.',i=>res(i));setTimeout(()=>res({timeout:true}),6000)}));
+  ok(r&&r.ok===true,'والنطق التالي نجح فعلاً — '+JSON.stringify(r&&r.reason));
+  ok(await p.evaluate(()=>ttsServerFails)===0,'وعدّاد الفشل صفر — القاطع مغلق');
+  await p.waitForTimeout(300);
+  const rows=p._logs.filter(x=>x&&x.qtype==='tts_server').map(x=>String(x.response||''));
+  ok(rows.indexOf('ok_recovered')>=0,'ورجوعُه مُسجَّلٌ باسمه لا مبتلَعاً — '+rows.join(' | '));
   await p.close();
 }
 

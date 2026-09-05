@@ -118,6 +118,39 @@ function blk(sents,rightIdx,tag){
     await page.close();
   }
 
+  // ===== ٣ب) الشرط الصفريّ مقابل الأوّل — العنصر الحيّ الذي أوجب الفحص =====
+  // `ai_gram_mtg207jh_hvb6s` عُرض على محمد ٥ سبتمبر وفيه صحيحتان: صفريّ وأوّل.
+  // فاختار الصفريّ فحُسب خطأً، ودرجته الحقيقية ٥/٥ لا ٤/٥.
+  console.log('\n٣ب) الشرط الصفريّ مقابل الأوّل');
+  {
+    const page=await mk(browser);
+    const r=await page.evaluate(()=>({
+      live:gjtDefect([
+        {t:"If Haya mixes the vinegar with the baking soda, it bubbles up quickly.",ok:false,why:"س"},
+        {t:"If Haya mixes the vinegar with the baking soda, it will bubble up quickly.",ok:true,why:"س"},
+        {t:"If Haya will mix the vinegar with the baking soda, it will bubble up quickly.",ok:false,why:"س"},
+        {t:"If Haya mixed the vinegar with the baking soda, it will bubble up quickly.",ok:false,why:"س"}]),
+      pair:gjtZeroFirst("If it rains, we stay home.","If it rains, we will stay home."),
+      when:gjtZeroFirst("When water boils, it turns to steam.","When water boils, it will turn to steam."),
+      // ولا بلاغٌ كاذب: الخطأ **داخل** جملة الشرط مموّهٌ حقيقي يبقى
+      willInIf:gjtZeroFirst("If it rains, we will stay home.","If it will rain, we will stay home."),
+      pastInIf:gjtZeroFirst("If it rains, we will stay home.","If it rained, we will stay home."),
+      sInIf:gjtZeroFirst("If it rains, I will stay home.","If it rain, I will stay home."),
+      diffMain:gjtZeroFirst("If it rains, we will stay home.","If it rains, we will go out."),
+      noComma:gjtZeroFirst("If it rains we stay home","If it rains we will stay home"),
+      notCond:gjtZeroFirst("Because it rains, we stay home.","Because it rains, we will stay home."),
+    }));
+    ok(r.live==='zero_vs_first_conditional','العنصر الحيّ يُرفَض بسببٍ مسمّى — '+r.live);
+    ok(r.pair===true&&r.when===true,'والزوج يُكشَف مع if وwhen معاً');
+    ok(r.willInIf===false,'ولا يُعفى «if ... will» — خطأٌ حقيقي');
+    ok(r.pastInIf===false,'ولا «if ... mixed»');
+    ok(r.sInIf===false,'ولا نسيانُ ‎-s‎ داخل جملة الشرط');
+    ok(r.diffMain===false,'ولا جملتان تختلفان معنًى في الجواب');
+    ok(r.noComma===false,'وبلا فاصلةٍ لا يُطبَّق الفحص — حدُّه مُعلَن');
+    ok(r.notCond===false,'وbecause ليست شرطاً فلا يُطبَّق');
+    await page.close();
+  }
+
   // ===== ٤) المسار الكامل: parseGenPickBlock يُسقط ويُسجّل =====
   console.log('\n٤) المسار الكامل');
   {
