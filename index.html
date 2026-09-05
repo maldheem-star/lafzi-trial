@@ -3907,9 +3907,40 @@ try{["pointerdown","touchstart","click","keydown"].forEach(function(t){
 // المجانية تشمل التركيب، والاستهلاك يُقاس بالمحارف في السجلّ لا يُفترض.
 //
 // **ومشروطٌ**: لا يُطلب إلّا بعد أن يفشل نطق الجهاز فعلاً — فلا يُنفَق طلبٌ على
-// متعلّمٍ صوتُه يعمل. ونتيجةُ أوّل نداء تُحفظ للجلسة، فلا يُعاد اكتشافُ ما عُرف.
-let ttsServerOk=null;            // null=لم يُجرَّب · true=يعمل · false=فشل
+// متعلّمٍ صوتُه يعمل.
+//
+// ===== وفشلٌ واحد لا يُعدِم الجلسة — درس ٥ سبتمبر =====
+// كان `ttsServerOk=false` يُغلق المسار **للجلسة كلّها**. وقياسُ جلسة محمد (٥ سبتمبر)
+// أظهر الثمن بالرقم: فشلٌ شبكيّ واحد الساعة ١٠:٥٤:٣٠ أبقاه بلا صوت **٣١ دقيقة** —
+// ومنها لعبة الاستماع الساعة ١١:١١، فنالت ٢ من ٨ وهي تُقاس بلا صوتٍ أصلاً، أي أن
+// درجتها لا تعني شيئاً. والفشل كان `network`: عارضٌ بطبيعته، لا عطلٌ دائم.
+//
+// **والنمط منشورٌ مسمّى لا مخترَع**: قاطع الدائرة (Circuit Breaker، Nygard 2007،
+// *Release It!*) بحالاته الثلاث — مغلقٌ يمرّر، ومفتوحٌ يمنع بعد تتابع فشلٍ، ونصفُ
+// مفتوحٍ يسمح بمحاولةٍ واحدة بعد مهلة تهدئة فيُغلق بنجاحها أو يعود مفتوحاً بفشلها.
+// فلا هو إعدامٌ للجلسة بفشلٍ عارض، ولا هو طَرقٌ بلا حدٍّ على خادمٍ لا يستجيب.
+// والعتبتان من الحالة المقاسة: ثلاثُ فشلاتٍ متتالية (فواحدةٌ عارضة لا تُغلق شيئاً)،
+// وتهدئةُ دقيقة (فجلسةُ محمد كانت ستستردّ صوتها قبل لعبة الاستماع بستّ عشرة دقيقة).
+let ttsServerOk=null;            // null=لم يُجرَّب · true=يعمل · false=فشل آخرَ نداء
 let ttsServerChars=0, ttsServerCalls=0, ttsServerLogged=false;
+const TTS_CB_FAILS=3, TTS_CB_COOL=60000;
+let ttsServerFails=0, ttsServerOpenedAt=0;
+// هل يُسمح بنداءٍ الآن؟ مغلقٌ ⇒ نعم · مفتوحٌ ⇒ لا إلّا بعد التهدئة (محاولةُ تحسّس)
+function ttsServerAllow(){
+  if(ttsServerFails<TTS_CB_FAILS)return true;
+  return (Date.now()-ttsServerOpenedAt)>=TTS_CB_COOL;
+}
+function ttsServerFail(){
+  ttsServerOk=false;ttsServerFails++;
+  if(ttsServerFails>=TTS_CB_FAILS)ttsServerOpenedAt=Date.now();
+}
+function ttsServerWin(){
+  // النجاح **بعد** فشلٍ حدثٌ يستحقّ سطراً: بلاه يبقى السجلّ فشلاً بلا نهاية، فلا
+  // يُعرف أعاد المسارُ عملَه أم بقي ميّتاً — وهذا فرقٌ يبني عليه التشخيص القادم.
+  const wasBroken=ttsServerFails>0;
+  ttsServerOk=true;ttsServerFails=0;ttsServerOpenedAt=0;
+  return wasBroken;
+}
 const TTS_CACHE={};              // نصٌّ ⇐ رابط blob: الجملة الواحدة تُطلب مرّةً واحدة
 function ttsServerSpeak(text,onDone){
   const t=String(text||"").trim();
@@ -3952,29 +3983,34 @@ function ttsServerSpeak(text,onDone){
     // خطأٌ يعود JSON، ونجاحٌ يعود صوتاً — فالتفريق بالنوع لا بالحالة
     if(!res.ok||ct.indexOf("audio")<0){
       return res.json().catch(function(){return{error:"http_"+res.status}}).then(function(j){
-        ttsServerOk=false;
+        ttsServerFail();
         ttsServerLog(j&&j.error||("http_"+res.status),j&&j.detail);
         fire({ok:false,reason:'server',detail:(j&&j.error)||("http_"+res.status)});
       });
     }
     ttsServerChars+=t.length;ttsServerCalls++;
     return res.blob().then(function(b){
-      ttsServerOk=true;
+      const back=ttsServerWin();
       try{TTS_CACHE[t]=URL.createObjectURL(b)}catch(e){}
-      ttsServerLog("ok");
+      ttsServerLog(back?"ok_recovered":"ok");
       play(TTS_CACHE[t]||URL.createObjectURL(b));
     });
   })
   .catch(function(e){
     if(timer)clearTimeout(timer);
-    ttsServerOk=false;
+    ttsServerFail();
     ttsServerLog("network",String(e).slice(0,80));
     fire({ok:false,reason:'server_unreachable'});
   });
 }
-// يُسجَّل مرّةً واحدة لكل جلسة — الغرض معرفةُ أن المسار عمل وكم كلّف، لا إغراقُ السجلّ
+// الغرض معرفةُ أن المسار عمل وكم كلّف وأين تعثّر، لا إغراقُ السجلّ. والنجاح سطرٌ
+// واحد، **وكلُّ سببٍ فشلٍ سطران** — فقاطع الدائرة يُعيد المحاولة بعد التهدئة، ولولا
+// سقفٌ لكتب سطراً كل دقيقة. وسطران يكفيان لتمييز العارض من المستمرّ.
+const TTS_LOG_CAP=2, ttsLogSeen={};
 function ttsServerLog(why,detail){
   if(ttsServerLogged&&why==="ok")return;
+  const n=(ttsLogSeen[why]||0)+1;ttsLogSeen[why]=n;
+  if(n>TTS_LOG_CAP)return;
   ttsServerLogged=true;
   try{logAnswer("gen","tts_server",null,why,null,null,
     {q_text:("[صوت الخادم] "+why+" · نداءات:"+ttsServerCalls+" · محارف:"+ttsServerChars
@@ -4012,7 +4048,7 @@ function speakEnglish(text,onDone){
         // **الحالة المقاسة على جهاز هيا**: المحرّك يردّ `synthesis-failed` على كل
         // صوتٍ إنجليزي. فبعد استنفاد مسار الجهاز (الصوت المختار ثم البديل) يُطلب
         // الصوت من الخادم — وهو المسار الوحيد الباقي، ولا يُطلب قبل ذلك.
-        if(ttsServerOk!==false)return ttsServerSpeak(text,function(r){
+        if(ttsServerAllow())return ttsServerSpeak(text,function(r){
           if(r&&r.ok)return fire(r);
           fire(i);
         });
@@ -4055,8 +4091,9 @@ function speakEnglish(text,onDone){
         hasEnVoice:!!pv,voiceName:pv&&pv.name,localOnly:!!(pv&&pv.localService!==false),
         gesture:!!ttsGesture};
       ttsMark(false,info);
-      // جهازٌ صامت ⇒ يُجرَّب صوت الخادم مرّةً. ولا يُعاد إن ثبت فشله في هذه الجلسة.
-      if(ttsServerOk!==false)return ttsServerSpeak(text,function(r){
+      // جهازٌ صامت ⇒ يُجرَّب صوت الخادم. ويمنعه القاطعُ وحده بعد تتابع فشلٍ، حتى تنقضي
+      // التهدئة فيُسمح بمحاولة تحسّسٍ واحدة — لا إعدامٌ للجلسة بفشلٍ عارض.
+      if(ttsServerAllow())return ttsServerSpeak(text,function(r){
         if(r&&r.ok)return fire(r);
         fire(info);
       });
@@ -4223,7 +4260,8 @@ const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEn
   "writeTokens","writeTtr","writeSim","writePrevLoad","writePrevAdd","writeSelfSim",
   "accLoad","accSave","accRecord","accRate","stretchOn","bankStretched",
   "seqStart","seqReset","seqPlanFor","seqWeek","seqCur","startSeq","seqCardHTML","renderSeq",
-  "loadKpi","kpiAgg","renderKpi","gjtNorm","gjtNoOxford","gjtWordBag","gjtIsRotation","gjtDefect","wbNeed","wbLeft",
+  "loadKpi","kpiAgg","renderKpi","gjtNorm","gjtNoOxford","gjtWordBag","gjtIsRotation","gjtDefect","gjtCondSplit","gjtSameVerb","gjtZeroFirst",
+  "ttsServerAllow","ttsServerFail","ttsServerWin","wbNeed","wbLeft",
   "azExpandWords",
   "bktLoad","bktSave","bktStep","bktKey","skOf","bktRecord","bktOf","bktMastered","bktToMastery",
   "writeLfp","mockBand","mockLogLoad","mockLogAdd","mockSeenRecently","mockPickFrom",
@@ -7809,6 +7847,45 @@ function gjtIsRotation(a,b){
   }
   return false;
 }
+// ===== ٣) الشرط الصفريّ مقابل الأوّل — كلاهما إنجليزيةٌ سليمة (٥ سبتمبر) =====
+// عنصرٌ مولَّد حيّ (`ai_gram_mtg207jh_hvb6s`) عُرض على محمد وفيه صحيحتان:
+//   ١) If Haya mixes the vinegar with the baking soda, it bubbles up quickly.   ← صفريّ
+//   ٢) If Haya mixes the vinegar with the baking soda, it will bubble up quickly. ← أوّل ✓
+// فاختار الأولى فحُسبت خطأً، ودرجته الحقيقية ٥/٥ لا ٤/٥. والنوعان مقرَّران في وصف
+// كامبريدج للشرط (الصفريّ لحقيقةٍ عامّة، والأوّل لنتيجةٍ مستقبلية) وكلاهما في English
+// Profile — فالفرق **معنًى بلا سياق** لا نحو، وهذا بعينه ما يمنعه هذا الفحص أصلاً.
+//
+// **والحدّ يُقال**: الفحص على الشكل الأغلب في المولَّد — شرطٌ مُصدَّرٌ تفصله فاصلة.
+// وقيدُه صارمٌ عمداً كي لا يُسقط مموّهاً حقيقياً: تُشترَط **مطابقةٌ تامّة لجملة الشرط**،
+// فالخطأ داخلها (`If ... will mix`, `If ... mixed`) يبقى مموّهاً مشروعاً كما هو.
+const COND_LEAD=/^(if|when)$/;
+function gjtCondSplit(t){
+  const i=String(t||"").indexOf(",");
+  if(i<0)return null;
+  const head=gjtNorm(t.slice(0,i)).split(" ").filter(Boolean);
+  const tail=gjtNorm(t.slice(i+1)).split(" ").filter(Boolean);
+  if(!head.length||!tail.length||!COND_LEAD.test(head[0]))return null;
+  return {head:head.join(" "),tail:tail};
+}
+// هل الفعلان صيغتا فعلٍ واحد يفترقان بلاحقة الغائب المفرد وحدها؟
+function gjtSameVerb(a,b){
+  if(a===b)return true;
+  const p=a.length<b.length?a:b, q=a.length<b.length?b:a;
+  return q===p+"s"||q===p+"es"||(p.slice(-1)==="y"&&q===p.slice(0,-1)+"ies");
+}
+function gjtZeroFirst(a,b){
+  const A=gjtCondSplit(a),B=gjtCondSplit(b);
+  if(!A||!B||A.head!==B.head)return false;          // جملةُ الشرط نفسها حرفياً وإلّا فلا
+  if(/\bwill\b/.test(A.head))return false;          // «if ... will» خطأٌ حقيقي لا يُعفى
+  const w=A.tail.indexOf("will"),v=B.tail.indexOf("will");
+  if((w<0)===(v<0))return false;                    // أحدهما بـwill والآخر بدونها
+  const W=(w<0?B:A).tail.slice(),P=(w<0?A:B).tail.slice();
+  W.splice(W.indexOf("will"),1);                    // انزع will ثمّ قابل
+  if(W.length!==P.length)return false;
+  let diff=0;
+  for(let k=0;k<W.length;k++)if(W[k]!==P[k]){if(!gjtSameVerb(W[k],P[k]))return false;diff++}
+  return diff<=1;                                   // لا فرق إلّا تصريفُ الغائب المفرد
+}
 // يعود بسبب الرفض أو "" إن كان العنصر سليماً — سببٌ مسمّى لا رفضٌ غامض
 function gjtDefect(c){
   if(!c||c.length<2)return "shape";
@@ -7822,6 +7899,8 @@ function gjtDefect(c){
     // ٢) تقديمٌ مشروع: نفس الكلمات، وإحداهما دورانُ الأخرى بكتلةٍ ظرفية متّصلة
     if(gjtWordBag(x.t)===gjtWordBag(R)&&gjtNorm(x.t)!==gjtNorm(R)&&
        gjtIsRotation(R,x.t))return "clause_fronting";
+    // ٣) شرطٌ صفريّ مقابل أوّل — النوعان مقرَّران وكلاهما سليم
+    if(gjtZeroFirst(R,x.t))return "zero_vs_first_conditional";
   }
   return "";
 }
@@ -9227,7 +9306,7 @@ const GRAM_BANK=[
   {id:"gr_b1_3",lv:"B1",sk:"الشرط الأول",c:[
     {t:"If it will rain, I will stay home.",ok:false,why:"جملة الشرط (if) تأخذ مضارعاً بسيطاً لا will"},
     {t:"If it rains, I will stay home.",ok:true,why:"صحيحة — if+مضارع، وwill في الجواب"},
-    {t:"If it rains, I stay home.",ok:false,why:"جواب الشرط هنا توقّعٌ مستقبلي فيحتاج will"},
+    {t:"If it rain, I will stay home.",ok:false,why:"الغائب المفرد (it) يأخذ rains لا rain"},
     {t:"If it will rains, I will stay home.",ok:false,why:"will وs معاً على الفعل نفسه (will rains) لا يصحّان"}]},
   {id:"gr_b1_4",lv:"B1",sk:"الجمل الموصولة",c:[
     {t:"The man who he called me is my teacher.",ok:false,why:"بعد who لا نكرّر الفاعل بضمير (he) ثانية"},
@@ -11226,7 +11305,7 @@ const STAT_BANK=[
    c:[{t:"5",ok:false,why:"هذا عدد المشاهدات"},
       {t:"15",ok:false,why:"جمعتَ ٥ + ١٠ — والعلاقة ضربٌ لا جمع"},
       {t:"50",ok:true,why:"صحيح — المجموع = n × x̄ = 5 × 10"},
-      {t:"2",ok:false,why:"قسمتَ ١٠ ÷ ٥ — وهذا مقلوب العلاقة"}],
+      {t:"2",ok:false,why:"قسمتَ ١٠ ÷ ٥ — وهذا مقلوب العلاقة",bug:"reversed_pair"}],
    sol:"من تعريف المتوسّط: x̄ = Σx ÷ n\nإذن Σx = n × x̄ = 5 × 10 = 50."},
   {id:"sa_cen_5",ch:"النزعة المركزية",src:"ملف",
    pre:"درجات طالب في ثلاثة مقرّرات: M = 82 (وزن 3) ، E = 65 (وزن 2) ، A = 90 (وزن 4)",
@@ -11336,7 +11415,7 @@ const STAT_BANK=[
    sol:"الانحراف المعياري ١٠ كبيرٌ إن كان المتوسّط ٢٠، وصغيرٌ إن كان المتوسّط ١٠٠٠. فالمقارنة تحتاج مقياساً نسبيّاً: CV = (S ÷ x̄) × 100٪ يقسم التشتّت على حجم البيانات نفسه، فيصير قابلاً للمقارنة."},
   {id:"sa_dis_5",ch:"التشتت",src:"مؤلَّف",
    q:"الانحراف المعياري S هو:",
-   c:[{t:"مربّع التباين",ok:false,why:"العكس — التباين هو مربّع الانحراف المعياري"},
+   c:[{t:"مربّع التباين",ok:false,why:"العكس — التباين هو مربّع الانحراف المعياري",bug:"reversed_pair"},
       {t:"الجذر التربيعي الموجب للتباين",ok:true,why:"صحيح — S = +√S²، ولذلك لا يكون سالباً أبداً"},
       {t:"الفرق بين أكبر وأصغر قيمة",ok:false,why:"هذا المدى"},
       {t:"متوسّط الانحرافات عن المتوسّط",ok:false,why:"مجموع الانحرافات عن المتوسّط صفرٌ دائماً، ولذلك تُربَّع أوّلاً"}],
@@ -11488,7 +11567,7 @@ const STAT_BANK=[
    q:"P(Ā) يساوي:",
    c:[{t:"1.7",ok:false,why:"جمعتَ ١ + ٠٫٧، والاحتمال لا يتجاوز ١"},
       {t:"1",ok:false,why:"هذا احتمال الفضاء كلّه"},
-      {t:"0.7",ok:false,why:"هذا P(A) نفسه لا متمّمته"},
+      {t:"0.7",ok:false,why:"هذا P(A) نفسه لا متمّمته",bug:"reversed_pair"},
       {t:"0.3",ok:true,why:"صحيح — 1 − 0.7"}],
    sol:"P(Ā) = 1 − P(A) = 1 − 0.7 = 0.3.\nلأن A ومتمّمتها يغطّيان الفضاء كلّه ولا يشتركان."},
   {id:"sa_prb_7",ch:"الاحتمال",src:"ملف",
@@ -11542,7 +11621,7 @@ const STAT_BANK=[
   {id:"sa_prb_13",ch:"الاحتمال",src:"ملف",
    pre:"في المسألة نفسها: نسب الإنتاج ٤٠٪ ، ١٠٪ ، ٥٠٪ ونسب العيب 0.02 ، 0.04 ، 0.01، واحتمال العيب الكلّي 0.017.",
    q:"إذا كانت الورقة المختارة معيبة، فاحتمال أن تكون من تصوير الآلة الثانية يساوي تقريباً:",
-   c:[{t:"0.040",ok:false,why:"هذه P(معيبة | الآلة الثانية) — الاتجاه المعاكس للمطلوب"},
+   c:[{t:"0.040",ok:false,why:"هذه P(معيبة | الآلة الثانية) — الاتجاه المعاكس للمطلوب",bug:"inverse_conditional"},
       {t:"0.100",ok:false,why:"هذه نسبة إنتاج الآلة الثانية قبل معرفة أن الورقة معيبة"},
       {t:"0.235",ok:true,why:"صحيح — 0.004 ÷ 0.017"},
       {t:"0.470",ok:false,why:"لا يوافق قسمة الحدّ على المجموع"}],
@@ -11558,10 +11637,10 @@ const STAT_BANK=[
   {id:"sa_prb_15",ch:"الاحتمال",src:"ملف",
    pre:"في المسألة نفسها: ٦٠٪ ذكور نسبة نجاحهم ٧٠٪ ، و٤٠٪ إناث نسبة نجاحهنّ ٩٠٪ ، واحتمال النجاح الكلّي 0.78.",
    q:"إذا كان الطالب المختار ناجحاً، فاحتمال أن يكون أنثى يساوي تقريباً:",
-   c:[{t:"0.90",ok:false,why:"هذه P(ناجح | أنثى) — الاتجاه المعاكس للمطلوب"},
+   c:[{t:"0.90",ok:false,why:"هذه P(ناجح | أنثى) — الاتجاه المعاكس للمطلوب",bug:"inverse_conditional"},
       {t:"0.40",ok:false,why:"هذه نسبة الإناث قبل معرفة النجاح"},
       {t:"0.46",ok:true,why:"صحيح — 0.36 ÷ 0.78"},
-      {t:"0.54",ok:false,why:"هذه متمّمة الجواب أي P(ذكر | ناجح)"}],
+      {t:"0.54",ok:false,why:"هذه متمّمة الجواب أي P(ذكر | ناجح) — حُسب الطرف المقابل من الزوج لا المطلوب",bug:"reversed_pair"}],
    sol:"صيغة بيز:\nP(أنثى | ناجح) = [P(أنثى) × P(ناجح | أنثى)] ÷ P(ناجح)\n= [0.40 × 0.90] ÷ 0.78\n= 0.36 ÷ 0.78\n= 0.46.\nوارتفعت النسبة من ٤٠٪ إلى ٤٦٪ لأن الإناث أعلى نجاحاً."},
 
   // ===== المتغير العشوائي المتقطع =====
@@ -11693,7 +11772,7 @@ const STAT_BANK=[
   {id:"sa_rv_16",ch:"المتغير العشوائي",src:"مؤلَّف",
    pre:"في تجربة إلقاء قطعة نقود مرّتين، Ω = {HH, HT, TH, TT} وX عدد الصور",
    q:"عملية الإرفاق للمتغيّر العشوائي X تنطلق:",
-   c:[{t:"من المدى Ω* إلى المجال Ω",ok:false,why:"هذا الاتجاه المعاكس — وهو الصورة العكسية لا الإرفاق"},
+   c:[{t:"من المدى Ω* إلى المجال Ω",ok:false,why:"هذا الاتجاه المعاكس — وهو الصورة العكسية لا الإرفاق",bug:"reversed_pair"},
       {t:"من المجال Ω إلى المجال المقابل R",ok:true,why:"صحيح — X دالّةٌ تُرفِق كل حادثٍ ابتدائي بعددٍ حقيقي"},
       {t:"من R إلى R",ok:false,why:"مجال المتغيّر العشوائي هو Ω لا R"},
       {t:"من مجموعة القوّة 2^Ω إلى Ω",ok:false,why:"الإرفاق يعمل على عناصر Ω لا على مجموعاتها الجزئية"}],
@@ -12080,7 +12159,7 @@ const STAT_BANK=[
    c:[{t:"35%",ok:true,why:"صحيح — متوسط وضعيف: 40 + 30 = 70، و70 ÷ 200 = 35%"},
       {t:"45%",ok:false,why:"أدخلتَ «جيد» في العدّ، و«أقلّ من» لا تشمله",bug:"reversed_pair"},
       {t:"15%",ok:false,why:"هذا «ضعيف» وحده"},
-      {t:"65%",ok:false,why:"هذا المتمّم — أي «لا يقلّ عن جيد» بالنسبة المئوية"}],
+      {t:"65%",ok:false,why:"هذا المتمّم — أي «لا يقلّ عن جيد» بالنسبة المئوية",bug:"reversed_pair"}],
    sol:"«أقلّ من جيد» = متوسط + ضعيف = 40 + 30 = 70\nالنسبة المئوية = (70 ÷ 200) × 100 = 35%"},
   {id:"sw2_r4",ch:"العرض البياني",src:"ملف",ws:"٢",
    pre:"تقييمات 200 مستفيد لجودة الخدمة — ممتاز 50 · جيد جداً 60 · جيد 20 · متوسط 40 · ضعيف 30.",
@@ -12190,7 +12269,7 @@ const STAT_BANK=[
    q:"احسب التكرار المئوي للمراجعين الذين تتراوح أعمارهم ما بين 14.5 و 35.5 عاماً.",
    c:[{t:"58.33%",ok:true,why:"صحيح — ثلاث فئات (15+10+10 = 35) من مجموع 60"},
       {t:"35%",ok:false,why:"هذا **التكرار** 35 قُرئ نسبةً بلا قسمةٍ على المجموع",bug:"reversed_pair"},
-      {t:"41.67%",ok:false,why:"هذا المتمّم — أي من هم خارج هذا المدى"},
+      {t:"41.67%",ok:false,why:"هذا المتمّم — أي من هم خارج هذا المدى",bug:"reversed_pair"},
       {t:"75%",ok:false,why:"يقابل 45 مراجعاً، أي بإدخال فئةٍ رابعة في العدّ"}],
    sol:"الحدّان الفعليان 14.5 و35.5 يحصران ثلاث فئات كاملة:\n15 − 21 · 22 − 28 · 29 − 35\nتكرارها = 15 + 10 + 10 = 35\nالمجموع الكلّي = 20 + 15 + 10 + 10 + 5 = 60\nالتكرار المئوي = (35 ÷ 60) × 100 = 58.33%"},
   {id:"sw2_f6",ch:"العرض البياني",src:"ملف",ws:"٢",
@@ -12217,7 +12296,7 @@ const STAT_BANK=[
    svg:"<svg viewBox=\"0 0 280 210\" width=\"280\" height=\"210\" role=\"img\" aria-label=\"مدرّج تكراري لأزمنة الانتظار\"><line x1=\"40\" y1=\"170\" x2=\"260\" y2=\"170\" stroke=\"#94A3B8\"/><line x1=\"40\" y1=\"170\" x2=\"40\" y2=\"25\" stroke=\"#94A3B8\"/><rect x=\"40\" y=\"150.8\" width=\"44\" height=\"19.2\" fill=\"#2563EB\" fill-opacity=\".8\" stroke=\"#1E40AF\"/><text x=\"62\" y=\"145.8\" text-anchor=\"middle\" font-size=\"12\" font-weight=\"700\" fill=\"#1E40AF\">3</text><rect x=\"84\" y=\"112.4\" width=\"44\" height=\"57.6\" fill=\"#2563EB\" fill-opacity=\".8\" stroke=\"#1E40AF\"/><text x=\"106\" y=\"107.4\" text-anchor=\"middle\" font-size=\"12\" font-weight=\"700\" fill=\"#1E40AF\">9</text><rect x=\"128\" y=\"42\" width=\"44\" height=\"128\" fill=\"#2563EB\" fill-opacity=\".8\" stroke=\"#1E40AF\"/><text x=\"150\" y=\"37\" text-anchor=\"middle\" font-size=\"12\" font-weight=\"700\" fill=\"#1E40AF\">20</text><rect x=\"172\" y=\"93.2\" width=\"44\" height=\"76.8\" fill=\"#2563EB\" fill-opacity=\".8\" stroke=\"#1E40AF\"/><text x=\"194\" y=\"88.2\" text-anchor=\"middle\" font-size=\"12\" font-weight=\"700\" fill=\"#1E40AF\">12</text><rect x=\"216\" y=\"131.6\" width=\"44\" height=\"38.4\" fill=\"#2563EB\" fill-opacity=\".8\" stroke=\"#1E40AF\"/><text x=\"238\" y=\"126.6\" text-anchor=\"middle\" font-size=\"12\" font-weight=\"700\" fill=\"#1E40AF\">6</text><text x=\"40\" y=\"185\" text-anchor=\"middle\" font-size=\"11\" fill=\"#475569\">10</text><text x=\"84\" y=\"185\" text-anchor=\"middle\" font-size=\"11\" fill=\"#475569\">15</text><text x=\"128\" y=\"185\" text-anchor=\"middle\" font-size=\"11\" fill=\"#475569\">20</text><text x=\"172\" y=\"185\" text-anchor=\"middle\" font-size=\"11\" fill=\"#475569\">25</text><text x=\"216\" y=\"185\" text-anchor=\"middle\" font-size=\"11\" fill=\"#475569\">30</text><text x=\"260\" y=\"185\" text-anchor=\"middle\" font-size=\"11\" fill=\"#475569\">35</text><text x=\"150\" y=\"18\" text-anchor=\"middle\" font-size=\"12\" font-weight=\"700\" fill=\"#0F172A\">Waiting time (min) · n = 50</text><text x=\"150\" y=\"203\" text-anchor=\"middle\" font-size=\"11\" fill=\"#475569\">minutes</text></svg>",
    c:[{t:"0.76",ok:true,why:"صحيح — (20 + 12 + 6) ÷ 50 = 38 ÷ 50"},
       {t:"38",ok:false,why:"هذا **العدد** لا التكرار النسبي",bug:"reversed_pair"},
-      {t:"0.24",ok:false,why:"هذا المتمّم — من انتظر أقلّ من 20 دقيقة"},
+      {t:"0.24",ok:false,why:"هذا المتمّم — من انتظر أقلّ من 20 دقيقة",bug:"reversed_pair"},
       {t:"0.40",ok:false,why:"هذا نصيب الفئة 20 − 25 وحدها"}],
    sol:"«لا تقلّ عن 20» تشمل الفئات من 20 فصاعداً:\n20 + 12 + 6 = 38\nالتكرار النسبي = 38 ÷ 50 = 0.76"},
   {id:"sw2_h3",ch:"العرض البياني",src:"ملف",ws:"٢",
