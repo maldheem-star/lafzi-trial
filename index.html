@@ -9069,6 +9069,50 @@ function writeLive(ev){
   }
   if(box)box.innerHTML=writeCritHTML(writeCur(),el.value);
 }
+// ===== اللصق مغلقٌ في الكتابة — أمر صاحب المشروع، ٦ سبتمبر =====
+// حارس ٢٩ أغسطس كان **يُسقط الدرجة بعد اللصق ولا يمنعه**، وقياسُ اليوم أثبت أن ذلك
+// لا يكفي: محمد لصق إجاباته الثلاث كلَّها (`insertFromPaste` صريحاً، دفعات ٩٥ و٤٥١
+// و٤٨٣ محرفاً) فنال **٠ من ٣** — ونصوصه سليمةٌ لغةً، ومعيار الدمج نفسه نجح في
+// أولاها (`دمج:ok · جمل:1`). أي أن الحارس كان يُنتج صفراً غامضاً: يسقط لسببٍ لا
+// يراه الطالب، بدل أن يمنع الفعل نفسه. فأُمر: «احجب عملية اللصق في الكتابة للثلاثة».
+//
+// **والمنع عند الحدث الملغى لا بعد دخول النصّ** — نفس مبدأ «البوّابة البنيوية تسبق
+// النصيحة» المعتمَد في المشروع. وحدثا `paste` و`drop` **cancelable بنصّ المواصفة**
+// (Clipboard API §paste ; HTML §drag-and-drop) فـ`preventDefault()` يمنع الإدراج قبل
+// وقوعه — لا حذفَ نصٍّ بعده. وهذا يغطّي المسارات كلَّها بحدثين اثنين: Ctrl/⌘+V،
+// وقائمة السياق، ولصق الزرّ الأوسط في لينكس، والإفلات — لا قائمةَ اختصاراتٍ أخترعها.
+//
+// **ولا يُمحى نصٌّ دخل** حتى لو أفلت لصقٌ من الحدثين (متصفّحٌ لا يُطلق `paste`):
+// `writePasted` القائم يبقى كما هو فيُسقط الدرجة كما كان أمس. **واتّجاه الخطأ آمنٌ
+// عمداً**: لو أخطأ المتصفّح في وسم `insertFromPaste` لكان الثمن صفراً في محاولةٍ
+// واحدة، لا محوَ ما كتبته بأصابعها — وهو الثمن الذي لا يُحتمل («الدعم الذي يُعلّم
+// خطأً أسوأ من غيابه»).
+//
+// **والمنع يُعلَن قبل وقوعه ويُسجَّل بعده**: سطرٌ ثابت تحت الصندوق يقول إن اللصق
+// مغلق (فالمعيار المعروض هو المطبَّق — درس ٢٩ أغسطس)، ويتحوّل تنبيهاً عند المحاولة
+// فلا يبقى الردُّ صمتاً («الصمتُ غير الهدوء»). ويُسجَّل في `domain='gen'` بسقف ضجيج،
+// فيُقاس كم مرّةً يُحاوَل ولمن — وبلا هذا يستحيل الحكم على أثر الحجب أصلاً.
+let writePasteTries=0,writePasteLogged=0;
+const WRITE_PASTE_LOG_CAP=2;
+function writePasteBlock(ev){
+  try{if(ev&&ev.preventDefault)ev.preventDefault()}catch(e){}
+  writePasteTries++;
+  const box=document.getElementById('writePasteNote');
+  if(box){
+    box.style.color="#B91C1C";box.style.fontWeight="700";
+    box.textContent="⛔ اللصق مغلق هنا — اكتبي الجواب بأصابعك."
+      +(writePasteTries>1?" (المحاولة "+toAr(writePasteTries)+")":"");
+  }
+  if(writePasteLogged<WRITE_PASTE_LOG_CAP){
+    writePasteLogged++;
+    const it=(typeof writeCur==="function")?writeCur():null;
+    try{logAnswer("gen","write_paste_blocked",null,
+      ((ev&&ev.type)||"paste")+" · المحاولة "+writePasteTries,(it&&it.id)||null,null,
+      {q_text:("[لصق مُنع في الكتابة] "+((ev&&ev.type)||"paste")
+        +" · المستوى "+((it&&it.lv)||"?")).slice(0,300)})}catch(e){}
+  }
+  return false;
+}
 let writeItems=[],writeIdx=0,writeDone=false,writeScore=0,writeShownAt=0,writeTyped="",
   writeSubmitted=false,writeBusy=false,writeFix=[],writeFixFail="",writeCount=0,writeLtDropped=0,writeLtJudged=0,
   writeModelShown=false,writeModelViews=0,writeCopy=false,writeSent=0;
@@ -9212,6 +9256,15 @@ function renderWriteFeedback(it){
     return `<div class="explain"><div class="explain-title" style="color:#B45309">هذا نسخٌ من نصّ السؤال، لا إجابة</div>
       <div class="explain-body">اكتبي بكلماتك أنتِ — جملة عن نفسك تجيب عن السؤال، لا نصّ السؤال نفسه.</div></div>`;
   }
+  // ===== وشرحُ اللصق كان غائباً وحده — عيبٌ كشفه بناء الحجب، ٦ سبتمبر =====
+  // `writeFinish` يُسقط الدرجة على `writeCopy` **و**`writePasted` معاً منذ ٢٩ أغسطس،
+  // وهذه الشاشة كانت تشرح الأوّل وحده. فمن لصق يرى «✓ جملة مدمَجة سليمة» ودرجتُه
+  // صفر — شاشةٌ تناقض السجلّ. وهو بعينه ما وقع لمحمد اليوم (٠ من ٣ بنصوصٍ سليمة).
+  // والحجب يجعل هذا المسار نادراً، **وشبكةٌ احتياطية تكذب أسوأ من غيابها**.
+  if(writePasted){
+    return `<div class="explain"><div class="explain-title" style="color:#B45309">هذا نصٌّ ملصوق — لا يُحتسب</div>
+      <div class="explain-body">اللصق مغلق في هذا القسم. اكتبي الجواب بأصابعك ولو أقصر — المقصود أن تؤلّفي أنتِ.</div></div>`;
+  }
   const isCombine=it.type==="combine";
   const G=writeGoalsNow(it);
   const wordsOk=writeCount>=G.words,ptsOk=G.sentences?writeSent>=G.sentences:true;
@@ -9272,7 +9325,8 @@ function renderWrite(){
     <button type="button" onclick="writeToggleModel()" style="background:none;border:none;color:#1D4ED8;font-size:13px;cursor:pointer;padding:0 0 12px;font-family:inherit;display:block">${writeModelShown?"▲ إخفاء المثال":"📘 شاهدي مثالاً محلولاً قبل أن تبدئي"}</button>
     ${writeModelShown?renderWriteModel(it.lv):""}
     ${(!writeSubmitted&&writeJointFor(it))?`<div style="font-size:12px;color:#0E7490;font-weight:700;margin-bottom:6px">✍️ الجملة الأولى مكتوبةٌ لكِ — أكملي من حيث توقّفت</div>`:""}
-    <textarea id="writeIn" rows="5" oninput="writeLive(event)" ${writeSubmitted?"disabled":""} style="width:100%;padding:14px;border-radius:12px;border:2px solid #E2E8F0;font-size:16px;direction:ltr;text-align:left;font-family:Georgia,serif;resize:vertical" placeholder="type your answer here" autocomplete="off" autocapitalize="sentences" spellcheck="true">${esc(writeSubmitted?writeTyped:(writeTyped||writeJointFor(it)))}</textarea>
+    <textarea id="writeIn" rows="5" oninput="writeLive(event)" onpaste="return writePasteBlock(event)" ondrop="return writePasteBlock(event)" ${writeSubmitted?"disabled":""} style="width:100%;padding:14px;border-radius:12px;border:2px solid #E2E8F0;font-size:16px;direction:ltr;text-align:left;font-family:Georgia,serif;resize:vertical" placeholder="type your answer here" autocomplete="off" autocapitalize="sentences" spellcheck="true">${esc(writeSubmitted?writeTyped:(writeTyped||writeJointFor(it)))}</textarea>
+    ${writeSubmitted?"":`<div id="writePasteNote" style="font-size:12px;color:#64748B;margin-top:6px">اللصق مغلق هنا — اكتبي الجواب بأصابعك.</div>`}
     ${writeSubmitted?renderWriteFeedback(it):""}
   </div>
   ${writeSubmitted?`<button class="btn" style="background:#0E7490" onclick="writeNext()">${writeIdx+1>=writeItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`
