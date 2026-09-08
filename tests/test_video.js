@@ -127,7 +127,9 @@ ok(mBank,'وجلسته من بنك B1 وحده');
 
 const e=await mk('elias.html');
 const eLv=await e.evaluate(()=>({level:profileOf().level,btn:document.body.innerText.indexOf('فيديو تعليمي')>=0}));
-ok(eLv.level==='A2'&&eLv.btn,`إلياس A2 والزرّ ظاهر (${eLv.level})`);
+// إلياس A2 ⇐ B1 (٨ سبتمبر، أمر صاحب المشروع بسندٍ مقاس). والدعوى هنا «صفحته
+// تُعلن مستواه والزرّ ظاهر» لا «إلياس A2» — فتُصحَّح القيمة ويبقى ما جاءت لأجله.
+ok(eLv.level==='B1'&&eLv.btn,`إلياس B1 والزرّ ظاهر (${eLv.level})`);
 
 const h=await mk('index.html');
 const hBtn=await h.evaluate(()=>document.body.innerText.indexOf('فيديو تعليمي')>=0);

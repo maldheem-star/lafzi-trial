@@ -209,7 +209,9 @@ t=await page.textContent('#app');
 ok(/جلسة أخرى/.test(t),'وتُعرض شاشة النتيجة');
 
 console.log('\n١٣) يظهر على الصفحات الثلاث — كلٌّ ببنك مستواه');
-for(const [f,lv] of [['index.html','A1'],['mohammed.html','B1'],['elias.html','A2']]){
+// إلياس A2 ⇐ B1 — ٨ سبتمبر (انظر تعليق PROFILES). والدعوى المقصودة أن بنك STEP
+// يُطابق مستوى صاحب الصفحة، لا أن مستواه A2 بعينه.
+for(const [f,lv] of [['index.html','A1'],['mohammed.html','B1'],['elias.html','B1']]){
   const pg=await mk(f);
   const r=await pg.evaluate(()=>({lv:profileOf().level,btn:document.body.innerText.indexOf('نمط اختبار STEP')>=0}));
   ok(r.lv===lv&&r.btn,`${f}: المستوى ${r.lv} والزرّ ظاهر`);

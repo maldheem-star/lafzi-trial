@@ -114,24 +114,33 @@ const DOMS=[["listen","listenBankFor"],["read","readBankFor"],["write","writeBan
     await page.close();
   }
 
-  // ===== ٣) ولا يتسرّب B2 إلى هيا وإلياس =====
+  // ===== ٣) ولا يتسرّب إلى المستويات الأدنى أكثر من درجةٍ واحدة =====
   console.log('\n٣) لا تسرّب إلى المستويات الأدنى');
-  for(const [q,who,lv] of [['','هيا','A1'],['?p=elias','إلياس','A2']]){
+  // إلياس A2 ⇐ B1 (٨ سبتمبر، أمر صاحب المشروع بسندٍ مقاس: ٩٠٪ و٨٩٪ بعد فتح
+  // بوّابة التمدّد). والدعوى التي جاء لأجلها هذا القسم **درجةٌ واحدة لا درجتان**،
+  // لا «إلياس لا يرى B2» — فبعد رفعه صار فتحُ B2 له هو **عينَ** السلوك الصحيح
+  // (كما لمحمد في القسم ٢). فصار القياس **بالرتبة** لا باسم درجةٍ مكتوبة: لا عنصرَ
+  // فوق مستوى المتعلّم بأكثر من درجة. وهذا يُثبّت الدعوى الأصلية ولا يُدهَس، ولا
+  // ينكسر مع أيّ رفعٍ لاحق — درس «الأعداد المكتوبة في الاختبارات فخّ صامت».
+  for(const [q,who,lv] of [['','هيا','A1'],['?p=elias','إلياس','B1']]){
     const page=await mk(browser,q);
     const r=await page.evaluate(doms=>{
-      const L=profileOf().level,out={lv:L,leak:[]};
-      // حتى بإتقانٍ تامّ: A1 يفتح A2 فقط، وA2 يفتح B1 فقط — لا قفزَ درجتين
+      const RANK={A1:0,A2:1,B1:2,B2:3};
+      const L=profileOf().level,out={lv:L,leak:[],over:[]};
+      // حتى بإتقانٍ تامّ: تُفتح الدرجة التالية وحدها — لا قفزَ درجتين
       doms.forEach(function(d){for(let i=0;i<10;i++)accRecord(d[0],true)});
       doms.forEach(function(d){
         const b=bankStretched(d[0],L,window[d[1]]);
-        if(b.some(function(x){return x.lv==="B2"}))out.leak.push(d[0]);
+        const far=b.filter(function(x){return (RANK[x.lv]||0)>RANK[L]+1});
+        if(far.length)out.leak.push(d[0]+':'+far[0].lv);
       });
       out.next=LV_NEXT[L];
+      out.nextIsOne=(RANK[out.next]===RANK[L]+1)||(out.next===undefined&&RANK[L]===3);
       return out;
     },DOMS);
     ok(r.lv===lv,who+': مستواه '+r.lv);
-    ok(r.next!=='B2',who+': ولا يفتح B2 مباشرةً — درجةٌ واحدة لا درجتان ('+r.next+')');
-    ok(r.leak.length===0,who+': ولا عنصرَ B2 يتسرّب إليه ولو أتقن — '+(r.leak.join(',')||'نظيف'));
+    ok(r.nextIsOne===true,who+': والمفتوح درجةٌ واحدة فوقه لا درجتان ('+r.lv+' ⇐ '+r.next+')');
+    ok(r.leak.length===0,who+': ولا عنصرَ فوقه بدرجتين يتسرّب إليه ولو أتقن — '+(r.leak.join(',')||'نظيف'));
     await page.close();
   }
 

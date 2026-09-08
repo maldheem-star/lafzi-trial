@@ -140,7 +140,9 @@ const mBank=await m.evaluate(()=>gramItems.every(x=>x.lv==='B1'||x.lv==='B1+'));
 ok(mBank,'وجلسته من بنك B1 (ومعه تمديد B1+) وحده');
 const e=await mk('elias.html');
 const eLv=await e.evaluate(()=>({level:profileOf().level,btn:document.body.innerText.indexOf('دقّة القواعد')>=0}));
-ok(eLv.level==='A2'&&eLv.btn,`إلياس A2 والزرّ ظاهر (${eLv.level})`);
+// إلياس A2 ⇐ B1 (٨ سبتمبر، أمر صاحب المشروع بسندٍ مقاس). والدعوى هنا «صفحته
+// تُعلن مستواه والزرّ ظاهر» لا «إلياس A2» — فتُصحَّح القيمة ويبقى ما جاءت لأجله.
+ok(eLv.level==='B1'&&eLv.btn,`إلياس B1 والزرّ ظاهر (${eLv.level})`);
 
 console.log('\n١١) لا انحدار');
 for(const [pg,fn,md] of [['index.html',"startGram()",'gram'],['index.html',"startWrite()",'write'],
