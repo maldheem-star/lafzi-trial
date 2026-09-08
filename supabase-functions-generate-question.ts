@@ -119,13 +119,37 @@ function groqLimitSummary(status: number, body: string, retryAfter: string) {
 // ≈ ٢٦٠ رمزاً بترميز JSON. وهو **تقديرٌ يُصحَّح بالقياس لا يبقى حدساً**: الاستهلاك
 // الفعلي (`usage.completion_tokens`) صار يعود في الردّ ويُسجَّل، فيُضبط الثابت من رقمٍ
 // حقيقي في الجولة القادمة بدل أن يُخمَّن مرّةً أخرى.
-const TOK_PER_Q = 260, TOK_OVERHEAD = 300;
+// ===== والقياس كذّب هذا التقدير في اتّجاهين — درس ٨ سبتمبر =====
+// أوّل `gen_usage` (٦ سبتمبر) قال `774/1340 · finish:stop`، فكتبتُ أن الاحتياط أوسع
+// من الحاجة بـ٤٠٪ **واقترحتُ خفضه**. وثاني سطر (٧ سبتمبر) قال العكس تماماً:
+// `1340/1340 · finish:length` — أي أن السقف استُهلك كلُّه **والردّ قُصَّ**. فحكمي
+// كان من عيّنةٍ واحدة، ولو نُفِّذ اقتراحي لزاد القصّ. والحاجة الحقيقية لأربعة أسئلة
+// **≥ ٣٣٥ رمزاً للسؤال** لا ٢٦٠.
+//
+// **والأهمّ**: سطر ٨ سبتمبر كشف أن العطل بنيويّ لا عارض —
+//   `429 · too_large · per_minute · limit=1000 · requested=1340`
+// أي أن **طلبنا الواحد يتجاوز سقف الدقيقة كلَّه**، فلا يمكن أن ينجح أبداً مهما
+// انتظرنا. وهذا هو الفرق الذي بُني `groqLimitSummary` (٥ سبتمبر) لأجل كشفه بالضبط:
+// «Rate limit reached» تزول بانقضاء النافذة، و«Request too large» لا تزول.
+//
+// فالقاعدة: **`max_tokens` يبقى دون حدّ الدقيقة نفسه**، وعدد الأسئلة في النداء
+// الواحد يُشتقّ منه لا يُختار — لا خفضُ نصيب السؤال (وهو ما كذّبه القصّ أعلاه).
+// والحدّ ١٠٠٠ **مقروءٌ من ردّ Groq نفسه** في اليومين، لا رقمٌ اخترتُه.
+const OUT_TPM_SEEN = 1000;      // من `limit=` في ردّ ٤٢٩ يومَي ٧ و٨ سبتمبر
+const TOK_HEADROOM = 0.95;      // هامشٌ تحت الحدّ فلا يقع على حافّته
+const TOK_PER_Q = 400;          // فوق ٣٣٥ المقاسة عند القصّ، فلا يُقَصّ ثانيةً
+// ويُخفَّض بالقياس ولا يُرفع: لو أعلن المزوّد حدّاً أدنى انضبطنا له، ولو أعلن أعلى
+// بقينا على المُتحقَّق منه — اتّجاه الخطأ آمنٌ عمداً.
+let obsTpm = OUT_TPM_SEEN;
+const tokCap = () => Math.floor(obsTpm * TOK_HEADROOM);
+const askCap = () => Math.max(1, Math.floor(tokCap() / TOK_PER_Q));
 async function callGroq(key: string, prompt: string, askCount: number) {
   // gpt-oss نموذج تفكيرٍ يُنفق من سقف الرموز على تفكيرٍ داخلي قبل الجواب — وهو
   // بعينه ما أفرغ ردَّ `tutor` (tutor_no_text، محمد ١٧ أغسطس، finishReason="length").
   // فنفس علاجه هناك: reasoning_effort منخفض وسقفٌ يتّسع لدفعة أسئلة كاملة.
   const isGptOss = /gpt-oss/i.test(GROQ_MODEL);
-  const maxTok = TOK_OVERHEAD + TOK_PER_Q * Math.max(1, askCount);
+  // السقف لا يتجاوز حدّ الدقيقة أبداً — ولو طُلبت أسئلةٌ أكثر ممّا يتّسع له
+  const maxTok = Math.min(TOK_PER_Q * Math.max(1, askCount), tokCap());
   const payload: Record<string, unknown> = {
     model: GROQ_MODEL, messages: [{ role: "user", content: prompt }],
     temperature: 0.8, max_tokens: maxTok, response_format: { type: "json_object" },
@@ -139,6 +163,10 @@ async function callGroq(key: string, prompt: string, askCount: number) {
   if (!res.ok) {
     const t = await res.text();
     const head = groqLimitSummary(res.status, t, res.headers.get("retry-after") || "");
+    // يُتعلَّم الحدّ المُعلَن من الردّ نفسه بدل التمسّك برقمٍ قد يتغيّر عند المزوّد
+    const lm = /Limit\s+([\d,]+)/i.exec(t);
+    if (lm) { const n = parseInt(lm[1].replace(/,/g, ""), 10);
+              if (n > 0 && n < obsTpm) obsTpm = n; }
     // الملخّص أوّلاً فينجو من القصّ، والنصّ الخام بعده لما لا يُطابقه الاستخراج
     return { ok: false, status: res.status, detail: (head + " :: " + t).slice(0, 400),
              retryAfter: res.headers.get("retry-after") || "" };
@@ -166,7 +194,7 @@ Deno.serve(async (req: Request) => {
     // الإفراط في الطلب (count+3، حتى ستّة) كان يُضاعف حجزَ الرموز مقابل السقف بلا
     // مقابلٍ مقاس: الغرضُ منه أن يبقى العددُ المطلوب نظيفاً بعد فلتر العربية، و**زائدٌ
     // واحد يكفي لذلك** — والنقصُ يُكمله البنك المؤلَّف كما كان يفعل أصلاً.
-    const askCount = Math.min(count + 1, 4);
+    const askCount = Math.min(count + 1, askCap());
     const prompt = buildPrompt(askCount, instr);
 
     const GROQ = Deno.env.get("GROQ_API_KEY") || Deno.env.get("GROQ_KEY");

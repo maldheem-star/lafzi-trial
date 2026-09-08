@@ -3981,6 +3981,40 @@ function ttsAudioEl(){
 }
 document.addEventListener("touchend",ttsAudioEl,{capture:true,once:true});
 document.addEventListener("click",ttsAudioEl,{capture:true,once:true});
+// ===== وسباقُ `pause()`/`play()` على العنصر المشترك — درس ٨ سبتمبر =====
+// كان `ttsServerSpeak` يبدأ كلَّ نداءٍ بـ`a.pause()` على العنصر المشترك. فإن كان وعدُ
+// `play()` من نداءٍ سابق **لم يُسوَّ بعد**، أجهضه هذا الإيقافُ بـ
+// `AbortError: The play() request was interrupted by a call to pause().`
+// فيسقط في `pr.catch` للنداء **السابق** فيُسجَّل `play_autoplay_blocked` — أي أن
+// السجلّ كان ينسب إلى سياسة المتصفّح فعلاً **فعلناه نحن**. ورُصد حيّاً عند هيا على
+// Chrome/أندرويد عادي (٣ و٦ و٧ و٨ سبتمبر: ٢٧ ثمّ ١٣ ثمّ ٨ ثمّ ٤ نداءات) — ونمطُه
+// يتّسق مع ضغطٍ متكرّر على 🔊 من طالبةٍ لا تسمع، فيُلغي نداؤها الجديد سابقَه.
+//
+// **والقاعدة من المواصفة لا من اجتهاد**: `HTMLMediaElement.play()` تُعيد وعداً،
+// وتوثيق المتصفّحات ينصّ صراحةً على انتظار تسويته قبل `pause()` وإلّا وقع
+// «play request was interrupted». فـ`ttsQuiet` لا تُوقف عنصراً وعدُه معلَّق، بل
+// تنتظر تسويته (نجاحاً أو فشلاً) ثمّ توقف.
+//
+// **ورمزُ نداءٍ متزايد** (`ttsPlaySeq`) يمنع طابوراً يُسمعها ثلاث عشرة نطقةً متتالية
+// بعد أن تكفّ عن الضغط: الأحدثُ وحده يُشغَّل، والأقدم يُبلّغ `superseded` **بلا سطرٍ
+// في السجلّ** — لا شيء عُطِب حتى يُسجَّل، والمُستدعي يسقط إلى عطل الجهاز الأصلي كما
+// كان يفعل أصلاً عند أي `ok:false`.
+// **والانتظار مسقوفٌ لا مفتوح** — عيبٌ أمسكه اختباري في أوّل صياغةٍ لي: وعدٌ لا يُسوَّى
+// أبداً كان يُقفل الصوتَ لبقيّة عمر الصفحة. وهذا **نفس صنف العطلين اللذين كلّفانا**
+// (`ttsServerOk=false` و`genInFlight` المُسرَّب، ٥ سبتمبر): حالةٌ تُغلق مساراً ولا تنعكس.
+// والسقف ثلاث ثوانٍ — أوسع بكثير من أيّ تسويةٍ مشروعة (الجلب تمّ، ولا يبقى إلا بدء
+// التشغيل)، فما تجاوزه مُسرَّبٌ يقيناً لا بطيءٌ سليم.
+const TTS_PLAY_WAIT=3000;
+let ttsPlayP=null, ttsPlaySeq=0;
+function ttsQuiet(a){
+  const stop=function(){try{a.pause()}catch(e){}};
+  if(!ttsPlayP)return Promise.resolve().then(stop);   // خاملٌ: الإيقاف هنا بلا ضرر
+  const p=ttsPlayP;
+  return Promise.race([
+    p.then(function(){},function(){}),
+    new Promise(function(r){setTimeout(r,TTS_PLAY_WAIT)})
+  ]).then(function(){if(ttsPlayP===p)ttsPlayP=null;stop()});
+}
 // أصوات المتصفح المدمجة تتفاوت: القديمة المحلّية (localService:true) آلية الوقع،
 // والسحابية (localService:false) وما يحمل اسماً كـNatural/Neural/Enhanced/Premium/Online
 // أقرب لصوتٍ بشري — بلا خدمة خارجية ولا اشتراك، الاختيار وحده يتغيّر من نفس القائمة المتاحة.
@@ -4063,7 +4097,11 @@ function ttsServerSpeak(text,onDone){
       // فعلاً داخل لمسةٍ حقيقية ولو تأخّر تشغيله، ويرفض عنصراً جديداً أُنشئ خارجها.
       const shared=ttsAudioEl();
       const a=shared||new Audio();
-      if(shared)try{a.pause()}catch(e){}
+      const my=++ttsPlaySeq;
+      ttsQuiet(a).then(function(){
+      // نداءٌ أحدث سبقنا (ضغطت 🔊 ثانيةً) — لا يُشغَّل القديم ولا يُسجَّل فشلاً:
+      // الأحدث هو الذي يُبلّغ. والتبليغ يقع بلا سطرٍ في السجلّ لأن شيئاً لم يُعطَب.
+      if(my!==ttsPlaySeq)return fire({ok:false,reason:'superseded'});
       a.src=url;a.volume=1;
       let done=false;
       const win=function(){if(done)return;done=true;ttsMark(true);fire({ok:true,engine:'azure'})};
@@ -4079,7 +4117,17 @@ function ttsServerSpeak(text,onDone){
         ttsServerLog("play_"+why,detail);fire({ok:false,reason:why,detail:detail})};
       a.onerror=function(){lose('audio_error',null)};
       const pr=a.play();
-      if(pr&&pr.catch)pr.catch(function(e){lose('autoplay_blocked',String(e).slice(0,80))});
+      // الوعد يُحفَظ ليُنتظَر قبل أيّ `pause()` لاحق — وهو أصل العطل، انظر `ttsQuiet`
+      if(pr&&pr.then){ttsPlayP=pr;
+        pr.then(function(){if(ttsPlayP===pr)ttsPlayP=null},
+                function(e){if(ttsPlayP===pr)ttsPlayP=null;
+                  // ورفضٌ يقع بعد أن سبقنا نداءٌ أحدث **ليس رفضَ المتصفّح لنا**: هو
+                  // أثرُ إيقافنا نحن لنُشغّل الأحدث. فيُبلَّغ بلا سطرٍ في السجلّ —
+                  // وإلّا عاد البلاغُ الكاذب من بابٍ آخر بعد أن سُدّ بابُه الأوّل.
+                  if(my!==ttsPlaySeq)return fire({ok:false,reason:'superseded'});
+                  lose('autoplay_blocked',String(e).slice(0,80))});
+      }
+      });
     }catch(e){fire({ok:false,reason:'audio_throw'});ttsServerLog("play_throw",String(e).slice(0,80))}
   };
   if(TTS_CACHE[t])return play(TTS_CACHE[t]);
