@@ -60,7 +60,8 @@ const hr=await page.evaluate(()=>typeof window.__reloadUrl==='function');
 ok(hr,'والمساعِد مُصدَّرٌ فعلاً ليصل إليه الزرّ خارج الغلاف');
 
 console.log('\n٥) لا انحدار: الصفحة تعمل والهويّة تُقرأ من الرابط كما كانت');
-for(const [q,lv] of [['?p=mohammed','B1'],['?p=elias','A2'],['','A1']]){
+// إلياس A2 ⇐ B1 — ٨ سبتمبر (انظر تعليق PROFILES)
+for(const [q,lv] of [['?p=mohammed','B1'],['?p=elias','B1'],['','A1']]){
   const pg=await mk(q);
   const r=await pg.evaluate(()=>({lv:profileOf().level,errs:window.__ERRS.length,miss:censusMissing().length}));
   ok(r.lv===lv&&r.errs===0&&r.miss===0,`${q||'(هيا)'} ⇒ ${r.lv}، بلا أخطاء ولا دوال ناقصة`);

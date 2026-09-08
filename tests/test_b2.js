@@ -116,7 +116,10 @@ const DOMS=[["listen","listenBankFor"],["read","readBankFor"],["write","writeBan
 
   // ===== ٣) ولا يتسرّب B2 إلى هيا وإلياس =====
   console.log('\n٣) لا تسرّب إلى المستويات الأدنى');
-  for(const [q,who,lv] of [['','هيا','A1'],['?p=elias','إلياس','A2']]){
+  // إلياس A2 ⇐ B1 (٨ سبتمبر، أمر صاحب المشروع بسندٍ مقاس: ٩٠٪ و٨٩٪ بعد فتح
+  // بوّابة التمدّد). الدعوى هنا «كلٌّ يرى مستواه» لا «إلياس A2» — فتُصحَّح القيمة
+  // ويبقى ما جاءت لأجله.
+  for(const [q,who,lv] of [['','هيا','A1'],['?p=elias','إلياس','B1']]){
     const page=await mk(browser,q);
     const r=await page.evaluate(doms=>{
       const L=profileOf().level,out={lv:L,leak:[]};

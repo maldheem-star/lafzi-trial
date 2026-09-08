@@ -31,6 +31,32 @@ const jsonOut = (o: unknown, status = 200) =>
 //
 // كلها طبقات مجانية دائمة بلا بطاقة (بحدود طلبات لا رصيد)، وحاجتنا عشرات الطلبات
 // يومياً — أي جزء من واحد بالمئة من أصغرها.
+// ===== حدُّ الدقيقة يُقرأ من ردّ المزوّد ويُتعلَّم منه — درس ٨ سبتمبر =====
+// نفس ما نُفِّذ في `generate-question` اليوم بالضبط، لا آليةٌ ثانية: الحدّ ١٠٠٠
+// **مقروءٌ من `limit=` في ردّ ٤٢٩ يومَي ٧ و٨ سبتمبر**، والهامش يمنع الوقوف على
+// حافّته. ويُخفَّض بالقياس ولا يُرفع.
+const OUT_TPM_SEEN = 1000, TOK_HEADROOM = 0.95;
+let obsTpm = OUT_TPM_SEEN;
+const tokCap = () => Math.floor(obsTpm * TOK_HEADROOM);
+// ===== وسببُ الرفض يحمل أرقامه — نفس `groqLimitSummary` في `generate-question` =====
+// السطر الحيّ قال «tutor_quota» وحده، فتعذّر معرفة أهو `too_large` (دائم، فطلبنا
+// أكبر من الحدّ كلّه) أم `rate_limited` (عارض، تزول بانقضاء النافذة) — وهما يختلفان
+// في العلاج اختلافاً تامّاً. وهذه بعينها الثغرة التي سُدّت هناك في ٥ سبتمبر
+// وتُركت هنا. فتُستخرج الأرقام وتُوضَع **أوّل** التفصيل فتنجو من أي قصٍّ لاحق.
+function quotaSummary(status: number, body: string, retryAfter: string) {
+  const lim = /Limit\s+([\d,]+)/i.exec(body);
+  const req = /Requested\s+([\d,]+)/i.exec(body);
+  const unit = /(?:tokens|requests)\s+per\s+(minute|day|hour)/i.exec(body);
+  const kind = /Request too large/i.test(body) ? "too_large"
+             : /Rate limit reached/i.test(body) ? "rate_limited" : "";
+  const bits: string[] = [String(status)];
+  if (kind) bits.push(kind);
+  if (unit) bits.push("per_" + unit[1].toLowerCase());
+  if (lim) bits.push("limit=" + lim[1]);
+  if (req) bits.push("requested=" + req[1]);
+  if (retryAfter) bits.push("retry_after=" + retryAfter);
+  return bits.join(" · ");
+}
 const OAI = {
   // llama-3.3-70b-versatile أوقفته Groq نهائياً ١٦ أغسطس ٢٠٢٦ (أُعلن الإيقاف ١٧ يونيو)؛
   // بديلها الموصى به من Groq نفسها openai/gpt-oss-120b — كشفه عطلٌ حيّ عند إلياس ومحمد
@@ -898,8 +924,24 @@ Deno.serve(async (req) => {
       // قد تنتقل من مزوّدٍ مفكّرٍ إلى غيره، فسقفٌ واحدٌ محسوبٌ قبلها يُخطئ أحدهما حتماً.
       // gpt-oss تُنفق من السقف نفسه على تفكيرٍ داخلي قبل الجواب، فسقفٌ ٣٠٠ كان يُستنفَد
       // كلّه تفكيراً ويعود جوابٌ فارغ (tutor_no_text، محمد ١٧ أغسطس، finishReason="length").
+      // ===== والسقف يبقى دون حدّ الدقيقة نفسه — درس ٨ سبتمبر =====
+      // سجلّ إلياس (٨ سبتمبر، ١٤:٤٩): `[توليد:no_reply] tutor_quota` — وهو ٤٢٩ من
+      // Groq. أي أن نفس سقف الطبقة المجانية الذي شلّ `generate-question` يضرب هنا
+      // كذلك. وهناك أثبت الردُّ حرفياً أن الحدّ **١٠٠٠ رمزٍ في الدقيقة**
+      // (`limit=1000`)، وأن طلباً بسقف ١٣٤٠ **لا ينجح أبداً** لا عارضاً.
+      // فسقفُ ١٢٠٠ هنا يقع على حافّة الحدّ — يمرّ حين تكون النافذة خالية، ويفشل
+      // فشلاً دائماً متى شاركه طلبٌ آخر. فيُقيَّد كما قُيِّد هناك بالضبط.
+      // والحدّ مقروءٌ من ردّ المزوّد لا رقمٌ يُختار، **ويُتعلَّم منه**: أدنى يُخفّضه،
+      // وأعلى لا يرفعه — اتّجاه الخطأ آمنٌ عمداً.
+      //
+      // **ومقايضةٌ تُقال لا تُخفى**: gpt-oss رُفع سقفه إلى ١٢٠٠ يوم ١٧ أغسطس لأن
+      // ٣٠٠ استُنفد تفكيراً فعاد جوابٌ فارغ (`tutor_no_text`، `finishReason:length`).
+      // والقيد هنا يُنزله إلى ٩٥٠ — **وليس اختياراً**: سقفٌ فوق حدّ الدقيقة يفشل
+      // فشلاً دائماً، فـ٩٥٠ هو أقصى المتاح لا الأفضل المرغوب. فإن عاد `tutor_no_text`
+      // أو `finishReason:length` فالعلاج **ليس رفع السقف** (مستحيل تحت هذا الحدّ) بل
+      // تقليص التفكير أكثر أو تقصير التعليمة — و`finishReason` مسجَّلٌ أصلاً فيُرى.
       const isGptOss = /gpt-oss/i.test(model);
-      const maxTok = isGptOss ? Math.max(maxTokBase, 1200) : maxTokBase;
+      const maxTok = Math.min(isGptOss ? Math.max(maxTokBase, 1200) : maxTokBase, tokCap());
 
       let url: string, headers: Record<string, string>, body: unknown;
       if (provider === "gemini") {
@@ -951,7 +993,14 @@ Deno.serve(async (req) => {
       if (!res.ok) {
         // المزوّد يُرفق سبب الرفض في النصّ، وقصّه مبكّراً كان يبتره قبل موضع الفائدة.
         // نصّ خطأ لا يحمل مفتاحاً، فتوسيعه آمن ومفيد.
-        const detail = (await res.text()).slice(0, 1200);
+        const raw = await res.text();
+        // يُتعلَّم الحدّ المُعلَن من الردّ نفسه بدل التمسّك برقمٍ قد يتغيّر عند المزوّد
+        const lm = /Limit\s+([\d,]+)/i.exec(raw);
+        if (lm) { const n = parseInt(lm[1].replace(/,/g, ""), 10);
+                  if (n > 0 && n < obsTpm) obsTpm = n; }
+        // الملخّص أوّلاً فينجو من القصّ، والخام بعده لما لا يُطابقه الاستخراج
+        const detail = (quotaSummary(res.status, raw, res.headers.get("retry-after") || "")
+                        + " :: " + raw).slice(0, 1200);
         // نفصل الأسباب لأن علاجها مختلف: المفتاح، والحصّة/الرصيد، واسم النموذج
         const kind = res.status === 401 || res.status === 403 ? "tutor_auth"
           : res.status === 404 ? "tutor_bad_model"
