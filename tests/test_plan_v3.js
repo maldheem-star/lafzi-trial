@@ -115,6 +115,7 @@ async function mk(browser,q){
       const secs={};p.items.forEach(x=>secs[x.sec]=(secs[x.sec]||0)+1);
       return{n:p.items.length,secs:secs,lv:p.lv,reused:p.reused,
         order:p.items.map(x=>x.sec),
+        who:profileOf().level,
         noOrderType:p.items.filter(x=>x.sec==='step').every(x=>x.it.type!=='order')};
     });
     ok(r.n>0,'الورقة تُبنى — '+r.n+' عنصراً');
@@ -122,7 +123,9 @@ async function mk(browser,q){
     ok(r.order[0]==='listen','الاستماع أوّلاً كما ترتّب الورقة الحقيقية');
     ok(r.order[r.order.length-1]==='step','التحليل الكتابي آخراً');
     ok(r.noOrderType,'نوع الترتيب مستبعَد (لا يُجاب باختيارٍ واحد)');
-    ok(r.lv==='A2','مستوى المتعلّم — '+r.lv);
+    // الدعوى: الورقة تُبنى **بمستوى المتعلّم** — لا «إلياس A2» (رُفع إلى B1 في
+    // ٨ سبتمبر). فتُقابَل بملفّه لا بدرجةٍ مكتوبة، فلا تنكسر مع أيّ رفعٍ لاحق.
+    ok(r.lv===r.who,'الورقة بمستوى المتعلّم — '+r.lv+' مقابل '+r.who);
 
     // استبعاد ما رآه مؤخراً، وارتخاؤه بدل انهيار الورقة
     const cd=await page.evaluate(()=>{
