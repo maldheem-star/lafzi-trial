@@ -1106,6 +1106,37 @@ function quizRateTrip(retryAfter){
   quizCoolMs=(s>0&&s<600)?s*1000:QUIZ_COOL_DEFAULT;
   quizOpenedAt=Date.now();
 }
+// ===== والنداءُ الناجح يُنفق من النافذة كذلك — درس ١١ سبتمبر =====
+// قاطعُ الدائرة أعلاه (٥ سبتمبر) عمل فعلاً في جلسة ٩ سبتمبر: النداءان الثالث والرابع
+// عادا `rate_window`. **لكنه لا يُفتح إلّا بعد ٤٢٩**، والنداء الأوّل كان قد نجح.
+// والسطور الأربعة بأزمنتها تُرِي العطلَ بلا ترجيح — كلُّها في **ثانيةٍ واحدة**:
+//   ١٥:٢٤:٣٦  quiz:logic       نجح · المستعمَل ٥٠٥ من ٨٠٠ · finish:stop
+//   ١٥:٢٤:٣٦  quiz:analogy     ٤٢٩ · rate_limited · per_minute · limit=1000 · requested=800 · retry_after=16
+//   ١٥:٢٤:٣٦  quiz:reading     rate_window · تهدئة ١٦ث
+//   ١٥:٢٤:٣٦  quiz:vocabulary  rate_window · تهدئة ١٦ث
+// أي أن ٥٠٥+٨٠٠ = ١٣٠٥ > ١٠٠٠، فالثاني **كان محكوماً بالفشل قبل أن يُرسَل**.
+// والحصيلة المقاسة: عنصرٌ مولَّد واحد في اللفظي وواحد في العلمي منذ ٨ سبتمبر.
+//
+// **والأرقام كلُّها مقروءةٌ من ردّ المزوّد لا مختارة**: الحدّ `limit=1000` والوحدة
+// `per_minute` من نصّ ٤٢٩ نفسه (٦ و٨ سبتمبر)، والحجزُ ٨٠٠ هو `tokCap()` في الخادم.
+// والمُنفَق الحقيقي يُقرأ من `usage.completion_tokens` حين يعود، وإلّا فُرض الحجز
+// كاملاً — **اتّجاه الخطأ آمنٌ عمداً**: تقديرٌ أعلى يؤخّر نداءً، وأدنى يُهدره.
+const QUIZ_TPM=1000, QUIZ_REQ_TOK=800, QUIZ_WIN_MS=60000;
+let quizWinAt=0, quizWinSpent=0;
+function quizBudgetLeft(){
+  if(!quizWinAt||(Date.now()-quizWinAt)>=QUIZ_WIN_MS)return QUIZ_TPM;
+  return QUIZ_TPM-quizWinSpent;
+}
+function quizBudgetOk(){return quizBudgetLeft()>=QUIZ_REQ_TOK}
+function quizBudgetSpend(tok){
+  const n=(tok>0?tok:QUIZ_REQ_TOK);
+  if(!quizWinAt||(Date.now()-quizWinAt)>=QUIZ_WIN_MS){quizWinAt=Date.now();quizWinSpent=0}
+  quizWinSpent+=n;
+}
+function quizBudgetWaitMs(){
+  if(!quizWinAt)return 0;
+  return Math.max(0,QUIZ_WIN_MS-(Date.now()-quizWinAt));
+}
 // يجلب أسئلة من المحرّك، مع تخزين الفائض وإعادة الاستخدام، واحترام الحد اليومي
 async function fetchGemini(type,need){
   const out=[];
@@ -1126,11 +1157,23 @@ async function fetchGemini(type,need){
     quizGenFail(type,"rate_window","النافذة ممتلئة · تهدئة "+Math.round(quizCoolMs/1000)+"ث · المتاح من الكاش: "+out.length);
     return out.map(tagAI(type));
   }
+  // 2ج) وميزانيةُ الدقيقة لا تتّسع لنداءٍ آخر: يُمنَع **قبل إرساله** لا بعد رفضه —
+  // فلا يُهدَر طلبٌ من الحصّة اليومية على نداءٍ نعلم يقيناً أنه سيُرَدّ. واسمٌ مستقلّ
+  // (`rate_budget`) لا `rate_window`: هذا منعُنا نحن استباقاً، وذاك ردُّ المزوّد —
+  // وخلطُهما يُضيّع الفرق في التشخيص القادم، بحرف عُرف «يُسجَّل ما وقع لا ما نُوِي».
+  if(!quizBudgetOk()){
+    quizGenFail(type,"rate_budget","الباقي من نافذة الدقيقة "+toAr(quizBudgetLeft())
+      +" رمزاً والنداء يحجز "+toAr(QUIZ_REQ_TOK)+" · تبقّى "+Math.ceil(quizBudgetWaitMs()/1000)
+      +"ث · المتاح من الكاش: "+out.length);
+    return out.map(tagAI(type));
+  }
   // 3) اطلب دفعة (3) لتقليل عدد النداءات
   try{
     const res=await fetch(FN_URL,{method:"POST",headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({type,count:3})});
     if(res.ok){
       const data=await res.json();bumpUsage(1);
+      // النجاح يُنفق من نافذة الدقيقة كما يُنفق منها الفشل — وبالرقم الحقيقي متى عاد
+      quizBudgetSpend(data&&data.usage&&data.usage.completion_tokens);
       const qs=(data.questions||[]).map(normAI(type));
       // ردٌّ سليمٌ بلا أسئلة ليس نجاحاً: يقع حين يُسقط فلتر العربية كلَّ ما وُلِّد.
       if(!qs.length)quizGenFail(type,"no_questions",("محرّك:"+(data.engine||"?")+" · نموذج:"+(data.model||"?")).slice(0,200));
@@ -1250,6 +1293,10 @@ const QZ_ERR_KEY="mawhiba_quiz_err_v1";
 const QZ_DUE_WRONG=2;    // قالبان خطأ ⇒ يستحقّ الإعادة والتنبيه
 const QZ_DUE_MAX=2;      // لا نُثقل الاختبار: قالبان مستحقّان في الجولة الواحدة
 const QZ_CARD_MAX=2;     // وبطاقتا تنبيه على الأكثر — التنبيه الدائم يصير خلفية
+// العتبة من صاحب المشروع نصّاً («إن أخطأتها رابعةً») لا رقمٌ اخترتُه: ثلاثُ مرّاتٍ
+// سابقة بنفس الاختيار + هذه = الرابعة. وهي أضيق من `SHAPE_ARM=2` عمداً، لأن هذه
+// تُصعّد العرض لا تفتح بوّابة — والتصعيد المبكّر يُحوّل التعليم إلى خلفيةٍ تُتجاوَز.
+const QZ_SAME_TEACH=3;
 function qzErrLoad(){try{return JSON.parse(lsGet(QZ_ERR_KEY)||"{}")}catch(e){return{}}}
 function qzErrSave(o){try{lsSet(QZ_ERR_KEY,JSON.stringify(o))}catch(e){}}
 function qzErrOf(k){return qzErrLoad()[k]||null}
@@ -14246,7 +14293,19 @@ function choose(i){
   // مراجعة ما أخطأت فيه. نحفظ نصّها وإجابتها المختارة (لا الصحيحة) للتشخيص لاحقاً.
   // كان النصّ يُحفظ لأسئلة الذكاء الاصطناعي وحدها (التي لها qtype)، فبقي الكمّي بلا نصّ —
   // ورأيتُ ١/١٢ ولم أستطع أن أعرف أي أسئلة كانت. النصّ يُحفظ الآن لكل سؤال.
-  const ansTxt=q.c&&q.c[i]!=null?String(q.c[i]):null;
+  // ===== الخيار المرسوم يُسجَّل بموضعه لا بشيفرته — هنا كذلك، ١١ سبتمبر =====
+  // كان سطرُ الخيارات (chLog أدناه) يُبدّل SVG بـ«[رسم]» منذ بنائه، **وحقلُ الإجابة
+  // نفسه لا يمرّ عليه**: فـ`String(q.c[i])` يُعيد الشيفرة خاماً. والأثر مقاسٌ لا
+  // مفترَض: **٥٣ صفّاً في أربعة عشر يوماً** (مرونة ٤٧ · كمّي ٦، عند هيا وحدها)
+  // حقلُ `response` فيها شيفرةُ SVG كاملة — أطولها ٥٦٤ محرفاً.
+  //
+  // وليس تلويثاً للسجلّ فحسب: هذه الصفوف **بلا موضعٍ وبلا فرقٍ وبلا اسم آلية**، أي
+  // أن انحياز الموضع وشكل الخطأ غيرُ قابلَين للقياس في كل سؤالٍ مرسوم — وهو بعينه ما
+  // أُصلح في `gram`/`step` (٢٥ أغسطس) و`stat` (٢٩ أغسطس) وتُرك هنا. والعُرف مكتوبٌ
+  // في هذا الملفّ منذ البداية: «موضع ١ · الصواب موضع ٣».
+  const drawn=function(v){return /^\s*<svg/i.test(String(v==null?"":v))};
+  const posTxt=function(k){return "موضع "+toAr(k+1)};
+  const ansTxt=q.c&&q.c[i]!=null?(drawn(q.c[i])?posTxt(i):String(q.c[i])):null;
   // الخيارات كلّها مع نصّ السؤال: جلسة ١٣ أغسطس أجابت عن سؤالين منطقيين مختلفين
   // (أطبّاء/جامعة، وصيّادون/بحر) بالجواب نفسه «يذهبون إلى المستشفيات» — وهو لا معنى له
   // في سؤال الصيّادين أصلاً. ولم أستطع الحكم: أهو خللٌ في التوليد أم انحيازُ موضع؟
@@ -14260,20 +14319,33 @@ function choose(i){
     :"";
   // شكل الخطأ لا وقوعه هنا كذلك (١٦ أغسطس): بيانات هيا في quant كشفت ٨ من ١٩ خطأً
   // فرقها بالضبط ±١ — وبلا هذا السطر كانت السجلّات تُقرأ «أخطأت» لا «كيف أخطأت».
-  const correctTxt=q.c&&q.c[q.a]!=null?String(q.c[q.a]):null;
-  const dlt=!ok?quizErrDelta(ansTxt,correctTxt):null;
-  let ansShape=(!ok&&dlt!=null&&ansTxt!=null)
+  const correctTxt=q.c&&q.c[q.a]!=null?(drawn(q.c[q.a])?posTxt(q.a):String(q.c[q.a])):null;
+  // والمرسوم بلا «فرق» عمداً: الفرق يُشتقّ من عددين، وموضعٌ ناقصُ موضعٍ ليس آليةَ خطأ
+  // بل رقمُ مقعدٍ — فادّعاؤه فرقاً يُنتج آليّاتٍ كاذبة، وهو ما ينهى عنه المشروع صراحةً.
+  // والسطر يبقى كاملاً: «موضع ٢ · الصواب موضع ٤» يكشف انحياز الموضع وهو المقصود هنا.
+  const anyDrawn=(q.c&&(drawn(q.c[i])||drawn(q.c[q.a])))?true:false;
+  const dlt=(!ok&&!anyDrawn)?quizErrDelta(ansTxt,correctTxt):null;
+  let ansShape=(!ok&&anyDrawn&&ansTxt!=null&&correctTxt!=null)
+    ?ansTxt+" · الصواب "+correctTxt
+    :(!ok&&dlt!=null&&ansTxt!=null)
     ?ansTxt+" · الصواب "+correctTxt+" · فرق "+(dlt>0?"+":"−")+toAr(Math.abs(dlt))
     :ansTxt;
+  // ===== ولا تُسمّى آليةٌ من رقم مقعد — فخٌّ أمسكتُه في إصلاحي نفسه =====
+  // المسمِّيات الأربع أدناه تقرأ عدداً من `ansTxt` بـ`parseArNum`. وبعد تحويل الخيار
+  // المرسوم إلى «موضع ٢» صار الحقل يحمل عدداً **هو رقم المقعد لا جوابها**، فكانت
+  // `stemNumberName` تُطلق اسماً كاذباً كلّما ورد ٢ أو ٣ في نصّ سؤالٍ مرسوم. وهذا
+  // بعينه ما ينهى عنه المشروع: مقياسٌ يُطلق بلاغاً كاذباً لا يحرس شيئاً بل يُدرِّب على
+  // تجاهله. فالعدد يُقرأ من النصّ الحقيقي، ويكون `null` في المرسوم فتسكت المسمّيات.
+  const numTxt=anyDrawn?null:ansTxt;
   // الآلية تُسمّى في السطر نفسه متى كانت الإجابة عدداً من المتتالية — لا «فرقٌ» فقط
-  const endName=!ok?seqEndName(q,parseArNum(ansTxt)):null;
+  const endName=!ok?seqEndName(q,parseArNum(numTxt)):null;
   if(endName){
     ansShape=(ansShape||"")+" · "+SEQ_END_BUG+" (قرأتِ "+endName+" والمطلوب "+seqWantName(q)+")";
     shapeRecord(SEQ_END_BUG,true);
     if(shapeArmed(SEQ_END_BUG))seqArm();
   }else if(ok&&Array.isArray(q.seq)){shapeRecord(SEQ_END_BUG,false);seqClear()}
   // وآليةُ تكبير الحجم تُسمّى بنفس العُرف: الاسم يدخل السطر، والعدّاد يُجمَّع بالاستعلام
-  const cubeName=!ok?cubeScaleName(q,parseArNum(ansTxt)):null;
+  const cubeName=!ok?cubeScaleName(q,parseArNum(numTxt)):null;
   if(cubeName){
     ansShape=(ansShape||"")+" · "+CUBE_SCALE_BUG+" ("+cubeName+")";
     shapeRecord(CUBE_SCALE_BUG,true);
@@ -14282,7 +14354,7 @@ function choose(i){
   }
   // والعائلتان الجديدتان بنفس العُرف — قياسٌ لا بوّابة (٥ سبتمبر).
   // والترتيب مقصود: الجمعُ الضربيّ أخصُّ، فإن انطبق لم يُنسَب الخطأ لعددِ النصّ أيضاً.
-  const gotNum=!ok?parseArNum(ansTxt):null;
+  const gotNum=!ok?parseArNum(numTxt):null;
   const maName=!ok?multAsAddName(q,gotNum):null;
   const snName=(!ok&&!maName)?stemNumberName(q,gotNum):null;
   if(maName){
@@ -14303,12 +14375,49 @@ function choose(i){
   logAnswer(q.d,q.qtype||"bank",ok,ansShape,tmplKey(q)||null,elapsed,
     {q_text:(String(q.q||"")+chLog).slice(0,1200)});
   // الذاكرة قبل البطاقة: البطاقة تُقرَأ من الحالة بعد التسجيل
-  const wasWrong=(qzErrOf(tmplKey(q))||{}).wrong||0;
+  const _prevE=qzErrOf(tmplKey(q))||{};
+  const wasWrong=_prevE.wrong||0, wasSame=_prevE.same||0;
   qzErrRecord(q,ok,ansTxt&&ansTxt.slice(0,60));
   // خطأ ثانٍ على القالب نفسه يُسمّى باسمه: «هذا النوع أخطأتِه من قبل، وهذا ما قلتِه»
   if(!ok&&wasWrong>=1&&qzCardCount<QZ_CARD_MAX){
-    qzCard={k:tmplKey(q),prev:(qzErrOf(tmplKey(q))||{}).last||"",wrong:wasWrong+1,q:q};
+    // ===== والتنبيه يصير تعليماً عند تكرار **نفس الاختيار** — درس ١١ سبتمبر =====
+    // قال صاحب المشروع في مسألة النِّسَب: «إن أخطأتها رابعةً فالتنبيه لا يكفي، والعلاج
+    // التالي بطاقة تعليمية». والقياس اليوم أثبت أن الحالة **صنفٌ لا حادثة**: **عشرةُ
+    // قوالب** عند هيا تكرّرت فيها **نفس الإجابة الخاطئة** ثلاث مرّات فأكثر في ثلاثين
+    // يوماً (أقسام `choose()` وحدها) — أسوأها **اثنتا عشرة مرّة** («٢٨» في سؤال رميات
+    // سليمان، ٢٤ أغسطس ⇐ ٨ سبتمبر)، ومنها «التكاثف» لسؤال تبخّر الماء خمس مرّات
+    // و«الورق» لأداة الرسم أربع.
+    //
+    // **وحدُّ الرقم يُقال**: العشرة مقاسةٌ بتكرارٍ **إجمالي**، والبطاقة تشترط تكراراً
+    // **متتالياً** (`e.same` يُصفَّر بإجابةٍ مختلفة أو بصواب) — فهي أضيق منه، وتقع أقلّ
+    // من عشر مرّات. ولا يُدَّعى أنها ستقع عشراً.
+    //
+    // **والعدّاد كان محسوباً ولا يُقرأ**: `qzErrRecord` تكتب `e.same` منذ بنائها
+    // (سطر ١٣٠٥) ولا يقرؤها أحد في الملفّ كلّه — نفس صنف «التفصيل موجودٌ ويُرمى»
+    // (`coachSetFail` ١٧ أغسطس، و`fetchGemini` ٤ سبتمبر). فلا آليةَ جديدة هنا:
+    // يُقرأ ما يُكتَب أصلاً، ويُصعَّد شكلُ البطاقة عند العتبة التي سمّاها هو.
+    //
+    // والفرق بين «أخطأتِ» و«اخترتِ الشيء نفسه» فرقٌ حقيقي: الأوّل تذبذب، والثاني
+    // ارتباطٌ مستقرّ خاطئ — وإعادةُ الاختبار عليه بلا تصحيحٍ صريح تُثبّته لا تمحوه.
+    // والسؤال المرسوم لا بطاقةَ تعليمٍ له: مقابلةُ «موضع ٢ ← موضع ٤» تُعلّم موضعاً لا
+    // مفهوماً، وهي أسوأ من الصمت — تُدرّب على ما نقيسه (انحياز الموضع) لا على المادّة.
+    // والبطاقة الحمراء القديمة تبقى له كما كانت. والشرطُ على الاختيار المخزون كذلك،
+    // فبياناتٌ كُتبت قبل إصلاح اليوم قد تحمل شيفرة SVG في `last`.
+    const teachOk=(wasSame+1)>=QZ_SAME_TEACH&&!anyDrawn&&!drawn(_prevE.last||"");
+    qzCard={k:tmplKey(q),prev:_prevE.last||"",wrong:wasWrong+1,q:q,
+      // `same` عدّادُ **تكرارٍ** لا عددُ مرّات: يبدأ صفراً في أوّل خطأ، فعددُ المرّات
+      // = same+1. وأوّل صياغةٍ لي عرضت «٣ مرات» وهي الرابعة — فرقٌ يُفسد ما تقرؤه هي
+      // وما أقرؤه أنا في السجلّ. فالعدد يُحسب صراحةً ولا يُقرأ من العدّاد مباشرةً.
+      same:wasSame+1, times:wasSame+2, teach:teachOk,
+      right:correctTxt||""};
     qzCardCount++;
+    if(qzCard.teach){
+      try{logAnswer("gen","repeat_card",null,
+        (tmplKey(q)||"?")+" · "+toAr(wasSame+2)+"× "+(ansTxt||"").slice(0,40),
+        tmplKey(q)||null,null,
+        {q_text:("[بطاقة تكرار] نفس الاختيار «"+(ansTxt||"").slice(0,40)+"» "+toAr(wasSame+2)
+          +" مرّات · الصواب «"+qzCard.right.slice(0,40)+"» · "+String(q.q||"").slice(0,120)).slice(0,600)})}catch(e){}
+    }
   }
   recentAnswerTimes.push(elapsed);
   if(recentAnswerTimes.length>RAPID_STREAK)recentAnswerTimes.shift();
@@ -15195,7 +15304,29 @@ function renderQuiz(){
     return `<button class="choice" style="background:${bg};border-color:${bd};color:${col}" onclick="choose(${i})" ${locked?"disabled":""}><span class="letter">${L[i]}</span>${c}</button>`}).join("");
   // بطاقة التكرار: تُعرض مكان زرّ الانتقال، فلا تُتجاوز بالضغط المتتابع
   const fadeLink=qzCard?QZ_CARD_FADE_LINK[qzCard.k]:null;
-  const repeatCard=(qzCard&&locked)?`<div style="background:#FEF2F2;border:1.5px solid #FECACA;border-radius:14px;padding:16px;margin-top:14px">
+  // والبطاقة التعليمية عند تكرار **نفس الاختيار** أربع مرّات: تُسمّي الارتباط الخاطئ
+  // نفسه وتضعه بإزاء الصواب — والمقابلةُ هي التعليم هنا، لا إعادةُ عرض السؤال.
+  // ونصُّها **مشتقٌّ من بياناتها** (اختيارها المتكرّر × الصواب المعروض) لا مؤلَّفٌ لكل
+  // عنصر: تأليفُ شرحٍ لعشرين قالباً كلفةٌ لا تُبرَّر، والمقابلة تصحّ لها جميعاً.
+  //
+  // ===== والمقابلة صفّان لا سطرٌ واحد فيه سهم — درس الاتّجاه مطبَّقاً وقايةً =====
+  // سطرُ «✗ س ← ✓ ص» يخلط عربيةً بمحايدٍ (السهم) وربّما بلاتينيّ في الجواب، وهو بعينه
+  // الشكلُ الذي انقلب أربع مرّات في قسم الإحصاء (٢٥ أغسطس). وflex يُرتّب الصناديق
+  // باتّجاه الحاوية لا بخوارزمية bidi، وكلُّ نصٍّ داخل صندوقه بـdir="auto" فلا يتسرّب
+  // اتّجاهه إلى جاره. والسهم حُذف: الترتيب نفسه يقول ما كان يقوله، ولا محايدَ يُعاد
+  // ترتيبه. ولا يُكتفى بهذا: اللقطةُ إلزامية، والقياسُ بالإحداثيات لا بالنظر.
+  const repeatCard=(qzCard&&locked&&qzCard.teach)?`<div style="background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:14px;padding:16px;margin-top:14px">
+    <div style="font-weight:800;color:#1E40AF;font-size:15px;margin-bottom:8px">📘 تختارين الإجابة نفسها في كل مرة</div>
+    <div style="font-size:14px;color:#1E3A8A;line-height:1.9">
+      في هذا السؤال اخترتِ <b dir="auto">${esc(qzCard.prev||"")}</b> ${toAr(qzCard.times)} مرات.
+      ${qzCard.right?`والصواب هو <b dir="auto">${esc(qzCard.right)}</b>.`:""}
+      <div style="background:#fff;border-radius:10px;padding:10px 12px;margin-top:10px;display:flex;flex-direction:column;gap:6px">
+        <div style="color:#B91C1C"><span>✗</span> <span dir="auto">${esc(qzCard.prev||"")}</span></div>
+        <div style="color:#065F46;font-weight:800"><span>✓</span> <span dir="auto">${esc(qzCard.right||"")}</span></div>
+      </div>
+    </div>
+    <button class="btn" style="background:#1D4ED8;margin:12px 0 0" onclick="qzCardDone()">فهمتُ — الصواب <span dir="auto">${esc(qzCard.right||"")}</span></button>
+  </div>`:(qzCard&&locked)?`<div style="background:#FEF2F2;border:1.5px solid #FECACA;border-radius:14px;padding:16px;margin-top:14px">
     <div style="font-weight:800;color:#991B1B;font-size:15px;margin-bottom:8px">🔁 هذا النوع من الأسئلة أخطأتِه من قبل</div>
     <div style="font-size:14px;color:#7F1D1D;line-height:1.9">
       أخطأتِ فيه ${toAr(qzCard.wrong)} مرات${qzCard.prev?` — وفي المرة الماضية اخترتِ <b>${esc(qzCard.prev)}</b>`:""}.
