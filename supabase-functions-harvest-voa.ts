@@ -46,7 +46,11 @@ function safeUrl(raw: string): string | null {
   return u.toString();
 }
 
-// أقسام المستويات الثلاثة كما ترتّبها VOA نفسها
+// أقسام المستويات الثلاثة كما ترتّبها VOA نفسها.
+// **وهذه أرقامٌ تُتحقَّق لا تُفترَض**: أوّل محاولةٍ حيّة (١٢ سبتمبر) عادت `http_404`
+// على `/z/1582` — أي أن الموقع غيّر بنيته أو أرقامه. فوضع `probe=1` يقرأ الصفحة
+// الرئيسة ويُعيد أقسامها الحقيقية بنصوص روابطها، فتُصحَّح هذه الخريطة من المصدر.
+// و`path=` يسمح بتجربة قسمٍ بعينه — **مقيَّدٌ بالمضيف نفسه** عبر `safeUrl` كغيره.
 const LEVELS: Record<string, string> = {
   "1": "https://" + HOST + "/z/1581",   // Level One  — Beginning
   "2": "https://" + HOST + "/z/1582",   // Level Two  — Intermediate
@@ -81,13 +85,28 @@ const strip = (s: string) =>
    .replace(/\s+/g, " ").trim();
 
 // روابط المقالات من صفحة القسم: VOA تستعمل /a/<slug>/<id>.html
+// **والمطلق مقبولٌ كالنسبيّ** — `safeUrl` هو الحارس لا شكلُ الرابط، فالقالب قد
+// يكتبها بالمضيف كاملاً؛ ورفضُها لشكلها كان سيُخرج الحصاد فارغاً بلا سبب.
 function articleLinks(html: string): string[] {
   const out = new Set<string>();
-  for (const m of html.matchAll(/href="(\/a\/[^"#?]+?\.html)"/g)) {
+  for (const m of html.matchAll(/href="((?:https:\/\/[^"]*?)?\/a\/[^"#?]+?\.html)"/g)) {
     const u = safeUrl(m[1]);
     if (u) out.add(u);
   }
   return [...out];
+}
+
+// اكتشافُ الأقسام من الموقع نفسه بدل تخمين أرقامها — الصفحةُ الرئيسة تحمل روابط
+// أقسامها ونصوصَها، فيُقرأ منها ما تغيّر.
+function sectionLinks(html: string): { url: string; text: string }[] {
+  const seen = new Map<string, string>();
+  for (const m of html.matchAll(/<a[^>]+href="((?:https:\/\/[^"]*?)?\/z\/\d+[^"#?]*)"[^>]*>([\s\S]*?)<\/a>/gi)) {
+    const u = safeUrl(m[1]);
+    if (!u) continue;
+    const t = strip(m[2]).slice(0, 80);
+    if (!seen.has(u) || (!seen.get(u) && t)) seen.set(u, t);
+  }
+  return [...seen.entries()].map(([url, text]) => ({ url, text }));
 }
 
 // نصّ المقال: VOA تضع المتن في <div class="wsw"> — ونسقط إلى الوصف إن تغيّر القالب
@@ -119,19 +138,48 @@ Deno.serve(async (req) => {
   const level = (u.searchParams.get("level") || "2").trim();
   const limit = Math.min(parseInt(u.searchParams.get("limit") || "8", 10) || 8, 25);
   const listOnly = u.searchParams.get("list") === "1";
+  const pathArg = (u.searchParams.get("path") || "").trim();
 
-  if (!LEVELS[level]) return jsonOut({ ok: false, error: "bad_level", allowed: Object.keys(LEVELS) }, 400);
+  // وضعُ الاستكشاف: يقرأ الصفحة الرئيسة ويُعيد أقسامها كما هي اليوم — يُستعمل حين
+  // يعود `index_failed` فلا تُخمَّن أرقامٌ جديدة بل تُقرأ من المصدر. ولا يكتب شيئاً.
+  if (u.searchParams.get("probe") === "1") {
+    const home = await get("https://" + HOST + "/");
+    if (!home.ok) return jsonOut({ ok: false, error: "home_failed", why: home.why }, 502);
+    const secs = sectionLinks(home.html!);
+    return jsonOut({
+      ok: true, mode: "probe", host: HOST,
+      sections: secs,
+      configured: LEVELS,
+      note: "قابِل هذه بأقسام LEVELS — أيُّ اختلافٍ يعني أن الموقع غيّر أرقامه.",
+    });
+  }
+
+  let indexUrl: string;
+  if (pathArg) {
+    const safe = safeUrl(pathArg);          // المضيف مقفلٌ هنا كما في كل مسار
+    if (!safe) return jsonOut({ ok: false, error: "bad_path", host: HOST }, 400);
+    indexUrl = safe;
+  } else {
+    if (!LEVELS[level]) return jsonOut({ ok: false, error: "bad_level", allowed: Object.keys(LEVELS) }, 400);
+    indexUrl = LEVELS[level];
+  }
 
   const SB = Deno.env.get("SUPABASE_URL") || "";
   const KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
   if (!SB || !KEY) return jsonOut({ ok: false, error: "no_service_key" }, 500);
 
-  const idx = await get(LEVELS[level]);
-  if (!idx.ok) return jsonOut({ ok: false, error: "index_failed", why: idx.why, level }, 502);
+  const idx = await get(indexUrl);
+  if (!idx.ok) {
+    return jsonOut({ ok: false, error: "index_failed", why: idx.why, level, url: indexUrl,
+      hint: "أضِف ?probe=1 لقراءة أقسام الموقع الحقيقية بدل تخمين رقمٍ آخر." }, 502);
+  }
 
   const links = articleLinks(idx.html!).slice(0, limit);
-  if (listOnly) return jsonOut({ ok: true, level, found: links.length, links });
-  if (!links.length) return jsonOut({ ok: false, error: "no_links", level, hint: "قد يكون قالب الصفحة تغيّر" }, 502);
+  if (listOnly) return jsonOut({ ok: true, level, url: indexUrl, found: links.length, links });
+  if (!links.length) {
+    return jsonOut({ ok: false, error: "no_links", level, url: indexUrl,
+      hint: "الصفحة وصلت بلا روابط مقالات — القالب تغيّر. جرّب ?probe=1." }, 502);
+  }
 
   const rows: Record<string, unknown>[] = [];
   const skipped: { url: string; why: string }[] = [];
