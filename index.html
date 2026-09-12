@@ -7944,6 +7944,35 @@ function genNextTopicIdx(){genSeed=(genSeed+1)>>>0;return genSeed}
 // وبسقفٍ للضجيج: أوّل ثلاثة في الجلسة، فالمائة بعدها لا تُضيف تشخيصاً.
 let genFailLogged=0;
 const GEN_FAIL_LOG_CAP=3;
+// ===== وتفصيلُ الخادم يصل السجلّ — عطلٌ من صنعي، ١٢ سبتمبر =====
+// `quotaSummary` شُحن في `tutor` نسخة ٣٣ (٨ سبتمبر) لأجل سؤالٍ واحد: أهو `too_large`
+// الدائم (فطلبنا فوق حدّ الدقيقة ولا ينجح أبداً) أم `rate_limited` العارض؟ وهو يعمل
+// على الخادم فعلاً ويضع الأرقام **أوّل** `detail` كي تنجو من القصّ.
+// **والعميل كان يرميها**: `data.error` وحده يُمرَّر، فالسطر الحيّ يقول «tutor_quota»
+// بلا رقمٍ واحد — وهو ما وقع لإلياس ثلاث مرّات في ١١ سبتمبر، والسؤال بقي مفتوحاً
+// أربعة أيام بينما جوابه كان يصل في كل ردٍّ ويُهمَل.
+//
+// وهذا **حرفياً نفس عطل `coachSetFail`** (١٧ أغسطس): التفصيل موجودٌ في الردّ ويُهمَل
+// قبل أن يُسجَّل. أُصلح هناك ولم يُبحث عن نظيره هنا — نقضٌ لقاعدة الإصلاح الشامل.
+//
+// **والترتيب مقصود**: نوعُ الخطأ أوّلاً فلا ينكسر ما يبحث عن «tutor_quota» في السطر،
+// ثمّ المزوّد والنموذج والحالة (قصيرةٌ ثابتة)، ثمّ `detail` وفي صدره الملخّص الرقمي —
+// فالأرقام تقع داخل الـ٢٠٠ محرف التي يقصّها `genFailLog`.
+// **ولا يُسجَّل `keyName`** رغم أن الخادم يُعيده: قاعدة المشروع تُجيز اسم السرّ، لكنه
+// لا يُضيف تشخيصاً هنا — والأقلّ أسلم.
+function genErrDetail(d){
+  if(!d)return null;
+  const bits=[];
+  if(d.error)bits.push(String(d.error));
+  const pm=[d.provider,d.model].filter(Boolean).join("/");
+  if(pm)bits.push(pm);
+  // والحالة لا تُكرَّر: `quotaSummary` في الخادم يبدأ بها دائماً (تُبنى لكل ردٍّ غير
+  // ناجح لا لـ٤٢٩ وحده)، فإلحاقها هنا أنتج «429 · 429» — كشفه ناتجُ الاختبار نفسه.
+  // وتكرارٌ من ستّة محارف ليس قبيحاً فحسب: يقتطع من الـ٢٠٠ التي تنجو بها الأرقام.
+  if(d.status&&!d.detail)bits.push(String(d.status));
+  if(d.detail)bits.push(String(d.detail));
+  return bits.length?bits.join(" · "):null;
+}
 function genFailLog(domain,level,why,detail){
   if(genFailLogged>=GEN_FAIL_LOG_CAP)return null;
   genFailLogged++;
@@ -7959,7 +7988,7 @@ async function fetchTutorGen(domain,level,topicIdx){
         topicIdx:(topicIdx==null?genNextTopicIdx():topicIdx)})},15000);
     if(!res||!res.ok)return genFailLog(domain,level,"http",res?res.status:"no_res");
     const data=await res.json();
-    if(!data||!data.ok||!data.reply)return genFailLog(domain,level,"no_reply",data&&data.error);
+    if(!data||!data.ok||!data.reply)return genFailLog(domain,level,"no_reply",genErrDetail(data));
     const item=parseGenBlock(data.reply,domain);
     if(item)item.lv=level;
     return item;
@@ -8759,7 +8788,7 @@ async function fetchTutorGenWrite(level,kind){
       body:JSON.stringify(body)},15000);
     if(!res||!res.ok)return genFailLog("write",level,"http",res?res.status:"no_res");
     const data=await res.json();
-    if(!data||!data.ok||!data.reply)return genFailLog("write",level,"no_reply",data&&data.error);
+    if(!data||!data.ok||!data.reply)return genFailLog("write",level,"no_reply",genErrDetail(data));
     const item=parseGenWriteBlock(data.reply);
     if(item)item.lv=level;
     return item;
@@ -9762,7 +9791,7 @@ async function fetchTutorGenGram(level){
       body:JSON.stringify({mode:"gen",domain:"gram",level,topicIdx:genNextTopicIdx()})},15000);
     if(!res||!res.ok)return genFailLog("gram",level,"http",res?res.status:"no_res");
     const data=await res.json();
-    if(!data||!data.ok||!data.reply)return genFailLog("gram",level,"no_reply",data&&data.error);
+    if(!data||!data.ok||!data.reply)return genFailLog("gram",level,"no_reply",genErrDetail(data));
     const item=parseGenPickBlock(data.reply,"gram",false);
     if(item)item.lv=level;
     genLogLtFlag("gram",level,data,item);
@@ -11258,7 +11287,7 @@ async function fetchTutorGenStep(level){
       body:JSON.stringify({mode:"gen",domain:"step",level,topicIdx:genNextTopicIdx()})},15000);
     if(!res||!res.ok)return genFailLog("step",level,"http",res?res.status:"no_res");
     const data=await res.json();
-    if(!data||!data.ok||!data.reply)return genFailLog("step",level,"no_reply",data&&data.error);
+    if(!data||!data.ok||!data.reply)return genFailLog("step",level,"no_reply",genErrDetail(data));
     const item=parseGenPickBlock(data.reply,"step",true);
     if(item)item.lv=level;
     genLogLtFlag("step",level,data,item);
@@ -13050,11 +13079,16 @@ async function fetchTutorGenMinpair(level,word){
     const res=await fetchTimeout(TUTOR_FN_URL,{method:"POST",
       headers:{"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"},
       body:JSON.stringify({mode:"gen",domain:"minpair",level,word})},15000);
-    if(!res||!res.ok)return null;
+    // ومولّد الأزواج كان **صامتاً بالكامل** — ثلاثة `return null` بلا سطرٍ إطلاقاً،
+    // وحده من بين الستّة. كشفه البحثُ عن نظائر عطل «التفصيل يُرمى» (قاعدة الإصلاح
+    // الشامل)، وهو أسوأ منه: لا يُرمى التفصيل بل لا يُعرف أن النداء وقع أصلاً.
+    // ووُصل بـ`genFailLog` نفسها — نفس السقف ونفس `domain='gen'`، لا آليةَ ثانية.
+    // **والتصرّف كما كان**: «فشل التوليد ليس عطلاً» قرارٌ قائم، والصمتُ غير الهدوء.
+    if(!res||!res.ok)return genFailLog("minpair",level,"http",res?res.status:"no_res");
     const data=await res.json();
-    if(!data||!data.ok||!data.reply)return null;
+    if(!data||!data.ok||!data.reply)return genFailLog("minpair",level,"no_reply",genErrDetail(data));
     return parseMinpairSentBlock(data.reply,word);
-  }catch(e){return null}
+  }catch(e){return genFailLog("minpair",level,"network",e&&e.message)}
 }
 // نداءان صامتان بعد بدء الجلسة (كانا واحداً — درس ٢٠ أغسطس، ٥١٪ تكرار عند إلياس رغم
 // وجود توليد: معدّله أبطأ من استهلاكه). كلٌّ يختار كلمة عشوائية من بنك المستوى ويُخصّب
@@ -13255,7 +13289,7 @@ async function fetchTutorGenVideo(level){
       body:JSON.stringify({mode:"gen",domain:"video",level,topicIdx:genNextTopicIdx()})},15000);
     if(!res||!res.ok)return genFailLog("video",level,"http",res?res.status:"no_res");
     const data=await res.json();
-    if(!data||!data.ok||!data.reply)return genFailLog("video",level,"no_reply",data&&data.error);
+    if(!data||!data.ok||!data.reply)return genFailLog("video",level,"no_reply",genErrDetail(data));
     const item=parseGenVideoBlock(data.reply);
     if(item)item.lv=level;
     return item;
