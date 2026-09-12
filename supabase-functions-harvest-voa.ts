@@ -140,18 +140,40 @@ Deno.serve(async (req) => {
   const listOnly = u.searchParams.get("list") === "1";
   const pathArg = (u.searchParams.get("path") || "").trim();
 
+  const SB0 = Deno.env.get("SUPABASE_URL") || "";
+  const KEY0 = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+
+  // كتابةُ صفٍّ واحد في نفس الجدول — لا جدولَ ثانٍ ولا مسارَ مفاتيح ثانٍ.
+  const putRow = (row: Record<string, unknown>) =>
+    fetch(`${SB0}/rest/v1/voa_harvest?on_conflict=url`, {
+      method: "POST",
+      headers: {
+        apikey: KEY0, Authorization: `Bearer ${KEY0}`,
+        "Content-Type": "application/json", Prefer: "resolution=merge-duplicates,return=minimal",
+      },
+      body: JSON.stringify([row]),
+    });
+
   // وضعُ الاستكشاف: يقرأ الصفحة الرئيسة ويُعيد أقسامها كما هي اليوم — يُستعمل حين
-  // يعود `index_failed` فلا تُخمَّن أرقامٌ جديدة بل تُقرأ من المصدر. ولا يكتب شيئاً.
+  // يعود `index_failed` فلا تُخمَّن أرقامٌ جديدة بل تُقرأ من المصدر.
+  // **ويكتب نتيجته في الجدول** لأن بيئة التأليف محجوبةٌ عن هذه الدالّة (مُثبَتٌ:
+  // `CONNECT tunnel failed, 403`)، فلا تُقرأ إلّا بالاستعلام الإداري — وإلّا صار
+  // كل فحصٍ يعتمد على نسخِ إنسانٍ ما يراه، وهو بعينه ما ينهى عنه المشروع.
   if (u.searchParams.get("probe") === "1") {
     const home = await get("https://" + HOST + "/");
     if (!home.ok) return jsonOut({ ok: false, error: "home_failed", why: home.why }, 502);
     const secs = sectionLinks(home.html!);
-    return jsonOut({
-      ok: true, mode: "probe", host: HOST,
-      sections: secs,
-      configured: LEVELS,
-      note: "قابِل هذه بأقسام LEVELS — أيُّ اختلافٍ يعني أن الموقع غيّر أرقامه.",
-    });
+    const out = { ok: true, mode: "probe", host: HOST, sections: secs, configured: LEVELS,
+      note: "قابِل هذه بأقسام LEVELS — أيُّ اختلافٍ يعني أن الموقع غيّر أرقامه." };
+    let saved = false;
+    if (SB0 && KEY0) {
+      try {
+        const r = await putRow({ url: "probe://sections", level: "probe", title: "probe " + new Date().toISOString(),
+          body: JSON.stringify(secs), words: secs.length });
+        saved = r.ok;
+      } catch (_e) { saved = false; }
+    }
+    return jsonOut({ ...out, saved_to_table: saved });
   }
 
   let indexUrl: string;
@@ -164,19 +186,32 @@ Deno.serve(async (req) => {
     indexUrl = LEVELS[level];
   }
 
-  const SB = Deno.env.get("SUPABASE_URL") || "";
-  const KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+  const SB = SB0, KEY = KEY0;
   if (!SB || !KEY) return jsonOut({ ok: false, error: "no_service_key" }, 500);
+
+  // كلُّ خروجٍ يُكتب في الجدول كذلك — **لا حالة فشلٍ تُعرض ولا تُسجَّل**، وهي قاعدةٌ
+  // مدفوعة الثمن في هذا المشروع. وبلاها يبقى كل تشخيصٍ معلَّقاً على أن يَنسخ إنسانٌ
+  // ما رآه على شاشته.
+  const note = async (tag: string, payload: unknown) => {
+    try { await putRow({ url: "probe://" + tag, level: "probe", title: tag + " " + new Date().toISOString(),
+      body: JSON.stringify(payload), words: 0 }); } catch (_e) { /* التسجيل لا يكون نقطة عطل */ }
+  };
 
   const idx = await get(indexUrl);
   if (!idx.ok) {
+    await note("index_failed", { why: idx.why, level, url: indexUrl });
     return jsonOut({ ok: false, error: "index_failed", why: idx.why, level, url: indexUrl,
       hint: "أضِف ?probe=1 لقراءة أقسام الموقع الحقيقية بدل تخمين رقمٍ آخر." }, 502);
   }
 
   const links = articleLinks(idx.html!).slice(0, limit);
-  if (listOnly) return jsonOut({ ok: true, level, url: indexUrl, found: links.length, links });
+  if (listOnly) {
+    await note("list", { level, url: indexUrl, found: links.length, links });
+    return jsonOut({ ok: true, level, url: indexUrl, found: links.length, links });
+  }
   if (!links.length) {
+    // نصٌّ من الصفحة نفسها يُعين على معرفة أيّ قالبٍ وصل — بلا شيفرة، مقصوصاً
+    await note("no_links", { level, url: indexUrl, sample: strip(idx.html!).slice(0, 600) });
     return jsonOut({ ok: false, error: "no_links", level, url: indexUrl,
       hint: "الصفحة وصلت بلا روابط مقالات — القالب تغيّر. جرّب ?probe=1." }, 502);
   }
