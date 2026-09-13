@@ -292,6 +292,29 @@ function pickTopic(idx?: number): string {
   return GEN_TOPICS[Math.floor(Math.random() * n)];
 }
 
+// ===== السقوط إلى **أقرب درجةٍ أدنى** لا إلى A2 — ١٣ سبتمبر =====
+// كل خريطةٍ هنا كانت تسقط `[level] || X.A2`. وعُرف ٢٩ أغسطس وثّق العطل لمرّةٍ واحدة
+// (`systemGenWrite` بلا B2 فيسقط بمحمد إلى شكل A2 Key وحدُّه ٢٥ كلمة) **ولم يُبحث عن
+// نظيره** — فبقي في ستّة مواضع: GRAM_FOCUS وSTEP_TAGS وstyleByLevel (فيديو، واستماع/
+// مقروء) وCOMBINE_CONNECTORS وminByLevel. ورفعُ محمد B1⇐B2 اليوم يُفعّلها كلَّها:
+// كان سيُطلَب له حوارٌ من سطرين لمبتدئ في الاستماع، وقواعد ماضٍ شاذّ في القواعد.
+//
+// **والعلاج بنيويّ لا ملءُ خانات**: خانةٌ ناقصة لدرجةٍ تُضاف غداً (C2) تسقط إلى أقرب
+// درجةٍ **دونها** لا إلى قاع السلّم — فأسوأُ ما يقع تخلّفٌ درجةً، لا انهيارٌ لمستوى
+// جامعيّ إلى مبتدئ. ومجهولُ الدرجة يبقى A2 كما كان.
+const LV_ORDER = ["A1", "A2", "B1", "B2", "C1", "C2"];
+function pickByLevel<T>(map: Record<string, T>, level: string): T {
+  if (map[level] !== undefined) return map[level];
+  const i = LV_ORDER.indexOf(String(level || ""));
+  if (i > 0) {
+    for (let k = i - 1; k >= 0; k--) {
+      const v = map[LV_ORDER[k]];
+      if (v !== undefined) return v;
+    }
+  }
+  return map.A2 !== undefined ? map.A2 : map[LV_ORDER.filter((l) => map[l] !== undefined)[0]];
+}
+
 function systemGenWrite(level: string, topicIdx?: number) {
   const shape: Record<string, string> = {
     A1: [
@@ -329,7 +352,7 @@ function systemGenWrite(level: string, topicIdx?: number) {
   };
   const topic = pickTopic(topicIdx);
   return [
-    shape[level] || shape.A2,
+    pickByLevel(shape, level),
     `TOPIC FOR THIS ITEM: ${topic}. Build the prompt around this topic specifically. Do NOT`,
     "reuse a stock textbook example you have seen before.",
     GEN_CULTURE,
@@ -362,9 +385,11 @@ const COMBINE_CONNECTORS: Record<string, string[]> = {
   A2: ["when", "because", "but", "after", "so", "who"],
   B1: ["because", "when", "although", "before", "after", "which"],
   B2: ["despite", "which", "whereas"],
+  // C1: أدوات ربطٍ مُميِّزة لدرجتها في English Profile — لا تكرارَ لِما دونها.
+  C1: ["whereas", "notwithstanding", "insofar as", "albeit"],
 };
 function pickConnector(level: string, topicIdx?: number): string {
-  const list = COMBINE_CONNECTORS[level] || COMBINE_CONNECTORS.A2;
+  const list = pickByLevel(COMBINE_CONNECTORS, level);
   if (typeof topicIdx === "number" && isFinite(topicIdx) && topicIdx >= 0) {
     return list[Math.floor(topicIdx) % list.length];
   }
@@ -373,7 +398,7 @@ function pickConnector(level: string, topicIdx?: number): string {
 function systemGenWriteCombine(level: string, topicIdx?: number) {
   const connector = pickConnector(level, topicIdx);
   const topic = pickTopic(topicIdx);
-  const minByLevel: Record<string, number> = { A1: 7, A2: 8, B1: 9, B2: 9 };
+  const minByLevel: Record<string, number> = { A1: 7, A2: 8, B1: 9, B2: 9, C1: 10 };
   return [
     `Write TWO short, simple, natural CEFR ${level} English sentences (S1 and S2) about this`,
     `topic: ${topic}. They must combine smoothly into ONE sentence using the word "${connector}"`,
@@ -384,7 +409,7 @@ function systemGenWriteCombine(level: string, topicIdx?: number) {
     "OUTPUT EXACTLY in this shape, nothing else, no markdown, no extra commentary:",
     "TYPE: combine",
     `CONNECTOR: ${connector}`,
-    `MIN: ${minByLevel[level] || minByLevel.A2}`,
+    `MIN: ${pickByLevel(minByLevel, level)}`,
     "S1: <first sentence, ending with a period>",
     "S2: <second sentence, ending with a period>",
     "",
@@ -430,9 +455,13 @@ const GRAM_FOCUS: Record<string, string> = {
   A1: "basic verb agreement (he/she/it + -s), the verb 'be', plural nouns after numbers, adjective order, possessive 's",
   A2: "irregular past tense, comparatives (-er/more), time prepositions (on/at/in), much/many, question formation with Do/Does",
   B1: "present perfect vs past simple, passive voice, first conditional (if+present, will), relative clauses (who/which), used to",
+  // B2/C1 من **English Profile** نفسه (مشروع كامبردج الذي يحدّد التراكيب المُميِّزة
+  // لكل درجة) — نفس المصدر الذي بُنيت عليه طبقات A1-B1، لا قائمةٌ من عندي.
+  B2: "third conditional and mixed conditionals, past perfect in narrative, reported speech with backshift, wish/if only, non-defining relative clauses with commas, passive with reporting verbs (is said to)",
+  C1: "inversion after negative adverbials (rarely had he, not until), cleft sentences (what I need is / it was X that), participle clauses, subjunctive after suggest/insist, concessive clauses (much as, however + adjective)",
 };
 function systemGenGram(level: string, topicIdx?: number): string {
-  const focus = GRAM_FOCUS[level] || GRAM_FOCUS.A2;
+  const focus = pickByLevel(GRAM_FOCUS, level);
   const topic = pickTopic(topicIdx);
   return [
     `Write ONE Grammaticality Judgment Task item for a CEFR ${level} English learner.`,
@@ -480,9 +509,13 @@ const STEP_TAGS: Record<string, string[]> = {
   A1: ["ترتيب الكلمات", "الحروف الكبيرة"],
   A2: ["ترتيب الكلمات", "الحروف الكبيرة", "علامات الترقيم"],
   B1: ["ترتيب الكلمات", "علامات الترقيم"],
+  // وB2/C1 نفس أنواع القسم لا أنواعاً جديدة — صعوبتُها في الجملة نفسها (جملٌ مركّبة
+  // بعدّة فقرات فرعية) لا في نوع السؤال، فأنواع STEP ثابتةٌ في الاختبار الحقيقي.
+  B2: ["ترتيب الكلمات", "علامات الترقيم"],
+  C1: ["ترتيب الكلمات", "علامات الترقيم"],
 };
 function systemGenStep(level: string, topicIdx?: number): string {
-  const tags = STEP_TAGS[level] || STEP_TAGS.A2;
+  const tags = pickByLevel(STEP_TAGS, level);
   const tag = tags[Math.floor(Math.random() * tags.length)];
   const focusByTag: Record<string, string> = {
     "ترتيب الكلمات": "correct English word order (subject-verb-object, adverb placement, or clause order) for this level",
@@ -571,9 +604,11 @@ function systemGenVideo(level: string, topicIdx?: number): string {
     A1: "an everyday routine or one concrete fact, told as THREE short scenes, present tense, very simple words a young beginner already knows",
     A2: "a short narrative with a clear before/after sequence, told as THREE scenes, past or present tense, one clear detail per scene",
     B1: "a short story with a beginning, a turn or complication, and a resolution, told as FOUR scenes",
+    B2: "a story with a problem, an attempt that fails, and an unexpected outcome, told as FOUR scenes; include one sentence of the character's reasoning, not only actions",
+    C1: "a story whose point is implied rather than stated — a decision with a trade-off, or an outcome that reframes what came before — told as FOUR scenes with some abstract vocabulary",
   };
-  const nScenes = level === "B1" ? 4 : 3;
-  const lv = styleByLevel[level] || styleByLevel.A2;
+  const nScenes = LV_ORDER.indexOf(level) >= LV_ORDER.indexOf("B1") ? 4 : 3;
+  const lv = pickByLevel(styleByLevel, level);
   const topic = pickTopic(topicIdx);
   const sceneLines: string[] = [];
   for (let i = 1; i <= nScenes; i++) {
@@ -616,8 +651,10 @@ function systemGen(domain: string, level: string, word: string, topicIdx?: numbe
     A1: "ONE or TWO very short sentences. One single concrete fact (a name, age, colour, number, or day of the week). Simple present tense only. Very common words a young beginner already knows.",
     A2: "EITHER a short two-line dialogue in the shape 'A: ... B: ...', OR a 2-3 sentence notice, message or announcement. Exactly one clear detail for the reader to find.",
     B1: "A short paragraph of 4 to 6 sentences narrating a personal experience or explaining an everyday situation. The question should be about the main idea or a detail that needs tracking across more than one sentence.",
+    B2: "A paragraph of 5 to 7 sentences on a concrete topic of general interest — a factual report, an account of a change, or two sides of an everyday choice. Include at least one sentence that gives a reason or a consequence. The question should require combining two sentences, not reading one.",
+    C1: "A paragraph of 6 to 8 sentences of the density of a serious news feature: a specific claim supported by evidence, a qualification or counterpoint, and a consequence. Use precise, less frequent vocabulary where it is natural. The question should require an inference the text supports but never states outright.",
   };
-  const lv = styleByLevel[level] || styleByLevel.A2;
+  const lv = pickByLevel(styleByLevel, level);
   const topic = pickTopic(topicIdx);
   // ===== قالبُ السؤال يُفرَض كما يُفرَض الموضوع — ٢٣ أغسطس =====
   // بياناتٌ حيّة (هيا، A1): ثلاثةٌ من أخطائها الخمسة في الاستماع بصيغةٍ واحدة —
