@@ -214,6 +214,10 @@ function ok(c,m){if(c){pass++;console.log("  ✓ "+m)}else{fail++;console.log(" 
   }
 
   await br.close();
-  console.log(`\n${fail?"✗":"✓"} نجح ${pass} · سقط ${fail}`);
+  // `run.sh` يحكم بالبحث عن هذه الجملة حرفياً لا برمز الخروج — فاختبارٌ ينجح منفرداً
+  // ولا يطبعها يسقط في الجولة **أبداً**. وقعت هنا فعلاً: ١٠١ ملفّاً يطبعها وهذا وحده
+  // كان يطبع صيغةً أخرى. فنجاحُ الاختبار عقدٌ مع المُشغِّل لا رمزُ خروجٍ فقط.
+  console.log(`\nنجح ${pass} · سقط ${fail}`);
+  console.log(fail?`\n=== ${fail} فشل ===`:"\n=== كل الاختبارات نجحت ===");
   process.exit(fail?1:0);
 })().catch(e=>{console.error("انهيار:",e);process.exit(1)});
