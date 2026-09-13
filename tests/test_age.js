@@ -51,12 +51,19 @@ calls.length=0;await turn(page);await page.waitForTimeout(200);
 ok((calls[0]||{}).learner.age===11&&(calls[0]||{}).learner.level==='A1','وعمرها ومستواها الأصلي يصلان مع الطلب');
 ok((calls[0]||{}).level==='A1','ومستوى الحديث عند القاع كذلك');
 
-console.log('\n٣) محمد: B1 وحده، وA2 مع الدعم — لا يهبط إلى مستواها');
+console.log('\n٣) محمد: مستواه وحده، ودرجةٌ واحدة تحته مع الدعم — لا يهبط إلى مستواها');
+// **لا تُكتب درجةٌ هنا** — محمد رُفع B1⇐B2 (١٣ سبتمبر) فكسر هذا القسم. والدعوى
+// **نسبيّةٌ لا اسمُ درجة**: وحده يتحدّث بمستواه المُعلَن، ومع الجمل ينزل درجةً
+// واحدة بالضبط — لا إلى قاع السلّم حيث هي. فتُشتقّ الاثنتان من PROFILES/ENG_LV_RANK.
 const m=await mk('mohammed.html');
 await m.evaluate(()=>{startCoach();coachPick(0);coachMode('solo')});
-ok(await m.evaluate(()=>coachLevel())==='B1','وحده B1');
+const mSolo=await m.evaluate(()=>({got:coachLevel(),decl:profileOf().level}));
+ok(mSolo.got===mSolo.decl,'وحده بمستواه المُعلَن ('+mSolo.got+')');
 await m.evaluate(()=>{startCoach();coachPick(0);coachMode('suggest')});
-ok(await m.evaluate(()=>coachLevel())==='A2','ومع الجمل A2 — درجة واحدة لا هبوطاً إلى A1');
+const mSug=await m.evaluate(()=>({got:coachLevel(),decl:profileOf().level,R:ENG_LV_RANK}));
+ok(mSug.R[mSug.got]===mSug.R[mSug.decl]-1,
+  `ومع الجمل ${mSug.got} — درجة واحدة تحت ${mSug.decl} بالضبط`);
+ok(mSug.R[mSug.got]>mSug.R['A1'],'ولا يهبط إلى قاع السلّم حيث هي');
 calls.length=0;await turn(m);await m.waitForTimeout(200);
 const c=calls[0]||{};
 ok(c.learner.age===19,`وعمره يصل (${c.learner.age})`);

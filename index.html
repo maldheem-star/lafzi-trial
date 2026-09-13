@@ -177,7 +177,13 @@ const PROFILES=[
   // A1 لا A2: قياس ١٥ أغسطس — إنتاجها المنطوق شظايا ونسخٌ حرفيّ («I want beach.»،
   // «I eat a sandwich.»)، ودقّة قواعدها على تراكيب فوق الأساسي ٦٦/١٨٩ (٣٥٪).
   {id:"haya",name:"هيا",alias:"بنتي",emoji:"🌸",color:"#DB2777",g:"f",age:11,level:"A1"},
-  {id:"mohammed",name:"محمد",alias:"محمد",emoji:"⚽",color:"#0E7490",g:"m",only:"coach",age:19,level:"B1"},
+  // محمد B1 ⇐ B2 — ١٣ سبتمبر، بأمر صاحب المشروع ومعه سندٌ مقاس على ٢١ يوماً:
+  // مقروء B1 ‏٩٤٪ (ن=٥٤) و**مقروء B2 ‏٩٤٪** (ن=١٨) — أي أن قراءته B2 بقاعدة الـ٨٥٪
+  // (Wilson et al. 2019) نفسها التي رُفع بها إلياس في ٨ سبتمبر.
+  // **والمقايضة تُقال لا تُخفى**: استماعه ٧٥٪ عند B1 (ن=٦٣)، فالرفع يُصعّده كذلك —
+  // و`level` حقلٌ واحد للمهارتين. عُرض الأمر ببياناته فقال «ارفعه». والمراقبة معلنة:
+  // إن هبط استماعه دون ٧٠٪ فالسبب هذا الرفع لا غموض، ويُبلَّغ به.
+  {id:"mohammed",name:"محمد",alias:"محمد",emoji:"⚽",color:"#0E7490",g:"m",only:"coach",age:19,level:"B2"},
   // ===== إلياس A2 ⇐ B1 — ٨ سبتمبر، أمرُ صاحب المشروع ومعه سندٌ مقاس =====
   // القاعدة هنا «المستوى يُقاس لا يُفترَض»، والقياس يسنده: بوّابة التمدّد
   // (`bankStretched`) فُتحت له فعلاً منذ ٦ سبتمبر فصار يرى عناصر B1 **إضافةً**
@@ -3644,7 +3650,11 @@ async function seenSeed(){
 // والآن بُني محتوى B2 للأقسام السبعة، وفُتح المدخل — **بالقياس لا بالافتراض**: البوّابة
 // نفسها (٨٥٪ على ≥٨ إجابات تفتح، وأقلّ من ٧٠٪ تُغلق) هي ما يُصعّده، ومستواه المُعلَن
 // في PROFILES يبقى B1 كما قِيس. والتمدّد إضافةٌ لا استبدال، فبنك B1 باقٍ معه للمراجعة.
-const LV_NEXT={A1:"A2",A2:"B1",B1:"B2"};
+// **وC1 فُتحت ١٣ سبتمبر** بطلب صاحب المشروع («أضف: مستوًى جامعيّ، أصعب من B2»).
+// والاسم معياريّ لا مخترَع: C1 هي درجة CEFR فوق B2. ومحمد يبقى B2 في PROFILES —
+// المستوى يُقاس لا يُفترَض — وهذه البوّابة نفسها هي ما يفتح C1 له عند ٨٥٪، إضافةً
+// لا استبدالاً، فبنك B2 باقٍ معه. ولا آليةَ جديدة: سطرٌ في الخريطة لا غير.
+const LV_NEXT={A1:"A2",A2:"B1",B1:"B2",B2:"C1"};
 const ACC_KEY="mawhiba_acc_v1",ACC_WINDOW=12,ACC_MIN=8,ACC_ON=0.85,ACC_OFF=0.70;
 // الأقسام المبنيّة بمستويات CEFR وحدها — البقيّة (الأساسيات، موهبة…) بلا تدرّج مستوى
 const ACC_DOMAINS=["listen","read","gram","step","minpair","video","write","build"];
@@ -3725,6 +3735,13 @@ function skOf(it,lv){
   if(it.ai)return "مولَّد · "+String(it.lv||lv||"");
   return null;
 }
+// ===== مصدر العنصر يدخل السجلّ — ١٣ سبتمبر =====
+// قرار صاحب المشروع في قطع B1/B2/C1: «ادمج الاثنين» (نصوص VOA المنقولة ومحتوًى
+// سعوديّ مؤلَّف في البنك نفسه). ولا يُعرف أيُّ المصدرين أنفع إلّا بوسمٍ في السطر —
+// نفس عُرف `src` في بنك الإحصاء (٢٥ أغسطس) مطبَّقاً على الاستماع/المقروء.
+// **ويُلحَق ولا يُغيّر شكل السطر القائم**: العنصر المؤلَّف يبقى بلا وسم كما كان، فلا
+// ينكسر استعلامٌ قائم. وموضعُه في الصدر لا الذيل كي ينجو من قصّ الـ١٢٠٠ محرف.
+function srcTag(it){return it&&it.src?"[مصدر:"+it.src+"] ":""}
 function bktRecord(domain,qtype,ok){
   if(typeof ok!=="boolean")return;
   if(!(domain in BKT_GUESS))return;                 // أقسامٌ بلا تدرّج مهارةٍ مُعرَّف
@@ -4475,7 +4492,7 @@ const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEn
   "statBidi","statBidiLine","statBankFor","statSrsUpdate","buildStatPlan","goStatMenu","startStat","startStatWs","statChoose","statNext","renderStat","renderStatMenu","renderStatResult",
   "writeTokens","writeTtr","writeSim","writePrevLoad","writePrevAdd","writeSelfSim",
   "accLoad","accSave","accRecord","accRate","stretchOn","bankStretched",
-  "seqStart","seqReset","seqPlanFor","seqWeek","seqCur","startSeq","seqCardHTML","renderSeq",
+  "seqStart","seqReset","seqPlanFor","seqPlanLevel","seqWeek","seqCur","startSeq","seqCardHTML","renderSeq",
   "loadKpi","kpiAgg","renderKpi","gjtNorm","gjtNoOxford","gjtWordBag","gjtIsRotation","gjtDefect","gjtCondSplit","gjtSameVerb","gjtZeroFirst",
   "ttsServerAllow","ttsServerFail","ttsServerWin","wbNeed","wbLeft",
   "azExpandWords",
@@ -5225,7 +5242,9 @@ try{lessonSeedOnce()}catch(e){appError('lessonSeedOnce',e)}
 // (itemStuck/fixNeeded) مبنيّةٌ عليها خصّيصاً لتُعلّمها ما تعثّرت فيه فعلاً، لا لتمنعه. إخفاء
 // هذه العناصر كان سيُعطّل علاجاً قائماً يعمل لأجل مشكلةٍ بعينها اسمها. القيد هنا يمنع فقط
 // أن يُضاف إلى خطتها من الغد عنصرٌ جديدٌ لم تَرَه قط فوق مستواها بدرجتين — لا يمحو ماضياً.
-const ENG_LV_RANK={A1:0,A2:1,B1:2,B2:3};
+// C1 أُضيفت ١٣ سبتمبر مع طبقة C1 في الاستماع/المقروء. وغيابُها كان سيُعيد عطل
+// ٢٥ أغسطس حرفياً: `rank[undefined]+1` يُنتج NaN فيُحجب كلُّ شيء عن طالب C1.
+const ENG_LV_RANK={A1:0,A2:1,B1:2,B2:3,C1:4};
 const ENG_LESSON_LV={
   l_where:"A2",l_cond:"B1",l_few:"A2",l_pp_q:"B1",l_pp_vs:"B1",l_pastprog:"A2",
   l_rel:"B1",l_compadv:"A2",l_asas:"A2",l_future:"A2",l_maymight:"A2",
@@ -8365,6 +8384,25 @@ const LISTEN_BANK=[
   {id:"ls_b2_6",lv:"B2",sk:"تفصيل محدَّد",audio:"To qualify for the scholarship you need a grade average above eighty-five, two academic references, and proof of community work. The community work requirement is often overlooked — applicants assume good grades alone will carry them, and every year strong candidates are rejected for exactly that reason.",q:"Why are strong candidates often rejected?",c:["Their grades are below eighty-five","They miss the community work requirement","They submit only one reference"],a:1},
   {id:"ls_b2_7",lv:"B2",sk:"سببٌ وعلاقة",audio:"Critics of the new stadium argue it will cost the city too much. Supporters counter that the construction jobs alone justify it. What neither side mentions is the running cost once it opens, which is where similar projects in other cities have run into trouble.",q:"What is the speaker's criticism of the debate?",c:["Both sides ignore the cost of running the stadium","Supporters have invented the job figures","Critics have exaggerated the construction cost"],a:0},
   {id:"ls_b2_8",lv:"B2",sk:"الفكرة الرئيسية",audio:"Learning a language as an adult isn't harder than as a child — it's harder to find the conditions. Children get thousands of hours of input and nobody laughs at their mistakes. Adults get an hour twice a week and are embarrassed to speak. Change the conditions and the gap narrows considerably.",q:"What is the speaker arguing?",c:["Adults cannot learn languages well","The difficulty is in the conditions, not adult ability","Children learn faster because of their brains"],a:1},
+  // ===== C1 — المستوى الجامعي، ١٣ سبتمبر =====
+  // النصوص **ملكٌ عامّ** من VOA Learning English (عملُ حكومةٍ فدرالية أمريكية)، حُصدت
+  // بأداةٍ مؤقّتة وقيست صعوبتُها بـFlesch-Kincaid: كلُّها FK ١١-١٣٫٢، أي فوق نطاق B2
+  // المقاس في بنكنا (٨-١١). و`src:"VOA"` يدخل السجلّ — فيُقاس لاحقاً أيُّ المصدرين
+  // أنفع، المنقول أم المؤلَّف، بدل التخمين (قرار صاحب المشروع: «ادمج الاثنين»).
+  //
+  // **والأسئلة مؤلَّفةٌ بيدي على معيار منشور**: Haladyna, Downing & Rodriguez 2002
+  // (Applied Measurement in Education 15:309) — كل مموّهٍ معقول، ولا تكرارَ لفظيّ بين
+  // الصدر والمفتاح (فلا تُحَلّ بمطابقة كلمة)، وأطوالٌ متقاربة (فطولُ المفتاح دليلٌ
+  // معروف)، والجواب من النصّ وحده لا من المعرفة العامّة. وتغطيةُ المهارات كما يفرضها
+  // بناء C1 Advanced Part 5: فكرةٌ وتفصيلٌ وموقفٌ وغرضٌ واستنتاجٌ وسببٌ وعلاقة.
+  {id:"ls_c1_1",lv:"C1",src:"VOA",sk:"الفكرة الرئيسية",audio:"For some, yoga is an exercise centered on mindful breathing and slow movement. For others, it is a series of difficult body movements and positioning designed to improve health and fitness. Still others consider yoga a spiritual exercise. And there are many people for whom yoga is a combination of all or some of these things.",q:"What point is the speaker making about yoga?",c:["Only the spiritual form counts as real yoga","People understand the word in very different ways","Most beginners choose the hardest style first"],a:1},
+  {id:"ls_c1_2",lv:"C1",src:"VOA",sk:"تفصيل محدَّد",audio:"Iyengar style involves the same poses as vinyasa, but classes usually move at a slower pace. However, the poses are not necessarily easier. Iyengar yoga pays special attention to carefully moving or aligning parts of the body. Poses are held for longer and students often use supportive equipment during the exercise.",q:"What does the speaker say about Iyengar classes?",c:["A gentler pace does not make the work simpler","They use fewer positions than other yoga styles","They are intended for experienced students only"],a:0},
+  {id:"ls_c1_3",lv:"C1",src:"VOA",sk:"سببٌ وعلاقة",audio:"Scientists say that for nuclear fusion to succeed, hydrogen atoms will need to be heated up to more than 100 million degrees Celsius. At this extreme temperature, plasma can become unstable and difficult to control. This can lead to energy loss and limit how well a possible future nuclear fusion reactor could work.",q:"Why does the required temperature create a difficulty?",c:["The hydrogen atoms stop reacting altogether","The reactor walls cannot be built thick enough","The plasma becomes unstable and loses energy"],a:2},
+  {id:"ls_c1_4",lv:"C1",src:"VOA",sk:"الغرض",audio:"Andre Ilbawi is with the World Health Organization's cancer control program. He told reporters the program seeks to widen the platform and bring additional partners on board. This marks the beginning of a global movement to provide children with cancer the medicines that they need, regardless of where they live, or their ability to pay.",q:"What is the stated aim of the program?",c:["Training more cancer doctors in poorer countries","Reaching every child regardless of location or income","Lowering the price of medicines in rich countries"],a:1},
+  {id:"ls_c1_5",lv:"C1",src:"VOA",sk:"تسلسل الأحداث",audio:"In May 1966, the United States followed with its Surveyor 1 mission. NASA describes this effort as the first of a series of seven robotic spacecraft sent to the moon to gather data in preparation for NASA's Apollo missions. The successful soft landing of Surveyor 1 was one of the great successes of NASA's early lunar program.",q:"What was the purpose of the Surveyor missions?",c:["Collecting data ahead of crewed Apollo flights","Returning rock samples to laboratories on Earth","Testing a new type of rocket engine in orbit"],a:0},
+  {id:"ls_c1_6",lv:"C1",src:"VOA",sk:"استنتاج",audio:"Think of a timed essay exam, a college application essay, or a research paper at the end of the semester that is tied to the entire grade for the class. Worrying about what will happen if students do not do well, such as bad grades or not getting into college, creates significant anxiety. And that can make it harder to get the writing done.",q:"What does the speaker suggest about anxiety?",c:["It improves work when the stakes are high","It appears only in students with weak grades","It can itself get in the way of writing"],a:2},
+  {id:"ls_c1_7",lv:"C1",src:"VOA",sk:"تفصيل محدَّد",audio:"Immersive art experiences have opened all over the world during the past ten years or so. Examples include a company called Meow Wolf, with several locations in the western United States, as well as a Van Gogh exhibit that has been traveling through North America, Europe and Asia since 2017. Superblue Miami, which opened in 2021, is another example.",q:"What is true of the Van Gogh exhibit?",c:["It is permanently housed in the western United States","It has moved between several continents since 2017","It opened in Miami in 2021 alongside Superblue"],a:1},
+  {id:"ls_c1_8",lv:"C1",src:"VOA",sk:"تفصيل محدَّد",audio:"The U.S. National Science Foundation is providing financial support for artificial intelligence research and development. One group receiving support is called the National AI Institute for Exceptional Education, and is linked to the University of Buffalo in New York state. It is developing tools to help children with speech and language disabilities.",q:"What is the institute building?",c:["Tools for children with communication difficulties","A training course for university researchers","A database of schools across New York state"],a:0},
 ];
 // _v2: تكرارٌ وتلوّثٌ عربي-إنجليزي حقيقي وصلا للبنك v1 قبل بذرة الموضوع وحارس التلوّث
 // (١٦ أغسطس، شكوى إلياس) — مفتاحٌ جديد يهجر المخزَّن الملوَّث بدل مسحه يدوياً، كما
@@ -8429,7 +8467,7 @@ function listenChoose(i){
   const ok=i===it.a;if(ok)listenScore++;
   listenSrsUpdate(it.id,ok);
   logAnswer("listen",it.lv,ok,it.c[i],it.id,listenShownAt?Date.now()-listenShownAt:null,
-    {_sk:skOf(it),q_text:(genLogText(it)+" · plays:"+listenPlays).slice(0,1200)});
+    {_sk:skOf(it),q_text:(srcTag(it)+genLogText(it)+" · plays:"+listenPlays).slice(0,1200)});
   render();
 }
 function listenNext(){
@@ -8534,6 +8572,17 @@ const READ_BANK=[
   {id:"rd_b2_6",lv:"B2",sk:"سببٌ وعلاقة",passage:"Volunteer numbers at the shelter fell sharply after the new online sign-up system was introduced. Managers assumed people had lost interest. In fact, a survey found most former volunteers were older residents without reliable internet access, who had previously signed up by simply turning up on a Saturday.",q:"Why did volunteer numbers fall?",c:["People genuinely lost interest in the shelter","The new system excluded volunteers without internet access","The shelter reduced its Saturday hours"],a:1},
   {id:"rd_b2_7",lv:"B2",sk:"تفصيل محدَّد",passage:"Applicants must submit the form by 5 p.m. on the 30th. Late forms are accepted only where a medical certificate is provided, and even then the certificate must be dated on or before the deadline itself. Certificates issued afterwards, however genuine, cannot be considered.",q:"When must a medical certificate be dated?",c:["Any time before the panel meets","On or before the deadline","Within a week after the deadline"],a:1},
   {id:"rd_b2_8",lv:"B2",sk:"الفكرة الرئيسية",passage:"Supporters of the four-day week point to trials showing stable output and happier staff. Critics reply that the trials were run by companies that volunteered, staffed by people who wanted it to succeed. Both observations can be true at once, which is precisely why a larger and less self-selecting trial is needed before anyone draws firm conclusions.",q:"What does the writer conclude?",c:["The four-day week has already been proven to work","A broader trial is needed because current evidence is self-selecting","The critics have disproved the trials"],a:1},
+  // ===== C1 — نفس مصدر طبقة الاستماع ونفس معيارها (انظر التعليق فوق ls_c1_1) =====
+  {id:"rd_c1_1",lv:"C1",src:"VOA",sk:"تفصيل محدَّد",passage:"SMA is a genetic disease that slowly destroys motor neurons, nerve cells in the spinal cord that control muscles. That leads muscles to waste away, especially in the legs, hips, and shoulders and sometimes those involved with breathing and swallowing. There is no cure. A gene therapy can save the lives of very young children with a severe form of the disease, and there are some medicines to slow the disease in older patients.",q:"What does the passage say about treating SMA?",c:["Current treatments can delay it, but not end it","Gene therapy now reverses it in older patients","Treatment begins once breathing muscles weaken"],a:0},
+  {id:"rd_c1_2",lv:"C1",src:"VOA",sk:"موقف الكاتب",passage:"Neuroscientist Susan Harkema led similar studies of stimulation for spinal cord injuries while at the University of Louisville. She warned that the new study is small and did not last very long, but said it was an important test of the device. She said it should be tested next with other muscle-degenerating diseases.",q:"How would you describe Harkema's response to the study?",c:["Entirely dismissive of the device","Convinced it is ready for patients now","Cautious, but supportive of further work"],a:2},
+  {id:"rd_c1_3",lv:"C1",src:"VOA",sk:"سببٌ وعلاقة",passage:"Some products for computer users, such as blue light glasses, are marketed with claims that they will reduce eye strain, improve sleep and prevent eye disease. But several studies have found the glasses are not very effective, says the American Academy of Ophthalmology. The group says it is how people use digital devices that causes problems, not the blue light coming from screens.",q:"According to the Academy, where does the problem lie?",c:["In the blue light produced by screens","In the way people use their devices","In the poor quality of the glasses sold"],a:1},
+  {id:"rd_c1_4",lv:"C1",src:"VOA",sk:"تقييم",passage:"One idea is to use a nuclear weapon against a threatening asteroid. In laboratory tests, researchers found that X-rays from a nuclear blast could move a rock. But this is considered more of a plan for kilometers-wide asteroids like the one that killed off the dinosaurs. And this method also carries the risk that a nuclear explosion could send additional pieces of the asteroid falling toward Earth.",q:"Why is the nuclear option presented as limited?",c:["Tests showed X-rays cannot move rock at all","It fits only huge asteroids and may scatter debris","Treaties currently forbid such weapons in space"],a:1},
+  {id:"rd_c1_5",lv:"C1",src:"VOA",sk:"تفصيل محدَّد",passage:"The American space agency NASA says Luna 9 was the first spacecraft to carry out a soft landing on the moon. It was also the first to send photographic data from the moon's surface to Earth. Luna 9's landing proved the lunar surface could support the weight of a lander, and that an object would not sink into a loose layer of dust as some models predicted.",q:"What earlier expectation did the landing disprove?",c:["That no camera could survive the journey there","That the moon had no solid surface at all","That a lander might sink into deep surface dust"],a:2},
+  {id:"rd_c1_6",lv:"C1",src:"VOA",sk:"الفكرة الرئيسية",passage:"A group of scientists studied changes in the shape of the Earth's orbit around the sun, the tilt of the Earth's axis, and the movement of the axis itself, called a wobble. These three motions are believed to happen in cycles. The Serbian scientist Milutin Milankovitch developed a theory about 100 years ago that these cycles affected Earth's long-term climate.",q:"What is the passage mainly about?",c:["Three cyclical motions linked to long-term climate","A recent disagreement among climate scientists","How the tilt of the axis was first measured"],a:0},
+  {id:"rd_c1_7",lv:"C1",src:"VOA",sk:"سببٌ وعلاقة",passage:"The agency that operates Angkor Wat is the APSARA National Authority. It said in a statement that a small number of YouTubers repeatedly feed the monkeys to create videos. This changed the monkeys' natural behavior from being wild animals to domestic ones that are aggressive, steal food, and cause injuries among people.",q:"What does the authority blame for the change?",c:["A shortage of food inside the park itself","Repeated feeding by a few video makers","A rise in the number of visitors overall"],a:1},
+  {id:"rd_c1_8",lv:"C1",src:"VOA",sk:"الفكرة الرئيسية",passage:"But experts say that it will be difficult to solve the country's population problems. Many young people say they do not want to have babies. Their reasons include costly housing, low levels of upward social movement, the high costs of raising and educating children, and a culture that requires women to do more of the childcare.",q:"What do the reasons listed have in common?",c:["They concern government rules about family size","They relate to the health of new mothers","They are economic and social pressures on young adults"],a:2},
+  {id:"rd_c1_9",lv:"C1",src:"VOA",sk:"استنتاج",passage:"World Bank information shows that African countries in the area also have the highest rates of children out of school in the world. Parents in Uganda report unpredictable increases in the cost of attending school, or tuition, as a cause of tension. Some critics are calling for laws to protect parents from exploitation.",q:"What do the critics appear to believe?",c:["That rises in fees need a legal limit","That school attendance should be optional","That the World Bank figures are wrong"],a:0},
+  {id:"rd_c1_10",lv:"C1",src:"VOA",sk:"الغرض",passage:"Senegalese children who attend preschool, also known as nursery school, are generally under five. Since mid-January, the education ministry has been testing a program that teaches English in more than 600 nursery and primary school classes. It is part of a plan to better connect Senegal with the rest of the world.",q:"Why has the ministry started the program?",c:["To replace French in all state schools","To open the country up internationally","To reduce the number of nursery classes"],a:1},
 ];
 // _v3: نفس سبب GEN_BANK_KEY_LISTEN أعلاه — عناصر [مولَّد] عربية قديمة عند السقف
 const GEN_BANK_KEY_READ="mawhiba_read_aibank_v4";
@@ -8574,7 +8623,7 @@ function readChoose(i){
   const ok=i===it.a;if(ok)readScore++;
   readSrsUpdate(it.id,ok);
   logAnswer("read",it.lv,ok,it.c[i],it.id,readShownAt?Date.now()-readShownAt:null,
-    {_sk:skOf(it),q_text:((skOf(it)?"["+skOf(it)+"] ":"")+genLogText(it)).slice(0,1200)});
+    {_sk:skOf(it),q_text:((skOf(it)?"["+skOf(it)+"] ":"")+srcTag(it)+genLogText(it)).slice(0,1200)});
   render();
 }
 function readNext(){
@@ -8934,7 +8983,11 @@ const K1_WORDS=("the be to of and a in that have i it for not on with he as you 
 "there here this that these those it what who how why where when").split(/\s+/);
 const K1_SET=(function(){const s={};K1_WORDS.forEach(function(w){if(w)s[w]=1});return s})();
 // أحجام المفردات المرجعية لكل درجة CEFR — مرجعٌ يُعرض لا رقمٌ يُحسب هنا
-const VOCAB_TARGET={A1:1000,A2:2000,B1:3250};
+// **معرَّفٌ ولا يقرؤه أحدٌ اليوم** (فُحص ١٣ سبتمبر: هذا السطر وحده في الملفّ) — وُصف
+// حين كُتب بأنه «مرجعٌ يُعرض» ولم يُوصَل بعرضٍ قطّ، فيُقال بدل أن يُفترض. وB2/C1
+// أُضيفتا وقايةً من نفس ثقب `ENG_LV_RANK` (٢٥ أغسطس): خريطةُ مستوًى ناقصةٌ تُنتج
+// undefined متى وُصلت لاحقاً. والأرقام تقديرات Milton & Meara المنشورة لا مختارة.
+const VOCAB_TARGET={A1:1000,A2:2000,B1:3250,B2:4500,C1:6000};
 function writeLfp(t){
   const w=writeTokens(t);
   if(!w.length)return{n:0,k1:0,beyond:0,pct:0};
@@ -14901,7 +14954,26 @@ function seqStart(){
   return v;
 }
 function seqReset(){lsSet(SEQ_START_KEY,todayStr());render()}
-function seqPlanFor(level){return SEQ_PLAN[String(level||"A2")]||SEQ_PLAN.A2}
+// ===== السقوط إلى **أقرب درجةٍ أدنى** لا إلى A2 — ١٣ سبتمبر =====
+// كان `||SEQ_PLAN.A2`، و`SEQ_PLAN` بلا B2 ولا C1. فرفعُ محمد B1⇐B2 اليوم كان
+// سيُنزل خطّته الأسبوعية من B1 إلى **A2** — رفعُ مستوًى يُنتج محتوًى أسهل، وهو
+// نفس صنف عطل `systemGenWrite` الذي كان يسقط بمحمد B2 إلى شكل A2 (٢٩ أغسطس).
+// فالسقوط الآن إلى أقرب درجةٍ **دونه** بحساب `ENG_LV_RANK`، **ويُسمّى على الشاشة**
+// بدل أن تقول البطاقة «مستوى B2» فوق محتوى A2 — شاشةٌ تكذب أسوأ من نقصٍ مُعلَن.
+// **والنقص يبقى نقصاً**: خطّتا B2 وC1 لم تُؤلَّفا بعد (بندٌ في «المفتوح الآن»).
+function seqPlanLevel(level){
+  const L=String(level||"A2");
+  if(SEQ_PLAN[L])return L;
+  const r=ENG_LV_RANK[L];
+  if(!Number.isFinite(r))return "A2";
+  let best=null;
+  Object.keys(SEQ_PLAN).forEach(function(k){
+    const kr=ENG_LV_RANK[k];
+    if(Number.isFinite(kr)&&kr<r&&(best===null||kr>ENG_LV_RANK[best]))best=k;
+  });
+  return best||"A2";
+}
+function seqPlanFor(level){return SEQ_PLAN[seqPlanLevel(level)]}
 // الأسبوع يدور ولا يقف: بلوغ الثانية عشرة يعيد إلى الأولى بمراجعةٍ لا بفراغ
 function seqWeek(){
   const st=seqStart(),d=Math.floor((Date.parse(todayStr())-Date.parse(st))/86400000);
@@ -14914,7 +14986,7 @@ function seqCardHTML(){
   const u=seqCur(),p=profileOf();
   return `<button class="mode full" style="background:#0F766E;border-color:#0F766E;text-align:right" onclick="startSeq()">
     <span class="m-name">🗺️ تركيز هذا الأسبوع · الأسبوع ${toAr(seqWeek())} من ${toAr(SEQ_WEEKS)}</span>
-    <div class="m-sub">${esc(u.f)} — <span style="direction:ltr;display:inline-block">${esc(u.g)}</span> · مستوى ${esc(p.level||"A2")}</div>
+    <div class="m-sub">${esc(u.f)} — <span style="direction:ltr;display:inline-block">${esc(u.g)}</span> · مستوى ${esc(seqPlanLevel(p.level))}</div>
   </button>`;
 }
 function renderSeq(){
@@ -14933,9 +15005,11 @@ function renderSeq(){
   }).join("");
   app.innerHTML=`${profileBarHTML()}
   <div class="card">
-    <h2>🗺️ تسلسل التدريس — مستوى ${esc(p.level||"A2")}</h2>
+    <h2>🗺️ تسلسل التدريس — مستوى ${esc(seqPlanLevel(p.level))}</h2>
     <p class="sub">اثنا عشر أسبوعاً مرتّبة بتدرّج كامبردج لهذه الدرجة. هذا <b>إرشاد لا قيد</b>:
     الأقسام تبقى مفتوحة كلّها، والتسلسل يقول أين يكون التركيز هذا الأسبوع.</p>
+    ${seqPlanLevel(p.level)!==(p.level||"A2")?`<p class="sub" style="color:#92400E;background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;padding:.5rem .7rem">
+    خطّة مستوى ${esc(p.level)} لم تُكتب بعد، والمعروض خطّة ${esc(seqPlanLevel(p.level))} — أقرب درجةٍ دونه.</p>`:""}
     ${rows}
     <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1rem">
       <button class="btn" onclick="home()">رجوع</button>

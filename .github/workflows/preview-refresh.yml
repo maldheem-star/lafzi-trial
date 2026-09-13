@@ -1,0 +1,50 @@
+name: Refresh preview on dev push
+
+# ===== لماذا يوجد هذا الملفّ — درس ١٣ سبتمبر =====
+# قاعدة القائمة الملزِمة تقول: «ادفع الفرع، وافتح /preview/ على جهازٍ حقيقي».
+# وهي تفترض أن دفع الفرع يُحدّث المعاينة — **ولا يفعل**: قاعدة حماية بيئة
+# `github-pages` ترفض الإطلاق من غير الفرع الافتراضي (موثَّقٌ في deploy-pages.yml)،
+# فالمعاينة لا تتحرّك إلّا بتشغيل النشر: دفعٌ إلى `main` أو نداءٌ يدويّ.
+#
+# وثمنُ ذلك وقع فعلاً: دُفع الفرع خمس مرّات في ١٣ سبتمبر ولم يُطلَق النداء، ففتح
+# صاحب المشروع المعاينة على جهازه وضغط «بطاقة الجهاز»، فوصل السجلَّ
+# `بناء:pv-e2e6cca-20260912-0601` — معاينةُ اليوم السابق. أي أن الخطوة الثالثة من
+# قائمته نُفِّذت على محتوًى بائد، ولا شيء كان يقول ذلك إلّا بصمةٌ في السجلّ قُرئت
+# بالمصادفة.
+#
+# وهذا حرفياً صنف العطل الذي تحرسه قاعدة المشروع: «آليةٌ تعتمد على أن يتذكّر أحدٌ
+# خطوةً يدوية في كل شحنة **ستفشل**، ولا يكفي إصلاحها مرّةً — يجب نزع التذكّر من
+# مسارها». فالتذكّر يُنزع هنا: دفعُ الفرع يُطلق نشر الصفحات بنفسه.
+#
+# ولا يُغيَّر شيءٌ في قاعدة الحماية: هذا الملفّ لا ينشر شيئاً، بل ينادي
+# `deploy-pages.yml` على `main` — فيبقى الجذر من `main` كما كان، وتُسحب المعاينة
+# من الفرع كما هي مصمَّمة. وworkflow_dispatch أحدُ حدثين يُستثنيان صراحةً من قاعدة
+# «ما يُطلقه GITHUB_TOKEN لا يُنشئ تشغيلاً»، فالنداء يعمل بالرمز الافتراضي.
+on:
+  push:
+    branches:
+      - claude/talent-app-fixes-visuals-poevc6
+
+permissions:
+  actions: write
+
+# دفعاتٌ متتابعة في دقائق ⇐ نداءٌ واحد يكفي، فلا تتكدّس تشغيلات نشرٍ متطابقة
+concurrency:
+  group: preview-refresh
+  cancel-in-progress: true
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Pages deploy (root from main, preview from this branch)
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'deploy-pages.yml',
+              ref: 'main'
+            });
+            core.notice('طُلب نشر الصفحات — المعاينة ستحمل ' + context.sha.slice(0, 7));

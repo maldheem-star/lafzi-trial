@@ -97,10 +97,14 @@ console.log('\n٤) جلسةٌ حقيقية: لا عنصر A2 بعد اليوم (
 
 console.log('\n٥) ولا انحدار: هيا ومحمد كما هما');
 {
-  for(const [f,lv] of [['index.html','A1'],['mohammed.html','B1']]){
+  // **لا تُكتب درجةٌ هنا** — محمد رُفع B1⇐B2 (١٣ سبتمبر) فكسر هذا السطر.
+  // والدعوى أن رفعَ إلياس لم يمسّ غيره: كلُّ صفحةٍ تعرض درجةَ صاحبها المُعلَنة
+  // في PROFILES — تُشتقّ من مصدرها الحيّ لا تُكتب رقماً يبيد مع أوّل رفعٍ قادم.
+  for(const [f,id] of [['index.html','haya'],['mohammed.html','mohammed']]){
     const q=await mk(f);
-    const got=await q.evaluate(()=>profileOf().level);
-    ok(got===lv,f+' ⇐ '+got);
+    const r=await q.evaluate(who=>({lv:profileOf().level,
+      decl:(PROFILES.filter(p=>p.id===who)[0]||{}).level}),id);
+    ok(r.lv===r.decl,f+' ⇐ '+r.lv+' = المُعلَن');
     await q.context().close();
   }
   const miss=await p.evaluate(()=>censusMissing());

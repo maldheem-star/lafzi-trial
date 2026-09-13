@@ -173,9 +173,20 @@ async function mk(browser,q){
       out.wrap=seqWeek();
       out.curLevel=seqPlanFor('A2')===SEQ_PLAN.A2;
       out.cur=seqCur().f;
+      // **والسقوط إلى أقرب درجةٍ أدنى لا إلى A2** — رفعُ محمد B1⇐B2 (١٣ سبتمبر)
+      // كان سيُنزل خطّته من B1 إلى A2: رفعُ مستوًى يُنتج محتوًى أسهل.
+      out.fall={};
+      ["B2","C1","A1","B1","ZZ",""].forEach(function(L){out.fall[L||"(فارغ)"]=seqPlanLevel(L)});
+      out.declMohammed=(PROFILES.filter(p=>p.id==="mohammed")[0]||{}).level;
+      out.mohammedPlan=seqPlanLevel(out.declMohammed);
+      out.mohammedPlanOk=ENG_LV_RANK[out.mohammedPlan]<=ENG_LV_RANK[out.declMohammed];
       return out;
     });
     ok(r.levels.length===3,'ثلاثة مستويات — '+r.levels.join(','));
+    ok(r.fall.B2==='B1'&&r.fall.C1==='B1','ما فوق B1 يسقط إلى B1 — أقرب درجةٍ دونه لا A2');
+    ok(r.fall.A1==='A1'&&r.fall.B1==='B1','ومن له خطّةٌ يراها هو لا بديلها');
+    ok(r.fall.ZZ==='A2'&&r.fall['(فارغ)']==='A2','ودرجةٌ مجهولة أو فارغة ⇒ A2 كما كان');
+    ok(r.mohammedPlanOk,`وخطّة محمد (${r.declMohammed}) لا تعلو مستواه — المعروض ${r.mohammedPlan}`);
     ok(r.lens.every(n=>n===12),'اثنا عشر أسبوعاً لكل مستوى — '+r.lens.join(','));
     ok(r.weeksOrdered,'الأسابيع مرقّمة بالترتيب ١..١٢');
     ok(r.fields,'كل أسبوع فيه تركيزٌ وتركيبٌ وعبارة «يستطيع أن»');

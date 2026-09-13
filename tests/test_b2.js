@@ -77,40 +77,68 @@ const DOMS=[["listen","listenBankFor"],["read","readBankFor"],["write","writeBan
   // ===== ٢) الوصل: B2 يصل محمداً بالقياس لا بالافتراض =====
   console.log('\n٢) بوّابة التمدّد — ٨٥٪ تفتح و٧٠٪ تُغلق');
   {
+    // **لا تُكتب درجةٌ هنا** — محمد رُفع B1⇐B2 (١٣ سبتمبر) بأمر صاحب المشروع ومعه
+    // سندٌ مقاس (مقروء B2 ‏٩٤٪ على ٢١ يوماً). والدعوى التي جاء لأجلها هذا القسم
+    // **آليّةُ البوّابة** لا اسمُ درجته: مغلقةٌ قبل القياس، تُفتح بـ٨٥٪ فما فوق على
+    // ≥٨ إجابات، تُضيف ولا تستبدل، وتنغلق دون ٧٠٪. فيُشتقّ مستواه ودرجتُه التالية
+    // من PROFILES/LV_NEXT الحيّين، ولا ينكسر القسم مع أيّ رفعٍ لاحق.
     const page=await mk(browser,'?p=mohammed');
     const r=await page.evaluate(doms=>{
-      const out={lv:profileOf().level,next:LV_NEXT[profileOf().level]};
+      const L=profileOf().level,N=LV_NEXT[L];
+      const out={lv:L,next:N,
+        decl:(PROFILES.filter(function(p){return p.id==="mohammed"})[0]||{}).level};
+      // **ومخزونُ الدرجة التالية يُقاس قبل أن يُطلَب من البوّابة أن تفتحه** — وإلّا
+      // كان القسم يفحص تأليفَ محتوًى لا آليّةَ بوّابة، فيسقط على بنكٍ لم يُؤلَّف له
+      // شيءٌ بعد. فلكل بنكٍ حكمُه: من له مخزونٌ تُفتح عنده، ومن لا مخزون له يُسمَّى.
+      out.stock={};
+      doms.forEach(function(d){
+        out.stock[d[0]]=(window[d[1]](N)||[]).filter(function(x){return x.lv===N}).length;
+      });
       // مغلقةٌ ابتداءً: بلا سجلّ دقّة لا تمدّد
       out.closedAtFirst={};
       doms.forEach(function(d){
-        out.closedAtFirst[d[0]]=bankStretched(d[0],"B1",window[d[1]])
-          .some(function(x){return x.lv==="B2"});
+        out.closedAtFirst[d[0]]=bankStretched(d[0],L,window[d[1]])
+          .some(function(x){return x.lv===N});
       });
       // ثماني إصاباتٍ متتالية ⇒ ١٠٠٪ ⇒ تُفتح
       doms.forEach(function(d){for(let i=0;i<8;i++)accRecord(d[0],true)});
       out.openAfter={};
       doms.forEach(function(d){
-        const b=bankStretched(d[0],"B1",window[d[1]]);
-        out.openAfter[d[0]]={hasB2:b.some(function(x){return x.lv==="B2"}),
-                             keepsB1:b.some(function(x){return x.lv==="B1"})};
+        const b=bankStretched(d[0],L,window[d[1]]);
+        out.openAfter[d[0]]={hasNext:b.some(function(x){return x.lv===N}),
+                             keepsBase:b.some(function(x){return x.lv===L})};
       });
       // ثم انهيارٌ دون ٧٠٪ ⇒ تُغلق
       doms.forEach(function(d){for(let i=0;i<12;i++)accRecord(d[0],false)});
       out.closedAgain={};
       doms.forEach(function(d){
-        out.closedAgain[d[0]]=bankStretched(d[0],"B1",window[d[1]])
-          .some(function(x){return x.lv==="B2"});
+        out.closedAgain[d[0]]=bankStretched(d[0],L,window[d[1]])
+          .some(function(x){return x.lv===N});
       });
       return out;
     },DOMS);
-    ok(r.lv==='B1','مستوى محمد المُعلَن يبقى B1 — لم يُرفَع بالافتراض');
-    ok(r.next==='B2','وله الآن مدخلٌ إلى B2 في LV_NEXT — كان معدوماً');
+    ok(r.lv===r.decl,'مستوى محمد المعروض هو المُعلَن في PROFILES ('+r.lv+')');
+    ok(!!r.next,'وله درجةٌ تالية في LV_NEXT ('+r.lv+' ⇐ '+r.next+') — فالبوّابة لها ما تفتحه');
+    const withStock=DOMS.filter(function(d){return r.stock[d[0]]>0});
+    const noStock=DOMS.filter(function(d){return !r.stock[d[0]]});
+    // **ولا يُفحَص فحصٌ فارغ**: لو خلت البنوك كلُّها من الدرجة التالية لمرّ القسم
+    // بلا أن يقيس فتحاً واحداً — فيُشترَط بنكٌ واحد على الأقلّ بمخزون.
+    ok(withStock.length>0,`وبنكٌ واحد على الأقلّ فيه مخزون ${r.next} فعلاً — `+
+      withStock.map(function(d){return d[0]+':'+r.stock[d[0]]}).join(' · '));
     DOMS.forEach(function(d){
       ok(r.closedAtFirst[d[0]]===false,d[0]+': مغلقةٌ قبل أن يُقاس شيء');
-      ok(r.openAfter[d[0]].hasB2===true,d[0]+': وتُفتح بـ١٠٠٪ على ثماني إجابات');
-      ok(r.openAfter[d[0]].keepsB1===true,d[0]+': وبنك B1 باقٍ معه — إضافةٌ لا استبدال');
+      ok(r.openAfter[d[0]].keepsBase===true,d[0]+`: وبنك ${r.lv} باقٍ معه — إضافةٌ لا استبدال`);
       ok(r.closedAgain[d[0]]===false,d[0]+': وتنغلق بالانهيار دون ٧٠٪');
     });
+    withStock.forEach(function(d){
+      ok(r.openAfter[d[0]].hasNext===true,
+        d[0]+`: وتُفتح ${r.next} بـ١٠٠٪ على ثماني إجابات (المخزون ${r.stock[d[0]]})`);
+    });
+    // **الفجوة تُقال بالرقم لا تُبتلَع**: خمسةُ بنوكٍ بلا طبقة C1 بعد (١٣ سبتمبر) —
+    // فمحمدٌ عند ١٠٠٪ فيها لا يجد فوقه شيئاً، وهو **نصفُ الحلقة** بعينه الموثَّق
+    // ٢١ أغسطس. ليس عطلاً في البوّابة بل محتوًى لم يُؤلَّف، ويُسمَّى كي لا يُنسى.
+    if(noStock.length)console.log('  ⚠ بلا مخزون '+r.next+' بعد (محتوًى لم يُؤلَّف، لا عطل): '+
+      noStock.map(function(d){return d[0]}).join(' · '));
     await page.close();
   }
 
@@ -122,11 +150,16 @@ const DOMS=[["listen","listenBankFor"],["read","readBankFor"],["write","writeBan
   // (كما لمحمد في القسم ٢). فصار القياس **بالرتبة** لا باسم درجةٍ مكتوبة: لا عنصرَ
   // فوق مستوى المتعلّم بأكثر من درجة. وهذا يُثبّت الدعوى الأصلية ولا يُدهَس، ولا
   // ينكسر مع أيّ رفعٍ لاحق — درس «الأعداد المكتوبة في الاختبارات فخّ صامت».
-  for(const [q,who,lv] of [['','هيا','A1'],['?p=elias','إلياس','B1']]){
+  // **ولا رتبةٌ مكتوبة أيضاً**: جدولُ الرتب كان `{A1:0,A2:1,B1:2,B2:3}` بلا C1،
+  // فطبقة C1 (١٣ سبتمبر) كانت ستجعل `RANK[x.lv]||0` تقرأ C1 **صفراً** — أي أدنى
+  // من A1 — فيمرّ التسرّب بلا أن يُمسَك. صار يُقرأ من `ENG_LV_RANK` الحيّ نفسه.
+  for(const [q,who,id] of [['','هيا','haya'],['?p=elias','إلياس','elias']]){
     const page=await mk(browser,q);
-    const r=await page.evaluate(doms=>{
-      const RANK={A1:0,A2:1,B1:2,B2:3};
-      const L=profileOf().level,out={lv:L,leak:[],over:[]};
+    const r=await page.evaluate(arg=>{
+      const doms=arg.doms,RANK=ENG_LV_RANK;
+      const top=Math.max.apply(null,Object.keys(RANK).map(function(k){return RANK[k]}));
+      const L=profileOf().level,out={lv:L,leak:[],over:[],
+        decl:(PROFILES.filter(function(p){return p.id===arg.who})[0]||{}).level};
       // حتى بإتقانٍ تامّ: تُفتح الدرجة التالية وحدها — لا قفزَ درجتين
       doms.forEach(function(d){for(let i=0;i<10;i++)accRecord(d[0],true)});
       doms.forEach(function(d){
@@ -135,10 +168,10 @@ const DOMS=[["listen","listenBankFor"],["read","readBankFor"],["write","writeBan
         if(far.length)out.leak.push(d[0]+':'+far[0].lv);
       });
       out.next=LV_NEXT[L];
-      out.nextIsOne=(RANK[out.next]===RANK[L]+1)||(out.next===undefined&&RANK[L]===3);
+      out.nextIsOne=(RANK[out.next]===RANK[L]+1)||(out.next===undefined&&RANK[L]===top);
       return out;
-    },DOMS);
-    ok(r.lv===lv,who+': مستواه '+r.lv);
+    },{doms:DOMS,who:id});
+    ok(r.lv===r.decl,who+': مستواه '+r.lv+' = المُعلَن في PROFILES');
     ok(r.nextIsOne===true,who+': والمفتوح درجةٌ واحدة فوقه لا درجتان ('+r.lv+' ⇐ '+r.next+')');
     ok(r.leak.length===0,who+': ولا عنصرَ فوقه بدرجتين يتسرّب إليه ولو أتقن — '+(r.leak.join(',')||'نظيف'));
     await page.close();
