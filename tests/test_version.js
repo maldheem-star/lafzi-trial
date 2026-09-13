@@ -60,11 +60,17 @@ const hr=await page.evaluate(()=>typeof window.__reloadUrl==='function');
 ok(hr,'والمساعِد مُصدَّرٌ فعلاً ليصل إليه الزرّ خارج الغلاف');
 
 console.log('\n٥) لا انحدار: الصفحة تعمل والهويّة تُقرأ من الرابط كما كانت');
-// إلياس A2 ⇐ B1 — ٨ سبتمبر (انظر تعليق PROFILES)
-for(const [q,lv] of [['?p=mohammed','B1'],['?p=elias','B1'],['','A1']]){
+// **لا تُكتب درجةٌ هنا** — إلياس رُفع A2⇐B1 (٨ سبتمبر) ومحمد B1⇐B2 (١٣ سبتمبر)،
+// وكلُّ رفعٍ كان يكسر هذا السطر. والدعوى المقصودة أن **الهويّة تُقرأ من الرابط**
+// فيعرض كلُّ رابطٍ درجةَ صاحبه المُعلَنة في PROFILES — تُشتقّ من مصدرها الحيّ.
+for(const id of ['mohammed','elias','haya']){
+  const q=id==='haya'?'':'?p='+id;
   const pg=await mk(q);
-  const r=await pg.evaluate(()=>({lv:profileOf().level,errs:window.__ERRS.length,miss:censusMissing().length}));
-  ok(r.lv===lv&&r.errs===0&&r.miss===0,`${q||'(هيا)'} ⇒ ${r.lv}، بلا أخطاء ولا دوال ناقصة`);
+  const r=await pg.evaluate((who)=>({
+    lv:profileOf().level,
+    decl:(PROFILES.filter(p=>p.id===who)[0]||{}).level,
+    errs:window.__ERRS.length,miss:censusMissing().length}),id);
+  ok(r.lv===r.decl&&r.errs===0&&r.miss===0,`${q||'(هيا)'} ⇒ ${r.lv} = المُعلَن، بلا أخطاء ولا دوال ناقصة`);
   await pg.close();
 }
 

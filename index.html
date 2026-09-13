@@ -177,7 +177,13 @@ const PROFILES=[
   // A1 لا A2: قياس ١٥ أغسطس — إنتاجها المنطوق شظايا ونسخٌ حرفيّ («I want beach.»،
   // «I eat a sandwich.»)، ودقّة قواعدها على تراكيب فوق الأساسي ٦٦/١٨٩ (٣٥٪).
   {id:"haya",name:"هيا",alias:"بنتي",emoji:"🌸",color:"#DB2777",g:"f",age:11,level:"A1"},
-  {id:"mohammed",name:"محمد",alias:"محمد",emoji:"⚽",color:"#0E7490",g:"m",only:"coach",age:19,level:"B1"},
+  // محمد B1 ⇐ B2 — ١٣ سبتمبر، بأمر صاحب المشروع ومعه سندٌ مقاس على ٢١ يوماً:
+  // مقروء B1 ‏٩٤٪ (ن=٥٤) و**مقروء B2 ‏٩٤٪** (ن=١٨) — أي أن قراءته B2 بقاعدة الـ٨٥٪
+  // (Wilson et al. 2019) نفسها التي رُفع بها إلياس في ٨ سبتمبر.
+  // **والمقايضة تُقال لا تُخفى**: استماعه ٧٥٪ عند B1 (ن=٦٣)، فالرفع يُصعّده كذلك —
+  // و`level` حقلٌ واحد للمهارتين. عُرض الأمر ببياناته فقال «ارفعه». والمراقبة معلنة:
+  // إن هبط استماعه دون ٧٠٪ فالسبب هذا الرفع لا غموض، ويُبلَّغ به.
+  {id:"mohammed",name:"محمد",alias:"محمد",emoji:"⚽",color:"#0E7490",g:"m",only:"coach",age:19,level:"B2"},
   // ===== إلياس A2 ⇐ B1 — ٨ سبتمبر، أمرُ صاحب المشروع ومعه سندٌ مقاس =====
   // القاعدة هنا «المستوى يُقاس لا يُفترَض»، والقياس يسنده: بوّابة التمدّد
   // (`bankStretched`) فُتحت له فعلاً منذ ٦ سبتمبر فصار يرى عناصر B1 **إضافةً**
@@ -4486,7 +4492,7 @@ const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEn
   "statBidi","statBidiLine","statBankFor","statSrsUpdate","buildStatPlan","goStatMenu","startStat","startStatWs","statChoose","statNext","renderStat","renderStatMenu","renderStatResult",
   "writeTokens","writeTtr","writeSim","writePrevLoad","writePrevAdd","writeSelfSim",
   "accLoad","accSave","accRecord","accRate","stretchOn","bankStretched",
-  "seqStart","seqReset","seqPlanFor","seqWeek","seqCur","startSeq","seqCardHTML","renderSeq",
+  "seqStart","seqReset","seqPlanFor","seqPlanLevel","seqWeek","seqCur","startSeq","seqCardHTML","renderSeq",
   "loadKpi","kpiAgg","renderKpi","gjtNorm","gjtNoOxford","gjtWordBag","gjtIsRotation","gjtDefect","gjtCondSplit","gjtSameVerb","gjtZeroFirst",
   "ttsServerAllow","ttsServerFail","ttsServerWin","wbNeed","wbLeft",
   "azExpandWords",
@@ -8977,7 +8983,11 @@ const K1_WORDS=("the be to of and a in that have i it for not on with he as you 
 "there here this that these those it what who how why where when").split(/\s+/);
 const K1_SET=(function(){const s={};K1_WORDS.forEach(function(w){if(w)s[w]=1});return s})();
 // أحجام المفردات المرجعية لكل درجة CEFR — مرجعٌ يُعرض لا رقمٌ يُحسب هنا
-const VOCAB_TARGET={A1:1000,A2:2000,B1:3250};
+// **معرَّفٌ ولا يقرؤه أحدٌ اليوم** (فُحص ١٣ سبتمبر: هذا السطر وحده في الملفّ) — وُصف
+// حين كُتب بأنه «مرجعٌ يُعرض» ولم يُوصَل بعرضٍ قطّ، فيُقال بدل أن يُفترض. وB2/C1
+// أُضيفتا وقايةً من نفس ثقب `ENG_LV_RANK` (٢٥ أغسطس): خريطةُ مستوًى ناقصةٌ تُنتج
+// undefined متى وُصلت لاحقاً. والأرقام تقديرات Milton & Meara المنشورة لا مختارة.
+const VOCAB_TARGET={A1:1000,A2:2000,B1:3250,B2:4500,C1:6000};
 function writeLfp(t){
   const w=writeTokens(t);
   if(!w.length)return{n:0,k1:0,beyond:0,pct:0};
@@ -14944,7 +14954,26 @@ function seqStart(){
   return v;
 }
 function seqReset(){lsSet(SEQ_START_KEY,todayStr());render()}
-function seqPlanFor(level){return SEQ_PLAN[String(level||"A2")]||SEQ_PLAN.A2}
+// ===== السقوط إلى **أقرب درجةٍ أدنى** لا إلى A2 — ١٣ سبتمبر =====
+// كان `||SEQ_PLAN.A2`، و`SEQ_PLAN` بلا B2 ولا C1. فرفعُ محمد B1⇐B2 اليوم كان
+// سيُنزل خطّته الأسبوعية من B1 إلى **A2** — رفعُ مستوًى يُنتج محتوًى أسهل، وهو
+// نفس صنف عطل `systemGenWrite` الذي كان يسقط بمحمد B2 إلى شكل A2 (٢٩ أغسطس).
+// فالسقوط الآن إلى أقرب درجةٍ **دونه** بحساب `ENG_LV_RANK`، **ويُسمّى على الشاشة**
+// بدل أن تقول البطاقة «مستوى B2» فوق محتوى A2 — شاشةٌ تكذب أسوأ من نقصٍ مُعلَن.
+// **والنقص يبقى نقصاً**: خطّتا B2 وC1 لم تُؤلَّفا بعد (بندٌ في «المفتوح الآن»).
+function seqPlanLevel(level){
+  const L=String(level||"A2");
+  if(SEQ_PLAN[L])return L;
+  const r=ENG_LV_RANK[L];
+  if(!Number.isFinite(r))return "A2";
+  let best=null;
+  Object.keys(SEQ_PLAN).forEach(function(k){
+    const kr=ENG_LV_RANK[k];
+    if(Number.isFinite(kr)&&kr<r&&(best===null||kr>ENG_LV_RANK[best]))best=k;
+  });
+  return best||"A2";
+}
+function seqPlanFor(level){return SEQ_PLAN[seqPlanLevel(level)]}
 // الأسبوع يدور ولا يقف: بلوغ الثانية عشرة يعيد إلى الأولى بمراجعةٍ لا بفراغ
 function seqWeek(){
   const st=seqStart(),d=Math.floor((Date.parse(todayStr())-Date.parse(st))/86400000);
@@ -14957,7 +14986,7 @@ function seqCardHTML(){
   const u=seqCur(),p=profileOf();
   return `<button class="mode full" style="background:#0F766E;border-color:#0F766E;text-align:right" onclick="startSeq()">
     <span class="m-name">🗺️ تركيز هذا الأسبوع · الأسبوع ${toAr(seqWeek())} من ${toAr(SEQ_WEEKS)}</span>
-    <div class="m-sub">${esc(u.f)} — <span style="direction:ltr;display:inline-block">${esc(u.g)}</span> · مستوى ${esc(p.level||"A2")}</div>
+    <div class="m-sub">${esc(u.f)} — <span style="direction:ltr;display:inline-block">${esc(u.g)}</span> · مستوى ${esc(seqPlanLevel(p.level))}</div>
   </button>`;
 }
 function renderSeq(){
@@ -14976,9 +15005,11 @@ function renderSeq(){
   }).join("");
   app.innerHTML=`${profileBarHTML()}
   <div class="card">
-    <h2>🗺️ تسلسل التدريس — مستوى ${esc(p.level||"A2")}</h2>
+    <h2>🗺️ تسلسل التدريس — مستوى ${esc(seqPlanLevel(p.level))}</h2>
     <p class="sub">اثنا عشر أسبوعاً مرتّبة بتدرّج كامبردج لهذه الدرجة. هذا <b>إرشاد لا قيد</b>:
     الأقسام تبقى مفتوحة كلّها، والتسلسل يقول أين يكون التركيز هذا الأسبوع.</p>
+    ${seqPlanLevel(p.level)!==(p.level||"A2")?`<p class="sub" style="color:#92400E;background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;padding:.5rem .7rem">
+    خطّة مستوى ${esc(p.level)} لم تُكتب بعد، والمعروض خطّة ${esc(seqPlanLevel(p.level))} — أقرب درجةٍ دونه.</p>`:""}
     ${rows}
     <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1rem">
       <button class="btn" onclick="home()">رجوع</button>

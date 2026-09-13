@@ -258,16 +258,19 @@ console.log('\n١٠) يظهر على الصفحات الثلاث');
 const h=await mk('index.html');
 ok((await h.evaluate(()=>document.body.innerText.indexOf('لعبة الاستماع')>=0)),'هيا: الزرّ ظاهر');
 const m=await mk('mohammed.html');
-const mLv=await m.evaluate(()=>({level:profileOf().level,btn:document.body.innerText.indexOf('لعبة الاستماع')>=0}));
-ok(mLv.level==='B1'&&mLv.btn,`محمد B1 والزرّ ظاهر (${mLv.level})`);
+const mLv=await m.evaluate(()=>({level:profileOf().level,decl:(PROFILES.filter(p=>p.id==='mohammed')[0]||{}).level,btn:document.body.innerText.indexOf('لعبة الاستماع')>=0}));
+// **لا تُكتب درجةٌ هنا** — إلياس رُفع A2⇐B1 (٨ سبتمبر) ومحمد B1⇐B2 (١٣ سبتمبر)،
+// وكلُّ رفعٍ كان يكسر هذه الأسطر. والدعوى «صفحتُه تُعلن مستواه والزرّ ظاهر وجلستُه
+// من بنك مستواه» لا «مستواه درجةٌ بعينها» — فتُشتقّ من PROFILES الحيّ.
+ok(mLv.level===mLv.decl&&mLv.btn,`محمد ${mLv.level} = المُعلَن، والزرّ ظاهر`);
 await m.evaluate(()=>startMinpair());
-const mBank=await m.evaluate(()=>minpairItems.every(x=>x.lv==='B1'));
-ok(mBank,'وجلسته من بنك B1 وحده');
+const mBank=await m.evaluate(()=>minpairItems.every(x=>x.lv===profileOf().level));
+ok(mBank,`وجلسته من بنك ${mLv.level} وحده`);
 const e=await mk('elias.html');
-const eLv=await e.evaluate(()=>({level:profileOf().level,btn:document.body.innerText.indexOf('لعبة الاستماع')>=0}));
+const eLv=await e.evaluate(()=>({level:profileOf().level,decl:(PROFILES.filter(p=>p.id==='elias')[0]||{}).level,btn:document.body.innerText.indexOf('لعبة الاستماع')>=0}));
 // إلياس A2 ⇐ B1 (٨ سبتمبر، أمر صاحب المشروع بسندٍ مقاس). والدعوى هنا «صفحته
 // تُعلن مستواه والزرّ ظاهر» لا «إلياس A2» — فتُصحَّح القيمة ويبقى ما جاءت لأجله.
-ok(eLv.level==='B1'&&eLv.btn,`إلياس B1 والزرّ ظاهر (${eLv.level})`);
+ok(eLv.level===eLv.decl&&eLv.btn,`إلياس ${eLv.level} = المُعلَن، والزرّ ظاهر`);
 
 console.log('\n١١) لا انحدار');
 for(const [pg,fn,md] of [['index.html',"startMinpair()",'minpair'],['index.html',"startListen()",'listen'],

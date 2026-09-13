@@ -209,12 +209,15 @@ t=await page.textContent('#app');
 ok(/جلسة أخرى/.test(t),'وتُعرض شاشة النتيجة');
 
 console.log('\n١٣) يظهر على الصفحات الثلاث — كلٌّ ببنك مستواه');
-// إلياس A2 ⇐ B1 — ٨ سبتمبر (انظر تعليق PROFILES). والدعوى المقصودة أن بنك STEP
-// يُطابق مستوى صاحب الصفحة، لا أن مستواه A2 بعينه.
-for(const [f,lv] of [['index.html','A1'],['mohammed.html','B1'],['elias.html','B1']]){
+// **لا تُكتب درجةٌ هنا** — إلياس رُفع A2⇐B1 (٨ سبتمبر) ومحمد B1⇐B2 (١٣ سبتمبر)،
+// وكلُّ رفعٍ كان يكسر هذا السطر. والدعوى المقصودة أن بنك STEP يُطابق مستوى صاحب
+// الصفحة كما تُعلنه PROFILES، لا أن مستواه درجةٌ بعينها — فتُشتقّ من مصدرها الحيّ.
+for(const [f,id] of [['index.html','haya'],['mohammed.html','mohammed'],['elias.html','elias']]){
   const pg=await mk(f);
-  const r=await pg.evaluate(()=>({lv:profileOf().level,btn:document.body.innerText.indexOf('نمط اختبار STEP')>=0}));
-  ok(r.lv===lv&&r.btn,`${f}: المستوى ${r.lv} والزرّ ظاهر`);
+  const r=await pg.evaluate(who=>({lv:profileOf().level,
+    decl:(PROFILES.filter(p=>p.id===who)[0]||{}).level,
+    btn:document.body.innerText.indexOf('نمط اختبار STEP')>=0}),id);
+  ok(r.lv===r.decl&&r.btn,`${f}: المستوى ${r.lv} = المُعلَن، والزرّ ظاهر`);
   const same=await pg.evaluate(()=>{startStep();return stepItems.every(x=>x.lv===profileOf().level)});
   ok(same,`${f}: وجلسته من بنك مستواه وحده`);
 }
