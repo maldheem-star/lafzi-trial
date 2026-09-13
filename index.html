@@ -4484,6 +4484,8 @@ const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEn
   "logQueueLoad","logQueuePush","logQueueFlush","logSend",
   "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","piPickBand","piBandBoxHTML","piArm","piOk","piVals","piGateOn","piGated","piSig1","fsrsUpdate","fsrsIvl","fsrsR","fsrsInitS","fsrsInitD","fsrsNextD","fsrsClampD","fsrsRecallS","fsrsForgetS","tmplKey","spreadTemplates","drawSpread","qzErrRecord","qzDueKeys","qzInjectDue","qzErrOf","qzCardDone","fadeQText","fadeAnsText","fadeGateStart","fadeGateStop","fadeGateNeeded","copyAzRaw","esc","weakPhonemeStr","num0","profileBarHTML","renderHomeCoachOnly","learnerInfo","coachLevel","toMasc","genderizeText","genderizeNode","genderizeInit","lsGet","lsSet","lsDel","pkey","cxShuffleOrder","cxPreStart","cxPreChoose","cxPreNext","cxPreQuit","cxPreCur","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary","coachMode","coachAskHelp","coachEnd","coachReview","coachFixParse","weakClean","coachSaysNow","snapToSuggestion","editDist","coachShowSays","coachParse","coachTopicGo","coachTopicBack","coachTopicClean","coachFreeScene","wbStart","wbPick","wbUnpick","wbCheck","wbHTML","wbReady","wbSay","wbReset","wbNorm","wbDistract","wbStageGet","wbGrade","engBuildFor","dictErrRecord","dictIsBuild","dictCur","renderDictationBuild","planCheckBuild","echoRecord","echoArmed","coachBankOn","coachBankSync","coachBankCheck","fixCardSave","fixCardGrade","bugOf","basicsOpNow","basicsOperands","basicsBugNow","digitsOf","factDcpm","factDcpmBand","coachLeave","coachAutoReview","coachSetFail","coachHintNow","basicsErrDelta","shapeRecord","shapeArmed","ob1Arm","ob1Jump","ob1Back","ob1Complete","ob1BoxHTML","btArm","btBorrow","btComplete","btBoxHTML","basicsOb1Gated","basicsBtGated","basicsShapeLogRemedy","shapeLogRemedy","quotArm","quotGated","quotReset","listenBankFor","listenSrsUpdate","buildListenPlan","listenPlaysHint","startListen","listenPlay","listenChoose","listenNext","renderListen",
   "readBankFor","readSrsUpdate","buildReadPlan","startRead","readChoose","readNext","renderRead",
+  // القراءة الجهرية: دوالُّها متأخّرةٌ في الملفّ كدوالّ التسجيل، فتُعدّ معها لا بعدها
+  "readAloudTarget","readAloudWhole","readAloudMaxMs","raStart","raStop","raFinish","raReset","raRetry","readAloudHTML","raLogText",
   "genBankLoad","genBankAdd","parseGenBlock","fetchTutorGen","genTopUp","genCallsFor","genFire","genSweepFlight","genGateLog","genLogText","parseGenPickBlock","parseGenVideoBlock","errCollect","errDraw","errCount","errQuizCount","startErrors","errCheck","errChoose","errNext","errReplay","renderErrors",
   "minpairBankFor","minpairSrsUpdate","buildMinpairPlan","startMinpair","minpairPlay","minpairChoose","minpairNext","renderMinpair",
   "gramBankFor","gramSrsUpdate","buildGramPlan","startGram","gramChoose","gramNext","renderGram","fetchTutorGenGram","gramGenTopUp",
@@ -8612,7 +8614,7 @@ function buildReadPlan(){
 let readItems=[],readIdx=0,readPicked=-1,readLocked=false,readScore=0,readShownAt=0,readDone=false;
 function startRead(){
   readItems=buildReadPlan();readIdx=0;readPicked=-1;readLocked=false;readScore=0;readDone=false;
-  mode="read";readShownAt=Date.now();
+  mode="read";readShownAt=Date.now();raReset();
   {const it=readCur();secGateStart("read",it&&it.passage);}window.scrollTo(0,0);render();
   genTopUp("read",GEN_BANK_KEY_READ,profileOf().level||"A2");
 }
@@ -8630,8 +8632,163 @@ function readNext(){
   genPulseFor("read",profileOf().level||"A2",readIdx);   // نبضةُ توليد أثناء الجلسة
 
   if(readIdx+1>=readItems.length){readDone=true;window.scrollTo(0,0);render();return}
-  readIdx++;readPicked=-1;readLocked=false;readShownAt=Date.now();
+  readIdx++;readPicked=-1;readLocked=false;readShownAt=Date.now();raReset();
   {const it=readCur();secGateStart("read",it&&it.passage);}window.scrollTo(0,0);render();
+}
+
+// ===== قراءةُ القطعة جهراً بعد الإجابة — ١٣ سبتمبر =====
+// الفجوة: قسم المقروء كان يقيس **الفهم** وحده، ولا شيء يقيس أن تُنطَق الكلماتُ التي
+// فهمتها. وتمرين النطق القائم (`speaking`) جملٌ مؤلَّفة منفصلة عن أيّ سياق، فلا يقول
+// إن كانت تستطيع قراءة نصٍّ فهمته فعلاً.
+//
+// **وثلاثة قراراتٍ من صاحب المشروع، لا اجتهاداً**:
+//   ١) **بعد الإجابة لا قبلها** — فلا تُفسد صيغة كامبردج: يُقاس الفهم أوّلاً، ثمّ
+//      يُعلَّم من الخطأ. نفس منطق عرض نصّ الاستماع بعد القفل (١ سبتمبر).
+//   ٢) **جملة الدليل** للأخوين — وهي المُبرَزة أصلاً بعد القفل، فالقراءة تُربَط بالفهم
+//      بدل أن تكون تلاوةً منفصلة، وطولُها يقارب ما قِيس عليه Azure فعلاً.
+//   ٣) **والقطعة كاملة لهيا** — وقياسُها يُجيز ذلك: قطع A1 ‏٦-١٣ كلمة (وسيط ٨)،
+//      أي بطول جملةٍ واحدة عند غيرها لا فقرة.
+//
+// **وموصولٌ لا مبنيّ من جديد**: نفس `azureTry(target)` العامّة التي تقبل أيّ نصٍّ
+// مرجعي، ونفس `azureToScore` و`pronWeakRecord` و`wavTapStart/Stop` و`recMs`
+// و`PRON_MIN_MS` — لا مسطرةَ ثانية ولا مسار مفاتيح ثانٍ.
+//
+// **ولا سقوطَ إلى Groq هنا خلافاً لـ`speakFinish`** — وهذا قرارٌ يُقال لا يُخفى:
+// ذاك المسار يقيس بمطابقة نصّ التفريغ، ودرس ٢٥ أغسطس صريح أن النصّ لا يفصل «نطقتها
+// خطأً» عن «سمعها المفرّغ خطأً» — ويزداد سوءاً كلّما طال النصّ. فإن تعثّر Azure
+// يُقال ذلك بسببه المسمّى ولا تُحتسب درجةٌ من مسطرةٍ أضعف.
+const READ_PACE_SPW=1.25; // ثانيةٌ لكل كلمة — **مقاسةٌ لا مختارة**: الشريحة ٩٠ من
+// ١٤٧ تسجيلاً حقيقياً لهيا في `speaking` (متوسّط ٤٫٩ كلمة، وسيط ٣٫٥ث).
+// و`PRON_MAX_MS=15000` كان **يقطع** أطول قطعة لها (١٣ كلمة × ١٫٢٥ = ١٦٫٣ث)، فالسقف
+// هنا يُشتقّ من الطول لا يبقى ثابتاً. واتّجاه خطئه آمن عمداً: سقفٌ أوسع لا يُجبر أحداً
+// على الكلام (حدُّ أمانٍ لا نافذةٌ إجبارية)، وسقفٌ أضيق يبتر قراءةً حقيقية.
+// وللأخوين لا وتيرةَ مقاسة أصلاً (لا صفوف `speaking` لهما قطّ)، فتُستعمل وتيرتُها وهي
+// **الأبطأ يقيناً** — تقديرٌ زائد في الاتّجاه الآمن، ويُقال بدل أن يُفترَض.
+const RA_HARD_MS=45000; // حدٌّ أقصى مطلقاً: تسجيلٌ أطول من هذا عطلٌ لا قراءة
+function readAloudMaxMs(target){
+  const w=String(target||"").trim().split(/\s+/).filter(Boolean).length;
+  return Math.min(RA_HARD_MS,Math.max(PRON_MAX_MS,Math.round(w*READ_PACE_SPW*1000)));
+}
+// هيا تقرأ القطعة كاملة، وغيرُها جملةَ الدليل. والسقوط آمن: إن تعذّر استخراج جملة
+// الدليل (جوابٌ بلا كلمةٍ طويلة تُطابِق) تُقرأ القطعة كاملة بدل شاشةٍ بلا هدف.
+function readAloudTarget(it){
+  if(!it||!it.passage)return "";
+  if(profileId()==="haya")return String(it.passage).trim();
+  const ev=evidenceSentence(it.passage,it.c[it.a]);
+  return (ev||String(it.passage)).trim();
+}
+function readAloudWhole(it){return profileId()==="haya"||!evidenceSentence(it&&it.passage,it&&it.c?it.c[it.a]:"")}
+let raRec=null,raStream=null,raChunks=[],raTimer=null,raElapsed=0,raListening=false,raBusy=false,raResult=null,raStartedAt=0,raDone=false;
+function raReset(){
+  if(raTimer){clearInterval(raTimer);raTimer=null}
+  if(raStream){try{raStream.getTracks().forEach(function(t){t.stop()})}catch(e){}raStream=null}
+  raRec=null;raChunks=[];raElapsed=0;raListening=false;raBusy=false;raResult=null;raDone=false;
+}
+async function raStart(){
+  if(raListening||raBusy)return;
+  if(!micSupported()){raResult={err:"no_api"};render();return}
+  raResult=null;
+  const cap=readAloudMaxMs(readAloudTarget(readCur()));
+  try{
+    raStream=await navigator.mediaDevices.getUserMedia({audio:true});
+    raChunks=[];
+    wavTapStart(raStream);            // مأخذ Azure الموازي — فشله لا يمنع التسجيل
+    raRec=new MediaRecorder(raStream);
+    raRec.ondataavailable=function(e){if(e.data&&e.data.size>0)raChunks.push(e.data)};
+    raRec.onstop=function(){raFinish()};
+    raRec.start();
+    raListening=true;raElapsed=0;raStartedAt=Date.now();
+    raTimer=setInterval(function(){raElapsed+=0.25;if(raElapsed*1000>=cap){raStop();return}render()},250);
+    render();
+  // مفاتيح `MIC_ERR_HELP` هي أسماء أخطاء المواصفة نفسها (NotAllowedError…)، فتُقرأ
+  // من `e.name` مباشرةً — لا جدولَ ترجمةٍ ثانٍ يتباعد عن الأوّل
+  }catch(e){raListening=false;raResult={err:(e&&e.name)||"no_api"};render()}
+}
+function raStop(){
+  if(!raListening)return;
+  raListening=false;raBusy=true;
+  if(raTimer){clearInterval(raTimer);raTimer=null}
+  try{if(raRec&&raRec.state!=="inactive")raRec.stop();else{raBusy=false}}catch(e){raBusy=false}
+  render();
+}
+async function raFinish(){
+  const it=readCur();const target=readAloudTarget(it);
+  if(raStream){try{raStream.getTracks().forEach(function(t){t.stop()})}catch(e){}raStream=null}
+  wavTapStop();                        // يُوقَف قبل القراءة لا بعدها
+  const ms=recMs(raStartedAt,raElapsed);
+  // محاولةٌ مُهمَلة: الزرّ أُغلق قبل أن تتكلّم — لا تُحتسب خطأً، وتُسجَّل كي تُعرف
+  if(ms<PRON_MIN_MS){
+    raResult={discarded:true,why:"short"};raBusy=false;
+    logAnswer("read_aloud","discarded",false,"[too_short]",it?it.id:null,ms,
+      {q_text:raLogText(it,target,null)});
+    render();return;
+  }
+  const az=await azureTry(target);
+  if(az.data){
+    const sc=azureToScore(target,az.data);
+    pronWeakRecord(sc.weak,sc.pct);
+    raResult={ok:sc.ok,sc:sc,heard:az.data.heard||az.data.lexical||"",engine:"azure"};
+    raDone=true;raBusy=false;
+    logAnswer("read_aloud",it.lv,sc.ok,az.data.heard||"",it.id,ms,
+      {score_pct:sc.pct,engine:"azure",judged_by:sc.by,
+       azure_fail:(sc.disagree?"misaligned_pass":(sc.aligned?null:"misaligned")),
+       accuracy_pct:num0(sc.accuracy),fluency_pct:num0(sc.fluency),completeness_pct:num0(sc.completeness),
+       weak_phonemes:weakPhonemeStr(sc.weak),repeats:sc.repeats||0,q_text:raLogText(it,target,sc)});
+    render();return;
+  }
+  // تعثّر Azure: يُسمّى ولا يُستبدَل بمسطرةٍ أضعف
+  raResult={fail:az.fail||"azure_fail",detail:az.detail||""};raBusy=false;
+  logAnswer("read_aloud","azure_fail",null,String(az.fail||"").slice(0,80),it?it.id:null,ms,
+    {azure_fail:String(az.fail||"").slice(0,60),q_text:raLogText(it,target,null)});
+  render();
+}
+// السطر يحمل **ما طُلبت قراءته** ومَداه (القطعة أم جملة الدليل) وعدد كلماته — فبلا
+// هذا يستحيل لاحقاً تفسير فرقٍ بين متعلّمٍ وآخر: مَن قرأ ثماني كلماتٍ ومَن قرأ ثلاثين.
+// الصندوق يظهر **بعد القفل وحده**، و**اختياريٌّ لا يُقفل الانتقال** — كزرّ الإعادة 🔊
+// وزرّ المثال المحلول: من لا ميكروفون عنده (أو متصفّحٌ مدمج يحجبه) يُكمل جلسته كما كانت.
+// ونصُّ الهدف **يُعرض بالإنجليزية معزولاً في صندوقه** بـ`direction:ltr` كسائر نصوص
+// التطبيق الإنجليزية — والسطر العربي فوقه في عنصرٍ مستقلّ، فلا يجتمعان في سطرٍ واحد
+// (درسُ الانقلاب البصري: عربيةٌ + لاتينيّ في سطرٍ واحد يُقرأ مقلوباً).
+function readAloudHTML(it){
+  const target=readAloudTarget(it);
+  if(!target)return "";
+  const scope=readAloudWhole(it)?"القطعة":"الجملة المُبرَزة";
+  const r=raResult||{};
+  let body="";
+  if(raListening){
+    body=`<div style="color:#B91C1C;font-weight:700">● يسجّل… ${toAr((Math.round(raElapsed*10)/10).toFixed(1))}ث</div>
+      <button class="btn" style="background:#DC2626;margin-top:8px" onclick="raStop()">⏹ انتهيتُ</button>`;
+  }else if(raBusy){
+    body=`<div style="color:#64748B">جارٍ التقييم…</div>`;
+  }else if(r.sc){
+    const p=num0(r.sc.pct);
+    const col=p>=80?"#059669":p>=60?"#D97706":"#DC2626";
+    const weak=weakPhonemeStr(r.sc.weak);
+    body=`<div style="font-size:22px;font-weight:800;color:${col}">${toAr(p)}%</div>
+      ${weak?`<div class="sub" style="margin-top:4px">أصواتٌ تحتاج تدريباً: <span style="direction:ltr;display:inline-block">${esc(weak)}</span></div>`:""}
+      <button class="link-btn" style="margin-top:6px" onclick="raRetry()">🔁 أعيدي القراءة</button>`;
+  }else if(r.discarded){
+    body=`<div class="sub">التسجيل قصيرٌ جداً — اضغطي «انتهيتُ» بعد أن تُنهي القراءة.</div>
+      <button class="btn" style="background:#7C3AED;margin-top:8px" onclick="raStart()">🎤 حاولي ثانيةً</button>`;
+  }else if(r.fail){
+    body=`<div class="sub">تعذّر التقييم الآن (${esc(String(r.fail))}) — وهذا لا يُحتسب عليكِ.</div>
+      <button class="btn" style="background:#7C3AED;margin-top:8px" onclick="raStart()">🎤 حاولي ثانيةً</button>`;
+  }else if(r.err){
+    const h=MIC_ERR_HELP[r.err]||{t:"تعذّر فتح الميكروفون: "+r.err,f:"أرسلي لي هذا الاسم كما هو."};
+    body=`<div class="sub"><b>${esc(h.t)}</b><br>${esc(h.f)}</div>`;
+  }else{
+    body=`<button class="btn" style="background:#7C3AED" onclick="raStart()">🎤 اقرئي بصوتك</button>`;
+  }
+  return `<div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:12px;padding:12px;margin-top:12px">
+    <div style="font-weight:700;color:#166534;margin-bottom:6px">🎤 اقرئي ${scope} بصوتٍ واضح <span style="font-weight:400;color:#15803D">(اختياري)</span></div>
+    <div style="background:#fff;border:1px solid #DCFCE7;border-radius:8px;padding:10px;margin-bottom:10px;direction:ltr;text-align:left;font-family:Georgia,serif;color:#14532D;line-height:1.7">${esc(target)}</div>
+    ${body}</div>`;
+}
+function raRetry(){raResult=null;raDone=false;raStart()}
+function raLogText(it,target,sc){
+  const w=String(target||"").trim().split(/\s+/).filter(Boolean).length;
+  const scope=readAloudWhole(it)?"القطعة":"جملة الدليل";
+  return ("[جهر:"+scope+" · كلمات:"+w+"] "+String(target||"")+(sc&&sc.by?" · حَكَم:"+sc.by:"")).slice(0,1200);
 }
 function renderRead(){
   if(!readItems.length){app.innerHTML=`<div class="card" style="text-align:center">لا شيء مستحقّ اليوم — عودي غداً 🌱</div><button class="link-btn" onclick="home()">→ الرئيسية</button>`;return}
@@ -8652,6 +8809,7 @@ function renderRead(){
     <div class="q" style="direction:ltr;text-align:left;font-family:Georgia,serif;margin-top:12px">${it.q}</div>
     <div class="choices">${secGateHTML()}${choices}</div>
     ${readLocked?`<div class="explain"><div class="explain-title" style="color:${readPicked===it.a?'#059669':'#B45309'}">${readPicked===it.a?"✓ فهمتِ صحيحاً":"الصحيحة بالأخضر — والجملة المُبرَزة أعلاه هي الدليل"}</div></div>`:""}
+    ${readLocked?readAloudHTML(it):""}
   </div>
   ${readLocked?`<button class="btn" style="background:#7C3AED" onclick="readNext()">${readIdx+1>=readItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`:""}`;
 }
