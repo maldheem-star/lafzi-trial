@@ -8,7 +8,7 @@
 const {chromium}=require(process.env.PW||"/opt/node22/lib/node_modules/playwright");
 const BASE=process.env.BASE||"http://127.0.0.1:8931";
 let pass=0,fail=0;
-function ok(c,m){if(c){pass++;console.log("  ✓ "+m)}else{fail++;console.log("  ✗ "+m)}}
+function ok(c,m){if(c){pass++;console.log("  ✓ "+m)}else{fail++;console.log("  ✗ FAIL "+m)}}
 
 (async()=>{
   const br=await chromium.launch();
