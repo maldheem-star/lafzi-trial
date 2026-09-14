@@ -4486,7 +4486,7 @@ const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEn
   "readBankFor","readSrsUpdate","buildReadPlan","startRead","readChoose","readNext","renderRead",
   // القراءة الجهرية: دوالُّها متأخّرةٌ في الملفّ كدوالّ التسجيل، فتُعدّ معها لا بعدها
   "readAloudTarget","readAloudWhole","readAloudMaxMs","raStart","raStop","raFinish","raReset","raRetry","readAloudHTML","raLogText",
-  "genBankLoad","genBankAdd","parseGenBlock","fetchTutorGen","genTopUp","genCallsFor","genFire","genSweepFlight","genGateLog","genLogText","mcOrder","ordFor","posLog","agreeSlip","agreeToks","gramAgvOffered","parseGenPickBlock","parseGenVideoBlock","errCollect","errDraw","errCount","errQuizCount","startErrors","errCheck","errChoose","errNext","errReplay","renderErrors",
+  "genBankLoad","genBankAdd","parseGenBlock","fetchTutorGen","genTopUp","genCallsFor","genFire","genSweepFlight","genGateLog","genLogText","mcOrder","ordFor","posLog","listenOrd","readOrd","agreeSlip","agreeToks","gramAgvOffered","parseGenPickBlock","parseGenVideoBlock","errCollect","errDraw","errCount","errQuizCount","startErrors","errCheck","errChoose","errNext","errReplay","renderErrors",
   "minpairBankFor","minpairSrsUpdate","buildMinpairPlan","startMinpair","minpairPlay","minpairChoose","minpairNext","renderMinpair",
   "gramBankFor","gramSrsUpdate","buildGramPlan","startGram","gramChoose","gramNext","renderGram","fetchTutorGenGram","gramGenTopUp",
   "stepBankFor","stepSrsUpdate","buildStepPlan","startStep","stepChoose","stepSeqPick","stepSeqUnpick","stepSeqSubmit","stepNext","renderStep","fetchTutorGenStep","stepGenTopUp","fetchTutorGenVideo","videoGenTopUp",
@@ -8143,6 +8143,23 @@ function ordFor(order,it){
   const n=((it&&it.c)||[]).length;
   return (order&&order.length===n)?order:((it&&it.c)||[]).map(function(_,i){return i});
 }
+// ===== والترتيب يُعلَّق على العنصر لا على لحظة الإسناد =====
+// أوّل تنفيذٍ أسند `listenOrder` في `startListen`/`listenNext` وحدهما، فأيّ مسارٍ
+// يُبدّل العنصر بغيرهما يُبقي ترتيباً لعنصرٍ مضى — فيُعرض ترتيبٌ ويُسجَّل آخر.
+// **وكشفه `test_gen` لا فحصي**: يضع `listenItems` مباشرةً ثم يختار، فخرج السطر
+// بترتيبٍ لم يُعرض. والعلاج بنيويّ: يُحفَظ معرّفُ العنصر مع ترتيبه، ويُعاد الخلط
+// متى تغيّر — فالعرض والسجلّ يقرآن الدالّة نفسها ولا يمكن أن يفترقا.
+let listenOrder=[],listenOrderId=null,readOrder=[],readOrderId=null;
+function listenOrd(it){
+  if(!it||!it.c)return [];
+  if(listenOrderId!==it.id||listenOrder.length!==it.c.length){listenOrder=mcOrder(it);listenOrderId=it.id}
+  return listenOrder;
+}
+function readOrd(it){
+  if(!it||!it.c)return [];
+  if(readOrderId!==it.id||readOrder.length!==it.c.length){readOrder=mcOrder(it);readOrderId=it.id}
+  return readOrder;
+}
 // وموضعُ الخيار يدخل السجلّ كما ينصّ عُرف المشروع حرفياً («موضع ١ · الصواب موضع ٣»):
 // بلاه يبقى انحياز الموضع غير قابلٍ للقياس حتى بعد خلطه — وهو نصفُ الإصلاح لا كلّه.
 function posLog(order,it,pick){
@@ -8488,10 +8505,10 @@ function buildListenPlan(){
 // بمرّة واحدة قياساً على IELTS خطأً — IELTS اختبارٌ مختلف، لا B1 Preliminary
 // الحقيقي — صُحِّح ١٦ أغسطس. إرشادٌ نصّي لا قفل تقني: الزرّ لا يُمنع لأيّ مستوى.
 function listenPlaysHint(lv){return "استمعي مرّتين، ثم اختاري"}
-let listenItems=[],listenIdx=0,listenPicked=-1,listenLocked=false,listenScore=0,listenPlays=0,listenShownAt=0,listenDone=false,listenOrder=[];
+let listenItems=[],listenIdx=0,listenPicked=-1,listenLocked=false,listenScore=0,listenPlays=0,listenShownAt=0,listenDone=false;
 function startListen(){
   listenItems=buildListenPlan();listenIdx=0;listenPicked=-1;listenLocked=false;listenScore=0;listenPlays=0;listenDone=false;
-  mode="listen";listenShownAt=Date.now();listenOrder=mcOrder(listenCur());secGateStart("listen",listenCur()&&listenCur().audio);window.scrollTo(0,0);render();
+  mode="listen";listenShownAt=Date.now();secGateStart("listen",listenCur()&&listenCur().audio);window.scrollTo(0,0);render();
   genTopUp("listen",GEN_BANK_KEY_LISTEN,profileOf().level||"A2");
 }
 function listenCur(){return listenItems[listenIdx]}
@@ -8505,15 +8522,15 @@ function listenChoose(i){
   const it=listenCur();listenLocked=true;listenPicked=i;
   const ok=i===it.a;if(ok)listenScore++;
   listenSrsUpdate(it.id,ok);
-  logAnswer("listen",it.lv,ok,posLog(listenOrder,it,i),it.id,listenShownAt?Date.now()-listenShownAt:null,
-    {_sk:skOf(it),q_text:(srcTag(it)+genLogText(it,listenOrder)+" · plays:"+listenPlays).slice(0,1200)});
+  logAnswer("listen",it.lv,ok,posLog(listenOrd(it),it,i),it.id,listenShownAt?Date.now()-listenShownAt:null,
+    {_sk:skOf(it),q_text:(srcTag(it)+genLogText(it,listenOrd(it))+" · plays:"+listenPlays).slice(0,1200)});
   render();
 }
 function listenNext(){
   genPulseFor("listen",profileOf().level||"A2",listenIdx);   // نبضةُ توليد أثناء الجلسة
 
   if(listenIdx+1>=listenItems.length){listenDone=true;window.scrollTo(0,0);render();return}
-  listenIdx++;listenPicked=-1;listenLocked=false;listenPlays=0;listenShownAt=Date.now();listenOrder=mcOrder(listenCur());
+  listenIdx++;listenPicked=-1;listenLocked=false;listenPlays=0;listenShownAt=Date.now();
   secGateStart("listen",listenCur()&&listenCur().audio);render();
   setTimeout(function(){listenPlay()},300);
 }
@@ -8522,7 +8539,7 @@ function renderListen(){
   if(listenDone)return renderListenResult();
   const it=listenCur();
   const prog=`<div class="bar">${listenItems.map(function(_,i){return `<div class="seg" style="background:${i<=listenIdx?'#0284C7':'#E2E8F0'};opacity:${i<=listenIdx?1:.5}"></div>`}).join("")}</div>`;
-  const choices=ordFor(listenOrder,it).map(function(wi,k){
+  const choices=listenOrd(it).map(function(wi,k){
     let bg="#fff",bd="#E2E8F0",col="#334155";
     if(listenLocked){if(wi===it.a){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(wi===listenPicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}
     return `<button class="choice" style="background:${bg};border-color:${bd};color:${col};direction:ltr;text-align:left;font-family:Georgia,serif" onclick="listenChoose(${wi})" ${gateOpen()?"":"disabled style=\"opacity:.45;pointer-events:none\""} ${listenLocked?"disabled":""}><span class="letter">${L[k]}</span>${it.c[wi]}</button>`}).join("");
@@ -8648,10 +8665,10 @@ function buildReadPlan(){
   let out=planNewMix(due,fresh,READ_N);
   return planNoTwins(topUpPlan(out,POOL,READ_N,"read"),POOL,READ_N,"read");   // مراجعة حرّة إن استُنفد المستحقّ+الجديد، ثم لا توأمان في الجلسة
 }
-let readItems=[],readIdx=0,readPicked=-1,readLocked=false,readScore=0,readShownAt=0,readDone=false,readOrder=[];
+let readItems=[],readIdx=0,readPicked=-1,readLocked=false,readScore=0,readShownAt=0,readDone=false;
 function startRead(){
   readItems=buildReadPlan();readIdx=0;readPicked=-1;readLocked=false;readScore=0;readDone=false;
-  mode="read";readShownAt=Date.now();raReset();readOrder=mcOrder(readCur());
+  mode="read";readShownAt=Date.now();raReset();
   {const it=readCur();secGateStart("read",it&&it.passage);}window.scrollTo(0,0);render();
   genTopUp("read",GEN_BANK_KEY_READ,profileOf().level||"A2");
 }
@@ -8661,15 +8678,15 @@ function readChoose(i){
   const it=readCur();readLocked=true;readPicked=i;
   const ok=i===it.a;if(ok)readScore++;
   readSrsUpdate(it.id,ok);
-  logAnswer("read",it.lv,ok,posLog(readOrder,it,i),it.id,readShownAt?Date.now()-readShownAt:null,
-    {_sk:skOf(it),q_text:((skOf(it)?"["+skOf(it)+"] ":"")+srcTag(it)+genLogText(it,readOrder)).slice(0,1200)});
+  logAnswer("read",it.lv,ok,posLog(readOrd(it),it,i),it.id,readShownAt?Date.now()-readShownAt:null,
+    {_sk:skOf(it),q_text:((skOf(it)?"["+skOf(it)+"] ":"")+srcTag(it)+genLogText(it,readOrd(it))).slice(0,1200)});
   render();
 }
 function readNext(){
   genPulseFor("read",profileOf().level||"A2",readIdx);   // نبضةُ توليد أثناء الجلسة
 
   if(readIdx+1>=readItems.length){readDone=true;window.scrollTo(0,0);render();return}
-  readIdx++;readPicked=-1;readLocked=false;readShownAt=Date.now();raReset();readOrder=mcOrder(readCur());
+  readIdx++;readPicked=-1;readLocked=false;readShownAt=Date.now();raReset();
   {const it=readCur();secGateStart("read",it&&it.passage);}window.scrollTo(0,0);render();
 }
 
@@ -8832,7 +8849,7 @@ function renderRead(){
   if(readDone)return renderReadResult();
   const it=readCur();
   const prog=`<div class="bar">${readItems.map(function(_,i){return `<div class="seg" style="background:${i<=readIdx?'#7C3AED':'#E2E8F0'};opacity:${i<=readIdx?1:.5}"></div>`}).join("")}</div>`;
-  const choices=ordFor(readOrder,it).map(function(wi,k){
+  const choices=readOrd(it).map(function(wi,k){
     let bg="#fff",bd="#E2E8F0",col="#334155";
     if(readLocked){if(wi===it.a){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(wi===readPicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}
     return `<button class="choice" style="background:${bg};border-color:${bd};color:${col};direction:ltr;text-align:left;font-family:Georgia,serif" onclick="readChoose(${wi})" ${gateOpen()?"":"disabled style=\"opacity:.45;pointer-events:none\""} ${readLocked?"disabled":""}><span class="letter">${L[k]}</span>${it.c[wi]}</button>`}).join("");
