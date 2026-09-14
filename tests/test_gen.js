@@ -180,11 +180,24 @@ await page.evaluate(item=>{
 },{id:'ai_listen_test1',lv:'B1',q:'سؤال تجريبي',c:['واحد','اثنان','ثلاثة'],a:1,ai:true,audio:'A short test passage.'});
 await page.waitForTimeout(300);
 const row=logs.find(l=>l.domain==='listen');
+// ===== دعوى «الصواب في الموضع ٢» رُوجعت ولم تُدهَس — ١٤ سبتمبر =====
+// كُتبت يوم كان الاستماع يعرض `it.c` بترتيب البنك، فصار موضع الصواب في السطر هو
+// موضعه في البنك دائماً. وبعد خلط المواضع (عيبٌ مقاس: الصواب في الموضع الثالث ٨٪
+// بدل ٣٣٪) صار الموضع **يتغيّر كل جولة** — وهذا هو المقصود. وما جاء له القسم باقٍ
+// بحرفه: الصواب موسومٌ بـ✓، والخيارات الثلاثة كلُّها حاضرة بمواضعها ١..٣ — لكنه
+// يُشتقّ الآن من الترتيب المعروض فعلاً (`listenOrd`) لا من رقمٍ مكتوب.
+const shownPos=await page.evaluate(()=>{
+  const it=listenItems[0];const ord=listenOrd(it);
+  return {ans:ord.indexOf(it.a)+1,all:ord.map((wi,k)=>(k+1)+') '+it.c[wi])};
+});
 ok(!!row,'سطرٌ وصل');
 ok(row&&row.q_text.includes('[مولَّد]')&&row.q_text.includes('سؤال تجريبي'),'ومعه علامة التوليد ونصّ السؤال');
 ok(row&&row.q_text.includes('A short test passage.'),'ونصّ المقطع نفسه — لا يُعرف لاحقاً بلا هذا');
-ok(row&&/2\) اثنان ✓/.test(row.q_text),'وموضع الصواب موسوم كعُرف اللفظي/العلمي');
-ok(row&&row.q_text.includes('1) واحد')&&row.q_text.includes('3) ثلاثة'),'وبقيّة الخيارات معها');
+ok(row&&new RegExp(shownPos.ans+'\\) اثنان ✓').test(row.q_text),
+  `وموضع الصواب موسومٌ بموضعه المعروض فعلاً (${shownPos.ans}) لا بموضعه في البنك`);
+ok(row&&shownPos.all.every(s=>row.q_text.includes(s)),'وبقيّة الخيارات معها بمواضعها المعروضة');
+ok(row&&/^موضع .+ · الصواب موضع /.test(row.response),
+  'وحقلُ الإجابة يحمل موضعها وموضع الصواب — فينكشف انحياز الموضع: '+(row.response||'').slice(0,40));
 
 console.log('\n١٢) وعنصر البنك الثابت (غير مولَّد) يبقى كما كان — بلا إطالة');
 logs=[];

@@ -4484,7 +4484,9 @@ const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEn
   "logQueueLoad","logQueuePush","logQueueFlush","logSend",
   "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","piPickBand","piBandBoxHTML","piArm","piOk","piVals","piGateOn","piGated","piSig1","fsrsUpdate","fsrsIvl","fsrsR","fsrsInitS","fsrsInitD","fsrsNextD","fsrsClampD","fsrsRecallS","fsrsForgetS","tmplKey","spreadTemplates","drawSpread","qzErrRecord","qzDueKeys","qzInjectDue","qzErrOf","qzCardDone","fadeQText","fadeAnsText","fadeGateStart","fadeGateStop","fadeGateNeeded","copyAzRaw","esc","weakPhonemeStr","num0","profileBarHTML","renderHomeCoachOnly","learnerInfo","coachLevel","toMasc","genderizeText","genderizeNode","genderizeInit","lsGet","lsSet","lsDel","pkey","cxShuffleOrder","cxPreStart","cxPreChoose","cxPreNext","cxPreQuit","cxPreCur","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary","coachMode","coachAskHelp","coachEnd","coachReview","coachFixParse","weakClean","coachSaysNow","snapToSuggestion","editDist","coachShowSays","coachParse","coachTopicGo","coachTopicBack","coachTopicClean","coachFreeScene","wbStart","wbPick","wbUnpick","wbCheck","wbHTML","wbReady","wbSay","wbReset","wbNorm","wbDistract","wbStageGet","wbGrade","engBuildFor","dictErrRecord","dictIsBuild","dictCur","renderDictationBuild","planCheckBuild","echoRecord","echoArmed","coachBankOn","coachBankSync","coachBankCheck","fixCardSave","fixCardGrade","bugOf","basicsOpNow","basicsOperands","basicsBugNow","digitsOf","factDcpm","factDcpmBand","coachLeave","coachAutoReview","coachSetFail","coachHintNow","basicsErrDelta","shapeRecord","shapeArmed","ob1Arm","ob1Jump","ob1Back","ob1Complete","ob1BoxHTML","btArm","btBorrow","btComplete","btBoxHTML","basicsOb1Gated","basicsBtGated","basicsShapeLogRemedy","shapeLogRemedy","quotArm","quotGated","quotReset","listenBankFor","listenSrsUpdate","buildListenPlan","listenPlaysHint","startListen","listenPlay","listenChoose","listenNext","renderListen",
   "readBankFor","readSrsUpdate","buildReadPlan","startRead","readChoose","readNext","renderRead",
-  "genBankLoad","genBankAdd","parseGenBlock","fetchTutorGen","genTopUp","genCallsFor","genFire","genSweepFlight","genGateLog","genLogText","parseGenPickBlock","parseGenVideoBlock","errCollect","errDraw","errCount","errQuizCount","startErrors","errCheck","errChoose","errNext","errReplay","renderErrors",
+  // القراءة الجهرية: دوالُّها متأخّرةٌ في الملفّ كدوالّ التسجيل، فتُعدّ معها لا بعدها
+  "readAloudTarget","readAloudWhole","readAloudMaxMs","raStart","raStop","raFinish","raReset","raRetry","readAloudHTML","raLogText",
+  "genBankLoad","genBankAdd","parseGenBlock","fetchTutorGen","genTopUp","genCallsFor","genFire","genSweepFlight","genGateLog","genLogText","mcOrder","ordFor","posLog","listenOrd","readOrd","agreeSlip","agreeToks","gramAgvOffered","parseGenPickBlock","parseGenVideoBlock","errCollect","errDraw","errCount","errQuizCount","startErrors","errCheck","errChoose","errNext","errReplay","renderErrors",
   "minpairBankFor","minpairSrsUpdate","buildMinpairPlan","startMinpair","minpairPlay","minpairChoose","minpairNext","renderMinpair",
   "gramBankFor","gramSrsUpdate","buildGramPlan","startGram","gramChoose","gramNext","renderGram","fetchTutorGenGram","gramGenTopUp",
   "stepBankFor","stepSrsUpdate","buildStepPlan","startStep","stepChoose","stepSeqPick","stepSeqUnpick","stepSeqSubmit","stepNext","renderStep","fetchTutorGenStep","stepGenTopUp","fetchTutorGenVideo","videoGenTopUp",
@@ -6715,6 +6717,12 @@ const MASC_W={
   // أوصاف ونداءات
   // ولا يُدرَج هنا مثل «ممتازة» و«جاهزة»: هما في نصّها صفتان لمؤنّث لا خطابٌ لها
   // («طلاقة ممتازة»، «جمل جاهزة»)، وتذكيرهما يُفسد الجملة.
+  // ===== ولا تُدرَج هنا صيغُ الماضي المخاطَب ولا الضمائر المتّصلة — ١٤ سبتمبر =====
+  // أدرجتُ ستّاً وعشرين منها («أخطأتِ»، «عندكِ»، «مستواكِ»…) ظنّاً أن الجدول بلا ماضٍ،
+  // **وكان الظنّ خاطئاً**: `toMasc` تحملهما بقاعدتين عامّتين منذ بنائها (تِ ⇐ تَ،
+  // وكِ ⇐ ك)، تُغطّيان كلَّ كلمةٍ لا ما أُحصيه منها. وإدراجي **يسبق القاعدة** فيُنتج
+  // «أخطأت» عاريةً بدل «أخطأتَ» — أي أنه كان **تراجعاً** لا سدَّ ثغرة. وكشفه
+  // `test_gender` (§٤) لا فحصي. والدرس مكرَّر: افحص قبل أن تُدرِج نقصاً في قائمة النواقص.
   "المتدرّبة":"المتدرّب","متدرّبة":"متدرّب","لكِ":"لك","عليكِ":"عليك"
 };
 const AR_TOK=/[ء-يً-ْٰـ]+/g;
@@ -8112,11 +8120,52 @@ function genTopUp(domain,key,level){
     })}))break;
   }
 }
+// ===== خلطُ مواضع الخيارات في الاستماع/المقروء — ١٣ سبتمبر =====
+// `gram` و`step` و`stat` و`minpair` تخلط مواضعها كل جولة منذ بنائها، و**الاستماع
+// والمقروء وحدهما لم تكونا تخلطان**: `it.c` يُعرض بترتيبه و`it.a` ثابت. والأثر مقاسٌ
+// لا مفترَض — على ٢٦٥ عنصراً مولَّداً يقع الصواب في الموضع الثالث **٨٪** بدل ٣٣٪،
+// لأن النموذج يُخرج `CORRECT:` في A أو B غالباً. فمن يتعلّم الموضع يُصيب بلا فهم،
+// وهو بعينه انحياز الموضع الذي حُورب ثلاث مرّات في أقسامٍ أخرى (٢٥ و٢٩ أغسطس).
+//
+// **موصولٌ لا مبنيّ من جديد**: نفس نمط `gramOrder`/`stepOrder` حرفياً — ترتيبُ عرضٍ
+// مخلوط، والنقر يمرّر **الفهرس الأصلي** فلا يتغيّر حساب الصواب ولا `it.a` ولا جملة
+// الدليل ولا هدف القراءة الجهرية. و`ordFor` تسقط إلى الترتيب الطبيعي إن غاب الخلط،
+// فلا شاشة فارغة بحال.
+function mcOrder(it){return shuffle(((it&&it.c)||[]).map(function(_,i){return i}))}
+function ordFor(order,it){
+  const n=((it&&it.c)||[]).length;
+  return (order&&order.length===n)?order:((it&&it.c)||[]).map(function(_,i){return i});
+}
+// ===== والترتيب يُعلَّق على العنصر لا على لحظة الإسناد =====
+// أوّل تنفيذٍ أسند `listenOrder` في `startListen`/`listenNext` وحدهما، فأيّ مسارٍ
+// يُبدّل العنصر بغيرهما يُبقي ترتيباً لعنصرٍ مضى — فيُعرض ترتيبٌ ويُسجَّل آخر.
+// **وكشفه `test_gen` لا فحصي**: يضع `listenItems` مباشرةً ثم يختار، فخرج السطر
+// بترتيبٍ لم يُعرض. والعلاج بنيويّ: يُحفَظ معرّفُ العنصر مع ترتيبه، ويُعاد الخلط
+// متى تغيّر — فالعرض والسجلّ يقرآن الدالّة نفسها ولا يمكن أن يفترقا.
+let listenOrder=[],listenOrderId=null,readOrder=[],readOrderId=null;
+function listenOrd(it){
+  if(!it||!it.c)return [];
+  if(listenOrderId!==it.id||listenOrder.length!==it.c.length){listenOrder=mcOrder(it);listenOrderId=it.id}
+  return listenOrder;
+}
+function readOrd(it){
+  if(!it||!it.c)return [];
+  if(readOrderId!==it.id||readOrder.length!==it.c.length){readOrder=mcOrder(it);readOrderId=it.id}
+  return readOrder;
+}
+// وموضعُ الخيار يدخل السجلّ كما ينصّ عُرف المشروع حرفياً («موضع ١ · الصواب موضع ٣»):
+// بلاه يبقى انحياز الموضع غير قابلٍ للقياس حتى بعد خلطه — وهو نصفُ الإصلاح لا كلّه.
+function posLog(order,it,pick){
+  const ord=ordFor(order,it);
+  return "موضع "+toAr(ord.indexOf(pick)+1)+" · الصواب موضع "+toAr(ord.indexOf(it.a)+1)+" · "+it.c[pick];
+}
 // الخيارات كلّها مع موضع الصواب — نفس عُرف تسجيل أسئلة الذكاء الاصطناعي في اللفظي/العلمي
 // (`«١) … | ٢) … ✓»`)، فبلا هذا لا يُعرف ماذا وُلِّد أصلاً ولا أين وقع الخيار الصحيح.
-function genLogText(it){
+// **وبترتيب العرض لا بترتيب البنك** بعد خلط المواضع — وإلّا قال السطر إن الصواب في
+// الموضع الذي كُتب فيه لا الذي رأته، وهو بعينه العطل الذي أُصلح في gram/step/stat.
+function genLogText(it,order){
   if(!it.ai)return it.q;
-  const opts=it.c.map(function(c,i){return (i+1)+") "+c+(i===it.a?" ✓":"")}).join(" | ");
+  const opts=ordFor(order,it).map(function(wi,k){return (k+1)+") "+it.c[wi]+(wi===it.a?" ✓":"")}).join(" | ");
   const src=it.audio||it.passage||"";
   return `[مولَّد] ${it.q} — النصّ: ${src} — الخيارات: ${opts}`;
 }
@@ -8466,8 +8515,8 @@ function listenChoose(i){
   const it=listenCur();listenLocked=true;listenPicked=i;
   const ok=i===it.a;if(ok)listenScore++;
   listenSrsUpdate(it.id,ok);
-  logAnswer("listen",it.lv,ok,it.c[i],it.id,listenShownAt?Date.now()-listenShownAt:null,
-    {_sk:skOf(it),q_text:(srcTag(it)+genLogText(it)+" · plays:"+listenPlays).slice(0,1200)});
+  logAnswer("listen",it.lv,ok,posLog(listenOrd(it),it,i),it.id,listenShownAt?Date.now()-listenShownAt:null,
+    {_sk:skOf(it),q_text:(srcTag(it)+genLogText(it,listenOrd(it))+" · plays:"+listenPlays).slice(0,1200)});
   render();
 }
 function listenNext(){
@@ -8483,10 +8532,10 @@ function renderListen(){
   if(listenDone)return renderListenResult();
   const it=listenCur();
   const prog=`<div class="bar">${listenItems.map(function(_,i){return `<div class="seg" style="background:${i<=listenIdx?'#0284C7':'#E2E8F0'};opacity:${i<=listenIdx?1:.5}"></div>`}).join("")}</div>`;
-  const choices=it.c.map(function(c,i){
+  const choices=listenOrd(it).map(function(wi,k){
     let bg="#fff",bd="#E2E8F0",col="#334155";
-    if(listenLocked){if(i===it.a){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(i===listenPicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}
-    return `<button class="choice" style="background:${bg};border-color:${bd};color:${col};direction:ltr;text-align:left;font-family:Georgia,serif" onclick="listenChoose(${i})" ${gateOpen()?"":"disabled style=\"opacity:.45;pointer-events:none\""} ${listenLocked?"disabled":""}><span class="letter">${L[i]}</span>${c}</button>`}).join("");
+    if(listenLocked){if(wi===it.a){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(wi===listenPicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}
+    return `<button class="choice" style="background:${bg};border-color:${bd};color:${col};direction:ltr;text-align:left;font-family:Georgia,serif" onclick="listenChoose(${wi})" ${gateOpen()?"":"disabled style=\"opacity:.45;pointer-events:none\""} ${listenLocked?"disabled":""}><span class="letter">${L[k]}</span>${it.c[wi]}</button>`}).join("");
   app.innerHTML=`
   <button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
   ${prog}
@@ -8612,7 +8661,7 @@ function buildReadPlan(){
 let readItems=[],readIdx=0,readPicked=-1,readLocked=false,readScore=0,readShownAt=0,readDone=false;
 function startRead(){
   readItems=buildReadPlan();readIdx=0;readPicked=-1;readLocked=false;readScore=0;readDone=false;
-  mode="read";readShownAt=Date.now();
+  mode="read";readShownAt=Date.now();raReset();
   {const it=readCur();secGateStart("read",it&&it.passage);}window.scrollTo(0,0);render();
   genTopUp("read",GEN_BANK_KEY_READ,profileOf().level||"A2");
 }
@@ -8622,26 +8671,181 @@ function readChoose(i){
   const it=readCur();readLocked=true;readPicked=i;
   const ok=i===it.a;if(ok)readScore++;
   readSrsUpdate(it.id,ok);
-  logAnswer("read",it.lv,ok,it.c[i],it.id,readShownAt?Date.now()-readShownAt:null,
-    {_sk:skOf(it),q_text:((skOf(it)?"["+skOf(it)+"] ":"")+srcTag(it)+genLogText(it)).slice(0,1200)});
+  logAnswer("read",it.lv,ok,posLog(readOrd(it),it,i),it.id,readShownAt?Date.now()-readShownAt:null,
+    {_sk:skOf(it),q_text:((skOf(it)?"["+skOf(it)+"] ":"")+srcTag(it)+genLogText(it,readOrd(it))).slice(0,1200)});
   render();
 }
 function readNext(){
   genPulseFor("read",profileOf().level||"A2",readIdx);   // نبضةُ توليد أثناء الجلسة
 
   if(readIdx+1>=readItems.length){readDone=true;window.scrollTo(0,0);render();return}
-  readIdx++;readPicked=-1;readLocked=false;readShownAt=Date.now();
+  readIdx++;readPicked=-1;readLocked=false;readShownAt=Date.now();raReset();
   {const it=readCur();secGateStart("read",it&&it.passage);}window.scrollTo(0,0);render();
+}
+
+// ===== قراءةُ القطعة جهراً بعد الإجابة — ١٣ سبتمبر =====
+// الفجوة: قسم المقروء كان يقيس **الفهم** وحده، ولا شيء يقيس أن تُنطَق الكلماتُ التي
+// فهمتها. وتمرين النطق القائم (`speaking`) جملٌ مؤلَّفة منفصلة عن أيّ سياق، فلا يقول
+// إن كانت تستطيع قراءة نصٍّ فهمته فعلاً.
+//
+// **وثلاثة قراراتٍ من صاحب المشروع، لا اجتهاداً**:
+//   ١) **بعد الإجابة لا قبلها** — فلا تُفسد صيغة كامبردج: يُقاس الفهم أوّلاً، ثمّ
+//      يُعلَّم من الخطأ. نفس منطق عرض نصّ الاستماع بعد القفل (١ سبتمبر).
+//   ٢) **جملة الدليل** للأخوين — وهي المُبرَزة أصلاً بعد القفل، فالقراءة تُربَط بالفهم
+//      بدل أن تكون تلاوةً منفصلة، وطولُها يقارب ما قِيس عليه Azure فعلاً.
+//   ٣) **والقطعة كاملة لهيا** — وقياسُها يُجيز ذلك: قطع A1 ‏٦-١٣ كلمة (وسيط ٨)،
+//      أي بطول جملةٍ واحدة عند غيرها لا فقرة.
+//
+// **وموصولٌ لا مبنيّ من جديد**: نفس `azureTry(target)` العامّة التي تقبل أيّ نصٍّ
+// مرجعي، ونفس `azureToScore` و`pronWeakRecord` و`wavTapStart/Stop` و`recMs`
+// و`PRON_MIN_MS` — لا مسطرةَ ثانية ولا مسار مفاتيح ثانٍ.
+//
+// **ولا سقوطَ إلى Groq هنا خلافاً لـ`speakFinish`** — وهذا قرارٌ يُقال لا يُخفى:
+// ذاك المسار يقيس بمطابقة نصّ التفريغ، ودرس ٢٥ أغسطس صريح أن النصّ لا يفصل «نطقتها
+// خطأً» عن «سمعها المفرّغ خطأً» — ويزداد سوءاً كلّما طال النصّ. فإن تعثّر Azure
+// يُقال ذلك بسببه المسمّى ولا تُحتسب درجةٌ من مسطرةٍ أضعف.
+const READ_PACE_SPW=1.25; // ثانيةٌ لكل كلمة — **مقاسةٌ لا مختارة**: الشريحة ٩٠ من
+// ١٤٧ تسجيلاً حقيقياً لهيا في `speaking` (متوسّط ٤٫٩ كلمة، وسيط ٣٫٥ث).
+// و`PRON_MAX_MS=15000` كان **يقطع** أطول قطعة لها (١٣ كلمة × ١٫٢٥ = ١٦٫٣ث)، فالسقف
+// هنا يُشتقّ من الطول لا يبقى ثابتاً. واتّجاه خطئه آمن عمداً: سقفٌ أوسع لا يُجبر أحداً
+// على الكلام (حدُّ أمانٍ لا نافذةٌ إجبارية)، وسقفٌ أضيق يبتر قراءةً حقيقية.
+// وللأخوين لا وتيرةَ مقاسة أصلاً (لا صفوف `speaking` لهما قطّ)، فتُستعمل وتيرتُها وهي
+// **الأبطأ يقيناً** — تقديرٌ زائد في الاتّجاه الآمن، ويُقال بدل أن يُفترَض.
+const RA_HARD_MS=45000; // حدٌّ أقصى مطلقاً: تسجيلٌ أطول من هذا عطلٌ لا قراءة
+function readAloudMaxMs(target){
+  const w=String(target||"").trim().split(/\s+/).filter(Boolean).length;
+  return Math.min(RA_HARD_MS,Math.max(PRON_MAX_MS,Math.round(w*READ_PACE_SPW*1000)));
+}
+// هيا تقرأ القطعة كاملة، وغيرُها جملةَ الدليل. والسقوط آمن: إن تعذّر استخراج جملة
+// الدليل (جوابٌ بلا كلمةٍ طويلة تُطابِق) تُقرأ القطعة كاملة بدل شاشةٍ بلا هدف.
+function readAloudTarget(it){
+  if(!it||!it.passage)return "";
+  if(profileId()==="haya")return String(it.passage).trim();
+  const ev=evidenceSentence(it.passage,it.c[it.a]);
+  return (ev||String(it.passage)).trim();
+}
+function readAloudWhole(it){return profileId()==="haya"||!evidenceSentence(it&&it.passage,it&&it.c?it.c[it.a]:"")}
+let raRec=null,raStream=null,raChunks=[],raTimer=null,raElapsed=0,raListening=false,raBusy=false,raResult=null,raStartedAt=0,raDone=false;
+function raReset(){
+  if(raTimer){clearInterval(raTimer);raTimer=null}
+  if(raStream){try{raStream.getTracks().forEach(function(t){t.stop()})}catch(e){}raStream=null}
+  raRec=null;raChunks=[];raElapsed=0;raListening=false;raBusy=false;raResult=null;raDone=false;
+}
+async function raStart(){
+  if(raListening||raBusy)return;
+  if(!micSupported()){raResult={err:"no_api"};render();return}
+  raResult=null;
+  const cap=readAloudMaxMs(readAloudTarget(readCur()));
+  try{
+    raStream=await navigator.mediaDevices.getUserMedia({audio:true});
+    raChunks=[];
+    wavTapStart(raStream);            // مأخذ Azure الموازي — فشله لا يمنع التسجيل
+    raRec=new MediaRecorder(raStream);
+    raRec.ondataavailable=function(e){if(e.data&&e.data.size>0)raChunks.push(e.data)};
+    raRec.onstop=function(){raFinish()};
+    raRec.start();
+    raListening=true;raElapsed=0;raStartedAt=Date.now();
+    raTimer=setInterval(function(){raElapsed+=0.25;if(raElapsed*1000>=cap){raStop();return}render()},250);
+    render();
+  // مفاتيح `MIC_ERR_HELP` هي أسماء أخطاء المواصفة نفسها (NotAllowedError…)، فتُقرأ
+  // من `e.name` مباشرةً — لا جدولَ ترجمةٍ ثانٍ يتباعد عن الأوّل
+  }catch(e){raListening=false;raResult={err:(e&&e.name)||"no_api"};render()}
+}
+function raStop(){
+  if(!raListening)return;
+  raListening=false;raBusy=true;
+  if(raTimer){clearInterval(raTimer);raTimer=null}
+  try{if(raRec&&raRec.state!=="inactive")raRec.stop();else{raBusy=false}}catch(e){raBusy=false}
+  render();
+}
+async function raFinish(){
+  const it=readCur();const target=readAloudTarget(it);
+  if(raStream){try{raStream.getTracks().forEach(function(t){t.stop()})}catch(e){}raStream=null}
+  wavTapStop();                        // يُوقَف قبل القراءة لا بعدها
+  const ms=recMs(raStartedAt,raElapsed);
+  // محاولةٌ مُهمَلة: الزرّ أُغلق قبل أن تتكلّم — لا تُحتسب خطأً، وتُسجَّل كي تُعرف
+  if(ms<PRON_MIN_MS){
+    raResult={discarded:true,why:"short"};raBusy=false;
+    logAnswer("read_aloud","discarded",false,"[too_short]",it?it.id:null,ms,
+      {q_text:raLogText(it,target,null)});
+    render();return;
+  }
+  const az=await azureTry(target);
+  if(az.data){
+    const sc=azureToScore(target,az.data);
+    pronWeakRecord(sc.weak,sc.pct);
+    raResult={ok:sc.ok,sc:sc,heard:az.data.heard||az.data.lexical||"",engine:"azure"};
+    raDone=true;raBusy=false;
+    logAnswer("read_aloud",it.lv,sc.ok,az.data.heard||"",it.id,ms,
+      {score_pct:sc.pct,engine:"azure",judged_by:sc.by,
+       azure_fail:(sc.disagree?"misaligned_pass":(sc.aligned?null:"misaligned")),
+       accuracy_pct:num0(sc.accuracy),fluency_pct:num0(sc.fluency),completeness_pct:num0(sc.completeness),
+       weak_phonemes:weakPhonemeStr(sc.weak),repeats:sc.repeats||0,q_text:raLogText(it,target,sc)});
+    render();return;
+  }
+  // تعثّر Azure: يُسمّى ولا يُستبدَل بمسطرةٍ أضعف
+  raResult={fail:az.fail||"azure_fail",detail:az.detail||""};raBusy=false;
+  logAnswer("read_aloud","azure_fail",null,String(az.fail||"").slice(0,80),it?it.id:null,ms,
+    {azure_fail:String(az.fail||"").slice(0,60),q_text:raLogText(it,target,null)});
+  render();
+}
+// السطر يحمل **ما طُلبت قراءته** ومَداه (القطعة أم جملة الدليل) وعدد كلماته — فبلا
+// هذا يستحيل لاحقاً تفسير فرقٍ بين متعلّمٍ وآخر: مَن قرأ ثماني كلماتٍ ومَن قرأ ثلاثين.
+// الصندوق يظهر **بعد القفل وحده**، و**اختياريٌّ لا يُقفل الانتقال** — كزرّ الإعادة 🔊
+// وزرّ المثال المحلول: من لا ميكروفون عنده (أو متصفّحٌ مدمج يحجبه) يُكمل جلسته كما كانت.
+// ونصُّ الهدف **يُعرض بالإنجليزية معزولاً في صندوقه** بـ`direction:ltr` كسائر نصوص
+// التطبيق الإنجليزية — والسطر العربي فوقه في عنصرٍ مستقلّ، فلا يجتمعان في سطرٍ واحد
+// (درسُ الانقلاب البصري: عربيةٌ + لاتينيّ في سطرٍ واحد يُقرأ مقلوباً).
+function readAloudHTML(it){
+  const target=readAloudTarget(it);
+  if(!target)return "";
+  const scope=readAloudWhole(it)?"القطعة":"الجملة المُبرَزة";
+  const r=raResult||{};
+  let body="";
+  if(raListening){
+    body=`<div style="color:#B91C1C;font-weight:700">● يسجّل… ${toAr((Math.round(raElapsed*10)/10).toFixed(1))}ث</div>
+      <button class="btn" style="background:#DC2626;margin-top:8px" onclick="raStop()">⏹ انتهيتُ</button>`;
+  }else if(raBusy){
+    body=`<div style="color:#64748B">جارٍ التقييم…</div>`;
+  }else if(r.sc){
+    const p=num0(r.sc.pct);
+    const col=p>=80?"#059669":p>=60?"#D97706":"#DC2626";
+    const weak=weakPhonemeStr(r.sc.weak);
+    body=`<div style="font-size:22px;font-weight:800;color:${col}">${toAr(p)}%</div>
+      ${weak?`<div class="sub" style="margin-top:4px">أصواتٌ تحتاج تدريباً: <span style="direction:ltr;display:inline-block">${esc(weak)}</span></div>`:""}
+      <button class="link-btn" style="margin-top:6px" onclick="raRetry()">🔁 أعيدي القراءة</button>`;
+  }else if(r.discarded){
+    body=`<div class="sub">التسجيل قصيرٌ جداً — اضغطي «انتهيتُ» بعد أن تُنهي القراءة.</div>
+      <button class="btn" style="background:#7C3AED;margin-top:8px" onclick="raStart()">🎤 حاولي ثانيةً</button>`;
+  }else if(r.fail){
+    body=`<div class="sub">تعذّر التقييم الآن (${esc(String(r.fail))}) — وهذا لا يُحتسب عليكِ.</div>
+      <button class="btn" style="background:#7C3AED;margin-top:8px" onclick="raStart()">🎤 حاولي ثانيةً</button>`;
+  }else if(r.err){
+    const h=MIC_ERR_HELP[r.err]||{t:"تعذّر فتح الميكروفون: "+r.err,f:"أرسلي لي هذا الاسم كما هو."};
+    body=`<div class="sub"><b>${esc(h.t)}</b><br>${esc(h.f)}</div>`;
+  }else{
+    body=`<button class="btn" style="background:#7C3AED" onclick="raStart()">🎤 اقرئي بصوتك</button>`;
+  }
+  return `<div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:12px;padding:12px;margin-top:12px">
+    <div style="font-weight:700;color:#166534;margin-bottom:6px">🎤 اقرئي ${scope} بصوتٍ واضح <span style="font-weight:400;color:#15803D">(اختياري)</span></div>
+    <div style="background:#fff;border:1px solid #DCFCE7;border-radius:8px;padding:10px;margin-bottom:10px;direction:ltr;text-align:left;font-family:Georgia,serif;color:#14532D;line-height:1.7">${esc(target)}</div>
+    ${body}</div>`;
+}
+function raRetry(){raResult=null;raDone=false;raStart()}
+function raLogText(it,target,sc){
+  const w=String(target||"").trim().split(/\s+/).filter(Boolean).length;
+  const scope=readAloudWhole(it)?"القطعة":"جملة الدليل";
+  return ("[جهر:"+scope+" · كلمات:"+w+"] "+String(target||"")+(sc&&sc.by?" · حَكَم:"+sc.by:"")).slice(0,1200);
 }
 function renderRead(){
   if(!readItems.length){app.innerHTML=`<div class="card" style="text-align:center">لا شيء مستحقّ اليوم — عودي غداً 🌱</div><button class="link-btn" onclick="home()">→ الرئيسية</button>`;return}
   if(readDone)return renderReadResult();
   const it=readCur();
   const prog=`<div class="bar">${readItems.map(function(_,i){return `<div class="seg" style="background:${i<=readIdx?'#7C3AED':'#E2E8F0'};opacity:${i<=readIdx?1:.5}"></div>`}).join("")}</div>`;
-  const choices=it.c.map(function(c,i){
+  const choices=readOrd(it).map(function(wi,k){
     let bg="#fff",bd="#E2E8F0",col="#334155";
-    if(readLocked){if(i===it.a){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(i===readPicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}
-    return `<button class="choice" style="background:${bg};border-color:${bd};color:${col};direction:ltr;text-align:left;font-family:Georgia,serif" onclick="readChoose(${i})" ${gateOpen()?"":"disabled style=\"opacity:.45;pointer-events:none\""} ${readLocked?"disabled":""}><span class="letter">${L[i]}</span>${c}</button>`}).join("");
+    if(readLocked){if(wi===it.a){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(wi===readPicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}
+    return `<button class="choice" style="background:${bg};border-color:${bd};color:${col};direction:ltr;text-align:left;font-family:Georgia,serif" onclick="readChoose(${wi})" ${gateOpen()?"":"disabled style=\"opacity:.45;pointer-events:none\""} ${readLocked?"disabled":""}><span class="letter">${L[k]}</span>${it.c[wi]}</button>`}).join("");
   app.innerHTML=`
   <button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
   ${prog}
@@ -8652,6 +8856,7 @@ function renderRead(){
     <div class="q" style="direction:ltr;text-align:left;font-family:Georgia,serif;margin-top:12px">${it.q}</div>
     <div class="choices">${secGateHTML()}${choices}</div>
     ${readLocked?`<div class="explain"><div class="explain-title" style="color:${readPicked===it.a?'#059669':'#B45309'}">${readPicked===it.a?"✓ فهمتِ صحيحاً":"الصحيحة بالأخضر — والجملة المُبرَزة أعلاه هي الدليل"}</div></div>`:""}
+    ${readLocked?readAloudHTML(it):""}
   </div>
   ${readLocked?`<button class="btn" style="background:#7C3AED" onclick="readNext()">${readIdx+1>=readItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`:""}`;
 }
@@ -9888,6 +10093,13 @@ function gramChoose(i){
   // إعادة العرض، أي أن التباعد وحده لا يكفي حين لا يوجد تعلّمٌ بين المرّتين. نفس
   // آلية SHAPE_ARM/shapeRecord القائمة في الأساسيات — لا آلية جديدة، مفتاحٌ مختلف فقط.
   shapeRecord("gram:"+it.id,!ok);
+  // والتسليح على الآلية بجانب التسليح على العنصر — لا بدلاً منه: الأوّل يُمسك عنصراً
+  // بعينه يتكرّر، والثاني يُمسك خطأً يعبر العناصر. ولا يُحلّ إلّا بصوابٍ على عنصرٍ
+  // أتيحت فيه الزلّة (`gramAgvOffered`)، فلا يُطفئه صوابٌ في بابٍ آخر لا علاقة له.
+  const agvRight=(it.c.find(function(c){return c.ok})||{}).t;
+  const slip=ok?null:agreeSlip(agvRight,it.c[i].t);
+  if(slip==="agree_verb")shapeRecord("gram:agv",true);
+  else if(ok&&gramAgvOffered(it))shapeRecord("gram:agv",false);
   // ===== الخيارات تُسجَّل بترتيب العرض لا بترتيب البنك — درس ٢٥ أغسطس =====
   // `gramSetupRound` يخلط العرض فعلاً، لكن السطر كان يُبنى من `it.c` بترتيبه الأصلي —
   // فظهر الصواب في الموضع «٢» في خمسة عناصر متتالية لهيا (٠ من ٥) لأن هكذا كُتب البنك
@@ -9895,7 +10107,7 @@ function gramChoose(i){
   // نالت فيه صفراً — وهو نقضٌ لعُرف المشروع نفسه: «تُسجَّل بموضعها لا بشيفرتها».
   const shown=gramOrder.map(function(wi,k){return (k+1)+") "+it.c[wi].t+(it.c[wi].ok?" ✓":"")}).join(" | ");
   const pickPos=gramOrder.indexOf(i)+1;
-  logAnswer("gram","sentence",ok,"موضع "+toAr(pickPos)+" · "+it.c[i].t,it.id,elapsed,
+  logAnswer("gram","sentence",ok,"موضع "+toAr(pickPos)+" · "+it.c[i].t+(slip?" · "+slip:""),it.id,elapsed,
     {_sk:skOf(it),q_text:shown});
   render();
 }
@@ -9905,11 +10117,77 @@ function gramNext(){
   if(gramIdx+1>=gramItems.length){gramDone=true;render();return}
   gramIdx++;gramSetupRound();render();
 }
+// ===== آليةُ «مطابقة الفعل لفاعله» تُسمَّى وتُسلَّح — ١٣ سبتمبر =====
+// جلسة هيا ١٣ سبتمبر: **٠ من ٥**، و**أربعٌ منها آليةٌ واحدة بعينها** — `He am happy`
+// و`Haya are` و`Misfer cans swim` و`Hanan and Misfer goes`. والتسليح القائم معلَّقٌ على
+// **العنصر** (`"gram:"+it.id`) فلا يُسلَّح أبداً هنا: كلُّ عنصرٍ أُخطئ مرّةً واحدة، والخطأ
+// عابرٌ للعناصر لا مقيمٌ في واحدٍ منها. فالتسليح على **الآلية** — نفس ما فُعل في
+// `"step:order"` يوم ١ سبتمبر حين كان بنك النوع صغيراً متنوّعاً، لا آليةٌ جديدة.
+//
+// **والاسم منشورٌ لا مخترَع**: ترميز أخطاء Cambridge Learner Corpus (Nicholls 2003)
+// يفصل **AGV** (مطابقة الفعل) عن **AGN** (عدد الاسم) — وهو الفصل الذي تحتاجه هذه
+// البيانات بالضبط: `My sisters goes` و`her grandmothers` تغيّر فيهما **الاسم** لا الفعل،
+// فتذكيرٌ بمطابقة الفعل عليهما دعمٌ يُعلّم خطأً.
+//
+// **والكشف إجراءٌ يُقارَن لا وسمٌ يُقرَأ** — وهو الصواب هنا لا اختياراً: عنصرا هيا
+// المولَّدان بلا `sk` أصلاً، والمؤلَّفان موسومان «الفعل be» و«can» — أي أن أيّ تسليحٍ
+// على الوسم كان سيُفوّت أربعتها. فتُقارَن الجملةُ المختارة بالصحيحة: كلمةٌ واحدة تختلف،
+// وزوجُها في مجموعةٍ **مغلقة** (be الحاضرة، وbe الماضية، ومزدوجات الأفعال المساعدة)
+// أو صيغةُ ‎-s‎ لكلمةٍ **لا يسبقها محدِّد** (فما سبقه محدِّدٌ اسمٌ لا فعل).
+//
+// **وقِيس قبل أن يُبنى عليه**: ٥٢ زوجاً حقيقياً من `mawhiba_answer_log` (كل مموّهات
+// `gram` التي أُخطئت فعلاً، الثلاثة أبناء) قوبلت بحكمٍ يدويّ — **٥٢ من ٥٢ مطابقة،
+// وصفرُ بلاغٍ كاذب**: ١٣ منها AGV و٤ AGN و٣٥ بلا اسم (زمنٌ، وحرفُ جرّ، وترتيب…).
+// وكاشفٌ ببلاغاتٍ كاذبة يُدرِّب على تجاهله (درس ٢٥ أغسطس)، فلم يُشحَن قبل هذا الرقم.
+const AGREE_BE_PRES=["am","is","are"],AGREE_BE_PAST=["was","were"];
+const AGREE_AUX=[["do","does"],["have","has"],["don't","doesn't"],["isn't","aren't"],["wasn't","weren't"],["hasn't","haven't"]];
+// محدِّداتٌ ومُلكيّاتٌ وأعدادٌ: ما تلاها اسمٌ لا فعل — فصيغةُ ‎-s‎ بعدها عددُ اسمٍ (AGN).
+const AGREE_DET=["a","an","the","my","your","his","her","its","our","their","this","that","these","those",
+  "some","any","many","much","few","several","no","every","each","both","all","another","other",
+  "one","two","three","four","five","six","seven","eight","nine","ten"];
+function agreeToks(s){return String(s||"").toLowerCase().replace(/[.,!?;:]/g," ").split(/\s+/).filter(Boolean)}
+function agreeSlip(right,wrong){
+  const R=agreeToks(right),W=agreeToks(wrong);
+  if(!R.length||R.length!==W.length)return null;   // حذفٌ أو زيادةٌ آليةٌ أخرى لا مطابقة
+  let at=-1;
+  for(let i=0;i<R.length;i++)if(R[i]!==W[i]){if(at>=0)return null;at=i}   // كلمةٌ واحدة بالضبط
+  if(at<0)return null;
+  const a=R[at],b=W[at],inBoth=function(list){return list.indexOf(a)>=0&&list.indexOf(b)>=0};
+  // داخل الزمن الواحد فقط: is/was اختلافُ زمنٍ لا مطابقة، وwas/were مطابقةُ شخصٍ فعلاً.
+  if(inBoth(AGREE_BE_PRES)||inBoth(AGREE_BE_PAST))return "agree_verb";
+  if(AGREE_AUX.some(function(p){return (p[0]===a&&p[1]===b)||(p[1]===a&&p[0]===b)}))return "agree_verb";
+  if(b===a+"s"||b===a+"es"||a===b+"s"||a===b+"es"){
+    if(at===0)return "agree_noun";                 // بلا سابقٍ يُحكَم به: لا يُسلَّح
+    return AGREE_DET.indexOf(R[at-1])>=0?"agree_noun":"agree_verb";
+  }
+  return null;
+}
+// هل يعرض هذا العنصر فخَّ مطابقةٍ أصلاً؟ — فلا يُحلّ التسليح إلّا بصوابٍ على عنصرٍ
+// **أتيحت فيه** الزلّة ولم تقع؛ وصوابٌ على عنصرٍ لا فخَّ فيه لا يقول شيئاً عن الآلية.
+function gramAgvOffered(it){
+  if(!it||!it.c)return false;
+  const right=(it.c.find(function(c){return c.ok})||{}).t;
+  return !!right&&it.c.some(function(c){return !c.ok&&agreeSlip(right,c.t)==="agree_verb"});
+}
 // تذكيرٌ قبل الاختيار لا بعده — نفس منطق «الدعم قبل لا بعد» (الكتل الملوّنة، ٣٠ أغسطس):
 // إن سبق أن أُخطئ هذا العنصر بعينه مرّتين (shapeArmed) فسطرُ قاعدةٍ من شرح الخيار الصحيح
 // نفسه (لا محتوًى جديد) يُعرض قبل الخيارات — تذكيرٌ بالقاعدة لا كشفٌ لموضع الصواب.
 function gramArmedHint(it){
-  if(!it||gramLocked||!shapeArmed("gram:"+it.id))return "";
+  if(!it||gramLocked)return "";
+  // صندوقٌ واحد لا صندوقان: تذكيرُ العنصر أخصُّ فيتقدّم، وتذكيرُ الآلية يُعرض حين لا
+  // يكون العنصرُ نفسه مُسلَّحاً — فلا تُكدَّس النصائح على شاشةٍ واحدة.
+  if(!shapeArmed("gram:"+it.id)){
+    if(shapeArmed("gram:agv")&&gramAgvOffered(it))
+      // كلُّ قاعدةٍ في سطرها — لا فقرةً واحدة: العبارة الإنجليزية القصيرة («can swim»)
+      // تنكسر في منتصفها عند الالتفاف داخل فقرةٍ عربية، وهو بعينه ما أوجب فصلَ المعادلات
+      // في بنك الإحصاء (٢٥ أغسطس): الفصلُ في **المحتوى** لا في العرض.
+      return `<div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:10px;margin:10px 0;font-size:13px;color:#1E40AF;line-height:1.9">
+        <div>📘 تكرّرت مطابقةُ الفعل لفاعله — تذكّري:</div>
+        <div>• الفاعل المفرد الغائب (he, she, Haya): فعلُه بـ-s، و«be» عنده is.</div>
+        <div>• والفاعل الجمع (they, Hanan and Misfer): فعلُه بلا -s، و«be» عنده are.</div>
+        <div>• وبعد can وwill يبقى الفعلُ مجرّداً — can swim لا cans ولا swims.</div></div>`;
+    return "";
+  }
   const right=it.c.find(function(c){return c.ok});
   if(!right)return "";
   // بلا فرض اتّجاه على السطر كلّه — نفس نمط صندوق شرح الخيار القائم أصلاً (يخلط عربياً
