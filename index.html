@@ -4486,7 +4486,7 @@ const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEn
   "readBankFor","readSrsUpdate","buildReadPlan","startRead","readChoose","readNext","renderRead",
   // القراءة الجهرية: دوالُّها متأخّرةٌ في الملفّ كدوالّ التسجيل، فتُعدّ معها لا بعدها
   "readAloudTarget","readAloudWhole","readAloudMaxMs","raStart","raStop","raFinish","raReset","raRetry","readAloudHTML","raLogText",
-  "genBankLoad","genBankAdd","parseGenBlock","fetchTutorGen","genTopUp","genCallsFor","genFire","genSweepFlight","genGateLog","genLogText","parseGenPickBlock","parseGenVideoBlock","errCollect","errDraw","errCount","errQuizCount","startErrors","errCheck","errChoose","errNext","errReplay","renderErrors",
+  "genBankLoad","genBankAdd","parseGenBlock","fetchTutorGen","genTopUp","genCallsFor","genFire","genSweepFlight","genGateLog","genLogText","mcOrder","ordFor","posLog","agreeSlip","agreeToks","gramAgvOffered","parseGenPickBlock","parseGenVideoBlock","errCollect","errDraw","errCount","errQuizCount","startErrors","errCheck","errChoose","errNext","errReplay","renderErrors",
   "minpairBankFor","minpairSrsUpdate","buildMinpairPlan","startMinpair","minpairPlay","minpairChoose","minpairNext","renderMinpair",
   "gramBankFor","gramSrsUpdate","buildGramPlan","startGram","gramChoose","gramNext","renderGram","fetchTutorGenGram","gramGenTopUp",
   "stepBankFor","stepSrsUpdate","buildStepPlan","startStep","stepChoose","stepSeqPick","stepSeqUnpick","stepSeqSubmit","stepNext","renderStep","fetchTutorGenStep","stepGenTopUp","fetchTutorGenVideo","videoGenTopUp",
@@ -6717,7 +6717,20 @@ const MASC_W={
   // أوصاف ونداءات
   // ولا يُدرَج هنا مثل «ممتازة» و«جاهزة»: هما في نصّها صفتان لمؤنّث لا خطابٌ لها
   // («طلاقة ممتازة»، «جمل جاهزة»)، وتذكيرهما يُفسد الجملة.
-  "المتدرّبة":"المتدرّب","متدرّبة":"متدرّب","لكِ":"لك","عليكِ":"عليك"
+  "المتدرّبة":"المتدرّب","متدرّبة":"متدرّب","لكِ":"لك","عليكِ":"عليك",
+  // ===== الماضي المخاطَب المؤنّث — ثغرةٌ كشفها مسحٌ آليّ، ١٣ سبتمبر =====
+  // الجدول كان يحمل الأمرَ والمضارع المخاطَبين ولا يحمل **الماضي**، فصندوق تذكير
+  // القواعد (١ سبتمبر) يقول لإلياس «📘 **أخطأتِ** هذا السؤال من قبل» منذ شحنه.
+  // واكتُشف بمسحٍ على الكسرة الصريحة في آخر الكلمة لا بالنظر (وهي علامةٌ فارقة للمخاطَبة)،
+  // ثم صُفّي يدوياً مما ليس خطاباً (كسرةٌ وسط كلمة، وحروفُ جرّ، وجمعُ مؤنّثٍ سالم).
+  // وأكثرُه في أقسام هيا وحدها (لا مراقب فيها أصلاً) فلا يضرّ، لكن الإدراج لا يضرّ كذلك:
+  // التحويل لا يقع إلّا على صفحتَي الأخوين، وهو صحيحٌ فيهما دائماً.
+  "أخطأتِ":"أخطأت","عندكِ":"عندك","أنتِ":"أنت","سمعتِ":"سمعت","استمعتِ":"استمعت",
+  "قرأتِ":"قرأت","كتبتِ":"كتبت","دمجتِ":"دمجت","بلغتِ":"بلغت","حاولتِ":"حاولت",
+  "نطقتِ":"نطقت","فهمتِ":"فهمت","اخترتِ":"اخترت","أحسنتِ":"أحسنت","لاحظتِ":"لاحظت",
+  "تجاوزتِ":"تجاوزت","استعملتِ":"استعملت","جاوبتِ":"جاوبت","أجبتِ":"أجبت","قلتِ":"قلت",
+  "كنتِ":"كنت","وصلتِ":"وصلت","أتقنتِ":"أتقنت","مستواكِ":"مستواك","أخطاؤكِ":"أخطاؤك",
+  "تنتظركِ":"تنتظرك"
 };
 const AR_TOK=/[ء-يً-ْٰـ]+/g;
 function toMasc(w){
@@ -8114,11 +8127,35 @@ function genTopUp(domain,key,level){
     })}))break;
   }
 }
+// ===== خلطُ مواضع الخيارات في الاستماع/المقروء — ١٣ سبتمبر =====
+// `gram` و`step` و`stat` و`minpair` تخلط مواضعها كل جولة منذ بنائها، و**الاستماع
+// والمقروء وحدهما لم تكونا تخلطان**: `it.c` يُعرض بترتيبه و`it.a` ثابت. والأثر مقاسٌ
+// لا مفترَض — على ٢٦٥ عنصراً مولَّداً يقع الصواب في الموضع الثالث **٨٪** بدل ٣٣٪،
+// لأن النموذج يُخرج `CORRECT:` في A أو B غالباً. فمن يتعلّم الموضع يُصيب بلا فهم،
+// وهو بعينه انحياز الموضع الذي حُورب ثلاث مرّات في أقسامٍ أخرى (٢٥ و٢٩ أغسطس).
+//
+// **موصولٌ لا مبنيّ من جديد**: نفس نمط `gramOrder`/`stepOrder` حرفياً — ترتيبُ عرضٍ
+// مخلوط، والنقر يمرّر **الفهرس الأصلي** فلا يتغيّر حساب الصواب ولا `it.a` ولا جملة
+// الدليل ولا هدف القراءة الجهرية. و`ordFor` تسقط إلى الترتيب الطبيعي إن غاب الخلط،
+// فلا شاشة فارغة بحال.
+function mcOrder(it){return shuffle(((it&&it.c)||[]).map(function(_,i){return i}))}
+function ordFor(order,it){
+  const n=((it&&it.c)||[]).length;
+  return (order&&order.length===n)?order:((it&&it.c)||[]).map(function(_,i){return i});
+}
+// وموضعُ الخيار يدخل السجلّ كما ينصّ عُرف المشروع حرفياً («موضع ١ · الصواب موضع ٣»):
+// بلاه يبقى انحياز الموضع غير قابلٍ للقياس حتى بعد خلطه — وهو نصفُ الإصلاح لا كلّه.
+function posLog(order,it,pick){
+  const ord=ordFor(order,it);
+  return "موضع "+toAr(ord.indexOf(pick)+1)+" · الصواب موضع "+toAr(ord.indexOf(it.a)+1)+" · "+it.c[pick];
+}
 // الخيارات كلّها مع موضع الصواب — نفس عُرف تسجيل أسئلة الذكاء الاصطناعي في اللفظي/العلمي
 // (`«١) … | ٢) … ✓»`)، فبلا هذا لا يُعرف ماذا وُلِّد أصلاً ولا أين وقع الخيار الصحيح.
-function genLogText(it){
+// **وبترتيب العرض لا بترتيب البنك** بعد خلط المواضع — وإلّا قال السطر إن الصواب في
+// الموضع الذي كُتب فيه لا الذي رأته، وهو بعينه العطل الذي أُصلح في gram/step/stat.
+function genLogText(it,order){
   if(!it.ai)return it.q;
-  const opts=it.c.map(function(c,i){return (i+1)+") "+c+(i===it.a?" ✓":"")}).join(" | ");
+  const opts=ordFor(order,it).map(function(wi,k){return (k+1)+") "+it.c[wi]+(wi===it.a?" ✓":"")}).join(" | ");
   const src=it.audio||it.passage||"";
   return `[مولَّد] ${it.q} — النصّ: ${src} — الخيارات: ${opts}`;
 }
@@ -8451,10 +8488,10 @@ function buildListenPlan(){
 // بمرّة واحدة قياساً على IELTS خطأً — IELTS اختبارٌ مختلف، لا B1 Preliminary
 // الحقيقي — صُحِّح ١٦ أغسطس. إرشادٌ نصّي لا قفل تقني: الزرّ لا يُمنع لأيّ مستوى.
 function listenPlaysHint(lv){return "استمعي مرّتين، ثم اختاري"}
-let listenItems=[],listenIdx=0,listenPicked=-1,listenLocked=false,listenScore=0,listenPlays=0,listenShownAt=0,listenDone=false;
+let listenItems=[],listenIdx=0,listenPicked=-1,listenLocked=false,listenScore=0,listenPlays=0,listenShownAt=0,listenDone=false,listenOrder=[];
 function startListen(){
   listenItems=buildListenPlan();listenIdx=0;listenPicked=-1;listenLocked=false;listenScore=0;listenPlays=0;listenDone=false;
-  mode="listen";listenShownAt=Date.now();secGateStart("listen",listenCur()&&listenCur().audio);window.scrollTo(0,0);render();
+  mode="listen";listenShownAt=Date.now();listenOrder=mcOrder(listenCur());secGateStart("listen",listenCur()&&listenCur().audio);window.scrollTo(0,0);render();
   genTopUp("listen",GEN_BANK_KEY_LISTEN,profileOf().level||"A2");
 }
 function listenCur(){return listenItems[listenIdx]}
@@ -8468,15 +8505,15 @@ function listenChoose(i){
   const it=listenCur();listenLocked=true;listenPicked=i;
   const ok=i===it.a;if(ok)listenScore++;
   listenSrsUpdate(it.id,ok);
-  logAnswer("listen",it.lv,ok,it.c[i],it.id,listenShownAt?Date.now()-listenShownAt:null,
-    {_sk:skOf(it),q_text:(srcTag(it)+genLogText(it)+" · plays:"+listenPlays).slice(0,1200)});
+  logAnswer("listen",it.lv,ok,posLog(listenOrder,it,i),it.id,listenShownAt?Date.now()-listenShownAt:null,
+    {_sk:skOf(it),q_text:(srcTag(it)+genLogText(it,listenOrder)+" · plays:"+listenPlays).slice(0,1200)});
   render();
 }
 function listenNext(){
   genPulseFor("listen",profileOf().level||"A2",listenIdx);   // نبضةُ توليد أثناء الجلسة
 
   if(listenIdx+1>=listenItems.length){listenDone=true;window.scrollTo(0,0);render();return}
-  listenIdx++;listenPicked=-1;listenLocked=false;listenPlays=0;listenShownAt=Date.now();
+  listenIdx++;listenPicked=-1;listenLocked=false;listenPlays=0;listenShownAt=Date.now();listenOrder=mcOrder(listenCur());
   secGateStart("listen",listenCur()&&listenCur().audio);render();
   setTimeout(function(){listenPlay()},300);
 }
@@ -8485,10 +8522,10 @@ function renderListen(){
   if(listenDone)return renderListenResult();
   const it=listenCur();
   const prog=`<div class="bar">${listenItems.map(function(_,i){return `<div class="seg" style="background:${i<=listenIdx?'#0284C7':'#E2E8F0'};opacity:${i<=listenIdx?1:.5}"></div>`}).join("")}</div>`;
-  const choices=it.c.map(function(c,i){
+  const choices=ordFor(listenOrder,it).map(function(wi,k){
     let bg="#fff",bd="#E2E8F0",col="#334155";
-    if(listenLocked){if(i===it.a){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(i===listenPicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}
-    return `<button class="choice" style="background:${bg};border-color:${bd};color:${col};direction:ltr;text-align:left;font-family:Georgia,serif" onclick="listenChoose(${i})" ${gateOpen()?"":"disabled style=\"opacity:.45;pointer-events:none\""} ${listenLocked?"disabled":""}><span class="letter">${L[i]}</span>${c}</button>`}).join("");
+    if(listenLocked){if(wi===it.a){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(wi===listenPicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}
+    return `<button class="choice" style="background:${bg};border-color:${bd};color:${col};direction:ltr;text-align:left;font-family:Georgia,serif" onclick="listenChoose(${wi})" ${gateOpen()?"":"disabled style=\"opacity:.45;pointer-events:none\""} ${listenLocked?"disabled":""}><span class="letter">${L[k]}</span>${it.c[wi]}</button>`}).join("");
   app.innerHTML=`
   <button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
   ${prog}
@@ -8611,10 +8648,10 @@ function buildReadPlan(){
   let out=planNewMix(due,fresh,READ_N);
   return planNoTwins(topUpPlan(out,POOL,READ_N,"read"),POOL,READ_N,"read");   // مراجعة حرّة إن استُنفد المستحقّ+الجديد، ثم لا توأمان في الجلسة
 }
-let readItems=[],readIdx=0,readPicked=-1,readLocked=false,readScore=0,readShownAt=0,readDone=false;
+let readItems=[],readIdx=0,readPicked=-1,readLocked=false,readScore=0,readShownAt=0,readDone=false,readOrder=[];
 function startRead(){
   readItems=buildReadPlan();readIdx=0;readPicked=-1;readLocked=false;readScore=0;readDone=false;
-  mode="read";readShownAt=Date.now();raReset();
+  mode="read";readShownAt=Date.now();raReset();readOrder=mcOrder(readCur());
   {const it=readCur();secGateStart("read",it&&it.passage);}window.scrollTo(0,0);render();
   genTopUp("read",GEN_BANK_KEY_READ,profileOf().level||"A2");
 }
@@ -8624,15 +8661,15 @@ function readChoose(i){
   const it=readCur();readLocked=true;readPicked=i;
   const ok=i===it.a;if(ok)readScore++;
   readSrsUpdate(it.id,ok);
-  logAnswer("read",it.lv,ok,it.c[i],it.id,readShownAt?Date.now()-readShownAt:null,
-    {_sk:skOf(it),q_text:((skOf(it)?"["+skOf(it)+"] ":"")+srcTag(it)+genLogText(it)).slice(0,1200)});
+  logAnswer("read",it.lv,ok,posLog(readOrder,it,i),it.id,readShownAt?Date.now()-readShownAt:null,
+    {_sk:skOf(it),q_text:((skOf(it)?"["+skOf(it)+"] ":"")+srcTag(it)+genLogText(it,readOrder)).slice(0,1200)});
   render();
 }
 function readNext(){
   genPulseFor("read",profileOf().level||"A2",readIdx);   // نبضةُ توليد أثناء الجلسة
 
   if(readIdx+1>=readItems.length){readDone=true;window.scrollTo(0,0);render();return}
-  readIdx++;readPicked=-1;readLocked=false;readShownAt=Date.now();raReset();
+  readIdx++;readPicked=-1;readLocked=false;readShownAt=Date.now();raReset();readOrder=mcOrder(readCur());
   {const it=readCur();secGateStart("read",it&&it.passage);}window.scrollTo(0,0);render();
 }
 
@@ -8795,10 +8832,10 @@ function renderRead(){
   if(readDone)return renderReadResult();
   const it=readCur();
   const prog=`<div class="bar">${readItems.map(function(_,i){return `<div class="seg" style="background:${i<=readIdx?'#7C3AED':'#E2E8F0'};opacity:${i<=readIdx?1:.5}"></div>`}).join("")}</div>`;
-  const choices=it.c.map(function(c,i){
+  const choices=ordFor(readOrder,it).map(function(wi,k){
     let bg="#fff",bd="#E2E8F0",col="#334155";
-    if(readLocked){if(i===it.a){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(i===readPicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}
-    return `<button class="choice" style="background:${bg};border-color:${bd};color:${col};direction:ltr;text-align:left;font-family:Georgia,serif" onclick="readChoose(${i})" ${gateOpen()?"":"disabled style=\"opacity:.45;pointer-events:none\""} ${readLocked?"disabled":""}><span class="letter">${L[i]}</span>${c}</button>`}).join("");
+    if(readLocked){if(wi===it.a){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(wi===readPicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}
+    return `<button class="choice" style="background:${bg};border-color:${bd};color:${col};direction:ltr;text-align:left;font-family:Georgia,serif" onclick="readChoose(${wi})" ${gateOpen()?"":"disabled style=\"opacity:.45;pointer-events:none\""} ${readLocked?"disabled":""}><span class="letter">${L[k]}</span>${it.c[wi]}</button>`}).join("");
   app.innerHTML=`
   <button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
   ${prog}
@@ -10046,6 +10083,13 @@ function gramChoose(i){
   // إعادة العرض، أي أن التباعد وحده لا يكفي حين لا يوجد تعلّمٌ بين المرّتين. نفس
   // آلية SHAPE_ARM/shapeRecord القائمة في الأساسيات — لا آلية جديدة، مفتاحٌ مختلف فقط.
   shapeRecord("gram:"+it.id,!ok);
+  // والتسليح على الآلية بجانب التسليح على العنصر — لا بدلاً منه: الأوّل يُمسك عنصراً
+  // بعينه يتكرّر، والثاني يُمسك خطأً يعبر العناصر. ولا يُحلّ إلّا بصوابٍ على عنصرٍ
+  // أتيحت فيه الزلّة (`gramAgvOffered`)، فلا يُطفئه صوابٌ في بابٍ آخر لا علاقة له.
+  const agvRight=(it.c.find(function(c){return c.ok})||{}).t;
+  const slip=ok?null:agreeSlip(agvRight,it.c[i].t);
+  if(slip==="agree_verb")shapeRecord("gram:agv",true);
+  else if(ok&&gramAgvOffered(it))shapeRecord("gram:agv",false);
   // ===== الخيارات تُسجَّل بترتيب العرض لا بترتيب البنك — درس ٢٥ أغسطس =====
   // `gramSetupRound` يخلط العرض فعلاً، لكن السطر كان يُبنى من `it.c` بترتيبه الأصلي —
   // فظهر الصواب في الموضع «٢» في خمسة عناصر متتالية لهيا (٠ من ٥) لأن هكذا كُتب البنك
@@ -10053,7 +10097,7 @@ function gramChoose(i){
   // نالت فيه صفراً — وهو نقضٌ لعُرف المشروع نفسه: «تُسجَّل بموضعها لا بشيفرتها».
   const shown=gramOrder.map(function(wi,k){return (k+1)+") "+it.c[wi].t+(it.c[wi].ok?" ✓":"")}).join(" | ");
   const pickPos=gramOrder.indexOf(i)+1;
-  logAnswer("gram","sentence",ok,"موضع "+toAr(pickPos)+" · "+it.c[i].t,it.id,elapsed,
+  logAnswer("gram","sentence",ok,"موضع "+toAr(pickPos)+" · "+it.c[i].t+(slip?" · "+slip:""),it.id,elapsed,
     {_sk:skOf(it),q_text:shown});
   render();
 }
@@ -10063,11 +10107,77 @@ function gramNext(){
   if(gramIdx+1>=gramItems.length){gramDone=true;render();return}
   gramIdx++;gramSetupRound();render();
 }
+// ===== آليةُ «مطابقة الفعل لفاعله» تُسمَّى وتُسلَّح — ١٣ سبتمبر =====
+// جلسة هيا ١٣ سبتمبر: **٠ من ٥**، و**أربعٌ منها آليةٌ واحدة بعينها** — `He am happy`
+// و`Haya are` و`Misfer cans swim` و`Hanan and Misfer goes`. والتسليح القائم معلَّقٌ على
+// **العنصر** (`"gram:"+it.id`) فلا يُسلَّح أبداً هنا: كلُّ عنصرٍ أُخطئ مرّةً واحدة، والخطأ
+// عابرٌ للعناصر لا مقيمٌ في واحدٍ منها. فالتسليح على **الآلية** — نفس ما فُعل في
+// `"step:order"` يوم ١ سبتمبر حين كان بنك النوع صغيراً متنوّعاً، لا آليةٌ جديدة.
+//
+// **والاسم منشورٌ لا مخترَع**: ترميز أخطاء Cambridge Learner Corpus (Nicholls 2003)
+// يفصل **AGV** (مطابقة الفعل) عن **AGN** (عدد الاسم) — وهو الفصل الذي تحتاجه هذه
+// البيانات بالضبط: `My sisters goes` و`her grandmothers` تغيّر فيهما **الاسم** لا الفعل،
+// فتذكيرٌ بمطابقة الفعل عليهما دعمٌ يُعلّم خطأً.
+//
+// **والكشف إجراءٌ يُقارَن لا وسمٌ يُقرَأ** — وهو الصواب هنا لا اختياراً: عنصرا هيا
+// المولَّدان بلا `sk` أصلاً، والمؤلَّفان موسومان «الفعل be» و«can» — أي أن أيّ تسليحٍ
+// على الوسم كان سيُفوّت أربعتها. فتُقارَن الجملةُ المختارة بالصحيحة: كلمةٌ واحدة تختلف،
+// وزوجُها في مجموعةٍ **مغلقة** (be الحاضرة، وbe الماضية، ومزدوجات الأفعال المساعدة)
+// أو صيغةُ ‎-s‎ لكلمةٍ **لا يسبقها محدِّد** (فما سبقه محدِّدٌ اسمٌ لا فعل).
+//
+// **وقِيس قبل أن يُبنى عليه**: ٥٢ زوجاً حقيقياً من `mawhiba_answer_log` (كل مموّهات
+// `gram` التي أُخطئت فعلاً، الثلاثة أبناء) قوبلت بحكمٍ يدويّ — **٥٢ من ٥٢ مطابقة،
+// وصفرُ بلاغٍ كاذب**: ١٣ منها AGV و٤ AGN و٣٥ بلا اسم (زمنٌ، وحرفُ جرّ، وترتيب…).
+// وكاشفٌ ببلاغاتٍ كاذبة يُدرِّب على تجاهله (درس ٢٥ أغسطس)، فلم يُشحَن قبل هذا الرقم.
+const AGREE_BE_PRES=["am","is","are"],AGREE_BE_PAST=["was","were"];
+const AGREE_AUX=[["do","does"],["have","has"],["don't","doesn't"],["isn't","aren't"],["wasn't","weren't"],["hasn't","haven't"]];
+// محدِّداتٌ ومُلكيّاتٌ وأعدادٌ: ما تلاها اسمٌ لا فعل — فصيغةُ ‎-s‎ بعدها عددُ اسمٍ (AGN).
+const AGREE_DET=["a","an","the","my","your","his","her","its","our","their","this","that","these","those",
+  "some","any","many","much","few","several","no","every","each","both","all","another","other",
+  "one","two","three","four","five","six","seven","eight","nine","ten"];
+function agreeToks(s){return String(s||"").toLowerCase().replace(/[.,!?;:]/g," ").split(/\s+/).filter(Boolean)}
+function agreeSlip(right,wrong){
+  const R=agreeToks(right),W=agreeToks(wrong);
+  if(!R.length||R.length!==W.length)return null;   // حذفٌ أو زيادةٌ آليةٌ أخرى لا مطابقة
+  let at=-1;
+  for(let i=0;i<R.length;i++)if(R[i]!==W[i]){if(at>=0)return null;at=i}   // كلمةٌ واحدة بالضبط
+  if(at<0)return null;
+  const a=R[at],b=W[at],inBoth=function(list){return list.indexOf(a)>=0&&list.indexOf(b)>=0};
+  // داخل الزمن الواحد فقط: is/was اختلافُ زمنٍ لا مطابقة، وwas/were مطابقةُ شخصٍ فعلاً.
+  if(inBoth(AGREE_BE_PRES)||inBoth(AGREE_BE_PAST))return "agree_verb";
+  if(AGREE_AUX.some(function(p){return (p[0]===a&&p[1]===b)||(p[1]===a&&p[0]===b)}))return "agree_verb";
+  if(b===a+"s"||b===a+"es"||a===b+"s"||a===b+"es"){
+    if(at===0)return "agree_noun";                 // بلا سابقٍ يُحكَم به: لا يُسلَّح
+    return AGREE_DET.indexOf(R[at-1])>=0?"agree_noun":"agree_verb";
+  }
+  return null;
+}
+// هل يعرض هذا العنصر فخَّ مطابقةٍ أصلاً؟ — فلا يُحلّ التسليح إلّا بصوابٍ على عنصرٍ
+// **أتيحت فيه** الزلّة ولم تقع؛ وصوابٌ على عنصرٍ لا فخَّ فيه لا يقول شيئاً عن الآلية.
+function gramAgvOffered(it){
+  if(!it||!it.c)return false;
+  const right=(it.c.find(function(c){return c.ok})||{}).t;
+  return !!right&&it.c.some(function(c){return !c.ok&&agreeSlip(right,c.t)==="agree_verb"});
+}
 // تذكيرٌ قبل الاختيار لا بعده — نفس منطق «الدعم قبل لا بعد» (الكتل الملوّنة، ٣٠ أغسطس):
 // إن سبق أن أُخطئ هذا العنصر بعينه مرّتين (shapeArmed) فسطرُ قاعدةٍ من شرح الخيار الصحيح
 // نفسه (لا محتوًى جديد) يُعرض قبل الخيارات — تذكيرٌ بالقاعدة لا كشفٌ لموضع الصواب.
 function gramArmedHint(it){
-  if(!it||gramLocked||!shapeArmed("gram:"+it.id))return "";
+  if(!it||gramLocked)return "";
+  // صندوقٌ واحد لا صندوقان: تذكيرُ العنصر أخصُّ فيتقدّم، وتذكيرُ الآلية يُعرض حين لا
+  // يكون العنصرُ نفسه مُسلَّحاً — فلا تُكدَّس النصائح على شاشةٍ واحدة.
+  if(!shapeArmed("gram:"+it.id)){
+    if(shapeArmed("gram:agv")&&gramAgvOffered(it))
+      // كلُّ قاعدةٍ في سطرها — لا فقرةً واحدة: العبارة الإنجليزية القصيرة («can swim»)
+      // تنكسر في منتصفها عند الالتفاف داخل فقرةٍ عربية، وهو بعينه ما أوجب فصلَ المعادلات
+      // في بنك الإحصاء (٢٥ أغسطس): الفصلُ في **المحتوى** لا في العرض.
+      return `<div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:10px;margin:10px 0;font-size:13px;color:#1E40AF;line-height:1.9">
+        <div>📘 تكرّرت مطابقةُ الفعل لفاعله — تذكّري:</div>
+        <div>• الفاعل المفرد الغائب (he, she, Haya): فعلُه بـ-s، و«be» عنده is.</div>
+        <div>• والفاعل الجمع (they, Hanan and Misfer): فعلُه بلا -s، و«be» عنده are.</div>
+        <div>• وبعد can وwill يبقى الفعلُ مجرّداً — can swim لا cans ولا swims.</div></div>`;
+    return "";
+  }
   const right=it.c.find(function(c){return c.ok});
   if(!right)return "";
   // بلا فرض اتّجاه على السطر كلّه — نفس نمط صندوق شرح الخيار القائم أصلاً (يخلط عربياً
