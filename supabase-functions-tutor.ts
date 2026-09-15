@@ -74,12 +74,34 @@ const OAI = {
   // مزوّد لم نُسمّه بعد: يُضبط عنوانه ومفتاحه ونموذجه بأسرار، فلا ننتظر نشراً
   custom:     { url: "", keys: ["TUTOR_API_KEY"], model: "" },
 } as Record<string, { url: string; keys: string[]; model: string }>;
-// ترتيب التفضيل حين لا يُفرض مزوّد: أوّل من يوجد مفتاحه
-const OAI_ORDER = ["groq", "cerebras", "openrouter", "mistral", "github", "custom"];
+// ===== مزوّدان ماتا، وأُخرجا من ترتيب التجريب — ١٥ سبتمبر =====
+// جلسة إلياس (١٥ سبتمبر) أظهرت أن المسار سقط إلى Gemini فعادت: «Your prepayment
+// credits are depleted» (٤٢٩) ثمّ ٥٠٣ مرّتين — أي أن الاحتياطيّ الوحيد المفعَّل ميّت.
+// والبحث عن بديل كشف أن **اثنين مما في هذا الجدول ماتا كذلك**:
+//   · **cerebras**: أُنهيت طبقته المجانية ١٦ يوليو ٢٠٢٦ — بطاقةٌ ورصيدُ تجربة ٥$.
+//     وهذا يخالف قرار «لا دفع» صراحةً، فلا يصلح احتياطياً عندنا.
+//   · **github**: أُوقفت خدمة GitHub Models نهائياً ٣٠ يوليو ٢٠٢٦ — العنوان ميّت.
+//     وخطرُه أكبر من كونه ميّتاً: مفتاحه يُقرأ من `GITHUB_TOKEN` وهو **اسمٌ عامّ**
+//     قد يوجد في البيئة لغرضٍ آخر، فيبتلع خانةً في سلسلة الاحتياط ويفشل يقيناً.
+// فخرجا من الترتيب التلقائي **ولم يُحذفا**: يبقى تعريفهما ليُجرَّبا عند الحاجة
+// بـ`TUTOR_PROVIDER` صراحةً (تشخيصاً أو إن عادا)، ولا يُجرَّبان من تلقاء أنفسهما.
+//
+// **والأحياء بلا بطاقةٍ اليوم** (مقاسٌ لا مفترَض، سبتمبر ٢٠٢٦):
+//   · `groq` — الأساسيّ: ٣٠ طلب/دقيقة، وسقفُ رموز الخرج الذي يضربنا فعلاً ١٠٠٠/دقيقة.
+//   · `openrouter` — نماذج `:free`: ٢٠ طلب/دقيقة، و**٥٠ طلباً/يوم** بلا رصيد. مضبوطٌ هنا.
+//   · `mistral` — مليار رمز/شهر، لكنّ طبقته المجانية **تستعمل المدخلات للتدريب افتراضاً**
+//     ويُلغى ذلك يدوياً من لوحة الإدارة (Privacy) — قرارٌ لصاحب المشروع لا لي.
+//   · `custom` — وبه يُوصَل أيُّ مزوّدٍ متوافق مع OpenAI بلا نشر: Cloudflare Workers AI
+//     مثلاً (١٠ آلاف «نيورون»/يوم بلا بطاقة) عنوانُه
+//     `https://api.cloudflare.com/client/v4/accounts/<ACCOUNT_ID>/ai/v1`.
+const OAI_ORDER = ["groq", "openrouter", "mistral", "custom"];
+const OAI_RETIRED = ["cerebras", "github"];   // تُجرَّب بـTUTOR_PROVIDER وحده
 const GEMINI_KEYS = ["GEMINI_API_KEY", "GOOGLE_API_KEY", "GOOGLE_GENAI_API_KEY",
   "GOOGLE_GEMINI_API_KEY", "GEMINI_KEY", "GOOGLE_AI_API_KEY"];
 const DEFAULT_GEMINI_MODEL = "gemini-flash-latest";
-const KEY_NAMES = OAI_ORDER.reduce((a: string[], k) => a.concat(OAI[k].keys), []).concat(GEMINI_KEYS);
+// أسماءُ المفاتيح المفحوصة تشمل المتقاعدَين كذلك — التشخيص يقول ما فُحص لا ما يُجرَّب
+const KEY_NAMES = OAI_ORDER.concat(OAI_RETIRED)
+  .reduce((a: string[], k) => a.concat(OAI[k].keys), []).concat(GEMINI_KEYS);
 // اسم المفتاح لا قيمته — تشخيصٌ بلا كشف للسرّ
 function findKey(names: string[]) {
   for (const n of names) {

@@ -3664,27 +3664,74 @@ function accRecord(domain,ok){
   if(typeof ok!=="boolean")return;                       // سطور الشرح/التصحيح تُسجَّل بلا صواب
   if(ACC_DOMAINS.indexOf(domain)<0)return;
   const st=accLoad(),a=(st[domain]||[]).slice(0,ACC_WINDOW-1);
-  a.unshift(ok?1:0);st[domain]=a;accSave(st);
+  a.unshift(ok?1:0);st[domain]=a;
+  // عدّادٌ تراكميّ لا تُمحى قيمته بانزلاق النافذة — به وحده يُعرف أن **أدلّةً جديدة**
+  // وصلت منذ آخر تصعيد، فلا تُصعَّد الدرجة مرّتين على نفس الاثنتي عشرة إجابة.
+  st["_n_"+domain]=(st["_n_"+domain]|0)+1;
+  accSave(st);
 }
 function accRate(domain){
   const a=accLoad()[domain]||[];
   if(a.length<ACC_MIN)return null;                       // عيّنة أصغر من أن يُحكم بها
   return a.reduce(function(s,x){return s+x},0)/a.length;
 }
-// الحالة تُحفَظ لا تُحسب كل مرّة: العتبتان تعنيان أن القرار يعتمد على قرارٍ سابق
-function stretchOn(domain){
-  const st=accLoad(),cur=!!(st["_on_"+domain]),r=accRate(domain);
-  if(r===null)return cur;
-  const next=cur?(r>=ACC_OFF):(r>=ACC_ON);
-  if(next!==cur){st["_on_"+domain]=next;accSave(st)}
-  return next;
+// ===== التمدّد بلا سقفٍ عند درجةٍ واحدة — أمر صاحب المشروع ١٥ سبتمبر =====
+// كان التمدّد **درجةً واحدة وحدها** (`LV_NEXT[L]` مرّةً لا أكثر)، فمتعلّمٌ يُتقن ما فوقه
+// يقف عند حاجزٍ ثانٍ. وقال: «مدّد التمدّد إلى الحدّ الأقصى». فصار بلا سقفٍ في العدد.
+//
+// **وكلُّ درجةٍ تُكتسَب على حدة لا تُفتح جملةً**: فتحُ ثلاث درجاتٍ دفعةً واحدة على
+// ٨٥٪ واحدة يضع C1 أمام متعلّم B1 (أي i+3) والعتبة مُعايَرة لخطوةٍ واحدة. فالقاعدة
+// **هي هي مطبَّقةً تكراراً**: كل درجةٍ إضافية تحتاج **ثماني إجاباتٍ جديدة** (`ACC_MIN`)
+// تبقى فيها الدقّة ≥٨٥٪ — **والأدلّةُ الجديدة تشمل ما فُتح للتوّ**، فلا يُصعَّد أحدٌ
+// إلى C1 إلّا وهو ≥٨٥٪ **وبنك B2 داخلُ مخزونه أصلاً**. فالسقف مرفوع والطريق مكسوب.
+// والنزول بنفس التناظر: درجةٌ واحدة تُطوى كلّما هبطت الدقّة دون ٧٠٪ بأدلّةٍ جديدة.
+//
+// والحالة القديمة (`_on_<domain>` منطقيّة) **تُرحَّل ولا تُهدَر**: من كان ممتدّاً أمس
+// يبدأ اليوم من الدرجة الأولى لا من الصفر، ويبقى المفتاح نفسه محدَّثاً لِما يقرؤه.
+const STRETCH_MAX=4;       // أقصى ما يسمح به السلّم نفسه: A1 ⇒ C1 أربع درجات
+// سلسلةُ ما فوق المستوى بترتيبها — من الخريطة نفسها لا من قائمةٍ ثانية تتباعد عنها
+function lvChain(L){
+  const out=[];let cur=String(L||"");
+  for(let i=0;i<STRETCH_MAX;i++){const up=LV_NEXT[cur];if(!up)break;out.push(up);cur=up}
+  return out;
 }
-// تُلفّ حول أيّ بانية بنك: المستوى الحالي دائماً، والأعلى متى انفتحت البوّابة
+// الحالة تُحفَظ لا تُحسب كل مرّة: العتبتان تعنيان أن القرار يعتمد على قرارٍ سابق
+function stretchDepth(domain){
+  const st=accLoad();
+  let d=st["_lv_"+domain];
+  if(typeof d!=="number")d=st["_on_"+domain]?1:0;        // ترحيلٌ من الحالة المنطقية
+  const r=accRate(domain);
+  if(r!==null){
+    // العدّاد التراكمي أُضيف اليوم، فمخزونُ من سبقه بلا قيمة — ويُرحَّل بطول النافذة
+    // نفسها (أقلُّ ما نعلم يقيناً أنه وصل)، وإلّا جمُد كلُّ متعلّمٍ قائم ثماني إجابات.
+    const n=(typeof st["_n_"+domain]==="number")?st["_n_"+domain]:(st[domain]||[]).length;
+    if(typeof st["_n_"+domain]!=="number")st["_n_"+domain]=n;
+    const at=st["_at_"+domain]|0;
+    // **الصعود وحده مشروطٌ بأدلّةٍ جديدة، والنزول فوريّ** — وهذا ليس تناظراً ناقصاً
+    // بل حمايةٌ مقصودة: بطءُ الصعود يمنع قفزةً غير مستحقّة، وبطءُ النزول يُغرق المتعلّم
+    // في مادّةٍ فوق طاقته ثماني محاولاتٍ أخرى. **وكشفه `test_plan_v2` لا فحصي**: دعواه
+    // «تحت ٧٠٪ ⇒ تنحلّ» سقطت بأوّل صياغةٍ لي، وهي تُثبّت حمايةً قائمة لم يُطلب مسّها.
+    if(r<ACC_OFF&&d>0){d--;st["_at_"+domain]=n}
+    else if(r>=ACC_ON&&d<STRETCH_MAX&&n-at>=ACC_MIN){d++;st["_at_"+domain]=n}
+  }
+  d=Math.max(0,Math.min(STRETCH_MAX,d));
+  st["_lv_"+domain]=d;st["_on_"+domain]=d>0;accSave(st);
+  return d;
+}
+function stretchOn(domain){return stretchDepth(domain)>0}
+// تُلفّ حول أيّ بانية بنك: المستوى الحالي دائماً، وما فوقه بقدر ما اكتُسب من درجات
 function bankStretched(domain,level,bankFor){
-  const L=String(level||"A2"),base=bankFor(L),up=LV_NEXT[L];
-  if(!up||!stretchOn(domain))return base;
-  const extra=bankFor(up).filter(function(x){return String(x.lv||"")===up});
-  return extra.length?base.concat(extra):base;
+  const L=String(level||"A2"),base=bankFor(L),chain=lvChain(L);
+  if(!chain.length)return base;
+  const d=Math.min(stretchDepth(domain),chain.length);
+  if(d<=0)return base;
+  let out=base;
+  for(let i=0;i<d;i++){
+    const up=chain[i];
+    const extra=bankFor(up).filter(function(x){return String(x.lv||"")===up});
+    if(extra.length)out=out.concat(extra);
+  }
+  return out;
 }
 
 // ===== BKT: احتمال الإتقان بدل عتبةٍ أخترعها — ٢١ أغسطس =====
@@ -4485,8 +4532,8 @@ const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEn
   "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","piPickBand","piBandBoxHTML","piArm","piOk","piVals","piGateOn","piGated","piSig1","fsrsUpdate","fsrsIvl","fsrsR","fsrsInitS","fsrsInitD","fsrsNextD","fsrsClampD","fsrsRecallS","fsrsForgetS","tmplKey","spreadTemplates","drawSpread","qzErrRecord","qzDueKeys","qzInjectDue","qzErrOf","qzCardDone","fadeQText","fadeAnsText","fadeGateStart","fadeGateStop","fadeGateNeeded","copyAzRaw","esc","weakPhonemeStr","num0","profileBarHTML","renderHomeCoachOnly","learnerInfo","coachLevel","toMasc","genderizeText","genderizeNode","genderizeInit","lsGet","lsSet","lsDel","pkey","cxShuffleOrder","cxPreStart","cxPreChoose","cxPreNext","cxPreQuit","cxPreCur","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary","coachMode","coachAskHelp","coachEnd","coachReview","coachFixParse","weakClean","coachSaysNow","snapToSuggestion","editDist","coachShowSays","coachParse","coachTopicGo","coachTopicBack","coachTopicClean","coachFreeScene","wbStart","wbPick","wbUnpick","wbCheck","wbHTML","wbReady","wbSay","wbReset","wbNorm","wbDistract","wbStageGet","wbGrade","engBuildFor","dictErrRecord","dictIsBuild","dictCur","renderDictationBuild","planCheckBuild","echoRecord","echoArmed","coachBankOn","coachBankSync","coachBankCheck","fixCardSave","fixCardGrade","bugOf","basicsOpNow","basicsOperands","basicsBugNow","digitsOf","factDcpm","factDcpmBand","coachLeave","coachAutoReview","coachSetFail","coachHintNow","basicsErrDelta","shapeRecord","shapeArmed","ob1Arm","ob1Jump","ob1Back","ob1Complete","ob1BoxHTML","btArm","btBorrow","btComplete","btBoxHTML","basicsOb1Gated","basicsBtGated","basicsShapeLogRemedy","shapeLogRemedy","quotArm","quotGated","quotReset","listenBankFor","listenSrsUpdate","buildListenPlan","listenPlaysHint","startListen","listenPlay","listenChoose","listenNext","renderListen",
   "readBankFor","readSrsUpdate","buildReadPlan","startRead","readChoose","readNext","renderRead",
   // القراءة الجهرية: دوالُّها متأخّرةٌ في الملفّ كدوالّ التسجيل، فتُعدّ معها لا بعدها
-  "readAloudTarget","readAloudWhole","readAloudMaxMs","raStart","raStop","raFinish","raReset","raRetry","readAloudHTML","raLogText",
-  "genBankLoad","genBankAdd","parseGenBlock","fetchTutorGen","genTopUp","genCallsFor","genFire","genSweepFlight","genGateLog","genLogText","mcOrder","ordFor","posLog","listenOrd","readOrd","agreeSlip","agreeToks","gramAgvOffered","parseGenPickBlock","parseGenVideoBlock","errCollect","errDraw","errCount","errQuizCount","startErrors","errCheck","errChoose","errNext","errReplay","renderErrors",
+  "readAloudTarget","readAloudWhole","readAloudMaxMs","readAloudOverBudget","raStart","raStop","raFinish","raReset","raRetry","readAloudHTML","raLogText",
+  "genBankLoad","genBankAdd","parseGenBlock","fetchTutorGen","genTopUp","genCallsFor","genFire","genSweepFlight","genGateLog","genLogText","lvChain","stretchDepth","mcOrder","ordFor","posLog","listenOrd","readOrd","agreeSlip","agreeToks","gramAgvOffered","parseGenPickBlock","parseGenVideoBlock","errCollect","errDraw","errCount","errQuizCount","startErrors","errCheck","errChoose","errNext","errReplay","renderErrors",
   "minpairBankFor","minpairSrsUpdate","buildMinpairPlan","startMinpair","minpairPlay","minpairChoose","minpairNext","renderMinpair",
   "gramBankFor","gramSrsUpdate","buildGramPlan","startGram","gramChoose","gramNext","renderGram","fetchTutorGenGram","gramGenTopUp",
   "stepBankFor","stepSrsUpdate","buildStepPlan","startStep","stepChoose","stepSeqPick","stepSeqUnpick","stepSeqSubmit","stepNext","renderStep","fetchTutorGenStep","stepGenTopUp","fetchTutorGenVideo","videoGenTopUp",
@@ -8711,10 +8758,49 @@ const READ_PACE_SPW=1.25; // ثانيةٌ لكل كلمة — **مقاسةٌ ل�
 // على الكلام (حدُّ أمانٍ لا نافذةٌ إجبارية)، وسقفٌ أضيق يبتر قراءةً حقيقية.
 // وللأخوين لا وتيرةَ مقاسة أصلاً (لا صفوف `speaking` لهما قطّ)، فتُستعمل وتيرتُها وهي
 // **الأبطأ يقيناً** — تقديرٌ زائد في الاتّجاه الآمن، ويُقال بدل أن يُفترَض.
-const RA_HARD_MS=45000; // حدٌّ أقصى مطلقاً: تسجيلٌ أطول من هذا عطلٌ لا قراءة
+// ===== والسقفُ بتر أوّل قراءةٍ حقيقية — درس ١٥ سبتمبر =====
+// أوّل صفّ `read_aloud` على الإطلاق (إلياس، ١٥ سبتمبر): جملةُ دليلٍ من **١٦ كلمة**،
+// والسقف المشتقّ ١٦×١٫٢٥ = **٢٠٠٠٠ ملّي بالضبط**، وزمنُ تسجيله **٢٠١٨٣** — أي أنه
+// **بلغ السقف**، وأضعفُ أصواته `s:0` وهو آخرُ صوتٍ في آخر كلمة (`projects`).
+// فالأرجح أن الدرجة (٧٠٪) حُسبت على قراءةٍ مبتورة.
+//
+// **وقلتُ يومها إن وتيرة هيا «تقديرٌ زائد في الاتّجاه الآمن» — وكان ذلك خطأً**:
+// أوّلُ استعمالٍ حقيقي أثبت أنها **مُلزِمة** لا زائدة (≥١٫٢٦ث/كلمة عنده، وهو حدٌّ
+// أدنى لأن التسجيل بُتر أصلاً).
+//
+// **ونموذجُ «ثانيةٌ لكل كلمة» نفسه خاطئ بنيوياً** — والقياس يكذّبه: الشريحة ٩٠ من
+// ٢٦٣ تسجيلاً في `speaking` تُعطي كلفةً للكلمة **تهبط بطول الجملة** (كلمتان ⇒ ١٢٥٠
+// ملّي/كلمة · أربع ⇒ ١١٠٠ · ستّ ⇒ ٧٩٢ · تسع ⇒ ٧٤٢)، وهذا شكلُ **كلفةٍ ثابتة + معدّل**
+// لا معدّلٍ صرف: انحدارٌ خطّيّ عليها يُعطي عتبةً ≈٢٤٠٠ ملّي ومعدّلاً ≈٥٧٠ ملّي/كلمة.
+// فصار الحساب عتبةً ومعدّلاً لا ضرباً مجرّداً.
+//
+// **والمعدّل المُعتمَد ٢٠٠٠ ملّي/كلمة (٣٠ كلمة/دقيقة) حدُّ أمانٍ لا هدف**: هو **دون**
+// كل معدّلات القراءة الجهرية المنشورة (حتى أبطأ متعلّم لغةٍ ثانية يُقرأ له أضعافُه)،
+// فلا يمكن أن يَحبس قارئاً حقيقياً — وهذا هو المطلوب من سقفٍ اتّجاهُ خطئه آمن.
+//
+// **والسقف المطلق ٣٠ ثانية لا ٤٥ — قيدُ المزوّد لا اختيارنا**: تقييم النطق عبر REST
+// عند Azure يقبل **٣٠ ثانية كحدٍّ أقصى** (توثيق Microsoft: الحدّ العامّ ٦٠ث للصوت
+// القصير، ويُخفَّض إلى ٣٠ث متى فُعِّل تقييم النطق). **وهذا يكشف عيباً كامناً كان
+// مشحوناً**: `RA_HARD_MS=45000` يسمح بتسجيلٍ **يتجاوز ما يقبله Azure أصلاً**، فقراءةٌ
+// طويلة كانت ستُرفَض أو تُبتَر عند المزوّد لا عندنا.
+const RA_LEAD_MS=3000;     // كلفةٌ ثابتة: من الضغط إلى أوّل صوت (مقاسها ≈٢٤٠٠ عند p90)
+const RA_PACE_MS=2000;     // ٣٠ كلمة/دقيقة — دون كل معدّل منشور، فلا يَحبس قارئاً
+const RA_HARD_MS=30000;    // سقف Azure لتقييم النطق عبر REST — قيدُ مزوّدٍ لا اختيار
 function readAloudMaxMs(target){
   const w=String(target||"").trim().split(/\s+/).filter(Boolean).length;
-  return Math.min(RA_HARD_MS,Math.max(PRON_MAX_MS,Math.round(w*READ_PACE_SPW*1000)));
+  return Math.min(RA_HARD_MS,Math.max(PRON_MAX_MS,RA_LEAD_MS+w*RA_PACE_MS));
+}
+// وهدفٌ أطول من ميزانية الثلاثين ثانية **لا يُبتَر ولا يُخفى**: يُقرأ كما هو ويُوسَم
+// في السجلّ، فيُعرف بالرقم كم مرّةً وقع بدل أن يُقدَّر — وحتى يُقاس لا يُبنى له علاج.
+//
+// **والوسمُ يُحسب بالوتيرة المقاسة لا بوتيرة الأمان**: ٢٫٠ث/كلمة سقفٌ لا يَحبس أحداً،
+// فلو قِيس به الإنذار لأطلقه على كل هدفٍ فوق ١٣ كلمة — ومنها قراءةُ إلياس التي تمّت
+// في ٢٠٫٢ث فعلاً. فالإنذار بوتيرةٍ حقيقية: ١٫٢٦ث/كلمة (حدُّه الأدنى المقاس، ويوافق
+// وتيرة هيا ١٫٢٥ اتّفاقاً لافتاً) ⇒ الميزانية تسع نحو **٢١ كلمة**، وما فوقها يُوسَم.
+const RA_REAL_SPW=1260;    // ملّي/كلمة — من قراءةٍ حقيقية واحدة (حدٌّ أدنى: بُترت)
+function readAloudOverBudget(target){
+  const w=String(target||"").trim().split(/\s+/).filter(Boolean).length;
+  return w>0&&(RA_LEAD_MS+w*RA_REAL_SPW)>RA_HARD_MS;
 }
 // هيا تقرأ القطعة كاملة، وغيرُها جملةَ الدليل. والسقوط آمن: إن تعذّر استخراج جملة
 // الدليل (جوابٌ بلا كلمةٍ طويلة تُطابِق) تُقرأ القطعة كاملة بدل شاشةٍ بلا هدف.
@@ -8725,11 +8811,11 @@ function readAloudTarget(it){
   return (ev||String(it.passage)).trim();
 }
 function readAloudWhole(it){return profileId()==="haya"||!evidenceSentence(it&&it.passage,it&&it.c?it.c[it.a]:"")}
-let raRec=null,raStream=null,raChunks=[],raTimer=null,raElapsed=0,raListening=false,raBusy=false,raResult=null,raStartedAt=0,raDone=false;
+let raRec=null,raStream=null,raChunks=[],raTimer=null,raElapsed=0,raListening=false,raBusy=false,raResult=null,raStartedAt=0,raDone=false,raCapHit=false;
 function raReset(){
   if(raTimer){clearInterval(raTimer);raTimer=null}
   if(raStream){try{raStream.getTracks().forEach(function(t){t.stop()})}catch(e){}raStream=null}
-  raRec=null;raChunks=[];raElapsed=0;raListening=false;raBusy=false;raResult=null;raDone=false;
+  raRec=null;raChunks=[];raElapsed=0;raListening=false;raBusy=false;raResult=null;raDone=false;raCapHit=false;
 }
 async function raStart(){
   if(raListening||raBusy)return;
@@ -8744,8 +8830,10 @@ async function raStart(){
     raRec.ondataavailable=function(e){if(e.data&&e.data.size>0)raChunks.push(e.data)};
     raRec.onstop=function(){raFinish()};
     raRec.start();
-    raListening=true;raElapsed=0;raStartedAt=Date.now();
-    raTimer=setInterval(function(){raElapsed+=0.25;if(raElapsed*1000>=cap){raStop();return}render()},250);
+    raListening=true;raElapsed=0;raStartedAt=Date.now();raCapHit=false;
+    // بلوغُ السقف يُوسَم لا يُبتلَع: بلاه لا يُعرف أبُترت القراءة أم انتهت — وهو بعينه
+    // ما جعل أوّل صفٍّ حقيقي (١٥ سبتمبر) يحتاج حساباً يدوياً ليُكشَف أنه عند السقف.
+    raTimer=setInterval(function(){raElapsed+=0.25;if(raElapsed*1000>=cap){raCapHit=true;raStop();return}render()},250);
     render();
   // مفاتيح `MIC_ERR_HELP` هي أسماء أخطاء المواصفة نفسها (NotAllowedError…)، فتُقرأ
   // من `e.name` مباشرةً — لا جدولَ ترجمةٍ ثانٍ يتباعد عن الأوّل
@@ -8835,7 +8923,10 @@ function raRetry(){raResult=null;raDone=false;raStart()}
 function raLogText(it,target,sc){
   const w=String(target||"").trim().split(/\s+/).filter(Boolean).length;
   const scope=readAloudWhole(it)?"القطعة":"جملة الدليل";
-  return ("[جهر:"+scope+" · كلمات:"+w+"] "+String(target||"")+(sc&&sc.by?" · حَكَم:"+sc.by:"")).slice(0,1200);
+  const cap=readAloudMaxMs(target);
+  const flags=(raCapHit?" · بلغ السقف":"")+(readAloudOverBudget(target)?" · هدفٌ فوق ميزانية أزور":"");
+  return ("[جهر:"+scope+" · كلمات:"+w+" · سقف:"+Math.round(cap/1000)+"ث"+flags+"] "
+    +String(target||"")+(sc&&sc.by?" · حَكَم:"+sc.by:"")).slice(0,1200);
 }
 function renderRead(){
   if(!readItems.length){app.innerHTML=`<div class="card" style="text-align:center">لا شيء مستحقّ اليوم — عودي غداً 🌱</div><button class="link-btn" onclick="home()">→ الرئيسية</button>`;return}
