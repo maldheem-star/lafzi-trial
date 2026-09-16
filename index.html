@@ -6562,8 +6562,11 @@ async function coachFinish(){
     // كانت تُسجَّل بشيفرة الخطأ وحدها («tutor_bad_model») لا تفصيلها — فوصل خطأٌ حيٌّ
     // (١٧ أغسطس، إلياس ومحمد معاً) ولم أستطع معرفة السبب: الاسم الحقيقي للنموذج
     // المرفوض كان موجوداً في ردّ الخادم نفسه (d.detail/d.model/d.provider) ويُهمَل هنا.
-    coachSetFail((d&&d.error)==="not_configured"?"nokey":"reply",
-      d&&(String(d.error||"")+(d.provider?" · "+d.provider+"/"+(d.model||""):"")+(d.detail?" · "+d.detail:"")+(d.finishReason?" · finish:"+d.finishReason:"")));
+    // ===== وكانت نسخةً موازيةً لـ`genErrDetail` — ١٦ سبتمبر =====
+    // نفس السطر مكتوبٌ مرّتين، فكلُّ حقلٍ يُضاف هناك يغيب هنا: `attempts` غاب عن
+    // الاثنين، و«مَن جُرِّب» هو ما تحتاجه محادثةُ هيا بالضبط حين تموت بعد جملةٍ واحدة.
+    // وهذا صنفُ `writeSentenceParts` (٢٩ أغسطس): دالّةٌ ثانية لما له دالّةٌ قائمة.
+    coachSetFail((d&&d.error)==="not_configured"?"nokey":"reply",genErrDetail(d));
   }catch(e){coachSetFail("reply",e)}
   coachBusy=false;render();
 }
@@ -6649,6 +6652,9 @@ async function coachReview(){
   const said=coachMsgs.filter(function(m){return m.role==="user"&&m.text});
   coachFix=[];coachFixFail="";ltDropped=0;ltJudged=0;
   if(!said.length)return;
+  // تفصيلُ الفشل محلّيٌّ لا حالةٌ عامّة: النداء والتسجيل في هذه الدالّة نفسها،
+  // فلا متغيّرٌ ثالثٌ يُنسى تصفيرُه بين جلستين.
+  let why=null;
   coachFixBusy=true;render();
   try{
     const lines=said.map(function(m,i){return (i+1)+". "+m.text}).join("\n");
@@ -6658,17 +6664,20 @@ async function coachReview(){
         scene:coachScene?coachScene.en:"",question:"review",studentAnswer:lines})});
     const d=await res.json();
     if(d&&d.reply){coachFix=coachFixParse(d.reply);ltDropped=d.ltDropped|0;ltJudged=d.ltJudged|0}
-    else coachFixFail=(d&&d.error)||"reply";
+    else {coachFixFail=(d&&d.error)||"reply";why=genErrDetail(d)}
   }catch(e){coachFixFail="network"}
   coachFixBusy=false;
   // نتيجة المراجعة تُسجَّل دائماً: بلا هذا لا يُفرَّق «لا خطأ عندها» من «فشل الطلب»،
   // وقد وقعتُ فيها فعلاً — رأيتُ جلسةً بلا تصحيحات ولم أعرف أيّ الحالتين هي.
   // ومعها حكم LanguageTool: كم تصحيحاً عُرض عليه وكم أسقط — فيُعرف كم مرّة كان
   // النموذج سيُصحّح لها بجملة مكسورة لولا الحَكَم
+  // و`response` لا يُعاد تشكيله (`fail:tutor_quota` كما كان) فلا ينكسر استعلامٌ قائم —
+  // والتفصيل يُلحَق بـ`q_text` وحده، بحرف قرار ١٢ سبتمبر.
   logAnswer("coach","review",!coachFixFail,
     coachFixFail?("fail:"+coachFixFail):(coachFix.length?("fixes:"+coachFix.length):"none"),
     coachScene?coachScene.id:null,null,{lesson:coachScene?coachScene.id:null,
-      srs_box:coachFix.length,q_text:"said:"+said.length+" · lt:"+ltJudged+"/"+ltDropped});
+      srs_box:coachFix.length,q_text:"said:"+said.length+" · lt:"+ltJudged+"/"+ltDropped
+        +(why?" · "+String(why).slice(0,200):"")});
   // التصحيح يُحفظ بطاقةً مجدولة لا يُعرض ويُنسى: صفحة تُقرأ مرّة لا تُغيّر عادةً نُطقت
   // ثماني مرّات. وFSRS يُعيدها عند حافة النسيان، ووضع «أخطائي» يُدرّبها بنائياً.
   coachFix.forEach(function(f){fixCardSave(f)});
@@ -6702,9 +6711,11 @@ async function coachAutoReview(){
     const d=await res.json();
     const fx=(d&&d.reply)?coachFixParse(d.reply):[];
     fx.forEach(function(f){fixCardSave(f)});
+    const why=(d&&d.reply)?null:genErrDetail(d);
     logAnswer("coach","autoreview",!!(d&&d.reply),fx.length?("fixes:"+fx.length):((d&&d.error)||"none"),
       coachScene?coachScene.id:null,null,{lesson:coachScene?coachScene.id:null,srs_box:fx.length,
-        q_text:"said:"+said.length+" · lt:"+((d&&d.ltJudged)|0)+"/"+((d&&d.ltDropped)|0)});
+        q_text:"said:"+said.length+" · lt:"+((d&&d.ltJudged)|0)+"/"+((d&&d.ltDropped)|0)
+          +(why?" · "+String(why).slice(0,200):"")});
   }catch(e){
     logAnswer("coach","autoreview",false,"network",coachScene?coachScene.id:null,null,
       {lesson:coachScene?coachScene.id:null});
@@ -8040,6 +8051,24 @@ function genErrDetail(d){
   if(d.error)bits.push(String(d.error));
   const pm=[d.provider,d.model].filter(Boolean).join("/");
   if(pm)bits.push(pm);
+  // ===== «مَن جُرِّب قبله» — الحقل الثالث الذي يصل ويُرمى، ١٦ سبتمبر =====
+  // جلسة هيا (١٥ سبتمبر) ومحادثتها وثلاثةُ نداءات توليدٍ سقطت كلُّها بـ
+  // `gemini/gemini-flash-latest`، **وgroq لم يُذكَر مرّةً واحدة في خمسة أيّام** —
+  // بينما `generate-question` استعمل Groq بنجاح ١٢ و١٣ و١٤ سبتمبر بنفس اسمَي السرّ
+  // (`GROQ_API_KEY`/`GROQ_KEY`). فالسؤال الحاسم: أفشل Groq فسُبق إلى gemini، أم لم
+  // يُجرَّب أصلاً (مزوّدٌ مفروضٌ بـ`TUTOR_PROVIDER`، وهو بلا تراجعٍ تلقائي بالتصميم)؟
+  // وعلاجُ الحالتين مختلفٌ تماماً: الأولى تحتاج مفتاحاً بديلاً، والثانية مسحَ سرٍّ.
+  // والخادم يُعيد `attempts` في كل ردٍّ فاشل منذ بنائه (`groq:tutor_quota · …`)
+  // **وكان يُهمَل هنا** — نفس عطل `coachSetFail` (١٧ أغسطس) و`quotaSummary`
+  // (١٢ سبتمبر) للمرّة الثالثة: التفصيل في الردّ ويُرمى قبل أن يُسجَّل.
+  //
+  // **وموضعه قبل `detail` لا بعده**: القصّ (٢٠٠ محرفاً في `genFailLog` و١٤٠ في
+  // `coachSetFail`) يبتلع كلَّ ما يقع بعد الردّ الخام — وهي بعينها الحجّة التي
+  // رُتّب بها الملخّصُ الرقمي في ١٢ سبتمبر.
+  if(Array.isArray(d.attempts)&&d.attempts.length)bits.push("جُرِّب:"+d.attempts.join("،"));
+  // وسببُ التوقّف يخصّ التوليد كما يخصّ المحادثة: `finish:length` هو ما كشف أن
+  // سقف الرموز يُستنفَد تفكيراً (١٧ أغسطس) — وكان مقصوراً على مسار المحادثة وحده.
+  if(d.finishReason)bits.push("finish:"+d.finishReason);
   // والحالة لا تُكرَّر: `quotaSummary` في الخادم يبدأ بها دائماً (تُبنى لكل ردٍّ غير
   // ناجح لا لـ٤٢٩ وحده)، فإلحاقها هنا أنتج «429 · 429» — كشفه ناتجُ الاختبار نفسه.
   // وتكرارٌ من ستّة محارف ليس قبيحاً فحسب: يقتطع من الـ٢٠٠ التي تنجو بها الأرقام.
@@ -9662,6 +9691,8 @@ async function writeSubmit(){
   // ليس فارغاً حرفياً لكنه فارغٌ من إنتاجها هي — ولا يجوز أن يُحرق محاولةً حقيقية
   // على نقرةٍ عاجلة قبل أن تكتب. نفس حراسة الحقل الفارغ بالضبط، موسَّعةً لتشمل هذه الحالة.
   if(!txt||txt===writeJointFor(it).trim())return;
+  // محلّيٌّ كنظيرَيه في المحادثة: النداء والتسجيل في `writeSubmit` نفسها.
+  let whyRev=null;
   writeTyped=txt;writeCount=writeWordCount(txt);writeCopy=writeCopyCheck(it,txt,it.prompt);
   // هدف المنتَج صار مركّباً لا عددَ كلماتٍ وحده (Writing Next: أثر ٠٫٧٠): الكلماتُ،
   // ومعها تغطيةُ النقاط التي **تنصّ عليها التعليمة نفسها** حيث تنصّ عليها (رسائل A2
@@ -9682,7 +9713,7 @@ async function writeSubmit(){
           scene:"a written composition",question:"review",studentAnswer:lines})});
       const d=await res.json();
       if(d&&d.reply){writeFix=coachFixParse(d.reply);writeLtDropped=d.ltDropped|0;writeLtJudged=d.ltJudged|0}
-      else writeFixFail=(d&&d.error)||"reply";
+      else {writeFixFail=(d&&d.error)||"reply";whyRev=genErrDetail(d)}
     }catch(e){writeFixFail="network"}
     writeBusy=false;
   }
@@ -9716,7 +9747,9 @@ async function writeSubmit(){
     {_sk:skOf(it),q_text:((it.ai?"[مولَّد] ":"")+it.prompt+" · الهدف "+goals.words+" كلمة · كتبت "+writeCount
       +(goals.sentences?(" · جمل "+writeSent+"/"+goals.sentences):"")
       +" · بادئة:"+(goals.jointWords?1:0)+" · سقالة:"+(writeScafOn(it.lv)?1:0)+" · دفعة:"+writeMaxBurst+" · إدخال:"+(writeInputTypes||"?")
-      +" · review:"+reviewState+" · lt:"+writeLtJudged+"/"+writeLtDropped+" · مثال:"+writeModelViews
+      // وتفصيلُ فشل المراجعة يلي حالتَها مباشرةً لا في ذيل السطر: القصّ (١٢٠٠) يبتلع الذيل
+      +" · review:"+reviewState+(whyRev?"("+String(whyRev).slice(0,200)+")":"")
+      +" · lt:"+writeLtJudged+"/"+writeLtDropped+" · مثال:"+writeModelViews
       +" · نسخ:"+(writeCopy?1:0)+" · لصق:"+(writePasted?1:0)+" · تنوّع:"+ttr+" · شبه سابق:"+selfSim+" · فوق K1:"+lfp.pct+"%"
       // سببُ السقوط يُسمّى بدل أن يُبتلع في «فرق نحوي» — عُرف «شكل الخطأ لا وقوعه»
       +(it.type==="combine"?(" · دمج:"+([cf.req?"missing_connector":"",cf.many?"not_one_sentence":""].filter(Boolean).join("+")||"ok")
