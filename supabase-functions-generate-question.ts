@@ -35,10 +35,39 @@ const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers
 // على qwen3.6-27b) ولا سبيل من هنا لقراءة قيمته الحالية. فلو كان يحمل النموذج الميّت
 // نفسه لأعاد قراءةُ السرّ العطلَ الذي جئنا نُصلحه. فالنماذج المعروف موتها تُرفَض مهما
 // قال السرّ — قائمةٌ تُوسَّع بما يثبت موته، لا حجبٌ عامّ يمنع ضبط نموذجٍ جديد.
+//
+// ===== وهذا الحارس بعينه سقط بعد اثني عشر يوماً — درس ١٨ سبتمبر =====
+// شكوى هيا «الاستدلال اللفظي والعلمي متكرّر» قِيست فصدّقتها: في ١٧ و١٨ سبتمبر
+// **١٠٠٪** مما عُرض عليها في القسمين رأته من قبل، **وصفرُ عنصرٍ جديد**، وعنصرٌ واحد
+// خمسَ مرّات في يوم. وآخر توليدٍ ناجح (`gen_usage`) كان **١٤ سبتمبر**، وأوّل ٤٠٤
+// في **١٦ سبتمبر** — أي أن Groq أزالت `qwen/qwen3.6-27b` بينهما، وهو ما يحمله السرّ.
+//
+// **والعيب في الحارس المكتوب فوق لا في السرّ**: `DEAD_MODELS` **يُعدِّد اسماً واحداً**،
+// وقد كُتب بجانبه أن القائمة «ترفضه مهما قال السرّ» — فلمّا مات نموذجٌ ثانٍ مرَّ.
+// وتعدادُ الأسماء يعلَّق على أن يتذكّر أحدٌ تحديثها عند كل إزالةٍ عند المزوّد، وهو
+// حرفياً صنف العطل الممنوع في هذا المشروع («آليةٌ تعتمد على أن يتذكّر أحدٌ خطوةً
+// يدوية ستفشل… يجب نزع التذكّر من مسارها»، ١٨ أغسطس).
+//
+// فالعلاج **يُعالِج الردّ لا يُعدِّد الأسماء**: ٤٠٤ بـ`model_not_found` من Groq يعني
+// أن النموذج المضبوط لم يعد موجوداً، فيُبدَّل مرّةً واحدة بالقاع المبنيّ ويُعاد النداء.
+// والقائمة تبقى كما هي: وقايةٌ قبلية لما ثبت موته، والردُّ هو الحاكم لما لم يثبت بعد.
 const DEAD_MODELS = /llama-3\.3-70b-versatile/i;
+const GROQ_FALLBACK = "openai/gpt-oss-120b";
 const envGroqModel = (Deno.env.get("GROQ_MODEL") || "").trim();
-const GROQ_MODEL = (envGroqModel && !DEAD_MODELS.test(envGroqModel)) ? envGroqModel : "openai/gpt-oss-120b";
+// `let` لا `const`: يُبدَّل مرّةً عند إثبات المزوّد أن النموذج غير موجود، ويبقى مُبدَّلاً
+// لبقيّة عمر النسخة فلا يُهدر نداءٌ على ٤٠٤ معروف — نفس نمط `obsTpm` أدناه، يُتعلَّم
+// من الردّ لا يُخمَّن.
+let GROQ_MODEL = (envGroqModel && !DEAD_MODELS.test(envGroqModel)) ? envGroqModel : GROQ_FALLBACK;
+let groqFellBack: { from: string; to: string } | null = null;
 const GEMINI_MODEL = (Deno.env.get("GEMINI_MODEL") || "").trim() || "gemini-flash-latest";
+
+// **ضيّقٌ عمداً**: ٤٠٤ وحدها مع دلالةٍ صريحة على غياب النموذج. فلا يُبدَّل نموذجٌ
+// بسبب ٤٢٩ (سقفٌ يزول) ولا ٥٠٠ (عطلٌ عارض) ولا مفتاحٍ مرفوض — وتبديلٌ في غير موضعه
+// يُخفي العطل الحقيقي بدل أن يُصلحه.
+function modelGone(status: number, detail: string): boolean {
+  if (status !== 404) return false;
+  return /model_not_found/i.test(detail) || /does not exist or you do not have access/i.test(detail);
+}
 
 const TEXT_TYPES: Record<string, string> = {
   reading: "سؤال فهم مقروء استنتاجي: نص قصير (٣-٤ أسطر) ثم سؤال يتطلّب استنتاج معنى غير مذكور صراحةً. ضع النص داخل q.",
@@ -205,11 +234,21 @@ Deno.serve(async (req: Request) => {
       let all: any[] = [], usage: any = null;
       for (let i = 0; i < 3 && all.length < count; i++) {
         const r = await callGroq(GROQ, prompt, askCount);
-        if (r.ok) { all = all.concat(r.questions); usage = { asked: r.asked, used: r.used, finish: r.finish }; }
-        else { errors.groq = { status: r.status, detail: r.detail, retryAfter: r.retryAfter, model: GROQ_MODEL }; break; }
+        if (r.ok) { all = all.concat(r.questions); usage = { asked: r.asked, used: r.used, finish: r.finish, model: GROQ_MODEL }; }
+        else {
+          // النموذج المضبوط لم يعد موجوداً ⇒ يُبدَّل بالقاع **مرّةً واحدة** ويُعاد النداء.
+          // والشرط `!== GROQ_FALLBACK` يمنع حلقةً لا تنتهي حين يكون القاع نفسه هو الغائب.
+          if (modelGone(r.status ?? 0, String(r.detail || "")) && GROQ_MODEL !== GROQ_FALLBACK) {
+            groqFellBack = { from: GROQ_MODEL, to: GROQ_FALLBACK };
+            GROQ_MODEL = GROQ_FALLBACK;
+            continue;   // نداءُ التبديل لا يُحسب فشلاً، والحلقة مسقوفةٌ بثلاثٍ كما كانت
+          }
+          errors.groq = { status: r.status, detail: r.detail, retryAfter: r.retryAfter, model: GROQ_MODEL };
+          break;
+        }
       }
       // الاستهلاك الفعلي يعود مع الردّ ليُسجَّل — فيُضبط سقفُ الرموز من قياسٍ لا حدس
-      if (all.length) return jsonOut({ type, engine: "groq", model: GROQ_MODEL, usage, questions: all.slice(0, count) });
+      if (all.length) return jsonOut({ type, engine: "groq", model: GROQ_MODEL, usage, fellBack: groqFellBack, questions: all.slice(0, count) });
       if (!errors.groq) errors.groq = { reason: "no_clean_questions", model: GROQ_MODEL };
     } else errors.groq = "no_key";
 
@@ -219,6 +258,9 @@ Deno.serve(async (req: Request) => {
       errors.gemini = r.ok ? { reason: "no_questions", model: GEMINI_MODEL } : { status: r.status, detail: r.detail, model: GEMINI_MODEL };
     } else errors.gemini = "no_key";
 
-    return jsonOut({ error: "all_engines_failed", errors }, 502);
+    // `fellBack` يصحب الفشل كما يصحب النجاح: لو بُدِّل النموذج ثمّ فشل القاعُ أيضاً
+    // فالسبب الظاهر في `errors.groq` اسمُ القاع لا اسم السرّ — وبلا هذا الحقل يُقرأ
+    // السطر على أن السرّ سليم وهو ميّت.
+    return jsonOut({ error: "all_engines_failed", errors, fellBack: groqFellBack }, 502);
   } catch (e) { return jsonOut({ error: "server_error", message: String(e).slice(0, 300) }, 500); }
 });

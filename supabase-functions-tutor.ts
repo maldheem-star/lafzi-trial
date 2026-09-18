@@ -99,6 +99,10 @@ const OAI_RETIRED = ["cerebras", "github"];   // تُجرَّب بـTUTOR_PROVID
 const GEMINI_KEYS = ["GEMINI_API_KEY", "GOOGLE_API_KEY", "GOOGLE_GENAI_API_KEY",
   "GOOGLE_GEMINI_API_KEY", "GEMINI_KEY", "GOOGLE_AI_API_KEY"];
 const DEFAULT_GEMINI_MODEL = "gemini-flash-latest";
+// مزوّدٌ أثبت ردُّه أن النموذج المضبوط في سرّه لم يعد موجوداً ⇒ يُثبَّت له القاع المبنيّ
+// لبقيّة عمر النسخة، فلا يُهدر نداءٌ على ٤٠٤ معروفة في كل طلب. يُتعلَّم من الردّ لا
+// يُخمَّن — نفس نمط `obsTpm` أعلاه. (١٨ سبتمبر، مفصَّلٌ عند موضع التبديل.)
+const modelFellBack: Record<string, string> = {};
 // أسماءُ المفاتيح المفحوصة تشمل المتقاعدَين كذلك — التشخيص يقول ما فُحص لا ما يُجرَّب
 const KEY_NAMES = OAI_ORDER.concat(OAI_RETIRED)
   .reduce((a: string[], k) => a.concat(OAI[k].keys), []).concat(GEMINI_KEYS);
@@ -952,7 +956,15 @@ Deno.serve(async (req) => {
     // غامضاً بمزوّدٍ واحد كما كان.
     let lastErr: { body: Record<string, unknown>; status: number } | null = null;
     const attempts: string[] = [];
-    for (const cand of candidates) {
+    // **والنجاح يحمل `attempts` كما يحمله الفشل — وإلّا صار التبديل ديناً صامتاً**:
+    // بعد إصلاح ١٨ سبتمبر يَنجح الردُّ بالقاع بينما يبقى السرّ على نموذجٍ ميّت، فلو لم
+    // يُعلَن التبديل في ردٍّ ناجح لم يعرف أحدٌ أن السرّ يحتاج تصحيحاً. ولا يُضاف حقلٌ
+    // فارغ: القائمة تُذكَر متى كانت غير فارغة فقط، فلا ينكسر شكلُ الردّ المعتاد.
+    const okOut = (o: Record<string, unknown>) =>
+      jsonOut(attempts.length ? { ...o, attempts } : o);
+    // فهرسٌ لا `for…of` كي يُعاد المرشّح نفسه مرّةً واحدة بنموذجٍ بديل عند ٤٠٤ (أدناه)
+    for (let ci = 0; ci < candidates.length; ci++) {
+      const cand = candidates[ci];
       const provider = cand.provider, found = cand.found;
       const keyName = found.name;
       // نفس درس Azure: محرف غير مرئي واحد ملتصق بالمفتاح يجعل الطلب يفشل فشلاً غامضاً
@@ -967,10 +979,12 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // النموذج: سرّ عامّ TUTOR_MODEL، أو سرّ خاصّ بالمزوّد، أو الافتراضي
-      const model = (Deno.env.get("TUTOR_MODEL") || "").trim()
+      // النموذج: بديلٌ ثبت أن سرّه ميّت (أدناه)، فسرّ عامّ TUTOR_MODEL، فسرّ المزوّد، فالافتراضي
+      const builtinModel = provider === "gemini" ? DEFAULT_GEMINI_MODEL : OAI[provider].model;
+      const model = modelFellBack[provider]
+        || (Deno.env.get("TUTOR_MODEL") || "").trim()
         || (Deno.env.get(provider.toUpperCase() + "_MODEL") || "").trim()
-        || (provider === "gemini" ? DEFAULT_GEMINI_MODEL : OAI[provider].model);
+        || builtinModel;
       // المزوّد المخصّص بلا اسم نموذج يُنتج طلباً بحقل فارغ وخطأً غامضاً — نقولها صراحةً
       if (!model) {
         attempts.push(provider + ":no_model");
@@ -1071,6 +1085,20 @@ Deno.serve(async (req) => {
           : res.status === 429 ? "tutor_quota"
           : res.status === 400 ? (/model/i.test(detail) ? "tutor_bad_model" : "tutor_auth")
           : "tutor_http";
+        // ===== نموذجٌ أزاله المزوّد يُبدَّل بالقاع بدل أن يُهجَر المزوّد كلُّه — ١٨ سبتمبر =====
+        // سطرٌ حيّ من جهاز هيا وإلياس معاً (١٦ سبتمبر): `جُرِّب:groq:tutor_bad_model،
+        // gemini:tutor_quota` — أي أن Groq (المزوّد المجاني الوحيد العامل) يُرفض على اسم
+        // نموذجٍ في السرّ أزاله المزوّد، فتنحدر السلسلة إلى Gemini وهو بلا رصيد، فتموت
+        // المحادثة والتوليد معاً. **والحقل الذي كشف هذا هو `attempts` المشحون قبله بيوم.**
+        // فالمزوّد لا يُهجَر لأن اسم نموذجٍ بطل: يُعاد إليه مرّةً واحدة بنموذجه المبنيّ.
+        // وضيّقٌ عمداً: ٤٠٤/٤٠٠-النموذج وحدها، فلا تبديل على حصّةٍ أو مفتاح.
+        if (kind === "tutor_bad_model" && builtinModel && model !== builtinModel
+            && !modelFellBack[provider]) {
+          modelFellBack[provider] = builtinModel;
+          attempts.push(provider + ":model_fallback→" + builtinModel);
+          ci--;              // يُعاد المرشّح نفسه بالنموذج الجديد
+          continue;          // والحارس `!modelFellBack[provider]` يمنع تكرارها
+        }
         attempts.push(provider + ":" + kind);
         lastErr = { status: 200, body: { error: kind, status: res.status, detail, provider, model, keyName } };
         continue;
@@ -1100,17 +1128,17 @@ Deno.serve(async (req) => {
       // المراجعة وحدها تمرّ على الحَكَم: المحادثة كلامٌ حيّ لا يُدقَّق، والشرح بالعربية
       if (review) {
         const j2 = await ltJudge(text);
-        return jsonOut({ ok: true, engine: provider, model, keyName, reply: j2.text,
+        return okOut({ ok: true, engine: provider, model, keyName, reply: j2.text,
           ltDropped: j2.dropped, ltJudged: j2.judged, turns: 1 });
       }
       // القواعد وSTEP وحدهما: أربع جملٍ إحداها صحيحة، فالمموّه النظيف مشكوكٌ فيه.
       // ولا يُغيَّر الردّ ولا يُحجب — رايةٌ تُضاف ليقيسها العميل ويُسجّلها.
       if (gen && (clip(b.domain, 20) === "gram" || clip(b.domain, 20) === "step")) {
         const fl = await ltFlagDistractors(text);
-        return jsonOut({ ok: true, engine: provider, model, keyName, reply: text,
+        return okOut({ ok: true, engine: provider, model, keyName, reply: text,
           ltSuspect: fl.suspect, ltJudged: fl.judged, turns: 1 });
       }
-      return jsonOut({ ok: true, engine: provider, model, keyName, reply: text,
+      return okOut({ ok: true, engine: provider, model, keyName, reply: text,
         turns: history.length ? Math.floor(history.length / 2) + 1 : 1 });
     }
 
