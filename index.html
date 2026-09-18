@@ -1184,7 +1184,7 @@ async function fetchGemini(type,need){
       // ردٌّ سليمٌ بلا أسئلة ليس نجاحاً: يقع حين يُسقط فلتر العربية كلَّ ما وُلِّد.
       if(!qs.length)quizGenFail(type,"no_questions",("محرّك:"+(data.engine||"?")+" · نموذج:"+(data.model||"?")).slice(0,200));
       // الاستهلاك الفعلي يُسجَّل مرّةً — به يُضبط سقفُ الرموز بالقياس لا بالتقدير
-      quizUsageLog(data&&data.usage,type);
+      quizUsageLog(data&&data.usage,type,data&&data.fellBack);
       const take=qs.slice(0,need-out.length);out.push(...take);cachePut(type,qs.slice(take.length));
     }else{
       // **التفصيل موجودٌ في الردّ ويُرمى** — نفس خطأ `coachSetFail` (١٧ أغسطس):
@@ -1204,13 +1204,17 @@ async function fetchGemini(type,need){
 // سقفُ الرموز في الخادم مُقدَّرٌ من بنية العنصر (٢٦٠ لكل سؤال) لا مقاس. فالاستهلاك
 // الفعلي يُسجَّل مرّةً في الجلسة ليُضبط الثابت برقمٍ حقيقي — ومعه `finish_reason`
 // لأن «length» يعني أن السقف قُطع على الجواب فيُرفَع لا يُخفَّض (درس ١٧ أغسطس).
+// **واسمُ النموذج المستعمَل فعلاً يدخل السطر — درس ١٨ سبتمبر**: حين يُبدّل الخادم
+// نموذجاً أزاله المزوّد، يبقى السرُّ على قيمته الميّتة ويعمل التوليد بالقاع. فبلا
+// تسجيل «بُدِّل من كذا إلى كذا» يُقرأ نجاحُ التوليد على أن السرّ سليم، فلا يُصحَّح أبداً.
 let quizUsageLogged=false;
-function quizUsageLog(u,type){
+function quizUsageLog(u,type,fell){
   if(quizUsageLogged||!u||u.used==null)return;
   quizUsageLogged=true;
   try{logAnswer("gen","gen_usage",null,"quiz:"+type+" · "+u.used+"/"+u.asked,null,null,
     {q_text:("[استهلاك التوليد] المستعمَل:"+u.used+" · المطلوب سقفاً:"+u.asked
-      +" · finish:"+(u.finish||"?")).slice(0,300)})}catch(e){}
+      +" · finish:"+(u.finish||"?")+(u.model?" · نموذج:"+u.model:"")
+      +(fell&&fell.from?" · بُدِّل من:"+fell.from:"")).slice(0,300)})}catch(e){}
 }
 function cachePutReplace(type,arr){try{const c=JSON.parse(lsGet("gemini_cache")||"{}");c[type]=arr;lsSet("gemini_cache",JSON.stringify(c))}catch(e){}}
 function normAI(type){return q=>({d:aiDomain(type),q:q.q,c:q.choices,a:q.answer,w:q.why||"",qtype:type})}
@@ -6546,6 +6550,7 @@ async function coachFinish(){
         question:scene.en,studentAnswer:heard,history:hist})});
     const d=await res.json();
     if(d&&d.reply){
+      tutorFellBackLog(d);
       // النصيحة تُعرض مستقلّة ولا تُنطق مع الردّ: صوتها يكسر الموقف
       const p=coachParse(d.reply);
       const say=p.text,tip=p.tip;
@@ -8045,6 +8050,23 @@ const GEN_FAIL_LOG_CAP=3;
 // فالأرقام تقع داخل الـ٢٠٠ محرف التي يقصّها `genFailLog`.
 // **ولا يُسجَّل `keyName`** رغم أن الخادم يُعيده: قاعدة المشروع تُجيز اسم السرّ، لكنه
 // لا يُضيف تشخيصاً هنا — والأقلّ أسلم.
+// ===== تبديلُ نموذجٍ ميّت يُسجَّل **وهو ناجح** — ١٨ سبتمبر =====
+// الخادم يُبدّل نموذجاً أزاله المزوّد بالقاع المبنيّ فيَنجح الردّ، **ويبقى السرّ على
+// قيمته الميّتة**. فلو لم يُسجَّل التبديل لَما عرف أحدٌ أن السرّ يحتاج تصحيحاً — نجاحٌ
+// يُخفي ديناً، وهو بعينه ما تنهى عنه قاعدة «ما لا يُسجَّل الآن لا يُشخَّص لاحقاً».
+// سطرٌ واحد لعمر الصفحة: الحدث حالةُ إعدادٍ لا حدثُ نداء، فتكرارُه ضجيجٌ بلا معلومة.
+let tutorFellBackLogged=false;
+function tutorFellBackLog(d){
+  try{
+    if(tutorFellBackLogged||!d||!Array.isArray(d.attempts))return;
+    const fb=d.attempts.filter(a=>/model_fallback/.test(String(a)));
+    if(!fb.length)return;
+    tutorFellBackLogged=true;
+    logAnswer("gen","model_fallback",null,"tutor · "+(d.engine||"?"),null,null,
+      {q_text:("[تبديل نموذج] "+fb.join("،")+" · المستعمَل:"+(d.model||"?")
+        +" — السرّ يحمل نموذجاً أزاله المزوّد").slice(0,300)});
+  }catch(e){}
+}
 function genErrDetail(d){
   if(!d)return null;
   const bits=[];
@@ -8092,6 +8114,7 @@ async function fetchTutorGen(domain,level,topicIdx){
     if(!res||!res.ok)return genFailLog(domain,level,"http",res?res.status:"no_res");
     const data=await res.json();
     if(!data||!data.ok||!data.reply)return genFailLog(domain,level,"no_reply",genErrDetail(data));
+    tutorFellBackLog(data);
     const item=parseGenBlock(data.reply,domain);
     if(item)item.lv=level;
     return item;
