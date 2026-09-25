@@ -1174,7 +1174,9 @@ let quizTopUpDone=false;
 function quizGenTopUp(){
   if(quizTopUpDone)return;quizTopUpDone=true;
   const t=quizRotNext();
-  try{fetchGemini(t,0)}catch(e){}
+  // بلا `await` — وبـ`catch` على الوعد لا على النداء وحده: رفضٌ غير مُلتقَط يصير
+  // `pageerror` يكسر جولةَ الاختبار كلَّها، والنداءُ نفسه صامتٌ بالتصميم.
+  try{const pr=fetchGemini(t,0);if(pr&&pr.catch)pr.catch(function(){})}catch(e){}
 }
 // استهلاكُ الكاش وحده — بلا شبكة، فتُبنى الجلسة فوراً. ونفس سطرَي `fetchGemini`
 // الأوّلين حرفياً لا نسخةٌ موازية لهما: الدالّة تستدعيها بدل تكرارهما.
