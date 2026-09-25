@@ -383,11 +383,17 @@ function systemGenWrite(level: string, topicIdx?: number) {
     "reuse a stock textbook example you have seen before.",
     GEN_CULTURE,
     "",
+    // ===== MIN يتقدّم PROMPT عمداً — علاج `no_min` المقاس، ٢٥ سبتمبر =====
+    // كان PROMPT أوّلاً، وتعليمتُه «اكتب فواصل الأسطر حرفَي \n» تجعل النموذج يُهرّب
+    // **كلّ** سطرٍ بعدها، فيسقط `MIN:` داخل سطر PROMPT نفسه ولا يُطابقه `^MIN:` أبداً.
+    // فبتقديمه صار سطراً مستقلّاً قبل أيّ تهريب — إصلاحٌ في الشكل لا رجاءٌ في الالتزام،
+    // ومعه في العميل ثلاثُ طبقاتٍ للاشتقاق فلا يسقط العنصر ولو غاب السطر أصلاً.
     "OUTPUT EXACTLY in this shape, nothing else, no markdown, no extra commentary:",
-    "PROMPT: <the full prompt text, with line breaks written as the two characters \\n>",
     "MIN: <the minimum word count as a plain number>",
+    "PROMPT: <the full prompt text, with line breaks written as the two characters \\n>",
     "",
     "RULES:",
+    "0. Write the MIN line FIRST, on its own line, before PROMPT — never inside it.",
     "1. The PROMPT text must be entirely in English — ZERO Arabic characters anywhere.",
     "2. Follow the exact shape described above for this level — this is a real exam task",
     "   type, not a free choice of format.",
@@ -406,13 +412,21 @@ function systemGenWrite(level: string, topicIdx?: number) {
 // نتحقّق منها فعلاً (`writeReqMissing`)، ولا نعتمد على أن يُصرّح النموذج بما استعمله.
 // والنموذج يُنتج الجملتين المصدر فقط — لا جملةً مُدمَجة نموذجية، لأن معيار النجاح أصلاً
 // (كلمة الربط + جملةٌ واحدة) لا يحتاج إجابةً مرجعية، تماماً كعناصر WRITE_BANK المؤلَّفة.
+// **كلّ أداةٍ هنا يجب أن تكون داخل `JOIN_WORDS` في العميل** — وإلّا أسقط المفكِّك
+// العنصر بـ`combine_bad_connector` قبل أن يصل أحداً. وقع فعلاً وقِيس (٢٠-٢٤ سبتمبر):
+// `despite` لِB2 و`notwithstanding` لِC1 كانتا تقتلان ثلث توليد دمج B2 وربعَ C1.
+//
+// **وحذفُهما لغويٌّ لا تنازلاً**: كلتاهما حرفُ جرٍّ لا أداةُ ربط — لا تصلان جملتين
+// تامّتين («despite it rained» خطأ)، فمهمّةُ «ادمج الجملتين» بهما غيرُ قابلةٍ للتنفيذ
+// كما تُعرض أصلاً. وبديلاهما من English Profile نفسها للدرجة نفسها.
+// ويحرس التطابقَ `tests/test_connectors.js` بمقابلة هذا الملفّ بـ`index.html`.
 const COMBINE_CONNECTORS: Record<string, string[]> = {
   A1: ["because", "and", "but", "so"],
   A2: ["when", "because", "but", "after", "so", "who"],
   B1: ["because", "when", "although", "before", "after", "which"],
-  B2: ["despite", "which", "whereas"],
+  B2: ["which", "whereas", "although", "unless", "so that"],
   // C1: أدوات ربطٍ مُميِّزة لدرجتها في English Profile — لا تكرارَ لِما دونها.
-  C1: ["whereas", "notwithstanding", "insofar as", "albeit"],
+  C1: ["whereas", "insofar as", "albeit", "though"],
 };
 function pickConnector(level: string, topicIdx?: number): string {
   const list = pickByLevel(COMBINE_CONNECTORS, level);
