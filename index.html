@@ -1144,13 +1144,51 @@ function quizBudgetWaitMs(){
   return Math.max(0,QUIZ_WIN_MS-(Date.now()-quizWinAt));
 }
 // يجلب أسئلة من المحرّك، مع تخزين الفائض وإعادة الاستخدام، واحترام الحد اليومي
-async function fetchGemini(type,need){
-  const out=[];
-  // 1) استهلك من الكاش أولاً
-  let cache=cacheGet(type);
-  while(out.length<need && cache.length){out.push(cache.shift())}
+// ===== نداءٌ واحد بالتناوب بدل خمسةٍ تتزاحم على دقيقةٍ واحدة — درس ٢٥ سبتمبر =====
+// القياس على خمسة أيّام (٢٠-٢٤ سبتمبر): **١١ صفَّ `rate_budget`** عند هيا، بشكلٍ
+// واحدٍ في كل جلسة — نداءٌ ينجح و**ثلاثة تُمنَع في الثانية نفسها**. والحساب يقوله
+// بلا ترجيح: سقف Groq المجاني **١٠٠٠ رمز خرج/دقيقة** والنداء الواحد يحجز **٨٠٠**،
+// فالممكن **نداءٌ واحد في الدقيقة قطعاً**؛ و`buildFull` يُطلق اللفظي (أربعة أنواع)
+// والعلمي في `Promise.all` — أي خمسةٌ خلال ثانية. فثلاثة أخماس العمل كان محكوماً
+// عليه قبل أن يُرسَل، وميزانيةُ ١١ سبتمبر منعت الهدر ولم تُصلح الإنتاجية.
+//
+// **والعلاج هو النمط المعتمَد في كل قسمٍ آخر** (استماع/مقروء/كتابة/قواعد/STEP منذ
+// ١٦ أغسطس): «البنك المؤلَّف هو القاع الفوري، والتوليد نداءٌ صامتٌ في الخلفية يُخصِّب
+// الجلسة **القادمة** لا الحالية». فبُني اللفظي/العلمي وحدهما خارج هذا النمط، فصار
+// يحجز الجلسة على الشبكة ثمّ يُهدر أربعةَ أخماس نداءاتها. لا آليةَ جديدة — الوصل
+// بالنمط القائم.
+//
+// وبعد التغيير: **صفرُ `rate_budget`** متوقَّع (نداءٌ واحد ≤ الميزانية)، والنوع
+// يتناوب فتغطّي الأنواعُ الخمسة خمسَ جلسات — وهي تفتح يومياً، فالدورة خمسة أيّام.
+// والكاش (٤٠ عنصراً لكل نوع) هو ما يصلها فوراً، وهو قائمٌ أصلاً ولم يُمَسّ.
+const QUIZ_TYPES=["reading","logic","analogy","vocabulary","science"];
+function quizRotNext(){
+  let i=0;try{i=parseInt(lsGet("quiz_gen_rot")||"0",10)||0}catch(e){i=0}
+  const t=QUIZ_TYPES[((i%QUIZ_TYPES.length)+QUIZ_TYPES.length)%QUIZ_TYPES.length];
+  try{lsSet("quiz_gen_rot",String((i+1)%QUIZ_TYPES.length))}catch(e){}
+  return t;
+}
+// نداءٌ صامتٌ واحد بعد بدء الجلسة — لا يُنتظَر ولا يُعطّل شيئاً إن فشل، بحرف قرار
+// «فشل التوليد ليس عطلاً». ومرّةً واحدة لكل فتحة تطبيق فلا تتراكم مع تنقّلها.
+let quizTopUpDone=false;
+function quizGenTopUp(){
+  if(quizTopUpDone)return;quizTopUpDone=true;
+  const t=quizRotNext();
+  try{fetchGemini(t,0)}catch(e){}
+}
+// استهلاكُ الكاش وحده — بلا شبكة، فتُبنى الجلسة فوراً. ونفس سطرَي `fetchGemini`
+// الأوّلين حرفياً لا نسخةٌ موازية لهما: الدالّة تستدعيها بدل تكرارهما.
+function quizFromCache(type,need){
+  const out=[];let cache=cacheGet(type);
+  while(out.length<need&&cache.length){out.push(cache.shift())}
   cachePutReplace(type,cache);
-  if(out.length>=need)return out.map(tagAI(type));
+  return out.map(tagAI(type));
+}
+// `need=0` تعني: لا تستهلك من الكاش، اطلب وخزّن فقط (وضعُ التخصيب).
+async function fetchGemini(type,need){
+  // 1) استهلك من الكاش أولاً — بنفس الدالّة المشتركة لا بنسخةٍ موازية لها
+  const out=quizFromCache(type,need);
+  if(need>0&&out.length>=need)return out;
   // 2) تحقّق من الحد اليومي
   // ويُسجَّل بلوغُه: هو سببٌ مشروع لتوقّف التوليد، لكن الخلط بينه وبين عطلٍ حقيقي
   // هو ما يجعل التشخيص تخميناً — فيُسمّى كغيره ويُعرف عدده.
@@ -1421,14 +1459,17 @@ async function buildDomain(domKey,n){
   if(domKey==="flex")return qzInjectDue(drawSpread(FLEX_GENS,n),FLEX_GENS,null);
   if(domKey==="verbal"){
     const types=shuffle(AI_VERBAL);let qs=[];
-    for(const t of types){if(qs.length>=n)break;const got=await fetchGemini(t,Math.ceil(n/2));qs=qs.concat(dedupeList(got))}
+    // **من الكاش لا من الشبكة** — النداء صار صامتاً بالتناوب (`quizGenTopUp`)، فالجلسة
+    // تُبنى فوراً من المولَّد المخزّن ثمّ من البنك المؤلَّف، ولا تنتظر شبكةً ولا تُهدر
+    // أربعة نداءاتٍ محكومٍ عليها بسقف الدقيقة. مفصَّلٌ عند `quizGenTopUp` أعلاه.
+    for(const t of types){if(qs.length>=n)break;qs=qs.concat(dedupeList(quizFromCache(t,Math.ceil(n/2))))}
     // احتياط من البنك لو نقص، مع تفادي تكرار ما سبق عرضه
     if(qs.length<n){qs=qs.concat(takeUniqueFrom(shuffle(VERBAL),n-qs.length).map(q=>({...q,qtype:"bank"})))}
     if(qs.length<n){qs=qs.concat(fillAvoidingBatchDupes(qs,VERBAL,n-qs.length).map(q=>({...q,qtype:"bank"})))} // البنك نفد تنويعاً؛ حل أخير
     return qzInjectDue(shuffle(qs).slice(0,n),null,VERBAL.map(function(q){return Object.assign({},q,{qtype:"bank"})}));
   }
   if(domKey==="science"){
-    let qs=dedupeList(await fetchGemini("science",n));
+    let qs=dedupeList(quizFromCache("science",n));
     if(qs.length<n){qs=qs.concat(takeUniqueFrom(shuffle(SCIENCE),n-qs.length))}
     if(qs.length<n){qs=qs.concat(fillAvoidingBatchDupes(qs,SCIENCE,n-qs.length))} // البنك نفد تنويعاً؛ حل أخير
     return qzInjectDue(shuffle(qs).slice(0,n),null,SCIENCE);
@@ -4551,7 +4592,9 @@ const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEn
   "azExpandWords",
   "bktLoad","bktSave","bktStep","bktKey","skOf","bktRecord","bktOf","bktMastered","bktToMastery",
   "writeLfp","mockBand","mockLogLoad","mockLogAdd","mockSeenRecently","mockPickFrom",
-  "buildMockPaper","startMock","mockCur","mockQuestion","mockChoose","mockFinish","renderMock","renderMockResult"];
+  "buildMockPaper","startMock","mockCur","mockQuestion","mockChoose","mockFinish","renderMock","renderMockResult",
+  "posRecord","posBiasOf","posBiasArmed","posTagFor","posConfirmOk","posConfirmHTML","posCancel","posPendClear",
+  "quizFromCache","quizGenTopUp","quizRotNext"];
 function censusMissing(){return CENSUS.filter(function(n){return typeof window[n]!=="function"})}
 function censusHTML(){
   var miss=censusMissing();
@@ -6750,6 +6793,11 @@ const MASC_W={
   "واصلي":"واصل","استمعي":"استمع","شاهدي":"شاهد","جاوبي":"جاوب","تكلّمي":"تكلّم","طبّقي":"طبّق",
   "حرّكي":"حرّك","راجعي":"راجع","اكتشفي":"اكتشف","خذي":"خذ","قدّري":"قدّر","أكملي":"أكمل",
   "افحصي":"افحص","أرسلي":"أرسل","تدرّبي":"تدرّب","اكتبي":"اكتب","اكتبيها":"اكتبها","انسخي":"انسخ",
+  // «عودي» كشفتها لقطةُ شاشةٍ إلزامية لصندوقٍ آخر (٢٥ سبتمبر): شاشةُ تعذّر الصوت
+  // كانت تقول لإلياس «افحص الصوت أوّلاً، أو **عودي** لهذا القسم لاحقاً» — نصفُ السطر
+  // مذكّرٌ ونصفُه مؤنّث. عيبٌ قائمٌ قبل تعديل اليوم، ولا تُغطّيه قاعدةُ `تِ⇐تَ` العامّة
+  // لأن الأمر المؤنّث ينتهي بياء. ويُقال إنه **وُجد عرَضاً** لا بفحصٍ منهجيّ للخطاب.
+  "عودي":"عُد",
   "تأكدي":"تأكد","تأكّدي":"تأكّد","أوجدي":"أوجد","احسبي":"احسب","احذفي":"احذف","استعملي":"استعمل",
   "افتحي":"افتح","انقلي":"انقل","اصعدي":"اصعد","انتبهي":"انتبه","رتّبي":"رتّب","اربطي":"اربط",
   "ابحثي":"ابحث","كوّني":"كوّن","تذكّري":"تذكّر","أخبريني":"أخبرني","قولي":"قل","قوليها":"قلها",
@@ -8598,7 +8646,7 @@ function buildListenPlan(){
 // الحقيقي — صُحِّح ١٦ أغسطس. إرشادٌ نصّي لا قفل تقني: الزرّ لا يُمنع لأيّ مستوى.
 function listenPlaysHint(lv){return "استمعي مرّتين، ثم اختاري"}
 let listenItems=[],listenIdx=0,listenPicked=-1,listenLocked=false,listenScore=0,listenPlays=0,listenShownAt=0,listenDone=false;
-function startListen(){
+function startListen(){posPendClear();
   listenItems=buildListenPlan();listenIdx=0;listenPicked=-1;listenLocked=false;listenScore=0;listenPlays=0;listenDone=false;
   mode="listen";listenShownAt=Date.now();secGateStart("listen",listenCur()&&listenCur().audio);window.scrollTo(0,0);render();
   genTopUp("listen",GEN_BANK_KEY_LISTEN,profileOf().level||"A2");
@@ -8611,14 +8659,19 @@ function listenPlay(){const it=listenCur();if(!it)return;
   speakEnglish(it.audio,function(r){if(r&&r.ok){listenPlays++;render()}})}
 function listenChoose(i){
   if(listenLocked||!gateOpen())return;   // بوّابة بنيوية: لا اختيار قبل زمن السماع
-  const it=listenCur();listenLocked=true;listenPicked=i;
+  const it=listenCur();
+  // بوّابة انحياز الموضع — مشروطة: تمرّ بلا أثرٍ لمن لا عَرَض عنده
+  if(!posConfirmOk("listen",i,it.c[i]))return;
+  listenLocked=true;listenPicked=i;
   const ok=i===it.a;if(ok)listenScore++;
   listenSrsUpdate(it.id,ok);
-  logAnswer("listen",it.lv,ok,posLog(listenOrd(it),it,i),it.id,listenShownAt?Date.now()-listenShownAt:null,
-    {_sk:skOf(it),q_text:(srcTag(it)+genLogText(it,listenOrd(it))+" · plays:"+listenPlays).slice(0,1200)});
+  const ordL=listenOrd(it);
+  posRecord("listen",ordL.indexOf(i)+1,it.c.length);
+  logAnswer("listen",it.lv,ok,posLog(ordL,it,i)+posTagFor("listen"),it.id,listenShownAt?Date.now()-listenShownAt:null,
+    {_sk:skOf(it),q_text:(srcTag(it)+genLogText(it,ordL)+" · plays:"+listenPlays).slice(0,1200)});
   render();
 }
-function listenNext(){
+function listenNext(){posPendClear();
   genPulseFor("listen",profileOf().level||"A2",listenIdx);   // نبضةُ توليد أثناء الجلسة
 
   if(listenIdx+1>=listenItems.length){listenDone=true;window.scrollTo(0,0);render();return}
@@ -8645,7 +8698,7 @@ function renderListen(){
     ${ttsHelpHTML("هذا القسم يحتاج الصوت، ولا نصّ يُقرأ بدلاً منه. افحصي الصوت أوّلاً، أو عودي لهذا القسم لاحقاً.")}
     <div style="margin:16px 0"><button type="button" onclick="listenPlay()" style="background:#0284C7;color:#fff;border:none;border-radius:50%;width:64px;height:64px;font-size:26px;cursor:pointer">🔊</button></div>
     <div style="font-size:12px;color:#64748B;margin-bottom:14px">${listenPlaysHint(it.lv)}${listenPlays?` · استمعتَ ${toAr(listenPlays)} ${listenPlays===1?"مرّة":"مرّات"}`:""}</div>
-    <div class="choices">${secGateHTML()}${choices}</div>
+    <div class="choices">${secGateHTML()}${posConfirmHTML("listen","listenChoose")}${choices}</div>
     ${listenLocked?`<div class="explain"><div class="explain-title" style="color:${listenPicked===it.a?'#059669':'#B45309'}">${listenPicked===it.a?"✓ فهمتَ صحيحاً":"الصحيحة بالأخضر"}</div>
       <div style="margin-top:8px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:10px;direction:ltr;text-align:left;font-family:Georgia,serif;font-size:14px;color:#334155;line-height:1.8">📝 ${boldEvidence(it.audio,evidenceSentence(it.audio,it.c[it.a]))}</div></div>`:""}
   </div>
@@ -8758,7 +8811,7 @@ function buildReadPlan(){
   return planNoTwins(topUpPlan(out,POOL,READ_N,"read"),POOL,READ_N,"read");   // مراجعة حرّة إن استُنفد المستحقّ+الجديد، ثم لا توأمان في الجلسة
 }
 let readItems=[],readIdx=0,readPicked=-1,readLocked=false,readScore=0,readShownAt=0,readDone=false;
-function startRead(){
+function startRead(){posPendClear();
   readItems=buildReadPlan();readIdx=0;readPicked=-1;readLocked=false;readScore=0;readDone=false;
   mode="read";readShownAt=Date.now();raReset();
   {const it=readCur();secGateStart("read",it&&it.passage);}window.scrollTo(0,0);render();
@@ -8767,14 +8820,18 @@ function startRead(){
 function readCur(){return readItems[readIdx]}
 function readChoose(i){
   if(readLocked||!gateOpen())return;   // بوّابة بنيوية: لا اختيار قبل زمن القراءة
-  const it=readCur();readLocked=true;readPicked=i;
+  const it=readCur();
+  if(!posConfirmOk("read",i,it.c[i]))return;
+  readLocked=true;readPicked=i;
   const ok=i===it.a;if(ok)readScore++;
   readSrsUpdate(it.id,ok);
-  logAnswer("read",it.lv,ok,posLog(readOrd(it),it,i),it.id,readShownAt?Date.now()-readShownAt:null,
-    {_sk:skOf(it),q_text:((skOf(it)?"["+skOf(it)+"] ":"")+srcTag(it)+genLogText(it,readOrd(it))).slice(0,1200)});
+  const ordR=readOrd(it);
+  posRecord("read",ordR.indexOf(i)+1,it.c.length);
+  logAnswer("read",it.lv,ok,posLog(ordR,it,i)+posTagFor("read"),it.id,readShownAt?Date.now()-readShownAt:null,
+    {_sk:skOf(it),q_text:((skOf(it)?"["+skOf(it)+"] ":"")+srcTag(it)+genLogText(it,ordR)).slice(0,1200)});
   render();
 }
-function readNext(){
+function readNext(){posPendClear();
   genPulseFor("read",profileOf().level||"A2",readIdx);   // نبضةُ توليد أثناء الجلسة
 
   if(readIdx+1>=readItems.length){readDone=true;window.scrollTo(0,0);render();return}
@@ -8997,7 +9054,7 @@ function renderRead(){
     <span class="tag" style="background:#F5F3FF;color:#6D28D9">📖 اقرئي</span>
     <div style="background:#FAF5FF;border:1px solid #E9D5FF;border-radius:12px;padding:14px;margin:14px 0;font-size:16px;line-height:1.8;direction:ltr;text-align:left;color:#4C1D95;font-family:Georgia,serif">${readLocked?boldEvidence(it.passage,evidenceSentence(it.passage,it.c[it.a])):it.passage}</div>
     <div class="q" style="direction:ltr;text-align:left;font-family:Georgia,serif;margin-top:12px">${it.q}</div>
-    <div class="choices">${secGateHTML()}${choices}</div>
+    <div class="choices">${secGateHTML()}${posConfirmHTML("read","readChoose")}${choices}</div>
     ${readLocked?`<div class="explain"><div class="explain-title" style="color:${readPicked===it.a?'#059669':'#B45309'}">${readPicked===it.a?"✓ فهمتِ صحيحاً":"الصحيحة بالأخضر — والجملة المُبرَزة أعلاه هي الدليل"}</div></div>`:""}
     ${readLocked?readAloudHTML(it):""}
   </div>
@@ -9134,7 +9191,7 @@ function writeBankFor(level){
 }
 // PROMPT قد يمتدّ أسطراً (مطلوبٌ في الصيغة نفسها: "1)"/"2)" أو "•")، فالمحرّك يكتبها
 // بعلامة \n حرفية بدل سطرٍ فعلي (كما TEXT في parseGenBlock يبقى سطراً واحداً) — تُفكّ هنا
-function parseGenWriteBlock(text){
+function parseGenWriteBlock(text,level){
   // الأسطر تُشذَّب كما في parseGenBlock — سطرٌ بفراغٍ بادئ كان يُفقِد الوسم كلّه،
   // وهي أسهل صورة يخرج بها نموذجٌ عن الشكل (مسافةٌ أو ترقيمٌ قبل PROMPT).
   const lines=String(text||"").split(/\r?\n/).map(function(l){return l.trim()});
@@ -9167,15 +9224,51 @@ function parseGenWriteBlock(text){
     if(m=/^PROMPT:\s*(.*)$/i.exec(l))prompt=m[1];
     else if(m=/^MIN:\s*(\d+)/i.exec(l))min=parseInt(m[1],10);
   });
+  // ===== `no_min` قتل توليدَ الكتابة للثلاثة شهراً كاملاً — علاجٌ بثلاث طبقات =====
+  // مقاسٌ لا مفترَض: **١٥ إسقاطاً** بهذا السبب وحده بين ١٩ و٢٤ سبتمبر (إلياس ٩ ·
+  // محمد ٦)، وصفرُ عنصر كتابةٍ مولَّد وصل أحداً منذ ٢٥ أغسطس.
+  //
+  // والسببُ البنيويّ في التعليمة نفسها: الخادم يطلب «اكتب فواصل الأسطر حرفَي \n»،
+  // فيُهرِّب النموذج **كلّ** سطرٍ بعدها — بما فيه السطر الذي يسبق `MIN:` — فيسقط
+  // `MIN: 130` داخل سطر `PROMPT:` نفسه، و`^MIN:` لا يُطابقه أبداً. وقد يكون أيضاً
+  // أهمله أصلاً؛ والسجلّ لم يفصلهما لأنه يقصّ عند ٣٠٠ محرفاً و`MIN` في الذيل.
+  //
+  // **والعلاج يُصحّح ولا يرفض** — وهو العُرف القائم في هذا المفكِّك نفسه: فرع الدمج
+  // فوقه يكتب `if(!min||min<5)min=8` منذ بنائه، فالفرع الحرّ وحده كان يرفض. وثلاث
+  // طبقات بترتيب الثقة، **وكلٌّ تُسمّى في الناتج** فيُعرف بالقياس أيُّها يعمل فعلاً:
+  let minSrc="tag";
+  //  (أ) `MIN:` في أيّ موضعٍ من النصّ لا في أوّل سطرٍ فقط — يلتقط حالة الهروب.
+  if(!min){const m=/MIN:\s*(\d+)/i.exec(String(text||""));if(m){min=parseInt(m[1],10);minSrc="inline"}}
   prompt=prompt.replace(/\\n/g,"\n").trim();
-  const head=String(text||"").replace(/\s+/g," ").slice(0,300);
+  //  (ب) عدد الكلمات المطبوع داخل المهمّة نفسها — والخادم يفرض هذا السطر لكل مستوى
+  //      («Write 25–35 words» / «about 80–100 words» / «Write 140–190 words»)، فهو
+  //      أوثق من أيّ افتراض: هو نصُّ المهمّة الذي تقرؤه هي على الشاشة.
+  if(!min){
+    const m=/(\d{1,3})\s*[–—-]\s*(\d{1,3})\s*words/i.exec(prompt)||/\b(\d{1,3})\s*words/i.exec(prompt);
+    if(m){min=parseInt(m[1],10);minSrc="prompt"}
+  }
+  //  (ج) وأخيراً حدُّ المستوى المؤلَّف — نفس أرقام `minByLevel` في الخادم حرفاً بحرف،
+  //      فالمعرفة مكرّرة في موضعين ويُقال ذلك: تغييرُها هناك يُدرَّج هنا.
+  if(!min&&level){min=WRITE_MIN_BY_LEVEL[level]||0;if(min)minSrc="level"}
+  // وسطرُ MIN المهرَّب داخل نصّ المهمّة يُنزع، وإلّا قرأته هي ضمن التعليمة.
+  prompt=prompt.replace(/\n?\s*MIN:\s*\d+\s*$/i,"").trim();
+  // والذيل يدخل التشخيص مع الصدر: `MIN` يقع في آخر الردّ، والقصّ عند ٣٠٠ كان يبتلعه
+  // فتعذّر الفصل بين «غائبٌ» و«مهرَّب» — فبقي السببُ مجهولاً بعد أن سُمِّي العَرَض.
+  const flat=String(text||"").replace(/\s+/g," ");
+  const head=flat.length>300?flat.slice(0,220)+" … "+flat.slice(-80):flat;
   if(!prompt)return genParseFail("write","no_prompt",head);
   if(!min)return genParseFail("write","no_min",head);
   if(min<5)return genParseFail("write","min_"+min,head);
   if(AR_CHARS.test(prompt))return genParseFail("write","arabic",prompt.slice(0,200));
   return{id:"ai_write_"+Date.now().toString(36)+"_"+Math.random().toString(36).slice(2,7),
-    prompt:prompt,min:min,ai:true};
+    prompt:prompt,min:min,minSrc:minSrc,ai:true};
 }
+// الأرقام المكتوبة في أشكال `systemGenWrite` بالخادم حرفاً بحرف («MIN must be 10/25/
+// 70/130») — نسخةٌ عند العميل تُقال ولا تُخفى، كنسخة `QUIZ_REQ_TOK` من `tokCap()`.
+// **وC1 قيمتُها ١٣٠ لا أكثر**: الخادم بلا شكل C1 أصلاً، و`pickByLevel` تُسقطه إلى شكل
+// B2 — فالرقم هنا يوافق ما يُطلَب فعلاً لا ما نتمنّاه.
+// واتّجاه الخطأ آمن: هذه الطبقة الأخيرة، وما دونها إسقاطُ العنصر كلّه.
+const WRITE_MIN_BY_LEVEL={A1:10,A2:25,B1:70,B2:130,C1:130};
 async function fetchTutorGenWrite(level,kind){
   try{
     const body={mode:"gen",domain:"write",level,topicIdx:genNextTopicIdx()};
@@ -9186,7 +9279,7 @@ async function fetchTutorGenWrite(level,kind){
     if(!res||!res.ok)return genFailLog("write",level,"http",res?res.status:"no_res");
     const data=await res.json();
     if(!data||!data.ok||!data.reply)return genFailLog("write",level,"no_reply",genErrDetail(data));
-    const item=parseGenWriteBlock(data.reply);
+    const item=parseGenWriteBlock(data.reply,level);
     if(item)item.lv=level;
     return item;
   }catch(e){return genFailLog("write",level,"network",e&&e.message)}
@@ -9446,8 +9539,23 @@ function arSentCount(n,one,two,many){return n===1?one:n===2?two:toAr(n)+" "+many
 // والطبقة المغلقة لأدوات الربط الإنجليزية نحوٌ مقرَّر لا قائمةٌ من عندي: التنسيقية
 // السبع (FANBOYS) والخافضة الشائعة والموصولة — تُستعمل حيث يقول السؤال «a joining
 // word (…)» بأمثلةٍ مفتوحة، فلا يُرفض ربطٌ صحيح لأنه خارج الأمثلة المذكورة.
+// ===== الطبقة المغلقة لأدوات الربط — وهي **مرجعُ الخادم** لا قائمةً موازية له =====
+// عيبٌ مقاس (٢٠-٢٤ سبتمبر): `COMBINE_CONNECTORS` في الخادم كان يختار `despite` لِB2
+// و`notwithstanding`/`insofar as`/`albeit` لِC1، **وأربعتها خارج هذه القائمة**، فيسقط
+// العنصر بـ`combine_bad_connector` قبل أن يصل أحداً — أي أن ثلث توليد دمج B2 وثلاثة
+// أرباع C1 كانت تموت بصمت. رُصد مرّتين في السجلّ (٢٠ سبتمبر).
+//
+// **والفصل بين الحالتين لغويٌّ لا ذوقيّ**: `albeit` و`insofar as` أداتا ربطٍ حقيقيتان
+// تصلان جملتين (`albeit briefly`, `insofar as it helps`) — نقصٌ هنا، فأُضيفتا.
+// أمّا `despite` و`notwithstanding` فحرفا جرٍّ لا أداتا ربط: لا يصلان جملتين تامّتين
+// («despite it rained» خطأ)، فمهمّةُ «ادمج الجملتين بـdespite» غير قابلة للتنفيذ كما
+// تُعرض — فحُذفتا من الخادم لا أُضيفتا هنا.
+//
+// **والقائمة هنا هي المرجع**، وقائمة الخادم يجب أن تكون **مجموعةً جزئية** منها —
+// يحرسه `tests/test_connectors.js` بمقابلة الملفّين، فلا يعود الانحراف صامتاً.
 const JOIN_WORDS=["for","and","nor","but","or","yet","so",
-  "after","although","as","because","before","if","once","since","so that","than",
+  "after","albeit","although","as","because","before","if","insofar as","once","since",
+  "so that","than",
   "that","though","unless","until","when","whenever","where","whereas","wherever","while",
   "who","whom","whose","which"];
 function hasWordPhrase(txt,w){
@@ -10219,7 +10327,7 @@ function buildGramPlan(){
   return planNoTwins(topUpPlan(out,POOL,GRAM_N,"gram"),POOL,GRAM_N,"gram");
 }
 let gramItems=[],gramIdx=0,gramOrder=[0,1,2,3],gramPicked=-1,gramLocked=false,gramScore=0,gramShownAt=0,gramDone=false;
-function startGram(){
+function startGram(){posPendClear();
   gramItems=buildGramPlan();gramIdx=0;gramScore=0;gramDone=false;
   mode="gram";gramSetupRound();window.scrollTo(0,0);render();
   gramGenTopUp(profileOf().level||"A2");
@@ -10229,6 +10337,7 @@ function gramSetupRound(){gramOrder=shuffle([0,1,2,3]);gramPicked=-1;gramLocked=
 function gramCur(){return gramItems[gramIdx]}
 function gramChoose(i){
   if(gramLocked||!gateOpen())return;   // بوّابة بنيوية: لا اختيار قبل مقارنة الجمل
+  {const _it=gramCur();if(!_it||!posConfirmOk("gram",i,_it.c[i]&&_it.c[i].t))return}
   gramPicked=i;gramLocked=true;
   const it=gramCur(),ok=!!it.c[i].ok;
   if(ok)gramScore++;
@@ -10254,11 +10363,12 @@ function gramChoose(i){
   // نالت فيه صفراً — وهو نقضٌ لعُرف المشروع نفسه: «تُسجَّل بموضعها لا بشيفرتها».
   const shown=gramOrder.map(function(wi,k){return (k+1)+") "+it.c[wi].t+(it.c[wi].ok?" ✓":"")}).join(" | ");
   const pickPos=gramOrder.indexOf(i)+1;
-  logAnswer("gram","sentence",ok,"موضع "+toAr(pickPos)+" · "+it.c[i].t+(slip?" · "+slip:""),it.id,elapsed,
+  posRecord("gram",pickPos,it.c.length);
+  logAnswer("gram","sentence",ok,"موضع "+toAr(pickPos)+" · "+it.c[i].t+(slip?" · "+slip:"")+posTagFor("gram"),it.id,elapsed,
     {_sk:skOf(it),q_text:shown});
   render();
 }
-function gramNext(){
+function gramNext(){posPendClear();
   genPulseFor("gram",profileOf().level||"A2",gramIdx);   // نبضةُ توليد أثناء الجلسة
 
   if(gramIdx+1>=gramItems.length){gramDone=true;render();return}
@@ -10361,7 +10471,7 @@ function renderGram(){
   <div class="card">
     <span class="tag" style="background:#CFFAFE;color:#0E7490">✍️ أيّ جملةٍ صحيحة؟</span>
     ${gramArmedHint(it)}
-    <div class="choices" style="margin-top:12px">${secGateHTML()}${choices}</div>
+    <div class="choices" style="margin-top:12px">${secGateHTML()}${posConfirmHTML("gram","gramChoose")}${choices}</div>
   </div>
   ${gramLocked?`<button class="btn" style="background:#0E7490" onclick="gramNext()">${gramIdx+1>=gramItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`:""}`;
 }
@@ -11803,7 +11913,7 @@ function buildStepPlan(){
 }
 let stepItems=[],stepIdx=0,stepOrder=[0,1,2,3],stepPicked=-1,stepLocked=false,stepScore=0,
   stepShownAt=0,stepDone=false,stepSeq=[],stepSeqPicked=[];
-function startStep(){
+function startStep(){posPendClear();
   stepItems=buildStepPlan();stepIdx=0;stepScore=0;stepDone=false;
   mode="step";stepSetupRound();window.scrollTo(0,0);render();
   stepGenTopUp(profileOf().level||"A2");
@@ -11829,6 +11939,7 @@ function stepCur(){return stepItems[stepIdx]}
 function stepChoose(i){
   if(stepLocked||!gateOpen())return;   // بوّابة بنيوية: لا اختيار قبل قراءة الجمل
   const it=stepCur();if(!it||it.type==="order")return;
+  if(!posConfirmOk("step",i,it.c[i]&&it.c[i].t))return;
   stepPicked=i;stepLocked=true;
   const ok=!!it.c[i].ok;
   if(ok)stepScore++;
@@ -11836,7 +11947,8 @@ function stepChoose(i){
   // بترتيب العرض لا البنك — نفس تصحيح `gram` أعلاه، والعلّة هنا نفسها حرفياً
   const shown=stepOrder.map(function(wi,k){return (k+1)+") "+it.c[wi].t+(it.c[wi].ok?" ✓":"")}).join(" | ");
   const pickPos=stepOrder.indexOf(i)+1;
-  logAnswer("step",it.type,ok,"موضع "+toAr(pickPos)+" · "+it.c[i].t,it.id,Date.now()-stepShownAt,
+  posRecord("step",pickPos,it.c.length);
+  logAnswer("step",it.type,ok,"موضع "+toAr(pickPos)+" · "+it.c[i].t+posTagFor("step"),it.id,Date.now()-stepShownAt,
     {_sk:skOf(it),q_text:((it.tag?"["+it.tag+"] ":"")+(it.q?it.q+" · ":"")+shown).slice(0,1200)});
   render();
 }
@@ -11860,7 +11972,7 @@ function stepSeqSubmit(){
       +it.s.map(function(t,k){return (k+1)+") "+t}).join(" | ")).slice(0,1200)});
   render();
 }
-function stepNext(){
+function stepNext(){posPendClear();
   genPulseFor("step",profileOf().level||"A2",stepIdx);   // نبضةُ توليد أثناء الجلسة
 
   if(stepIdx+1>=stepItems.length){stepDone=true;render();return}
@@ -11916,7 +12028,7 @@ function renderStep(){
     }).join("");
     const stem=it.q?`<div style="direction:ltr;text-align:left;font-family:Georgia,serif;font-size:17px;color:#0F172A;margin-bottom:12px">${esc(it.q)}</div>`
       :`<div style="font-size:13px;color:#64748B;margin-bottom:10px">${m?"أيّ جملةٍ صحيحة تماماً؟":"أيّ جملةٍ صحيحة تماماً؟"}</div>`;
-    body=stem+`<div class="choices">${secGateHTML()}${choices}</div>`;
+    body=stem+`<div class="choices">${secGateHTML()}${posConfirmHTML("step","stepPick")}${choices}</div>`;
   }
   app.innerHTML=`
   <button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
@@ -14748,6 +14860,114 @@ const SEC_GATE_FLOOR={listen:3,read:5,gram:4,minpair:2,video:4,math6:3,build:4,
 // وثلاثين كلمة جديدة: تُمسح الفروق لا تُقرأ الجمل كاملةً.
 const SEC_GATE_MAX={listen:5,read:9,gram:8,minpair:3,video:11,math6:12,build:9,
   "step:pick":8,"step:gap":5,"step:order":11};
+// ===== انحيازُ الموضع: «response set» — قياسٌ أوّلاً، ثمّ بوّابةٌ مشروطة =====
+// خلطُ المواضع الذي شُحن ١٤ سبتمبر جعل هذا **قابلاً للقياس لأوّل مرّة**، فكشف عند
+// هيا (٢٠-٢٤ سبتمبر) شكلاً لا يُخطئه أحد: اختارت **الزرّ الثاني** في ٢٤ من ٣٢ استماعاً
+// (٧٥٪) و١١ من ١٥ قواعد (٧٣٪) و٢١ من ٣٢ مقروءاً (٦٦٪) — والصدفة ٣٣٪ و٢٥٪.
+// **وموضعُ الصواب متوازنٌ فعلاً** (٩/١١/١٢ في الاستماع)، فالخلط يعمل والانحياز سلوكُها.
+//
+// **والتفصيل يهدم الدرجة لا يشرحها فقط**: في الاستماع، حين كان الصواب في الموضع ٢
+// (١١ عنصراً) أصابت ١٠؛ وفي الواحد والعشرين الباقية أصابت **٥ (٢٤٪)** — دون الصدفة.
+// أي أن «٤٧٪ استماعاً و٥٣٪ مقروءاً» ليست فهماً عند النصف بل أثرَ موضع.
+//
+// **والاسم منشورٌ لا مخترَع**: «response set» — Cronbach 1946، *Response Sets and Test
+// Validity*، *Educational and Psychological Measurement* 6:475 — وهو يُصنّف تفضيل الموضع
+// تهديداً لصدق الدرجة لا نقصاً في القدرة: الدرجة لا تقيس ما تدّعي قياسه.
+//
+// **وحدُّ المعيار يُقال بحرف القاعدة صفر**: الأدبيات تُسمّي الظاهرة وتصف أثرها على
+// الصدق، **ولا يوجد معيارٌ منشورٌ واضح لمنعها في الواجهة** — فالنصفُ الأوّل (القياس
+// والوسم) معياريّ، والنصفُ الثاني (بوّابة التأكيد) **فرضيّةٌ تُقاس ولا يُدَّعى أنها
+// علاج**. والخلطُ نفسه لا يُضيف شيئاً هنا: هو قائمٌ أصلاً ويجعل درجتها صدفةً محضة.
+//
+// **والعتبة تُشتقّ من الصدفة نفسها لا تُختار** — وهذا أوّل ما كشفه اختباري: رقمٌ
+// ثابت (٦٠٪) يخلط قسماً بثلاثة خيارات بقسمٍ بأربعة، والصدفة فيهما ٣٣٪ و٢٥٪. فالعتبة
+// **ضِعفُ الصدفة** (1/nOpt × 2) للتسليح، و**مرّةٌ ونصف** للانحلال — عتبتان لا واحدة
+// فلا تتذبذب الحالة (نفس نمط `bankStretched`).
+//
+// وهي تفصل المقاس فعلاً بلا معايرةٍ على الأشخاص:
+//   هيا — استماع ٧٥٪ (عتبته ٦٧٪) ✔ · قواعد ٧٣٪ و step ٥٠٪ (عتبتهما ٥٠٪) ✔
+//   إلياس — استماع ٦٢٫٥٪ ✘ لا يُسلَّح: ميلُه دون ضِعف الصدفة، وسببُ درجته الزمن لا الموضع
+//   محمد — قواعد ٤٠٪ واستماع ٥٦٪ ✘ لا يُسلَّح
+// فلا تمسّ البوّابة من لا عَرَض عنده، وهو شرطُ كل بوّابةٍ في هذا المشروع.
+const POS_WIN=12, POS_ARM_MIN=8, POS_ARM_MULT=2.0, POS_CLEAR_MULT=1.5;
+const POS_CONFIRM_MS=15000;
+function posKeyOf(d){return "pos_bias_"+d}
+function posArr(d){try{const a=JSON.parse(lsGet(posKeyOf(d))||"[]");return Array.isArray(a)?a:[]}catch(e){return[]}}
+// يُسجَّل **الموضع المعروض** لا فهرس البنك — وإلّا قِيس ترتيبُ الكتابة لا ما رأته،
+// وهو بعينه عطل `gram`/`step` المُصلَح في ٢٥ أغسطس. **وعددُ الخيارات يُسجَّل معه**
+// لأن الصدفة تتغيّر به، ومنه تُشتقّ العتبة.
+function posRecord(domain,ordinal,nOpt){
+  if(!(ordinal>0)||!(nOpt>1))return;
+  let a=posArr(domain);a.push([ordinal|0,nOpt|0]);if(a.length>POS_WIN)a=a.slice(-POS_WIN);
+  try{lsSet(posKeyOf(domain),JSON.stringify(a))}catch(e){}
+}
+function posBiasOf(domain){
+  const raw=posArr(domain);if(raw.length<POS_ARM_MIN)return null;
+  // صيغةٌ قديمة (أرقامٌ مفردة بلا عدد خيارات) تُقرأ بثلاثة خيارات — أضيقُ الحالتين
+  // عتبةً، فاتّجاه الخطأ آمن: لا تُسلَّح بوّابةٌ على بياناتٍ لا نعرف صدفتها.
+  const a=raw.map(function(x){return Array.isArray(x)?x:[x|0,3]});
+  const c={};a.forEach(function(x){c[x[0]]=(c[x[0]]||0)+1});
+  let pos=0,hits=0;Object.keys(c).forEach(function(k){if(c[k]>hits){hits=c[k];pos=+k}});
+  const opts=a.map(function(x){return x[1]||3}).sort(function(p,q){return p-q});
+  const nOpt=opts[Math.floor(opts.length/2)]||3;   // الوسيط: عددُ الخيارات الغالب
+  return{pos:pos,hits:hits,n:a.length,rate:hits/a.length,nOpt:nOpt,chance:1/nOpt};
+}
+const posArmed={};
+function posBiasArmed(domain){
+  const b=posBiasOf(domain);
+  if(!b){posArmed[domain]=false;return false}
+  if(posArmed[domain])posArmed[domain]=b.rate>=b.chance*POS_CLEAR_MULT;
+  else if(b.rate>=b.chance*POS_ARM_MULT){posArmed[domain]=true;posBiasLog(domain,b)}
+  return !!posArmed[domain];
+}
+// يُسجَّل مرّةً لكل قسمٍ في عمر الصفحة: هذه **حالةُ سلوكٍ لا حدثُ إجابة**، فتكرارُها
+// ضجيجٌ بلا معلومة — نفس قرار `model_fallback` (١٨ سبتمبر).
+const posLogged={};
+function posBiasLog(domain,b){
+  if(posLogged[domain])return;posLogged[domain]=true;
+  try{logAnswer("gen","pos_bias",null,domain+" · موضع "+toAr(b.pos)+" · "+toAr(b.hits)+"/"+toAr(b.n),
+    null,null,{q_text:("[انحياز موضع] "+domain+" · الزرّ "+toAr(b.pos)+" اختير "+toAr(b.hits)
+      +" من "+toAr(b.n)+" ("+Math.round(b.rate*100)+"٪) — خيارات:"+toAr(b.nOpt)
+      +" · الصدفة "+Math.round(b.chance*100)+"٪ · العتبة "+Math.round(b.chance*POS_ARM_MULT*100)+"٪").slice(0,300)})}catch(e){}
+}
+// **ويُلحَق بسطر الإجابة نفسه وهو مُسلَّح** — فتُقرأ دقّةُ القسم بعزله عند الاستعلام
+// بدل أن تُقرأ فهماً. ولا تُغيَّر الدرجة إطلاقاً: نفس قرار `misaligned` (٢٦ أغسطس) —
+// وسمٌ يُقاس أوّلاً، ولا يُبنى عليه حكمٌ قبل أن يثبته توزيعٌ حقيقي.
+function posTagFor(domain){
+  const b=posBiasOf(domain);
+  if(!b||!posArmed[domain])return "";
+  return " · تحيّز:موضع "+toAr(b.pos)+" "+toAr(b.hits)+"/"+toAr(b.n);
+}
+// ===== والبوّابة المشروطة: نقرةٌ ثانيةٌ تُؤكّد — فرضيّةٌ تُقاس لا علاجٌ يُدَّعى =====
+// المقصود كسرُ **الآليّة** لا إبطاء الصادق: نقرةٌ واحدة تقفل الجواب اليوم، فتكفي
+// عادةً بلا قراءة. والنقرة الثانية تجعل الفعل قصداً، وتفتح باب «تراجع» قبل القفل.
+// ومشروطةٌ كسائر بوّاباتنا: تُسلَّح عند العَرَض وتنحلّ عند زواله، فلا تمسّ محمداً
+// ولا إلياس (توزيعهما متّزن: محمد ١/٢/٣/٤ متقارب، وإلياس يميل قليلاً للثالث).
+let posPend={dom:"",i:-1,at:0,label:""};
+function posPendClear(){posPend={dom:"",i:-1,at:0,label:""}}
+function posPendOn(domain){return posPend.dom===domain&&posPend.i>=0}
+// تُعيد true إن جاز القفل الآن، وfalse إن كانت هذه أوّل نقرةٍ تنتظر تأكيداً.
+function posConfirmOk(domain,i,label){
+  if(!posBiasArmed(domain))return true;
+  if(posPend.dom===domain&&posPend.i===i&&(Date.now()-posPend.at)<POS_CONFIRM_MS){posPendClear();return true}
+  posPend={dom:domain,i:i,at:Date.now(),label:String(label==null?"":label)};
+  render();return false;
+}
+function posCancel(){posPendClear();render()}
+function posConfirmHTML(domain,fnName){
+  if(!posPendOn(domain))return "";
+  // وسمٌ ثابت يُستعلَم به: `document.body.innerHTML` يشمل وسمَ `<script>` نفسه، فالبحث
+  // النصّي فيه يقيس **شيفرة الصفحة** لا المعروض — وقد أطلق ذلك بلاغاً كاذباً ونجاحاً
+  // كاذباً معاً في أوّل صياغة لاختبار هذه الميزة. فيُستعلَم بالعنصر لا بالنصّ.
+  return `<div data-poscx="1" style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:12px;padding:.8rem 1rem;margin:.6rem 0">
+    <div style="font-size:13px;color:#9A3412;line-height:1.8;margin-bottom:.5rem">اخترتِ: <span dir="auto" style="font-weight:700">${esc(posPend.label)}</span></div>
+    <div style="font-size:12px;color:#C2410C;line-height:1.8;margin-bottom:.6rem">تأكّدي قبل القفل — هل هذا ما يقوله النصّ فعلاً؟</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn" style="background:#EA580C;border-color:#EA580C" onclick="${fnName}(${posPend.i})">تأكيد</button>
+      <button class="btn secondary" onclick="posCancel()">تراجع</button>
+    </div>
+  </div>`;
+}
 // `key` يفصل مفتاح الجدول عن اسم القسم المعروض: STEP يحتاج أرضيّةً لكل نوع، ونصُّ
 // الشريط يبقى واحداً باسم القسم. وغيابه يعني المفتاح هو القسم نفسه كما كان.
 function secGateStart(domain,text,key){
@@ -14787,6 +15007,9 @@ async function start(domKey){
   if(domKey==="full"){filtered=await buildFull()}
   else{filtered=await buildDomain(domKey,PER)}
   loading=false;questionShownAt=Date.now();if(filtered.length)gateStart(filtered[0]);render();
+  // التخصيب الصامت **بعد** أن تُعرض الجلسة — نفس موضع `genTopUp` في startListen/
+  // startRead/startWrite حرفياً: لا شاشة انتظار، ولا أثر على ما شُحن اليوم.
+  if(needsAI)quizGenTopUp();
 }
 async function home(){mode="home";gateStop();fadeGateStop();window.scrollTo(0,0);render();
   // صفحة المحادثة وحدها لا تعرض اقتراح التقوية، فلا داعي لجلب النتائج أصلاً
