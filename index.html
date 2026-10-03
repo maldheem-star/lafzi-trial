@@ -4678,7 +4678,7 @@ const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEn
   "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","piPickBand","piBandBoxHTML","piArm","piOk","piVals","piGateOn","piGated","piSig1","fsrsUpdate","fsrsIvl","fsrsR","fsrsInitS","fsrsInitD","fsrsNextD","fsrsClampD","fsrsRecallS","fsrsForgetS","tmplKey","spreadTemplates","drawSpread","qzErrRecord","qzDueKeys","qzInjectDue","qzErrOf","qzCardDone","fadeQText","fadeAnsText","fadeGateStart","fadeGateStop","fadeGateNeeded","copyAzRaw","esc","weakPhonemeStr","num0","profileBarHTML","renderHomeCoachOnly","learnerInfo","coachLevel","toMasc","genderizeText","genderizeNode","genderizeInit","lsGet","lsSet","lsDel","pkey","cxShuffleOrder","cxPreStart","cxPreChoose","cxPreNext","cxPreQuit","cxPreCur","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary","coachMode","coachAskHelp","coachEnd","coachReview","coachFixParse","weakClean","coachSaysNow","snapToSuggestion","editDist","coachShowSays","coachParse","coachTopicGo","coachTopicBack","coachTopicClean","coachFreeScene","wbStart","wbPick","wbUnpick","wbCheck","wbHTML","wbReady","wbSay","wbReset","wbNorm","wbDistract","wbStageGet","wbGrade","engBuildFor","dictErrRecord","dictIsBuild","dictCur","renderDictationBuild","planCheckBuild","echoRecord","echoArmed","coachBankOn","coachBankSync","coachBankCheck","fixCardSave","fixCardGrade","bugOf","basicsOpNow","basicsOperands","basicsBugNow","digitsOf","factDcpm","factDcpmBand","coachLeave","coachAutoReview","coachSetFail","coachHintNow","basicsErrDelta","shapeRecord","shapeArmed","ob1Arm","ob1Jump","ob1Back","ob1Complete","ob1BoxHTML","btArm","btBorrow","btComplete","btBoxHTML","basicsOb1Gated","basicsBtGated","basicsShapeLogRemedy","shapeLogRemedy","quotArm","quotGated","quotReset","listenBankFor","listenSrsUpdate","buildListenPlan","listenPlaysHint","startListen","listenPlay","listenChoose","listenNext","renderListen",
   "readBankFor","readSrsUpdate","buildReadPlan","startRead","readChoose","readNext","renderRead",
   // القراءة الجهرية: دوالُّها متأخّرةٌ في الملفّ كدوالّ التسجيل، فتُعدّ معها لا بعدها
-  "readAloudTarget","readAloudWhole","readAloudMaxMs","readAloudOverBudget","raStart","raStop","raFinish","raReset","raRetry","readAloudHTML","raLogText",
+  "readAloudTarget","readAloudWhole","readAloudMaxMs","readAloudOverBudget","raStart","raStop","raFinish","raReset","raRetry","readAloudHTML","raLogText","raSatisfied","raBlockHint","raSkipLog",
   "genBankLoad","genBankAdd","parseGenBlock","fetchTutorGen","genTopUp","genCallsFor","genFire","genSweepFlight","genGateLog","genLogText","lvChain","stretchDepth","mcOrder","ordFor","posLog","listenOrd","readOrd","quizOrd","quizItemDefect","quizRejectLog","clipAutoOpen","arTimes","agreeSlip","agreeToks","gramAgvOffered","parseGenPickBlock","parseGenVideoBlock","errCollect","errDraw","errCount","errQuizCount","startErrors","errCheck","errChoose","errNext","errReplay","renderErrors",
   "minpairBankFor","minpairSrsUpdate","buildMinpairPlan","startMinpair","minpairPlay","minpairChoose","minpairNext","renderMinpair",
   "gramBankFor","gramSrsUpdate","buildGramPlan","startGram","gramChoose","gramNext","renderGram","fetchTutorGenGram","gramGenTopUp",
@@ -8957,7 +8957,11 @@ function readChoose(i){
     {_sk:skOf(it),q_text:((skOf(it)?"["+skOf(it)+"] ":"")+srcTag(it)+genLogText(it,ordR)).slice(0,1200)});
   render();
 }
-function readNext(){posPendClear();
+function readNext(){
+  // حارسٌ ثانٍ في الدالّة لا في الزرّ وحده: زرٌّ قديمٌ في DOM أو نداءٌ من الطرفية
+  // يتجاوز العرض، والشرط يجب أن يكون في مسار التنفيذ نفسه.
+  if(!raSatisfied(readCur()))return;
+  posPendClear();
   genPulseFor("read",profileOf().level||"A2",readIdx);   // نبضةُ توليد أثناء الجلسة
 
   if(readIdx+1>=readItems.length){readDone=true;window.scrollTo(0,0);render();return}
@@ -9046,15 +9050,64 @@ function readAloudTarget(it){
   return (ev||String(it.passage)).trim();
 }
 function readAloudWhole(it){return profileId()==="haya"||!evidenceSentence(it&&it.passage,it&&it.c?it.c[it.a]:"")}
+// ===== والقراءة الجهرية صارت إجبارية — أمرُ صاحب المشروع، ٣ أكتوبر =====
+// بُنيت **اختياريّةً** في ١٣ سبتمبر («لا يُقفل الانتقال»)، فكانت حصيلتُها على ثمانية
+// عشر يوماً **صفّين في يومٍ واحد** (١٥ سبتمبر) وصفرٌ بعدهما. فعُرض الأمر عليه: تُحذَف
+// أم تُفرَض؟ فقال: **«حط القراءة الجهرية اجبارية»**. والقرارُ يتجاوز تحفّظي المكتوب،
+// وهو حقُّه — ويُنفَّذ كما قيل.
+//
+// **والنصف الأوّل معياريّ**: القراءة الجهرية **هي** مهمّة القياس في Oral Reading
+// Fluency ضمن القياس المرتبط بالمنهج (Deno 1985، وDIBELS) — لا إضافةٌ اختيارية
+// تُعرض بجانبه. فجعلُها مطلوبةً يوافق كيف تُقاس طلاقةُ القراءة فعلاً.
+// **والنصف الثاني لا معيار له**: هل يُمنع الانتقال أم يُنبَّه؟ لا أعرف معياراً منشوراً
+// في واجهةٍ تعليمية، فالمنع فرضيّةٌ تُقاس — بنفس ما أُعلن في بوّابة انحياز الموضع.
+//
+// **والشرط يُثبَت لا يُفترَض**: لا يُفتَح الطريق إلّا بأحد أربعة، وكلُّها **تقع فعلاً**
+// ويُسجَّل وقوعُها — فلا بابَ خلفيّ يُظنّ أنه مفتوح:
+//   • تقييمٌ تمّ (`raDone`) — المقصود؛
+//   • أو سجّلت وتعثّر Azure (`fail`) — «وهذا لا يُحتسب عليكِ» كما كان، فلا تُحبَس
+//     على عطل خادم؛
+//   • أو **أثبت الجهاز أنه بلا ميكروفون** (`err`) — وهذا ليس تخفيفاً: متصفّح سناب شات
+//     يحجب الميكروفون حجباً موثَّقاً (`MIC_ERR_HELP.no_api`)، وإلياس يفتح منه فعلاً،
+//     فمنعٌ بلا مخرجٍ كان **سيقفل قسم المقروء كلَّه عليه** — عطلٌ أوسع ممّا جاء يعالجه.
+//     **ولا يُفتَح إلّا بعد ضغطةٍ حقيقية تفشل**، فلا يُعفى أحدٌ قبل أن يُجرّب.
+//   • أو لا هدفَ أصلاً (عنصرٌ بلا نصّ) — شرطٌ على ما لا وجود له لا يُفرَض.
+const RA_REQUIRED=true;
+function raSatisfied(it){
+  if(!RA_REQUIRED||!readLocked)return true;
+  if(!readAloudTarget(it))return true;
+  if(raDone)return true;
+  const r=raResult||{};
+  return !!(r.fail||r.err);
+}
+// نصُّ الزرّ المعطَّل يقول **ما المطلوب الآن** لا «ممنوع» — فالمنع بلا سببٍ معروض
+// يُقرأ عطلاً. و«أنهِ/أنهي» ليست في `MASC_W` فلا تُستعمل صيغةُ أمرٍ غيرُ مغطّاة.
+function raBlockHint(){
+  const r=raResult||{};
+  if(raListening)return "⏺ التسجيل جارٍ — اضغطي «انتهيتُ» عند الفراغ";
+  if(raBusy)return "جارٍ التقييم…";
+  if(r.discarded)return "🎤 التسجيل قصيرٌ جداً — أعيدي القراءة";
+  return "🎤 اقرئي النصّ بصوتك للانتقال";
+}
+// وتعذّرُ الميكروفون يُسجَّل حين يقع — فبلاه لا يُعرف كم مرّةً فُتح المخرج ولا لمن،
+// فيستحيل الحكم على أثر الإجبار أصلاً (كم قراءةً وقعت مقابل كم إعفاءً).
+let raSkipLogged=0;
+function raSkipLog(why){
+  if(raSkipLogged>=3)return;raSkipLogged++;
+  try{const it=readCur();logAnswer("gen","ra_skip",null,String(why||"?").slice(0,40),it?it.id:null,null,
+    {q_text:("[القراءة الجهرية: مخرجٌ لتعذّر الميكروفون] "+String(why||"?")
+      +" · "+String(readAloudTarget(it)||"").slice(0,120)).slice(0,300)})}catch(e){}
+}
 let raRec=null,raStream=null,raChunks=[],raTimer=null,raElapsed=0,raListening=false,raBusy=false,raResult=null,raStartedAt=0,raDone=false,raCapHit=false;
 function raReset(){
   if(raTimer){clearInterval(raTimer);raTimer=null}
+  if(raBusyTimer){clearTimeout(raBusyTimer);raBusyTimer=null}
   if(raStream){try{raStream.getTracks().forEach(function(t){t.stop()})}catch(e){}raStream=null}
   raRec=null;raChunks=[];raElapsed=0;raListening=false;raBusy=false;raResult=null;raDone=false;raCapHit=false;
 }
 async function raStart(){
   if(raListening||raBusy)return;
-  if(!micSupported()){raResult={err:"no_api"};render();return}
+  if(!micSupported()){raResult={err:"no_api"};raSkipLog("no_api");render();return}
   raResult=null;
   const cap=readAloudMaxMs(readAloudTarget(readCur()));
   try{
@@ -9072,16 +9125,38 @@ async function raStart(){
     render();
   // مفاتيح `MIC_ERR_HELP` هي أسماء أخطاء المواصفة نفسها (NotAllowedError…)، فتُقرأ
   // من `e.name` مباشرةً — لا جدولَ ترجمةٍ ثانٍ يتباعد عن الأوّل
-  }catch(e){raListening=false;raResult={err:(e&&e.name)||"no_api"};render()}
+  }catch(e){raListening=false;raResult={err:(e&&e.name)||"no_api"};raSkipLog(raResult.err);render()}
+}
+// ===== ولا حالةَ تُقفل مساراً ولا تنعكس — بعد أن صار الانتقال معلَّقاً عليها =====
+// `raBusy` كان يبقى `true` أبداً لو لم يُطلق `MediaRecorder` حدث `onstop` بعد
+// `stop()` — وهو احتمالٌ حقيقي في المتصفّحات المدمجة. وكان ثمنُه قبل اليوم سطراً
+// يقول «جارٍ التقييم…» ولا يمنع شيئاً؛ **وبعد الإجبار صار يحبس المتعلّم في عنصرٍ
+// لا يخرج منه**. وهو بعينه صنفُ `ttsServerOk=false` و`genInFlight` المُسرَّب
+// (٥ سبتمبر) — فيُعالَج بنفس العلاج: عمرٌ مقاسٌ يُكنَس بعده.
+// والمهلة مشتقّةٌ لا مختارة: `raFinish` مسقوفةٌ بـ`fetchTimeout` (٢٥ث)، والتسليمُ
+// من `stop()` إليها لحظيّ — فضِعفُها وزيادة يعني تسريباً يقيناً لا بطئاً سليماً.
+const RA_BUSY_TTL=NET_TIMEOUT_MS*2+5000;
+let raBusyTimer=null;
+function raBusyWatch(){
+  if(raBusyTimer)clearTimeout(raBusyTimer);
+  raBusyTimer=setTimeout(function(){
+    raBusyTimer=null;
+    if(!raBusy)return;
+    raBusy=false;raResult={fail:"stalled"};
+    try{logAnswer("gen","ra_skip",null,"stalled",null,null,
+      {q_text:"[القراءة الجهرية] التقييم لم يُسلَّم خلال العمر المقاس — فُتح الطريق"})}catch(e){}
+    render();
+  },RA_BUSY_TTL);
 }
 function raStop(){
   if(!raListening)return;
   raListening=false;raBusy=true;
   if(raTimer){clearInterval(raTimer);raTimer=null}
-  try{if(raRec&&raRec.state!=="inactive")raRec.stop();else{raBusy=false}}catch(e){raBusy=false}
+  try{if(raRec&&raRec.state!=="inactive"){raRec.stop();raBusyWatch()}else{raBusy=false}}catch(e){raBusy=false}
   render();
 }
 async function raFinish(){
+  if(raBusyTimer){clearTimeout(raBusyTimer);raBusyTimer=null}   // سُلِّم فعلاً — لا كنسَ بعده
   const it=readCur();const target=readAloudTarget(it);
   if(raStream){try{raStream.getTracks().forEach(function(t){t.stop()})}catch(e){}raStream=null}
   wavTapStop();                        // يُوقَف قبل القراءة لا بعدها
@@ -9149,8 +9224,8 @@ function readAloudHTML(it){
   }else{
     body=`<button class="btn" style="background:#7C3AED" onclick="raStart()">🎤 اقرئي بصوتك</button>`;
   }
-  return `<div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:12px;padding:12px;margin-top:12px">
-    <div style="font-weight:700;color:#166534;margin-bottom:6px">🎤 اقرئي ${scope} بصوتٍ واضح <span style="font-weight:400;color:#15803D">(اختياري)</span></div>
+  return `<div data-rabox="1" style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:12px;padding:12px;margin-top:12px">
+    <div style="font-weight:700;color:#166534;margin-bottom:6px">🎤 اقرئي ${scope} بصوتٍ واضح ${RA_REQUIRED?`<span style="font-weight:700;color:#B45309">(مطلوبة قبل الانتقال)</span>`:`<span style="font-weight:400;color:#15803D">(اختياري)</span>`}</div>
     <div style="background:#fff;border:1px solid #DCFCE7;border-radius:8px;padding:10px;margin-bottom:10px;direction:ltr;text-align:left;font-family:Georgia,serif;color:#14532D;line-height:1.7">${esc(target)}</div>
     ${body}</div>`;
 }
@@ -9184,7 +9259,13 @@ function renderRead(){
     ${readLocked?`<div class="explain"><div class="explain-title" style="color:${readPicked===it.a?'#059669':'#B45309'}">${readPicked===it.a?"✓ فهمتِ صحيحاً":"الصحيحة بالأخضر — والجملة المُبرَزة أعلاه هي الدليل"}</div></div>`:""}
     ${readLocked?readAloudHTML(it):""}
   </div>
-  ${readLocked?`<button class="btn" style="background:#7C3AED" onclick="readNext()">${readIdx+1>=readItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`:""}`;
+  ${readLocked
+    ? (raSatisfied(it)
+       ? `<button class="btn" style="background:#7C3AED" onclick="readNext()">${readIdx+1>=readItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`
+       // الزرّ **يبقى معروضاً معطَّلاً** لا يختفي: زرٌّ غائب يُقرأ عطلاً، ومعطَّلٌ
+       // بسببٍ مكتوب يقول ما المطلوب. وعربيٌّ خالص في سطره فلا انقلاب.
+       : `<button class="btn" data-ragate="1" disabled style="background:#CBD5E1;color:#475569;cursor:not-allowed">${raBlockHint()}</button>`)
+    :""}`;
 }
 function renderReadResult(){
   const pct=readItems.length?Math.round(readScore/readItems.length*100):0;
