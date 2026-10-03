@@ -81,7 +81,12 @@ function ok(c,m){if(c){pass++;console.log("  ✓ "+m)}else{fail++;console.log(" 
     await p.evaluate(()=>{gateLeft=0;gateStop&&gateStop();render();readChoose(0);render()});
     const after=await p.evaluate(()=>document.body.innerText);
     ok(/بصوتٍ واضح/.test(after),"وبعد الإجابة: الصندوق ظهر");
-    ok(/اختياري/.test(after),"ومُعلَنٌ أنه اختياري — لا يُقفل الانتقال");
+    // ===== دعوى رُوجعت ولم تُدهَس — ٣ أكتوبر =====
+    // كُتبت يوم كانت القراءة الجهرية اختيارية، **وأمرُ صاحب المشروع نقض ذلك**
+    // («حط القراءة الجهرية اجبارية»). **وما جاءت له الدعوى باقٍ بحرفه**: الصندوق
+    // لا يظهر إلّا بعد الإجابة — والمتغيّر وصفُه لا وجودُه.
+    ok(/مطلوبة قبل الانتقال/.test(after),"ومُعلَنٌ أنه مطلوب قبل الانتقال");
+    ok(!/\(اختياري\)/.test(after),"ولا تبقى كلمة «اختياري» بعد الأمر");
     // النصّ المعروض للقراءة هو الهدف نفسه لا غيره
     const same=await p.evaluate(()=>{
       const t=readAloudTarget(readCur());
@@ -91,18 +96,32 @@ function ok(c,m){if(c){pass++;console.log("  ✓ "+m)}else{fail++;console.log(" 
     await p.close();
   }
 
-  // ===== ٤) التخطّي لا يُعطّل الجلسة =====
-  console.log("\n§٤ من لا يقرأ جهراً يُكمل جلسته كما كانت");
+  // ===== ٤) ومن لا ميكروفون عنده يُكمل جلسته — مُراجَعةٌ ٣ أكتوبر =====
+  // كان القسم يُثبّت «من لا يقرأ جهراً يُكمل جلسته» — **وأمرُ صاحب المشروع
+  // نقض هذا صراحةً**. لكنّ **الخطر الذي جاء له قائمٌ وأشدّ**: من لا ميكروفون
+  // عنده (سناب شات يحجبه حجباً موثَّقاً، وإلياس يفتح منه) **يجب أن يُكمل الجلسة**
+  // وإلّا أقفل الإجبارُ قسمَ المقروء عليه كلّه. فصار القسم يقيس **الاثنين معاً**:
+  // بلا قراءة لا يُنتقَل، وبجهازٍ بلا ميكروفون تُكمَل الجلسة كاملةً.
+  console.log("\n§٤ الإجبار يمنع الانتقال، ولا يحبس من لا ميكروفون عنده");
   {
     const p=await ctx.newPage();
     await p.goto(`${BASE}/index.html`,{waitUntil:"domcontentloaded"});
     await p.waitForFunction(()=>typeof startRead==="function",{timeout:15000});
+    const blocked=await p.evaluate(()=>{
+      startRead();const n=readItems.length;
+      gateLeft=0;readChoose(0);
+      const idx0=readIdx;readNext();readNext();
+      return {n:n,moved:readIdx!==idx0,finished:readDone};
+    });
+    ok(blocked.moved===false&&blocked.finished===false,
+      `بلا قراءة: الجلسة لا تتقدّم (${blocked.n} عنصراً وقفت عند الأوّل)`);
     const r=await p.evaluate(()=>{
+      // جهازٌ أثبت أنه بلا ميكروفون — نفس حال المتصفّحات المدمجة الموثَّقة
       startRead();const n=readItems.length;let done=0;
-      for(let i=0;i<n;i++){gateLeft=0;readChoose(0);readNext();done++}
+      for(let i=0;i<n;i++){gateLeft=0;readChoose(0);raResult={err:"no_api"};readNext();done++}
       return {n:n,done:done,finished:readDone};
     });
-    ok(r.done===r.n&&r.finished,`جلسةٌ كاملة (${r.n} عنصراً) بلا قراءةٍ جهرية واحدة`);
+    ok(r.done===r.n&&r.finished,`وبجهازٍ بلا ميكروفون: جلسةٌ كاملة (${r.n} عنصراً) تُنهَى`);
     await p.close();
   }
 

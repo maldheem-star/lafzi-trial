@@ -9073,12 +9073,15 @@ function readAloudWhole(it){return profileId()==="haya"||!evidenceSentence(it&&i
 //     **ولا يُفتَح إلّا بعد ضغطةٍ حقيقية تفشل**، فلا يُعفى أحدٌ قبل أن يُجرّب.
 //   • أو لا هدفَ أصلاً (عنصرٌ بلا نصّ) — شرطٌ على ما لا وجود له لا يُفرَض.
 const RA_REQUIRED=true;
+// **ومصدرُ الحقيقة واحد: `raResult` نفسه.** أوّل صياغةٍ قرأت `raDone` كذلك، وهي
+// رايةٌ لا يقرؤها أحدٌ غير هذا الشرط — فصارت حقيقةً ثانية تتباعد عن الأولى، وكشفه
+// `test_readaloud §٥` (حالةٌ فيها درجةٌ بلا راية فبقي الطريق مقفولاً). والدرجةُ هي
+// الدليل: `raFinish` تضع `sc` عند تقييمٍ تمّ فعلاً، فلا حاجة لرايةٍ توازيها.
 function raSatisfied(it){
   if(!RA_REQUIRED||!readLocked)return true;
   if(!readAloudTarget(it))return true;
-  if(raDone)return true;
   const r=raResult||{};
-  return !!(r.fail||r.err);
+  return !!(r.sc||r.fail||r.err);
 }
 // نصُّ الزرّ المعطَّل يقول **ما المطلوب الآن** لا «ممنوع» — فالمنع بلا سببٍ معروض
 // يُقرأ عطلاً. و«أنهِ/أنهي» ليست في `MASC_W` فلا تُستعمل صيغةُ أمرٍ غيرُ مغطّاة.
