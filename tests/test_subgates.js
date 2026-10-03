@@ -6,6 +6,8 @@
 // فجلست على الدرجة نفسها خمس عشرة مرّة بلا مثالٍ محلول.
 const {chromium}=require('/opt/node22/lib/node_modules/playwright');
 let fails=0;const ok=(c,m)=>{console.log((c?'  ✓ ':'  ✗ FAIL ')+m);if(!c)fails++};
+// `toAr` في الصفحة لا في هذا السياق — نسخةٌ للمقابلة النصّية وحدها
+const toArS=n=>String(n).replace(/[0-9]/g,d=>'٠١٢٣٤٥٦٧٨٩'[+d]);
 (async()=>{
 const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium'});
 const logs=[];
@@ -151,30 +153,41 @@ ok(row&&/فرق −١/.test(String(row.response)),'ومعه شكل الخطأ: �
 console.log('\n٨) خيارات الأسئلة المولَّدة تُسجَّل — سؤالان بالجواب نفسه ولم أستطع الحكم');
 logs.length=0;
 page=await mk();
-const qlog=await page.evaluate(()=>{
+// ===== والمواضع تُشتقّ من ترتيب العرض — مراجعةُ ٣ أكتوبر لا دهسٌ =====
+// كُتبت الدعاوى يوم كان `it.c` يُعرض بترتيبه في أقسام القدرات، فكان فهرسُ المصفوفة
+// هو الموضع المعروض. ومنذ خلط المواضع (٣ أكتوبر) صارا مختلفين، فرقمٌ مكتوب هنا
+// يُكذّب سلوكاً صحيحاً — نفس درس «الأعداد المكتوبة في الاختبارات فخّ صامت».
+// **وما جاءت له الدعاوى باقٍ بحرفه**: الخياراتُ كلُّها مسجَّلة، والصوابُ موسومٌ
+// بموضعه، ونصُّ اختيارها حاضر، والرسمُ يدخل `[رسم]` لا شيفرةً.
+const vpos=await page.evaluate(()=>{
   filtered=[{d:"verbal",qtype:"logic",q:"إذا كان جميع الصيادين يذهبون إلى البحر…",
     c:["يذهبون إلى البحر","يذهبون إلى المستشفيات","يأكلون السمك","ينامون"],a:0}];
   idx=0;picked=null;locked=false;questionShownAt=Date.now();
-  choose(1);return true;
+  const o=quizOrd(filtered[0]);
+  const e={ans:o.indexOf(0)+1,pick:o.indexOf(1)+1};
+  choose(1);return e;
 });
 await page.waitForTimeout(300);
 const vrow=logs.filter(l=>l.domain==='verbal').slice(-1)[0];
 ok(!!vrow,'سطر السؤال المولَّد وصل');
 ok(vrow&&/الخيارات:/.test(vrow.q_text),'ومعه الخيارات');
-ok(vrow&&/1\) يذهبون إلى البحر ✓/.test(vrow.q_text),'والصواب موسومٌ بموضعه');
-ok(vrow&&/2\) يذهبون إلى المستشفيات/.test(vrow.q_text),`وما اختارته موجودٌ فيها (${(vrow.q_text||'').slice(-90)})`);
-ok(vrow&&vrow.response==='يذهبون إلى المستشفيات','ونصّ اختيارها كما هو');
+ok(vrow&&new RegExp(vpos.ans+'\\) يذهبون إلى البحر ✓').test(vrow.q_text),
+   'والصواب موسومٌ بموضعه المعروض ('+vpos.ans+')');
+ok(vrow&&new RegExp(vpos.pick+'\\) يذهبون إلى المستشفيات').test(vrow.q_text),`وما اختارته موجودٌ فيها (${(vrow.q_text||'').slice(-90)})`);
+ok(vrow&&vrow.response==='موضع '+toArS(vpos.pick)+' · الصواب موضع '+toArS(vpos.ans)+' · يذهبون إلى المستشفيات',
+   'ونصّ اختيارها كما هو، ويتصدّره موضعه — '+(vrow&&vrow.response));
 
 console.log('\n٨ب) والرسوم تُسجَّل بموضعها لا بشيفرتها');
 logs.length=0;
-await page.evaluate(()=>{
+const fpos=await page.evaluate(()=>{
   filtered=[{d:"flex",qtype:"bank",q:"ما الشكل التالي؟",
     c:['<svg viewBox="0 0 50 50"><polygon points="1,2"/></svg>',"ب","ج","د"],a:0}];
-  idx=0;picked=null;locked=false;questionShownAt=Date.now();choose(0);
+  idx=0;picked=null;locked=false;questionShownAt=Date.now();
+  const o=quizOrd(filtered[0]);const e=o.indexOf(0)+1;choose(0);return e;
 });
 await page.waitForTimeout(300);
 const frow=logs.filter(l=>l.domain==='flex').slice(-1)[0];
-ok(frow&&/1\) \[رسم\] ✓/.test(frow.q_text),'الرسم يُسجَّل [رسم]');
+ok(frow&&new RegExp(fpos+'\\) \\[رسم\\] ✓').test(frow.q_text),'الرسم يُسجَّل [رسم] عند موضعه المعروض ('+fpos+')');
 ok(frow&&frow.q_text.indexOf('<svg')<0,'ولا يدخل SVG في السجلّ');
 
 console.log('\n٩) لا انحدار');

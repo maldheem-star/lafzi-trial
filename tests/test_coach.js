@@ -119,7 +119,7 @@ await page.evaluate(()=>{
   coachDone=true;render();
 });
 t=await page.textContent('#app');
-ok(t.includes('تكلّمتِ ٣ مرات'),'عدد جملها');
+ok(t.includes('تكلّمتِ ٣ مرّات'),'عدد جملها');
 ok(t.includes('٨٠٪'),'ومتوسّط الوضوح');
 const sum=await page.evaluate(()=>coachWeakSummary());
 ok(sum[0].p==='ch'&&sum[0].n===2&&sum[0].avg===45,`وأكثرها تكراراً ch مرّتين بمعدّل ${sum[0].avg}`);

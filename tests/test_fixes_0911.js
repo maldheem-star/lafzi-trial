@@ -13,6 +13,8 @@
 const {chromium}=require('/opt/node22/lib/node_modules/playwright');
 let fails=0;const ok=(c,m)=>{console.log((c?'  ✓ ':'  ✗ FAIL ')+m);if(!c)fails++};
 const SVG='<svg viewBox="0 0 60 60"><circle cx="30" cy="30" r="20" fill="#3B82F6"/></svg>';
+// `toAr` في الصفحة لا في هذا السياق — نسخةٌ للمقابلة النصّية وحدها
+const toAr=n=>String(n).replace(/[0-9]/g,d=>'٠١٢٣٤٥٦٧٨٩'[+d]);
 (async()=>{
 const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium'});
 const page=await b.newPage({viewport:{width:420,height:900}});
@@ -46,6 +48,14 @@ console.log('\n١) الخيار المرسوم يُسجَّل بموضعه — �
     idx=0;picked=null;locked=false;done=false;score=0;answered=[];qzCard=null;qzCardCount=0;
     gateStop();gateSecs=0;render();
   },SVG);
+  // ===== والموضع يُشتقّ من ترتيب العرض لا يُكتب رقماً — مراجعةُ ٣ أكتوبر =====
+  // كُتبت الدعوى يوم كان `it.c` يُعرض بترتيبه، فكان فهرسُ البنك هو الموضع المعروض.
+  // ومنذ خلط مواضع أقسام القدرات (٣ أكتوبر) صارا مختلفين، فرقمٌ مكتوب هنا يُكذّب
+  // سلوكاً صحيحاً — نفس درس «الأعداد المكتوبة في الاختبارات فخّ صامت» (١٨ أغسطس).
+  // **وما جاءت له الدعوى باقٍ بحرفه**: الموضع يُسجَّل لا شيفرةُ SVG، وموضعُ الصواب
+  // معه فينكشف الانحياز — ويُقابَل الآن بالترتيب الذي رُسم فعلاً.
+  const exp=await page.evaluate(()=>{const o=quizOrd(filtered[0]);
+    return {pick:o.indexOf(1)+1,ans:o.indexOf(2)+1}});
   await page.evaluate(()=>choose(1));
   await page.waitForTimeout(250);
   const r=rows.filter(x=>x.domain==='flex');
@@ -53,8 +63,8 @@ console.log('\n١) الخيار المرسوم يُسجَّل بموضعه — �
   const qt=r.length?String(r[0].q_text||""):"";
   ok(r.length>0,'وصل صفٌّ للسجلّ');
   ok(!/<svg/i.test(resp),'حقل الإجابة بلا شيفرة SVG — '+resp.slice(0,60));
-  ok(/موضع ٢/.test(resp),'وفيه موضعُ ما اختارته (٢)');
-  ok(/الصواب موضع ٣/.test(resp),'وموضعُ الصواب (٣) — فينكشف انحياز الموضع');
+  ok(new RegExp('موضع '+toAr(exp.pick)).test(resp),'وفيه موضعُ ما اختارته كما عُرض ('+exp.pick+')');
+  ok(new RegExp('الصواب موضع '+toAr(exp.ans)).test(resp),'وموضعُ الصواب كما عُرض ('+exp.ans+') — فينكشف انحياز الموضع');
   ok(!/فرق/.test(resp),'وبلا «فرق»: موضعٌ ناقصُ موضعٍ ليس آليةَ خطأ بل رقمُ مقعد');
   ok(!/<svg/i.test(qt),'وسطرُ الخيارات بلا شيفرة كذلك — '+(qt.match(/\[رسم\]/g)||[]).length+' رسوم');
 }
@@ -64,17 +74,22 @@ console.log('\n١ب) ولا تُسمّى آليةٌ من رقم المقعد —
   // نصُّ السؤال يحوي ٢ و٣، والخياران مرسومان. لولا الحارس لقرأت `stemNumberName`
   // «موضع ٢» عدداً فأطلقت اسماً كاذباً — بلاغٌ كاذب لا يحرس شيئاً بل يُدرِّب على تجاهله.
   rows.length=0;
-  await page.evaluate(svg=>{
+  const exp2=await page.evaluate(svg=>{
     filtered=[{q:"إذا كان مع سارة ٢ من الأشكال و٣ من غيرها، فأيُّ شكلٍ يُكمل النمط؟",
       c:[svg,svg.replace('20','12'),svg.replace('circle','rect')],a:0,w:"شرح",d:"quant",qtype:"pattern"}];
-    idx=0;picked=null;locked=false;qzCard=null;qzCardCount=0;render();choose(1);
+    idx=0;picked=null;locked=false;qzCard=null;qzCardCount=0;render();
+    const o=quizOrd(filtered[0]);
+    const e={pick:o.indexOf(1)+1,ans:o.indexOf(0)+1};
+    choose(1);
+    return e;
   },SVG);
   await page.waitForTimeout(250);
   const r=rows.filter(x=>x.domain==='quant');
   const resp=r.length?String(r[0].response||""):"";
   ok(r.length>0,'وصل الصفّ');
   ok(!/stem_number|mult_as_add|seq_end|cube_scale/.test(resp),'بلا اسم آليةٍ مختلَق — '+resp.slice(0,70));
-  ok(/موضع ٢ · الصواب موضع ١/.test(resp),'والسطر موضعان كما يجب');
+  ok(resp==='موضع '+toAr(exp2.pick)+' · الصواب موضع '+toAr(exp2.ans),
+     'والسطر موضعان بترتيب العرض لا أكثر — '+resp);
 }
 
 console.log('\n١ج) والسؤال النصّي لم يتغيّر — الفرق والاسم كما كانا');
@@ -165,7 +180,9 @@ console.log('\n٣) نفس الاختيار أربع مرّات ⇒ بطاقةٌ 
   ok(c4&&c4.prev==='المشتري'&&c4.right==='المريخ','ومعها اختيارها المتكرّر بإزاء الصواب');
   const t=await page.textContent('#app');
   ok(/تختارين الإجابة نفسها/.test(t),'والعنوان يُسمّي الارتباط لا الخطأ');
-  ok(/٤ مرات/.test(t),'والعدد بالعربية في الشاشة');
+  // «مرّات» بالشدّة لا «مرات» — صحّحتها `arTimes` في ٣ أكتوبر بعد أن كشفت اللقطة
+  // «٢ مرات» في البطاقة الحمراء. والدعوى كما كانت: العدد بالأرقام العربية على الشاشة.
+  ok(/٤ مرّات/.test(t),'والعدد بالعربية في الشاشة');
   ok(/المشتري/.test(t)&&/المريخ/.test(t),'والمقابلة معروضة');
   const lg=rows.filter(x=>x.domain==='gen'&&x.qtype==='repeat_card');
   ok(lg.length===1,'ويُسجَّل سطرٌ واحد — فيُقاس كم مرّةً بلغت الحالة هذا الحدّ');
