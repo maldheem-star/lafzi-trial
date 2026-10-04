@@ -4710,6 +4710,7 @@ const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEn
   "writeLfp","mockBand","mockLogLoad","mockLogAdd","mockSeenRecently","mockPickFrom",
   "buildMockPaper","startMock","mockCur","mockQuestion","mockChoose","mockFinish","renderMock","renderMockResult",
   "posRecord","posBiasOf","posBiasArmed","posTagFor","posConfirmOk","posConfirmHTML","posCancel","posPendClear",
+  "posCxOf","posCxTake","posCxNote",
   "quizFromCache","quizGenTopUp","quizRotNext"];
 function censusMissing(){return CENSUS.filter(function(n){return typeof window[n]!=="function"})}
 function censusHTML(){
@@ -9814,6 +9815,14 @@ function writeReqLabel(it){
   if(req==="join")return "كلمة ربط";
   return req.map(function(w){return "«"+w+"»"}).join(" أو ");
 }
+// ===== ومعيارُ «بخطّ يدك» يُعلَن في القائمة لا في هامشٍ رمادي — ٤ أكتوبر =====
+// **كشفته اللقطة الإلزامية لا الاختبار**: بعد إسقاط درجة الإملاء الصوتي صارت الشاشة
+// تعرض «تنجحين إذا» وفوق شرطيها ✓✓ و«كتبتِ ١٨ كلمة» ثمّ «لا يُحتسب» تحتهما مباشرةً —
+// شاشةٌ تناقض السجلّ. وهو بعينه عيبُ ٦ سبتمبر (شرحُ اللصق كان غائباً وحده) واقعاً
+// على المعيار الجديد في يوم شحنه. **وقائمة «تنجحين إذا» هي عقدُ التمرين**، فما يُسقط
+// الدرجة يُكتب فيها لا بجانبها. والحالة ثنائيّةٌ تُعرف لحظةً بلحظة (`writeLive` تُعيد
+// رسم الصندوق مع كل إدخال) فلا تحتاج ⋯ المعلَّق كما احتاجه شرط النحو.
+const BYHAND_CRIT="بخطّ يدك — لا لصقٌ ولا إملاءٌ بالصوت";
 function writeCriteria(it){
   const g=writeGoals(it),out=[];
   if(g.combine){
@@ -9834,6 +9843,7 @@ function writeCriteria(it){
     // «فيها خطأ» وهو كذبٌ — نفس العيب الذي كشفته لقطةُ شاشةٍ في شرط `req` (أعلاه).
     // فالمعلَّق يُرسم ⋯ رماديّاً ويُقال صراحةً متى يُفحَص.
     out.push({k:"clean",t:"جملةٌ سليمة نحوياً — يُفحَص بعد الإرسال"});
+    out.push({k:"byhand",t:BYHAND_CRIT});
     // ===== بلا معيار «بكلماتك أنتِ» هنا — ٣ سبتمبر =====
     // إعادة إنتاج S1/S2 بالضبط هي المطلوب نفسه في الدمج، لا نسخاً يُعاقَب عليه —
     // خلاف الحرّ حيث نسخ نصّ السؤال فعلاً ليس إجابة. ومعيارا «one»/«req» أعلاه
@@ -9845,6 +9855,7 @@ function writeCriteria(it){
     if(g.sentences)out.push({k:"sentences",t:"تكتبين "+arSentCount(g.sentences,"جملةً","جملتين","جملٍ")+" — جملةٌ لكل نقطة"});
     out.push({k:"words",t:"لا تقلّ عن "+toAr(g.words)+" كلمة"});
     out.push({k:"own",t:"بكلماتك أنتِ لا نسخُ نصّ السؤال"});
+    out.push({k:"byhand",t:BYHAND_CRIT});
   }
   return out;
 }
@@ -9863,6 +9874,8 @@ function writeCritState(it,txt){
     // بقيت ○ فوق جملةٍ تحوي الكلمة فعلاً، فيُقرأ الإرشاد كذباً (كشفته لقطة شاشة)
     req:(it&&it.req)?(w>0&&!writeReqMissing(it,txt)):true,
     own:w>0&&!writeCopyCheck(it,txt,it&&it.prompt),
+    // نفس الرايتين اللتين يحكم بهما `writeFinish` حرفاً — لا حسابٌ ثانٍ يتباعد عنه
+    byhand:!writeDictated&&!writePasted,
     // `null` = معلَّقٌ لا مُخفَق. والشرط **نفس شرط `writeFinish` حرفاً** — لا حسابٌ
     // ثانٍ يتباعد عنه: تعذُّرُ المراجعة يُعدّ نجاحاً (`writeFixFail`) كما هناك.
     clean:g.combine?(writeSubmitted?(writeBusy?null:(writeFixFail?true:!writeFix.length)):null):true};
@@ -10090,7 +10103,26 @@ async function writeSubmit(){
   // ونصُّ اللصق يبقى **معروضاً ومصحَّحاً على الشاشة** كما هو: المنع للدرجة لا للتعلّم.
   // والمهمّةُ المنصوصة تُفحَص قبل النحو: كلمةُ الربط المطلوبة، وجملةٌ واحدة (٢٩ أغسطس)
   const cf=writeCombineFaults(it,txt);
-  const ok=(writeCopy||writePasted)?false
+  // ===== والإملاءُ الصوتي لا يُنجِح كذلك — قياسُ ٤ أكتوبر، أمرُ صاحب المشروع =====
+  // كان الحارس يُسقط بطاقات التصحيح ويُبقي الدرجة — **وهو بعينه المعكوس الذي أُصلح
+  // للصق في ٦ سبتمبر وبقي هنا**. والحالة الحيّة: هيا أملت بصوتها
+  // `In my family, there are I love you very family and mom or dad to Grandma your
+  // brother` فنالت **صواباً** لأن المعيار عددُ الكلمات (١٨ لهدف ١٠). أي أن قسم
+  // الكتابة أعطى نجاحاً لنصٍّ لم تؤلّفه ولا يحمل معنى — وهو نقيض ما بُني لقياسه.
+  //
+  // **وقِيس أثرُ الإشارة على كل سطرٍ حمل `إدخال:` في السجلّ كلّه قبل التغيير** (٤٠ صفّاً،
+  // الثلاثة أبناء) لئلّا يتكرّر خطأ ٢٩ أغسطس (`insertReplacementText` كان يُعاقب إلياس
+  // على استعمال هاتف):
+  //   `insertCompositionText` ظهر **مرّةً واحدة في السجلّ كلّه** — هي هذه الحالة.
+  //   و**صفرُ ظهورٍ** عند إلياس ومحمد، وهما يكتبان بلوحة هاتفٍ وحاسبٍ مع تصحيحٍ
+  //   تلقائي (`insertReplacementText` في إحدى عشرة محاولة) — فالإشارة لم تقع قطّ على
+  //   كتابةٍ حقيقية بالأصابع في بياناتنا. فاتّجاه الخطأ مقاسٌ لا مُرجَّح.
+  //
+  // **وحدُّه يُقال لا يُجمَّل**: الإملاء يصل أحياناً بـ`insertText` العادي فلا تمسكه هذه
+  // الإشارة — ودليلُه في السجلّ نفسه: هيا ٤ سبتمبر، `insertText` ودفعاتٌ ٧-١٢ محرفاً،
+  // ونصوصٌ إملاءٍ مشوّهة بيّنة («How to get a sheetal in the poor thing») نالت صواباً.
+  // فهذا يسدّ المسار المرصود لا كلَّ مسار، والباقي يبقى مفتوحاً حتى تُقاس إشارةٌ تمسكه.
+  const ok=(writeCopy||writePasted||writeDictated)?false
     :(it.type==="combine"?(lenOk&&!cf.req&&!cf.many&&(writeFixFail?true:!writeFix.length)):lenOk);
   writeSrsUpdate(it.id,ok);
   // السقالة تتلاشى بالنجاح وتعود كاملةً بالتعثّر — لا تُقاس بالزمن ولا تُطفأ يدوياً
@@ -10111,7 +10143,7 @@ async function writeSubmit(){
       // وتفصيلُ فشل المراجعة يلي حالتَها مباشرةً لا في ذيل السطر: القصّ (١٢٠٠) يبتلع الذيل
       +" · review:"+reviewState+(whyRev?"("+String(whyRev).slice(0,200)+")":"")
       +" · lt:"+writeLtJudged+"/"+writeLtDropped+" · مثال:"+writeModelViews
-      +" · نسخ:"+(writeCopy?1:0)+" · لصق:"+(writePasted?1:0)+" · تنوّع:"+ttr+" · شبه سابق:"+selfSim+" · فوق K1:"+lfp.pct+"%"
+      +" · نسخ:"+(writeCopy?1:0)+" · لصق:"+(writePasted?1:0)+" · إملاء:"+(writeDictated?1:0)+" · تنوّع:"+ttr+" · شبه سابق:"+selfSim+" · فوق K1:"+lfp.pct+"%"
       // سببُ السقوط يُسمّى بدل أن يُبتلع في «فرق نحوي» — عُرف «شكل الخطأ لا وقوعه»
       +(it.type==="combine"?(" · دمج:"+([cf.req?"missing_connector":"",cf.many?"not_one_sentence":""].filter(Boolean).join("+")||"ok")
         +(cf.req?("("+(it.req==="join"?"join":it.req.join("/"))+")"):"")+" · جمل:"+writeSentenceCount(txt)):"")).slice(0,1200)});
@@ -10135,7 +10167,7 @@ async function writeSubmit(){
   else{const kind=writePasted?"لصق":"إملاء صوتي";
     try{logAnswer("gen","write_dictated",null,kind+" · "+writeInputTypes+" · دفعة:"+writeMaxBurst+" · أُسقطت "+writeFix.length+" بطاقة",it.id,null,
     {q_text:("نصٌّ لم يُكتَب بالأصابع ("+kind+" · inputType: "+writeInputTypes+"، أكبر دفعة "+writeMaxBurst
-      +" حرفاً) — فلم تدخل تصحيحاته بنك الأخطاء"+(writePasted?"، ولم يُحتسب نجاحاً":"")+": "+txt).slice(0,1200)})}catch(e){}}
+      +" حرفاً) — فلم تدخل تصحيحاته بنك الأخطاء، ولم يُحتسب نجاحاً: "+txt).slice(0,1200)})}catch(e){}}
   writeFix.forEach(function(f){
     logAnswer("write","fix",null,(f.said+" ⇐ "+f.fix).slice(0,300),it.id,null,
       {q_text:String(f.why||"").slice(0,200)});
@@ -10166,6 +10198,12 @@ function renderWriteFeedback(it){
   if(writePasted){
     return `<div class="explain"><div class="explain-title" style="color:#B45309">هذا نصٌّ ملصوق — لا يُحتسب</div>
       <div class="explain-body">اللصق مغلق في هذا القسم. اكتبي الجواب بأصابعك ولو أقصر — المقصود أن تؤلّفي أنتِ.</div></div>`;
+  }
+  // وفرعُ الإملاء الصوتي يُضاف **مع** إسقاط درجته لا بعده — فلا تتكرّر شاشةٌ تقول
+  // «✓ بلغتِ الهدف» ودرجتُها صفر، وهو عيبُ ٦ سبتمبر بعينه.
+  if(writeDictated){
+    return `<div class="explain"><div class="explain-title" style="color:#B45309">هذا نصٌّ أُملي بالصوت — لا يُحتسب</div>
+      <div class="explain-body">المقصود أن تكتبي أنتِ بأصابعك. اكتبي جملةً واحدة قصيرة بيدك — أنفعُ من عشر جملٍ يقولها الميكروفون.</div></div>`;
   }
   const isCombine=it.type==="combine";
   const G=writeGoalsNow(it);
@@ -10228,7 +10266,7 @@ function renderWrite(){
     ${writeModelShown?renderWriteModel(it.lv):""}
     ${(!writeSubmitted&&writeJointFor(it))?`<div style="font-size:12px;color:#0E7490;font-weight:700;margin-bottom:6px">✍️ الجملة الأولى مكتوبةٌ لكِ — أكملي من حيث توقّفت</div>`:""}
     <textarea id="writeIn" rows="5" oninput="writeLive(event)" onpaste="return writePasteBlock(event)" ondrop="return writePasteBlock(event)" ${writeSubmitted?"disabled":""} style="width:100%;padding:14px;border-radius:12px;border:2px solid #E2E8F0;font-size:16px;direction:ltr;text-align:left;font-family:Georgia,serif;resize:vertical" placeholder="type your answer here" autocomplete="off" autocapitalize="sentences" spellcheck="true">${esc(writeSubmitted?writeTyped:(writeTyped||writeJointFor(it)))}</textarea>
-    ${writeSubmitted?"":`<div id="writePasteNote" style="font-size:12px;color:#64748B;margin-top:6px">اللصق مغلق هنا — اكتبي الجواب بأصابعك.</div>`}
+    ${writeSubmitted?"":`<div id="writePasteNote" style="font-size:12px;color:#64748B;margin-top:6px">اللصق مغلق هنا، والإملاء بالصوت لا يُحتسب — اكتبي الجواب بأصابعك.</div>`}
     ${writeSubmitted?renderWriteFeedback(it):""}
   </div>
   ${writeSubmitted?`<button class="btn" style="background:#0E7490" onclick="writeNext()">${writeIdx+1>=writeItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`
@@ -15165,8 +15203,47 @@ function posBiasLog(domain,b){
 // وسمٌ يُقاس أوّلاً، ولا يُبنى عليه حكمٌ قبل أن يثبته توزيعٌ حقيقي.
 function posTagFor(domain){
   const b=posBiasOf(domain);
-  if(!b||!posArmed[domain])return "";
-  return " · تحيّز:موضع "+toAr(b.pos)+" "+toAr(b.hits)+"/"+toAr(b.n);
+  const cx=posCxTake(domain);
+  if(!b||!posArmed[domain])return cx;
+  return " · تحيّز:موضع "+toAr(b.pos)+" "+toAr(b.hits)+"/"+toAr(b.n)+cx;
+}
+// ===== وما تفعله بالبوّابة يُسجَّل — الثغرة التي أعلنتُها في ١ أكتوبر ولم تُسَدّ =====
+// البوّابة سُلِّحت ثلاث مرّات في ١ أكتوبر وستّاً في ٤ أكتوبر، وبعدها ضغطت هيا الزرّ
+// الثاني **اثنتي عشرة مرّةً من اثنتي عشرة** في الاستماع. فقلتُ إن الفرضيّة ساقطة —
+// **ولم يكن في السجلّ سطرٌ واحد يُثبت أن الصندوق عُرض أصلاً**، فتعذّر الفصل بين
+// «ظهر فأكّدت رغمه» (فرضيّةٌ فشلت) و«لم يظهر» (فرضيّةٌ لم تُجرَّب). وهذا بعينه صنفُ
+// «حالة الفشل تُعرض ولا تُسجَّل ⇒ لا تُشخَّص» — واقعاً في الأداة التي بنيتُها للقياس.
+//
+// **والمقياس يركب سطرَ الإجابة القائم لا جدولاً ثانياً**: كل إجابةٍ تُقفَل لها صفٌّ
+// أصلاً، فيُلحَق به ما وقع — نفس عُرف `تحيّز:موضع` و`help:suggest` القائم («ما اختارته
+// من أوضاع يُسجَّل كذلك لتُقاس فائدة الدعم»). فلا صفوفَ جديدة بعدد الأسئلة.
+//
+// والحالات تُسمّى بما يفصلها في التشخيص:
+//   `مباشر` — عُرض الصندوق فأكّدت **نفس** الخيار: الفرضيّة لم تُغيّر شيئاً.
+//   `مبدَّل` — عُرض لخيارٍ وانتهت الإجابة إلى **خيارٍ آخر**: البوّابة غيّرت جوابها فعلاً،
+//              وهذا وحده دليلُ نجاحها، ولا يُقاس بلا هذا الوسم.
+//   `(ن عرضاً)` و`تراجعات:ن` — ولولاهما لاستوى من أكّد من أوّل عرضٍ ومن تردّد مرّتين.
+const posCx={};
+function posCxOf(d){return posCx[d]||(posCx[d]={shown:0,cancels:0,firstI:null,tag:""})}
+function posCxTake(d){
+  const c=posCx[d];if(!c)return "";
+  const t=c.tag||"";c.tag="";c.shown=0;c.cancels=0;c.firstI=null;
+  return t;
+}
+// وصفٌّ في `domain='gen'` **بسقف ضجيج لكل سبب**: الوسم أعلاه يُثبت ما جرى حين تُقفَل
+// إجابة، أمّا عرضٌ تخرج بعده من القسم بلا إجابةٍ إطلاقاً فلا يُخلّف أثراً — وهو بعينه
+// ما يحتاجه السؤال «أدفعتها البوّابة إلى الخروج؟». فيُسجَّل العرضُ الأوّل والتراجع،
+// سطران لكلٍّ في عمر الصفحة (نفس سقف `write_paste_blocked`).
+const posCxLogged={};
+const POS_CX_LOG_CAP=2;
+function posCxNote(domain,why,extra){
+  const k=domain+":"+why;
+  if((posCxLogged[k]||0)>=POS_CX_LOG_CAP)return;
+  posCxLogged[k]=(posCxLogged[k]||0)+1;
+  const c=posCxOf(domain);
+  try{logAnswer("gen","pos_cx",null,domain+" · "+why+" · عُرض "+toAr(c.shown),null,null,
+    {q_text:("[تأكيد الموضع:"+why+"] "+domain+" · عُرض الصندوق "+toAr(c.shown)+" مرّة · تراجعات "
+      +toAr(c.cancels)+(extra?" · "+extra:"")).slice(0,300)})}catch(e){}
 }
 // ===== والبوّابة المشروطة: نقرةٌ ثانيةٌ تُؤكّد — فرضيّةٌ تُقاس لا علاجٌ يُدَّعى =====
 // المقصود كسرُ **الآليّة** لا إبطاء الصادق: نقرةٌ واحدة تقفل الجواب اليوم، فتكفي
@@ -15179,11 +15256,28 @@ function posPendOn(domain){return posPend.dom===domain&&posPend.i>=0}
 // تُعيد true إن جاز القفل الآن، وfalse إن كانت هذه أوّل نقرةٍ تنتظر تأكيداً.
 function posConfirmOk(domain,i,label){
   if(!posBiasArmed(domain))return true;
-  if(posPend.dom===domain&&posPend.i===i&&(Date.now()-posPend.at)<POS_CONFIRM_MS){posPendClear();return true}
+  const c=posCxOf(domain);
+  if(posPend.dom===domain&&posPend.i===i&&(Date.now()-posPend.at)<POS_CONFIRM_MS){
+    posPendClear();
+    // القياسُ على **فهرس الخيار** لا على موضعه المعروض: الموضع يُحسب في دالّة كل قسم
+    // على حدة، والفهرس هو ما يصل هنا — وهو الذي يفصل «نفس الخيار» من «خيارٍ آخر».
+    c.tag=" · تأكيد:"+(c.firstI===i?"مباشر":"مبدَّل")
+      +(c.shown>1?" ("+toAr(c.shown)+" عرضاً)":"")
+      +(c.cancels?" · تراجعات:"+toAr(c.cancels):"");
+    return true;
+  }
+  if(c.firstI===null)c.firstI=i;
+  c.shown++;
   posPend={dom:domain,i:i,at:Date.now(),label:String(label==null?"":label)};
+  if(c.shown===1)posCxNote(domain,"عُرض","المختار: "+String(label==null?"":label).slice(0,60));
   render();return false;
 }
-function posCancel(){posPendClear();render()}
+function posCancel(){
+  const d=posPend.dom;
+  if(d){const c=posCxOf(d);c.cancels++;
+    posCxNote(d,"تراجع","المختار كان: "+String(posPend.label||"").slice(0,60))}
+  posPendClear();render();
+}
 function posConfirmHTML(domain,fnName){
   if(!posPendOn(domain))return "";
   // وسمٌ ثابت يُستعلَم به: `document.body.innerHTML` يشمل وسمَ `<script>` نفسه، فالبحث
