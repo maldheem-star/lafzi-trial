@@ -89,10 +89,16 @@ ok(new Set(partial.plan.map(i=>i.id)).size===partial.plan.length,'بلا تكر�
 await page.evaluate(()=>{try{lsDel('mawhiba_read_srs')}catch(e){}});
 
 console.log('\n٦) جلسة كاملة، ثم النتيجة');
+// ===== والقراءة الجهرية صارت شرطاً للانتقال — ٣ أكتوبر =====
+// كانت الخطوة تُجيب ثمّ تنتقل، **وأمرُ صاحب المشروع جعل القراءة إجبارية**،
+// فبقيت الجلسة تدور عند العنصر الأوّل حتّى انتهت مهلة المُشغّل — **وهذا سلوكٌ
+// صحيح لا انحدار**. وما جاء له هذا القسم (جلسةٌ تمضي إلى شاشة النتيجة) باقٍ،
+// فتُستوفى القراءة بما تضعه `raFinish` نفسها عند تقييمٍ تمّ (درجةٌ في `raResult`).
 async function step(){
   const it=await page.evaluate(()=>readCur());
   if(!it)return;
   await page.evaluate(a=>{gateLeft=0;gateStop();readChoose(a)},it.a);
+  await page.evaluate(()=>{raResult={ok:true,sc:{pct:90,weak:[],by:"azure"},engine:"azure"}});
   await page.evaluate(()=>readNext());
 }
 await page.evaluate(()=>startRead());

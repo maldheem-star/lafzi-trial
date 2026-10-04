@@ -1180,9 +1180,18 @@ function quizGenTopUp(){
 }
 // استهلاكُ الكاش وحده — بلا شبكة، فتُبنى الجلسة فوراً. ونفس سطرَي `fetchGemini`
 // الأوّلين حرفياً لا نسخةٌ موازية لهما: الدالّة تستدعيها بدل تكرارهما.
+// والرقابة تسري على **ما خُزِّن قبلها** كذلك: الكاش يحمل اليوم عناصر `reading` بلا
+// سؤال وُلِّدت قبل هذا الإصلاح، وهي تعود في كل جلسة ما دامت فيه. ولا تُرفَع لاحقةُ
+// المفتاح كما فُعل في ٢٥ أغسطس — ذاك يُهدر السليم مع المعيب، وهذا يُسقط المعيب وحده
+// عند الاستهلاك. والعنصر المخزَّن مُطبَّعٌ أصلاً (`cachePut` يُخزّن ما بعد `normAI`)،
+// فنفسُ الفاحص ينطبق عليه بلا تحويل.
 function quizFromCache(type,need){
   const out=[];let cache=cacheGet(type);
-  while(out.length<need&&cache.length){out.push(cache.shift())}
+  while(out.length<need&&cache.length){
+    const c=cache.shift(),why=quizItemDefect(c);
+    if(why){quizRejectLog(type,"cached:"+why,c);continue}
+    out.push(c);
+  }
   cachePutReplace(type,cache);
   return out.map(tagAI(type));
 }
@@ -1220,7 +1229,14 @@ async function fetchGemini(type,need){
       const data=await res.json();bumpUsage(1);
       // النجاح يُنفق من نافذة الدقيقة كما يُنفق منها الفشل — وبالرقم الحقيقي متى عاد
       quizBudgetSpend(data&&data.usage&&data.usage.completion_tokens);
-      const qs=(data.questions||[]).map(normAI(type));
+      // ورقابةٌ قبليّة قبل التخزين — لا بعد العرض: العنصر المعيب لا يُخزَّن أصلاً،
+      // فلا يبقى في الكاش يعود في كل جلسة (مفصَّلٌ عند `quizItemDefect`).
+      const qs=[];
+      (data.questions||[]).map(normAI(type)).forEach(function(x){
+        const why=quizItemDefect(x);
+        if(why){quizRejectLog(type,why,x);return}
+        qs.push(x);
+      });
       // ردٌّ سليمٌ بلا أسئلة ليس نجاحاً: يقع حين يُسقط فلتر العربية كلَّ ما وُلِّد.
       if(!qs.length)quizGenFail(type,"no_questions",("محرّك:"+(data.engine||"?")+" · نموذج:"+(data.model||"?")).slice(0,200));
       // الاستهلاك الفعلي يُسجَّل مرّةً — به يُضبط سقفُ الرموز بالقياس لا بالتقدير
@@ -1257,6 +1273,48 @@ function quizUsageLog(u,type,fell){
       +(fell&&fell.from?" · بُدِّل من:"+fell.from:"")).slice(0,300)})}catch(e){}
 }
 function cachePutReplace(type,arr){try{const c=JSON.parse(lsGet("gemini_cache")||"{}");c[type]=arr;lsSet("gemini_cache",JSON.stringify(c))}catch(e){}}
+// ===== والعنصر الذي لا يسأل شيئاً يُرفَض قبل أن يُخزَّن — ٣ أكتوبر =====
+// لا رقابةَ قبليّة على ما يُولَّد للقدرات إطلاقاً: `(data.questions||[]).map(normAI)`
+// يقبل كلَّ ما جاء، خلافاً لكل بنكٍ آخر (`parseGenBlock` و`gjtDefect` و
+// `parseGenPickBlock` تُسقط المعيب بسببٍ مسمّى). والأثر مقاسٌ على السجلّ كلّه
+// (٢٣٤ نصّاً متمايزاً، الثلاثة أبناء):
+//
+//   • **٢٣ من ٥٠ عنصر `reading` (٤٦٪) فقرةٌ بلا سؤال إطلاقاً** — نصٌّ سرديّ ينتهي
+//     بنقطة ثمّ أربعةُ خيارات، ولا شيء يقول ماذا المطلوب.
+//   • وصفرٌ من ١٨٤ في `logic`/`analogy`/`vocabulary`/`science` — فالعيب في نوعٍ واحد.
+//   • **ودقّتها ٣٩٪ (٩ من ٢٣) مقابل ٦٥٪ (٣٩ من ٦٠)** في عناصر القراءة السليمة —
+//     أي أنها بالكاد فوق التخمين من أربعة، وفرقُ ٢٦ نقطة كلفةُ العيب لا صعوبةُ النصّ.
+//
+// **والقاعدة ضُيِّقت بالقياس لا بالحدس** — درس ٢٥ أغسطس: أوّل صياغةٍ («بلا علامة
+// استفهام») أبلغت عن **٧٣** نصّاً وأكثرها سليم (صدرُ إكمالٍ مشروع)؛ والثانية («وينتهي
+// بنقطة») عن **٣١**، فُحصت واحداً واحداً فكانت **ثمانيةٌ سليمة** (٢٦٪ بلاغاً كاذباً):
+// ستٌّ بصيغة «إذا كان… فمن المنطقي أن نقول…» (دعوى تُحكَم صحّةً) واثنتان بصيغة أمرٍ
+// («اختر مرادفاً…»، «الكلمة المناسبة لملأ الفراغ…»). فأُضيفت أدلّةُ الأمر والدعوى،
+// فصار البلاغ **٢٣ من ٢٣٤ وصفرَ بلاغٍ كاذب** على السجلّ كلّه.
+// وكاشفٌ ببلاغٍ كاذب لا يحرس شيئاً بل يُدرِّب على تجاهله.
+const QUIZ_ASK_CUES=/(اختر|اختاري|أكمل|اكمل|حدّد|حدد|املأ|الكلمة المناسبة|مرادف|المرادف|الفراغ|العلاقة|المنطقي|استنتاج|نستنتج|أي مما|أيّ مما|ماذا|الصحيح|الخيار)/;
+function quizItemDefect(q){
+  const stem=String((q&&q.q)||"").trim();
+  if(!stem)return "no_stem";
+  // وشكلُ العنصر يُفحَص كذلك — وقايةً لا عطلاً مقاساً: مصفوفةٌ ناقصة تُسقط الرسم
+  // كلَّه (`q.c.map` في renderQuiz)، وهي أرخص ما يُمنَع.
+  if(!Array.isArray(q.c)||q.c.length<3)return "shape_choices";
+  if(!(q.a>=0&&q.a<q.c.length&&q.a===Math.floor(q.a)))return "shape_answer";
+  if(q.c.some(function(x){return String(x==null?"":x).trim()===""}))return "shape_empty_choice";
+  // «لا يسأل شيئاً»: بلا استفهام، وينتهي بنقطة، وبلا دليلِ أمرٍ أو دعوى تُحكَم
+  if(!/؟/.test(stem)&&/\.$/.test(stem)&&!QUIZ_ASK_CUES.test(stem))return "no_question";
+  return "";
+}
+// والرفضُ يُسجَّل بسببه ونصّه — نفس عُرف `gjtDefect` حرفاً (`domain='gen'`،
+// `qtype='reject'`): فبلاه لا يُعرف معدّلُ الرفض ولا يُقاس أثرُ إصلاحٍ في الخادم.
+let quizRejects=0;
+const QUIZ_REJECT_LOG_MAX=4;
+function quizRejectLog(type,why,q){
+  if(quizRejects>=QUIZ_REJECT_LOG_MAX)return;
+  quizRejects++;
+  try{logAnswer("gen","reject",null,"quiz:"+type+" · "+why,null,null,
+    {q_text:("[رفض عنصر قدرات] "+why+" · "+type+" · "+String((q&&q.q)||"").slice(0,200)).slice(0,600)})}catch(e){}
+}
 function normAI(type){return q=>({d:aiDomain(type),q:q.q,c:q.choices,a:q.answer,w:q.why||"",qtype:type})}
 function tagAI(type){return q=>q}
 function aiDomain(type){return (type==="science")?"science":"verbal"}
@@ -1441,8 +1499,16 @@ const CLIP_VARIANT={};
 // والتوزيع وحده لا يكفي حين يُنتج المولّد سبعة من قالب واحد في اثني عشر سؤالاً: لا
 // ترتيب يُباعد بينها حينئذ. فيُسحب بحصّة — ثلث العدد لكل قالب على الأكثر، وإن نفدت
 // المحاولات قُبل ما جاء (سؤال أقلّ تنويعاً خيرٌ من سؤال ناقص).
+// ===== والحصّة كانت ثلثاً فظهر القالب ثلاث مرّات في جلسةٍ واحدة — ٣ أكتوبر =====
+// القياس: جلسة هيا (٣ أكتوبر) فيها قالبُ «أقلام» (`gPrice`) **ثلاث مرّات** وأُخطئ
+// الثلاث. والحصّة كانت `ceil(n/3)` أي **٤ من ١٢**، فثلاثةٌ من قالبٍ واحد كانت
+// **داخل الحدّ لا خارجه** — أي أن الآليّة عملت كما صُمّمت والحدُّ هو الواسع.
+// فصار سدساً (**٢ من ١٢**)، و`QUANT_GENS` تسعةٌ وعشرون مولّداً و`FLEX_GENS` ثمانية
+// عشر — فستّةُ قوالبَ متمايزة لجلسةٍ من اثني عشر متاحةٌ بفارقٍ واسع.
+// **والاحتياط باقٍ بحرفه**: إن نفدت المحاولات قُبل ما جاء، فلا جلسةَ تنقص عن حدّها
+// (قاعدة ١٨ أغسطس) — مُثبَتٌ بالقياس في `test_fixes_1003`.
 function drawSpread(gens,n){
-  const cap=Math.max(2,Math.ceil(n/3)),count={},out=[];
+  const cap=Math.max(2,Math.ceil(n/6)),count={},out=[];
   for(let i=0;i<n;i++){
     let it=null;
     for(let t=0;t<12;t++){
@@ -2328,6 +2394,12 @@ function clipSeqBuild(q){
     rule:"الترتيب ثابت: اطرحي (فروق) ← اقسمي (نِسَب) ← اطرحي الفروق (فرق متزايد) ← اجمعي حدَّين (مجموع سابقَين) ← قارني بالموضع. ثم <b>جرّبي على كل الحدود قبل أن تعتمديها</b>."};
 }
 let clipOn=null,clipStep=0;
+// ===== والفتحُ التلقائي يُوسَم في السجلّ — وإلّا بطل معنى عدّاد الفتحات =====
+// `clip_open` كان يعني «فتحتْه بيدها» منذ بنائه، وهو ما يُقاس به أثر المقاطع. فلو
+// دخل الفتحُ التلقائي السجلَّ بلا وسمٍ لاختلط الاثنان، فصار العدّاد يرتفع بلا أن
+// يفتح أحدٌ شيئاً — وهو نقضٌ لعُرف «يُسجَّل ما وقع لا ما نُوِي».
+let clipAuto=false;
+function clipAutoTag(){return clipAuto?" · تلقائي":""}
 // مقطع المتتالية يُبنى من السؤال الجاري لا من جدول الربط — فلا يمكن أن يعرض
 // قاعدةً من عائلةٍ أخرى مهما تشابهت المفاتيح.
 function clipOpenSeq(){
@@ -2335,15 +2407,37 @@ function clipOpenSeq(){
   const c=clipSeqBuild(q);
   if(!c)return;
   clipOn=c;clipStep=0;
-  try{logAnswer("gen","clip_open",null,"seqproc",null,null,{q_text:"فُتح مقطع الشرح: "+c.label+" — "+c.q})}catch(e){}
+  try{logAnswer("gen","clip_open",null,"seqproc"+clipAutoTag(),null,null,{q_text:"فُتح مقطع الشرح: "+c.label+" — "+c.q})}catch(e){}
   render();
 }
 function clipOpen(link){
   const c=clipBuild(link);
   if(!c)return;
   clipOn=c;clipStep=0;
-  try{logAnswer("gen","clip_open",null,String(link),null,null,{q_text:"فُتح مقطع الشرح: "+c.label})}catch(e){}
+  try{logAnswer("gen","clip_open",null,String(link)+clipAutoTag(),null,null,{q_text:"فُتح مقطع الشرح: "+c.label})}catch(e){}
   render();
+}
+// ===== ويُفتَح وحده عند تكرار الخطأ على القالب نفسه — درس ٣ أكتوبر =====
+// القياس: قالبُ «أقلام» (`gPrice`) عُرض **ثلاث مرّات في جلسةٍ واحدة** وأُخطئ الثلاث،
+// **ومقطعه مربوطٌ وموجود ولم يُفتَح ولا مرّة**. والزرّ اختياريّ بالتصميم (كزرّ المثال
+// المحلول)، والاختياريُّ لا يصل من لا تعرف أنها تحتاجه. فالعلاج هو المبدأ المُجرَّب في
+// هذا المشروع نفسه: **البوّابة البنيوية تسبق النصيحة**، مُسلَّحةً على التكرار كـ
+// `SHAPE_ARM` لا مفروضةً على الجميع — تُفتَح حين تظهر بطاقة التكرار وحدها.
+// ولا مُشغِّلَ جديد ولا بناء: نفس الأولوية التي يقرؤها `clipButtonHTML` حرفياً،
+// ونفس الفواتح الثلاث تُستدعى كما هي.
+function clipAutoOpen(q){
+  if(clipOn||!q)return false;
+  clipAuto=true;
+  try{
+    if(Array.isArray(q.pat)&&clipSeqBuild(q)){clipOpenSeq();return !!clipOn}
+    if(Array.isArray(q.steps)&&q.steps.length){clipOpenDirect();return !!clipOn}
+    const k=tmplKey(q),key=k?QZ_CARD_FADE_LINK[k]:null;
+    if(key&&CLIP_MAKERS[key]){
+      clipOpen(key+(CLIP_VARIANT[k]?"/"+CLIP_VARIANT[k]:""));
+      return !!clipOn;
+    }
+  }finally{clipAuto=false}
+  return false;
 }
 // ===== مقطعٌ من أرقام السؤال المعروض نفسه — لا يمرّ بجدول الربط ولا بمولّدٍ ثانٍ =====
 // نفس مبدأ clipOpenSeq بالضبط (٢٩ أغسطس)، معمَّماً على أيّ مولّدٍ وضع withSteps —
@@ -2353,7 +2447,7 @@ function clipOpenDirect(){
   if(!q||!Array.isArray(q.steps)||!q.steps.length)return;
   clipOn={key:"direct",icon:q.clipIcon||"🔢",label:q.clipLabel||"خطوة خطوة",q:q.q||"",steps:q.steps,rule:q.clipRule||q.w||""};
   clipStep=0;
-  try{logAnswer("gen","clip_open",null,"direct:"+(q.clipLabel||""),null,null,{q_text:"فُتح مقطع الشرح: "+(q.clipLabel||"")+" — "+(q.q||"")})}catch(e){}
+  try{logAnswer("gen","clip_open",null,"direct:"+(q.clipLabel||"")+clipAutoTag(),null,null,{q_text:"فُتح مقطع الشرح: "+(q.clipLabel||"")+" — "+(q.q||"")})}catch(e){}
   render();
 }
 function clipNext(){
@@ -2560,6 +2654,11 @@ function fadeMasteryBreak(topic){
 }
 // صياغة عربية سليمة للعدد مع "يوم" (تمييز المفرد/المثنى/الجمع)
 function arSecs(n){return n===1?"ثانية واحدة":n===2?"ثانيتين":n<=10?`${toAr(n)} ثوانٍ`:`${toAr(n)} ثانية`}
+// ونفس العُرف للمرّات — كشفته لقطةُ الشاشة لا الاختبار (٣ أكتوبر): بطاقة التكرار
+// تقول «أخطأتِ فيه ٢ مرات»، وهو بعينه خطأ «كتبتِ ٢ جملة» المُصلَح في قسم الكتابة
+// يوم ٢٩ أغسطس — أُصلح هناك ولم يُبحث عن نظيره. والفتحُ التلقائي اليوم يجعل هذه
+// البطاقة تظهر أكثر، فيظهر الخطأ أكثر.
+function arTimes(n){return n===1?"مرّة واحدة":n===2?"مرّتين":n<=10?`${toAr(n)} مرّات`:`${toAr(n)} مرّة`}
 function arDays(n){return n===0?"اليوم":n===1?"يوم واحد":n===2?"يومين":n<=10?`${toAr(n)} أيام`:`${toAr(n)} يوماً`}
 function fadeMasteryState(topic){
   const r=fadeMasteryLoad()[topic];
@@ -4579,8 +4678,8 @@ const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEn
   "basicsChoose","basicsSubmit","factCheck","divAddRow","labSetD","pctPickBand","wavTapStart","wavEncode","runAzureDiag","fixChoose","fixCardDone","itemStuck","basicsDivGated","pctOutsideOwnBand","piPickBand","piBandBoxHTML","piArm","piOk","piVals","piGateOn","piGated","piSig1","fsrsUpdate","fsrsIvl","fsrsR","fsrsInitS","fsrsInitD","fsrsNextD","fsrsClampD","fsrsRecallS","fsrsForgetS","tmplKey","spreadTemplates","drawSpread","qzErrRecord","qzDueKeys","qzInjectDue","qzErrOf","qzCardDone","fadeQText","fadeAnsText","fadeGateStart","fadeGateStop","fadeGateNeeded","copyAzRaw","esc","weakPhonemeStr","num0","profileBarHTML","renderHomeCoachOnly","learnerInfo","coachLevel","toMasc","genderizeText","genderizeNode","genderizeInit","lsGet","lsSet","lsDel","pkey","cxShuffleOrder","cxPreStart","cxPreChoose","cxPreNext","cxPreQuit","cxPreCur","cxNoticePick","cxRuleDone","cxChoose","cxWhyPick","cxNext","cxFinish","tutorStart","tutorSend","tutorClose","runTutorDiag","planAskTutor","tutorAvailable","copyTuErr","azFallbackCopyOrClipboard","quizAskTutor","flexMultiStep","startCoach","coachPick","coachStart","coachStop","coachSay","coachReset","coachWeakSummary","coachMode","coachAskHelp","coachEnd","coachReview","coachFixParse","weakClean","coachSaysNow","snapToSuggestion","editDist","coachShowSays","coachParse","coachTopicGo","coachTopicBack","coachTopicClean","coachFreeScene","wbStart","wbPick","wbUnpick","wbCheck","wbHTML","wbReady","wbSay","wbReset","wbNorm","wbDistract","wbStageGet","wbGrade","engBuildFor","dictErrRecord","dictIsBuild","dictCur","renderDictationBuild","planCheckBuild","echoRecord","echoArmed","coachBankOn","coachBankSync","coachBankCheck","fixCardSave","fixCardGrade","bugOf","basicsOpNow","basicsOperands","basicsBugNow","digitsOf","factDcpm","factDcpmBand","coachLeave","coachAutoReview","coachSetFail","coachHintNow","basicsErrDelta","shapeRecord","shapeArmed","ob1Arm","ob1Jump","ob1Back","ob1Complete","ob1BoxHTML","btArm","btBorrow","btComplete","btBoxHTML","basicsOb1Gated","basicsBtGated","basicsShapeLogRemedy","shapeLogRemedy","quotArm","quotGated","quotReset","listenBankFor","listenSrsUpdate","buildListenPlan","listenPlaysHint","startListen","listenPlay","listenChoose","listenNext","renderListen",
   "readBankFor","readSrsUpdate","buildReadPlan","startRead","readChoose","readNext","renderRead",
   // القراءة الجهرية: دوالُّها متأخّرةٌ في الملفّ كدوالّ التسجيل، فتُعدّ معها لا بعدها
-  "readAloudTarget","readAloudWhole","readAloudMaxMs","readAloudOverBudget","raStart","raStop","raFinish","raReset","raRetry","readAloudHTML","raLogText",
-  "genBankLoad","genBankAdd","parseGenBlock","fetchTutorGen","genTopUp","genCallsFor","genFire","genSweepFlight","genGateLog","genLogText","lvChain","stretchDepth","mcOrder","ordFor","posLog","listenOrd","readOrd","agreeSlip","agreeToks","gramAgvOffered","parseGenPickBlock","parseGenVideoBlock","errCollect","errDraw","errCount","errQuizCount","startErrors","errCheck","errChoose","errNext","errReplay","renderErrors",
+  "readAloudTarget","readAloudWhole","readAloudMaxMs","readAloudOverBudget","raStart","raStop","raFinish","raReset","raRetry","readAloudHTML","raLogText","raSatisfied","raBlockHint","raSkipLog",
+  "genBankLoad","genBankAdd","parseGenBlock","fetchTutorGen","genTopUp","genCallsFor","genFire","genSweepFlight","genGateLog","genLogText","lvChain","stretchDepth","mcOrder","ordFor","posLog","listenOrd","readOrd","quizOrd","quizItemDefect","quizRejectLog","clipAutoOpen","arTimes","agreeSlip","agreeToks","gramAgvOffered","parseGenPickBlock","parseGenVideoBlock","errCollect","errDraw","errCount","errQuizCount","startErrors","errCheck","errChoose","errNext","errReplay","renderErrors",
   "minpairBankFor","minpairSrsUpdate","buildMinpairPlan","startMinpair","minpairPlay","minpairChoose","minpairNext","renderMinpair",
   "gramBankFor","gramSrsUpdate","buildGramPlan","startGram","gramChoose","gramNext","renderGram","fetchTutorGenGram","gramGenTopUp",
   "stepBankFor","stepSrsUpdate","buildStepPlan","startStep","stepChoose","stepSeqPick","stepSeqUnpick","stepSeqSubmit","stepNext","renderStep","fetchTutorGenStep","stepGenTopUp","fetchTutorGenVideo","videoGenTopUp",
@@ -6059,7 +6158,7 @@ function planAskTutor(){
   const err=itemErrOf(it.id);
   tutorStart({subject:"لغة إنجليزية",question:String(it.q||""),choices:it.c||null,
     studentAnswer:it.c?it.c[planPicked]:String(planInput||""),correctAnswer:it.c?it.c[it.a]:String(it.w||""),
-    priorErrors:(err&&err.last)?`اختارت «${err.last}» ${toAr(err.wrong)} مرات في هذا السؤال`:"",
+    priorErrors:(err&&err.last)?`اختارت «${err.last}» ${arTimes(err.wrong)} في هذا السؤال`:"",
     itemId:it.id,age:(profileOf().age||11)});
 }
 // ============ المعلّم: حوار قصير بعد الخطأ، لكل المواد ============
@@ -6979,7 +7078,7 @@ function renderCoach(){
     app.innerHTML=`${head}
     <div class="card" style="text-align:center">
       <div style="font-size:44px">🗣️</div>
-      <div style="font-size:19px;font-weight:800;color:#312E81;margin:8px 0">تكلّمتِ ${toAr(said.length)} مرات بالإنجليزية</div>
+      <div style="font-size:19px;font-weight:800;color:#312E81;margin:8px 0">تكلّمتِ ${arTimes(said.length)} بالإنجليزية</div>
       ${avg.length?`<div style="font-size:15px;color:#334155">وضوح أصواتك: <b>${toAr(Math.round(avg.reduce(function(a,m){return a+m.pct},0)/avg.length))}٪</b></div>`:""}
       ${w.length?`<div style="background:#F5F3FF;border-radius:12px;padding:12px;margin-top:12px;text-align:right;font-size:14px;color:#4C1D95;line-height:1.9">
         الأصوات التي تكرّر ضعفها:${w.map(function(x){return `<div>• <b style="direction:ltr;display:inline-block">${esc(phonemeLabel(x.p))}</b> — بمعدّل ${toAr(x.avg)}/١٠٠${x.words.length?` في: <b style="direction:ltr;display:inline-block">${x.words.slice(0,3).map(esc).join(" · ")}</b>`:""}</div>`}).join("")}
@@ -8302,6 +8401,31 @@ function readOrd(it){
   if(readOrderId!==it.id||readOrder.length!==it.c.length){readOrder=mcOrder(it);readOrderId=it.id}
   return readOrder;
 }
+// ===== وبنكا اللفظي/العلمي كانا بلا خلطٍ إطلاقاً — ٣ أكتوبر =====
+// خلطُ المواضع شُحن للاستماع/المقروء في ١٤ سبتمبر، و**أقسام القدرات الأربعة بقيت
+// خارجه**: `mcNum` يخلط الخيارات العددية (فالكمّي والمرونة متوازنان: الصواب في
+// المواضع بنسبة ٢٢-٢٧٪ لكلٍّ)، أمّا `VERBAL` و`SCIENCE` فبنكان **مؤلَّفان نصّاً**
+// يُعرضان بترتيب `it.c` و`it.a` ثابتٌ فيهما. والقياس على المصدر نفسه:
+//
+//   VERBAL  — الصواب في الموضع الثاني في **١٩ من ٢٤** عنصراً (٧٩٪)
+//   SCIENCE — **١٨ من ٢٧** (٦٧٪)
+//
+// وعلى ١٢٢٤ عرضاً حيّاً: ٧٣٪ و٦٥٪. فمن يضغط الزرّ الثاني دائماً يُصيب ثلاثة أرباع
+// البنك **بلا قراءةٍ ولا معرفة** — وهيا تضغطه في ٦٧-٩٢٪ من عناصر اللفظي/العلمي على
+// اثني عشر يوماً متّصلاً. فدرجاتُها «٨٦-٩٣٪» فيهما قاعدةُ زرٍّ لا معرفة.
+// **والعطل كان خفيّاً ٥٨ يوماً** لأن الموضع لا يُسجَّل في هذين القسمين أصلاً.
+//
+// **موصولٌ لا مبنيّ من جديد**: نفس `mcOrder`/`ordFor`/`posLog` المشحونة ١٤ سبتمبر،
+// ونفس درس «الترتيب يُعلَّق على السؤال لا على لحظة الإسناد» (`listenOrd`): المفتاح
+// يحمل رقم الجلسة وفهرس السؤال ونصَّه، فأيّ مسارٍ يُبدّل السؤال يُعيد الخلط — ولا
+// يمكن أن يُعرض ترتيبٌ ويُسجَّل آخر، لأن العرض والسجلّ يقرآن الدالّة نفسها.
+let quizOrder=[],quizOrderKey=null,quizSeq=0;
+function quizOrd(q){
+  if(!q||!Array.isArray(q.c))return [];
+  const k=String(quizSeq)+"|"+String(idx)+"|"+String(q.q||"").slice(0,80);
+  if(quizOrderKey!==k||quizOrder.length!==q.c.length){quizOrder=mcOrder(q);quizOrderKey=k}
+  return quizOrder;
+}
 // وموضعُ الخيار يدخل السجلّ كما ينصّ عُرف المشروع حرفياً («موضع ١ · الصواب موضع ٣»):
 // بلاه يبقى انحياز الموضع غير قابلٍ للقياس حتى بعد خلطه — وهو نصفُ الإصلاح لا كلّه.
 function posLog(order,it,pick){
@@ -8833,7 +8957,11 @@ function readChoose(i){
     {_sk:skOf(it),q_text:((skOf(it)?"["+skOf(it)+"] ":"")+srcTag(it)+genLogText(it,ordR)).slice(0,1200)});
   render();
 }
-function readNext(){posPendClear();
+function readNext(){
+  // حارسٌ ثانٍ في الدالّة لا في الزرّ وحده: زرٌّ قديمٌ في DOM أو نداءٌ من الطرفية
+  // يتجاوز العرض، والشرط يجب أن يكون في مسار التنفيذ نفسه.
+  if(!raSatisfied(readCur()))return;
+  posPendClear();
   genPulseFor("read",profileOf().level||"A2",readIdx);   // نبضةُ توليد أثناء الجلسة
 
   if(readIdx+1>=readItems.length){readDone=true;window.scrollTo(0,0);render();return}
@@ -8922,15 +9050,67 @@ function readAloudTarget(it){
   return (ev||String(it.passage)).trim();
 }
 function readAloudWhole(it){return profileId()==="haya"||!evidenceSentence(it&&it.passage,it&&it.c?it.c[it.a]:"")}
+// ===== والقراءة الجهرية صارت إجبارية — أمرُ صاحب المشروع، ٣ أكتوبر =====
+// بُنيت **اختياريّةً** في ١٣ سبتمبر («لا يُقفل الانتقال»)، فكانت حصيلتُها على ثمانية
+// عشر يوماً **صفّين في يومٍ واحد** (١٥ سبتمبر) وصفرٌ بعدهما. فعُرض الأمر عليه: تُحذَف
+// أم تُفرَض؟ فقال: **«حط القراءة الجهرية اجبارية»**. والقرارُ يتجاوز تحفّظي المكتوب،
+// وهو حقُّه — ويُنفَّذ كما قيل.
+//
+// **والنصف الأوّل معياريّ**: القراءة الجهرية **هي** مهمّة القياس في Oral Reading
+// Fluency ضمن القياس المرتبط بالمنهج (Deno 1985، وDIBELS) — لا إضافةٌ اختيارية
+// تُعرض بجانبه. فجعلُها مطلوبةً يوافق كيف تُقاس طلاقةُ القراءة فعلاً.
+// **والنصف الثاني لا معيار له**: هل يُمنع الانتقال أم يُنبَّه؟ لا أعرف معياراً منشوراً
+// في واجهةٍ تعليمية، فالمنع فرضيّةٌ تُقاس — بنفس ما أُعلن في بوّابة انحياز الموضع.
+//
+// **والشرط يُثبَت لا يُفترَض**: لا يُفتَح الطريق إلّا بأحد أربعة، وكلُّها **تقع فعلاً**
+// ويُسجَّل وقوعُها — فلا بابَ خلفيّ يُظنّ أنه مفتوح:
+//   • تقييمٌ تمّ (`raDone`) — المقصود؛
+//   • أو سجّلت وتعثّر Azure (`fail`) — «وهذا لا يُحتسب عليكِ» كما كان، فلا تُحبَس
+//     على عطل خادم؛
+//   • أو **أثبت الجهاز أنه بلا ميكروفون** (`err`) — وهذا ليس تخفيفاً: متصفّح سناب شات
+//     يحجب الميكروفون حجباً موثَّقاً (`MIC_ERR_HELP.no_api`)، وإلياس يفتح منه فعلاً،
+//     فمنعٌ بلا مخرجٍ كان **سيقفل قسم المقروء كلَّه عليه** — عطلٌ أوسع ممّا جاء يعالجه.
+//     **ولا يُفتَح إلّا بعد ضغطةٍ حقيقية تفشل**، فلا يُعفى أحدٌ قبل أن يُجرّب.
+//   • أو لا هدفَ أصلاً (عنصرٌ بلا نصّ) — شرطٌ على ما لا وجود له لا يُفرَض.
+const RA_REQUIRED=true;
+// **ومصدرُ الحقيقة واحد: `raResult` نفسه.** أوّل صياغةٍ قرأت `raDone` كذلك، وهي
+// رايةٌ لا يقرؤها أحدٌ غير هذا الشرط — فصارت حقيقةً ثانية تتباعد عن الأولى، وكشفه
+// `test_readaloud §٥` (حالةٌ فيها درجةٌ بلا راية فبقي الطريق مقفولاً). والدرجةُ هي
+// الدليل: `raFinish` تضع `sc` عند تقييمٍ تمّ فعلاً، فلا حاجة لرايةٍ توازيها.
+function raSatisfied(it){
+  if(!RA_REQUIRED||!readLocked)return true;
+  if(!readAloudTarget(it))return true;
+  const r=raResult||{};
+  return !!(r.sc||r.fail||r.err);
+}
+// نصُّ الزرّ المعطَّل يقول **ما المطلوب الآن** لا «ممنوع» — فالمنع بلا سببٍ معروض
+// يُقرأ عطلاً. و«أنهِ/أنهي» ليست في `MASC_W` فلا تُستعمل صيغةُ أمرٍ غيرُ مغطّاة.
+function raBlockHint(){
+  const r=raResult||{};
+  if(raListening)return "⏺ التسجيل جارٍ — اضغطي «انتهيتُ» عند الفراغ";
+  if(raBusy)return "جارٍ التقييم…";
+  if(r.discarded)return "🎤 التسجيل قصيرٌ جداً — أعيدي القراءة";
+  return "🎤 اقرئي النصّ بصوتك للانتقال";
+}
+// وتعذّرُ الميكروفون يُسجَّل حين يقع — فبلاه لا يُعرف كم مرّةً فُتح المخرج ولا لمن،
+// فيستحيل الحكم على أثر الإجبار أصلاً (كم قراءةً وقعت مقابل كم إعفاءً).
+let raSkipLogged=0;
+function raSkipLog(why){
+  if(raSkipLogged>=3)return;raSkipLogged++;
+  try{const it=readCur();logAnswer("gen","ra_skip",null,String(why||"?").slice(0,40),it?it.id:null,null,
+    {q_text:("[القراءة الجهرية: مخرجٌ لتعذّر الميكروفون] "+String(why||"?")
+      +" · "+String(readAloudTarget(it)||"").slice(0,120)).slice(0,300)})}catch(e){}
+}
 let raRec=null,raStream=null,raChunks=[],raTimer=null,raElapsed=0,raListening=false,raBusy=false,raResult=null,raStartedAt=0,raDone=false,raCapHit=false;
 function raReset(){
   if(raTimer){clearInterval(raTimer);raTimer=null}
+  if(raBusyTimer){clearTimeout(raBusyTimer);raBusyTimer=null}
   if(raStream){try{raStream.getTracks().forEach(function(t){t.stop()})}catch(e){}raStream=null}
   raRec=null;raChunks=[];raElapsed=0;raListening=false;raBusy=false;raResult=null;raDone=false;raCapHit=false;
 }
 async function raStart(){
   if(raListening||raBusy)return;
-  if(!micSupported()){raResult={err:"no_api"};render();return}
+  if(!micSupported()){raResult={err:"no_api"};raSkipLog("no_api");render();return}
   raResult=null;
   const cap=readAloudMaxMs(readAloudTarget(readCur()));
   try{
@@ -8948,16 +9128,38 @@ async function raStart(){
     render();
   // مفاتيح `MIC_ERR_HELP` هي أسماء أخطاء المواصفة نفسها (NotAllowedError…)، فتُقرأ
   // من `e.name` مباشرةً — لا جدولَ ترجمةٍ ثانٍ يتباعد عن الأوّل
-  }catch(e){raListening=false;raResult={err:(e&&e.name)||"no_api"};render()}
+  }catch(e){raListening=false;raResult={err:(e&&e.name)||"no_api"};raSkipLog(raResult.err);render()}
+}
+// ===== ولا حالةَ تُقفل مساراً ولا تنعكس — بعد أن صار الانتقال معلَّقاً عليها =====
+// `raBusy` كان يبقى `true` أبداً لو لم يُطلق `MediaRecorder` حدث `onstop` بعد
+// `stop()` — وهو احتمالٌ حقيقي في المتصفّحات المدمجة. وكان ثمنُه قبل اليوم سطراً
+// يقول «جارٍ التقييم…» ولا يمنع شيئاً؛ **وبعد الإجبار صار يحبس المتعلّم في عنصرٍ
+// لا يخرج منه**. وهو بعينه صنفُ `ttsServerOk=false` و`genInFlight` المُسرَّب
+// (٥ سبتمبر) — فيُعالَج بنفس العلاج: عمرٌ مقاسٌ يُكنَس بعده.
+// والمهلة مشتقّةٌ لا مختارة: `raFinish` مسقوفةٌ بـ`fetchTimeout` (٢٥ث)، والتسليمُ
+// من `stop()` إليها لحظيّ — فضِعفُها وزيادة يعني تسريباً يقيناً لا بطئاً سليماً.
+const RA_BUSY_TTL=NET_TIMEOUT_MS*2+5000;
+let raBusyTimer=null;
+function raBusyWatch(){
+  if(raBusyTimer)clearTimeout(raBusyTimer);
+  raBusyTimer=setTimeout(function(){
+    raBusyTimer=null;
+    if(!raBusy)return;
+    raBusy=false;raResult={fail:"stalled"};
+    try{logAnswer("gen","ra_skip",null,"stalled",null,null,
+      {q_text:"[القراءة الجهرية] التقييم لم يُسلَّم خلال العمر المقاس — فُتح الطريق"})}catch(e){}
+    render();
+  },RA_BUSY_TTL);
 }
 function raStop(){
   if(!raListening)return;
   raListening=false;raBusy=true;
   if(raTimer){clearInterval(raTimer);raTimer=null}
-  try{if(raRec&&raRec.state!=="inactive")raRec.stop();else{raBusy=false}}catch(e){raBusy=false}
+  try{if(raRec&&raRec.state!=="inactive"){raRec.stop();raBusyWatch()}else{raBusy=false}}catch(e){raBusy=false}
   render();
 }
 async function raFinish(){
+  if(raBusyTimer){clearTimeout(raBusyTimer);raBusyTimer=null}   // سُلِّم فعلاً — لا كنسَ بعده
   const it=readCur();const target=readAloudTarget(it);
   if(raStream){try{raStream.getTracks().forEach(function(t){t.stop()})}catch(e){}raStream=null}
   wavTapStop();                        // يُوقَف قبل القراءة لا بعدها
@@ -9025,8 +9227,8 @@ function readAloudHTML(it){
   }else{
     body=`<button class="btn" style="background:#7C3AED" onclick="raStart()">🎤 اقرئي بصوتك</button>`;
   }
-  return `<div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:12px;padding:12px;margin-top:12px">
-    <div style="font-weight:700;color:#166534;margin-bottom:6px">🎤 اقرئي ${scope} بصوتٍ واضح <span style="font-weight:400;color:#15803D">(اختياري)</span></div>
+  return `<div data-rabox="1" style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:12px;padding:12px;margin-top:12px">
+    <div style="font-weight:700;color:#166534;margin-bottom:6px">🎤 اقرئي ${scope} بصوتٍ واضح ${RA_REQUIRED?`<span style="font-weight:700;color:#B45309">(مطلوبة قبل الانتقال)</span>`:`<span style="font-weight:400;color:#15803D">(اختياري)</span>`}</div>
     <div style="background:#fff;border:1px solid #DCFCE7;border-radius:8px;padding:10px;margin-bottom:10px;direction:ltr;text-align:left;font-family:Georgia,serif;color:#14532D;line-height:1.7">${esc(target)}</div>
     ${body}</div>`;
 }
@@ -9060,7 +9262,13 @@ function renderRead(){
     ${readLocked?`<div class="explain"><div class="explain-title" style="color:${readPicked===it.a?'#059669':'#B45309'}">${readPicked===it.a?"✓ فهمتِ صحيحاً":"الصحيحة بالأخضر — والجملة المُبرَزة أعلاه هي الدليل"}</div></div>`:""}
     ${readLocked?readAloudHTML(it):""}
   </div>
-  ${readLocked?`<button class="btn" style="background:#7C3AED" onclick="readNext()">${readIdx+1>=readItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`:""}`;
+  ${readLocked
+    ? (raSatisfied(it)
+       ? `<button class="btn" style="background:#7C3AED" onclick="readNext()">${readIdx+1>=readItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`
+       // الزرّ **يبقى معروضاً معطَّلاً** لا يختفي: زرٌّ غائب يُقرأ عطلاً، ومعطَّلٌ
+       // بسببٍ مكتوب يقول ما المطلوب. وعربيٌّ خالص في سطره فلا انقلاب.
+       : `<button class="btn" data-ragate="1" disabled style="background:#CBD5E1;color:#475569;cursor:not-allowed">${raBlockHint()}</button>`)
+    :""}`;
 }
 function renderReadResult(){
   const pct=readItems.length?Math.round(readScore/readItems.length*100):0;
@@ -14448,7 +14656,7 @@ function renderPron(){
         // Azure وحده يُعطي درجة لكل صوت — وهذا هو الفرق الذي يستحقّ العرض
         const azBox=(sc&&sc.by==="azure")?`<div style="margin-top:10px;background:#F5F3FF;border-radius:10px;padding:10px 12px">
             <div style="font-size:12px;color:#4C1D95;font-weight:700">الدقة ${toAr(sc.accuracy||0)} · الطلاقة ${toAr(sc.fluency||0)} · الاكتمال ${toAr(sc.completeness||0)}</div>
-            ${sc.repeats?`<div style="margin-top:6px;font-size:12px;color:#0F766E">قلتِها ${toAr(sc.repeats+1)} مرات — مرّة واحدة تكفي، ولم نخصم عليكِ شيئاً.</div>`:""}
+            ${sc.repeats?`<div style="margin-top:6px;font-size:12px;color:#0F766E">قلتِها ${arTimes(sc.repeats+1)} — مرّة واحدة تكفي، ولم نخصم عليكِ شيئاً.</div>`:""}
             ${(sc.weak&&sc.weak.length)?`<div style="margin-top:8px;font-size:13px;color:#5B21B6;line-height:1.9">الأصوات التي تحتاج تدريباً:${sc.weak.map(x=>`<div>• <b style="direction:ltr;display:inline-block">${phonemeLabel(x.p)}</b> في <b style="direction:ltr;display:inline-block">${x.w}</b> — ${toAr(x.score)}/١٠٠</div>`).join("")}</div>`:`<div style="margin-top:6px;font-size:12px;color:#059669">كل الأصوات خرجت واضحة ✓</div>`}
           </div>`:"";
         return `<div class="explain"><div class="explain-title" style="color:${col}">${title} · ${toAr(pct)}%</div><div class="explain-body">${wordsHtml}${pronResult.heard?`<div style="margin-top:8px;font-size:13px">سمعنا: <b style="direction:ltr;display:inline-block">"${pronResult.heard}"</b></div>`:""}<div style="margin-top:6px;font-size:13px">المطلوب: <b style="direction:ltr;display:inline-block">${item.w}</b> (${item.m}).</div>${azBox}</div></div>`;
@@ -14714,7 +14922,7 @@ function renderSpeak(){
       ?(speakResult.discarded
         ? `<button class="link-btn" onclick="speakNext(true)">تخطّي هذه الجملة (بلا احتساب) ←</button>`
         : `<div style="display:flex;gap:8px;margin-top:12px"><button class="btn" style="background:#DB2777;margin:0" onclick="speakNext()">${speakIdx+1>=speakSession.length?"إنهاء ←":"الجملة التالية ←"}</button><button class="btn" style="background:#fff;color:#DB2777;border:2px solid #FBCFE8;margin:0" onclick="speakRetry()">🔁 أعيدي</button></div>
-         <div style="font-size:12px;color:#94A3B8;margin-top:8px">التكرار يرفع الطلاقة — أعيديها مرتين أو ثلاثاً قبل الانتقال${speakTries>1?` (حاولتِ ${toAr(speakTries)} مرات)`:""}</div>`)
+         <div style="font-size:12px;color:#94A3B8;margin-top:8px">التكرار يرفع الطلاقة — أعيديها مرتين أو ثلاثاً قبل الانتقال${speakTries>1?` (حاولتِ ${arTimes(speakTries)})`:""}</div>`)
       :"";
     inner=`
     <div style="background:#FDF2F8;border-radius:14px;padding:16px;margin-bottom:14px;text-align:center">${sentence}</div>
@@ -15004,6 +15212,9 @@ async function start(domKey){
   currentMode=domKey;mode="quiz";idx=0;picked=null;locked=false;score=0;done=false;answered=[];
   recentAnswerTimes=[];rapidNudge=false;breakSuggest=false;gateStop();gateSecs=0;gateLeft=0;gateSeen=false;
   qzCard=null;qzCardCount=0;
+  // رقمُ الجلسة يدخل مفتاح ترتيب العرض: جلستان متتاليتان قد تبدآن بالقالب نفسه عند
+  // الفهرس نفسه، فبلا هذا الرقم يُعاد الترتيب القديم بدل خلطٍ جديد.
+  quizSeq++;quizOrderKey=null;posPendClear();
   const needsAI=(domKey==="verbal"||domKey==="science"||domKey==="full");
   if(needsAI){loading=true;render();}
   if(domKey==="full"){filtered=await buildFull()}
@@ -15020,6 +15231,15 @@ async function home(){mode="home";gateStop();fadeGateStop();window.scrollTo(0,0)
 function choose(i){
   if(locked)return;
   if(seqGated())return;   // بوّابة بنيوية: تُقرّ الطرف المطلوب قبل أن تُعرض الخيارات
+  const qq=filtered[idx];
+  // بوّابة انحياز الموضع — مشروطة: تمرّ بلا أثرٍ لمن لا عَرَض عنده. والعنوانُ المعروض
+  // هو **موضعُ** الخيار لا شيفرته متى كان مرسوماً: صندوق التأكيد يُهرّب نصَّه، فشيفرة
+  // SVG كانت ستظهر محارفَ خاماً لا شكلاً.
+  if(qq){
+    const _o=quizOrd(qq),_s=String((qq.c&&qq.c[i])==null?"":qq.c[i]);
+    const _lab=/^\s*<svg/i.test(_s)?("موضع "+toAr(_o.indexOf(i)+1)):_s;
+    if(!posConfirmOk(qq.d,i,_lab))return;
+  }
   picked=i;locked=true;
   const q=filtered[idx];
   const ok=i===q.a;
@@ -15041,17 +15261,23 @@ function choose(i){
   // أُصلح في `gram`/`step` (٢٥ أغسطس) و`stat` (٢٩ أغسطس) وتُرك هنا. والعُرف مكتوبٌ
   // في هذا الملفّ منذ البداية: «موضع ١ · الصواب موضع ٣».
   const drawn=function(v){return /^\s*<svg/i.test(String(v==null?"":v))};
-  const posTxt=function(k){return "موضع "+toAr(k+1)};
+  // والموضع **موضعُ العرض لا فهرسُ البنك** بعد خلط المواضع (٣ أكتوبر): كان يُسجَّل
+  // فهرسُ المصفوفة، فيقول السطر «موضع ٢» لخيارٍ رأته في الرابع — وهو بعينه العطل
+  // الذي أُصلح في `gram`/`step` (٢٥ أغسطس) و`stat` (٢٩ أغسطس).
+  const ordQ=quizOrd(q);
+  const posTxt=function(k){return "موضع "+toAr(ordQ.indexOf(k)+1)};
   const ansTxt=q.c&&q.c[i]!=null?(drawn(q.c[i])?posTxt(i):String(q.c[i])):null;
   // الخيارات كلّها مع نصّ السؤال: جلسة ١٣ أغسطس أجابت عن سؤالين منطقيين مختلفين
   // (أطبّاء/جامعة، وصيّادون/بحر) بالجواب نفسه «يذهبون إلى المستشفيات» — وهو لا معنى له
   // في سؤال الصيّادين أصلاً. ولم أستطع الحكم: أهو خللٌ في التوليد أم انحيازُ موضع؟
   // فبلا الخيارات لا يُعرف أكان الجواب معروضاً أصلاً، ولا في أي موضع كان.
+  // **وبترتيب العرض لا بترتيب البنك** — وإلّا قال السطر إن الصواب في الموضع الذي
+  // كُتب فيه لا الذي رأته، فيُقرأ انحيازُ موضعٍ ليس موضعها (نفس علاج `genLogText`).
   const chLog=Array.isArray(q.c)
-    ?" · الخيارات: "+q.c.map(function(x,k){
-        const s=String(x==null?"":x);
+    ?" · الخيارات: "+ordQ.map(function(wi,k){
+        const s=String(q.c[wi]==null?"":q.c[wi]);
         // الخيارات المرسومة تُسجَّل بموضعها لا بشيفرتها — لا يدخل SVG في السجلّ
-        return (k+1)+") "+(/^\s*<svg/i.test(s)?"[رسم]":s.slice(0,60))+(k===q.a?" ✓":"");
+        return (k+1)+") "+(/^\s*<svg/i.test(s)?"[رسم]":s.slice(0,60))+(wi===q.a?" ✓":"");
       }).join(" | ")
     :"";
   // شكل الخطأ لا وقوعه هنا كذلك (١٦ أغسطس): بيانات هيا في quant كشفت ٨ من ١٩ خطأً
@@ -15109,7 +15335,16 @@ function choose(i){
   // و`qzInjectDue` و`QZ_CARD_FADE_LINK`. وحبيبتها **القالب** لا النصّ — وهذا هو
   // الصواب هنا: الكمّي والمرونة يُولَّدان بأرقامٍ عشوائية، و«مجموع خمسة أعداد متتالية»
   // بأرقامٍ مختلفة تكرارٌ فعلاً (ظهر أربع مرّات وأُخطئ الأربع، ١٦ أغسطس).
-  logAnswer(q.d,q.qtype||"bank",ok,ansShape,tmplKey(q)||null,elapsed,
+  // ===== والموضع يدخل السطر في أقسام القدرات الأربعة كذلك — ٣ أكتوبر =====
+  // `posRecord`/`posTagFor` موصولتان بالاستماع والمقروء والقواعد وSTEP منذ ٢٥ سبتمبر،
+  // **وأقسام القدرات خارجها كلِّها** — فانحياز الموضع في اللفظي/العلمي/الكمّي/المرونة
+  // لم يكن يُقاس أصلاً، وهو حيثُ وقع فعلاً. والصدرُ موحَّد: السطر يبدأ بـ«موضع ن ·
+  // الصواب موضع م» في الحالين، والمرسومُ يحمله في `ansTxt` نفسه فلا يُكرَّر.
+  posRecord(q.d,ordQ.indexOf(i)+1,(q.c||[]).length);
+  const posPre=(!anyDrawn&&Array.isArray(q.c))
+    ?("موضع "+toAr(ordQ.indexOf(i)+1)+" · الصواب موضع "+toAr(ordQ.indexOf(q.a)+1)+" · ")
+    :"";
+  logAnswer(q.d,q.qtype||"bank",ok,posPre+(ansShape==null?"":ansShape)+posTagFor(q.d),tmplKey(q)||null,elapsed,
     {q_text:(String(q.q||"")+chLog).slice(0,1200)});
   // الذاكرة قبل البطاقة: البطاقة تُقرَأ من الحالة بعد التسجيل
   const _prevE=qzErrOf(tmplKey(q))||{};
@@ -15155,6 +15390,11 @@ function choose(i){
         {q_text:("[بطاقة تكرار] نفس الاختيار «"+(ansTxt||"").slice(0,40)+"» "+toAr(wasSame+2)
           +" مرّات · الصواب «"+qzCard.right.slice(0,40)+"» · "+String(q.q||"").slice(0,120)).slice(0,600)})}catch(e){}
     }
+    // ومعها يُفتَح مقطع الشرح وحده إن كان للقالب مقطع — مفصَّلٌ عند `clipAutoOpen`:
+    // الزرّ الاختياري لا يصل من لا تعرف أنها تحتاجه، وقالبٌ أُخطئ ثلاثاً ومقطعُه
+    // موجودٌ ولم يُفتَح هو العطل المقاس بعينه. وبطاقةُ التكرار تمنع الانتقال أصلاً
+    // («القراءة شرطٌ لا اقتراح»)، فلا يُتجاوَز المقطع بالضغط المتتابع.
+    clipAutoOpen(q);
   }
   recentAnswerTimes.push(elapsed);
   if(recentAnswerTimes.length>RAPID_STREAK)recentAnswerTimes.shift();
@@ -15167,7 +15407,7 @@ function choose(i){
   render();
 }
 function qzCardDone(){qzCard=null;render()}
-function next(){if(idx+1>=filtered.length){done=true;gateStop();window.scrollTo(0,0);saveAttempt()}else{idx++;picked=null;locked=false;seqPicked=-1;rapidNudge=false;breakSuggest=false;questionShownAt=Date.now();gateStart(filtered[idx])}render()}
+function next(){posPendClear();if(idx+1>=filtered.length){done=true;gateStop();window.scrollTo(0,0);saveAttempt()}else{idx++;picked=null;locked=false;seqPicked=-1;rapidNudge=false;breakSuggest=false;questionShownAt=Date.now();gateStart(filtered[idx])}render()}
 function domainStats(){const acc={};Object.keys(DOMAINS).forEach(k=>acc[k]={r:0,t:0});filtered.forEach((q,i)=>{if(acc[q.d]){acc[q.d].t++;if(answered[i])acc[q.d].r++}});return acc}
 function weakestOf(acc){let key=null,pct=101;Object.keys(DOMAINS).forEach(k=>{if(acc[k].t){const p=acc[k].r/acc[k].t*100;if(p<pct){pct=p;key=k}}});return{key,pct}}
 
@@ -16056,10 +16296,13 @@ function renderQuiz(){
   const q=filtered[idx];if(!q){home();return}
   const d=DOMAINS[q.d];
   const prog=filtered.map((_,i)=>`<div class="seg" style="background:${i<idx?d.color:(i===idx?d.color:'#E2E8F0')};opacity:${i<=idx?1:.5}"></div>`).join("");
-  const choices=q.c.map((c,i)=>{
+  // ترتيبُ عرضٍ مخلوط، والنقر يمرّر **الفهرس الأصلي** — فلا يتغيّر حساب الصواب
+  // (`i===q.a`) ولا `q.svg` ولا جدول الربط ولا شيءٌ خلفه.
+  const choices=quizOrd(q).map((wi,k)=>{
+    const c=q.c[wi];
     let bg="#fff",bd="#E2E8F0",col="#334155";
-    if(locked){if(i===q.a){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(i===picked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}
-    return `<button class="choice" style="background:${bg};border-color:${bd};color:${col}" onclick="choose(${i})" ${locked?"disabled":""}><span class="letter">${L[i]}</span>${c}</button>`}).join("");
+    if(locked){if(wi===q.a){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(wi===picked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}
+    return `<button class="choice" style="background:${bg};border-color:${bd};color:${col}" onclick="choose(${wi})" ${locked?"disabled":""}><span class="letter">${L[k]}</span>${c}</button>`}).join("");
   // بطاقة التكرار: تُعرض مكان زرّ الانتقال، فلا تُتجاوز بالضغط المتتابع
   const fadeLink=qzCard?QZ_CARD_FADE_LINK[qzCard.k]:null;
   // والبطاقة التعليمية عند تكرار **نفس الاختيار** أربع مرّات: تُسمّي الارتباط الخاطئ
@@ -16076,7 +16319,7 @@ function renderQuiz(){
   const repeatCard=(qzCard&&locked&&qzCard.teach)?`<div style="background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:14px;padding:16px;margin-top:14px">
     <div style="font-weight:800;color:#1E40AF;font-size:15px;margin-bottom:8px">📘 تختارين الإجابة نفسها في كل مرة</div>
     <div style="font-size:14px;color:#1E3A8A;line-height:1.9">
-      في هذا السؤال اخترتِ <b dir="auto">${esc(qzCard.prev||"")}</b> ${toAr(qzCard.times)} مرات.
+      في هذا السؤال اخترتِ <b dir="auto">${esc(qzCard.prev||"")}</b> ${arTimes(qzCard.times)}.
       ${qzCard.right?`والصواب هو <b dir="auto">${esc(qzCard.right)}</b>.`:""}
       <div style="background:#fff;border-radius:10px;padding:10px 12px;margin-top:10px;display:flex;flex-direction:column;gap:6px">
         <div style="color:#B91C1C"><span>✗</span> <span dir="auto">${esc(qzCard.prev||"")}</span></div>
@@ -16087,7 +16330,7 @@ function renderQuiz(){
   </div>`:(qzCard&&locked)?`<div style="background:#FEF2F2;border:1.5px solid #FECACA;border-radius:14px;padding:16px;margin-top:14px">
     <div style="font-weight:800;color:#991B1B;font-size:15px;margin-bottom:8px">🔁 هذا النوع من الأسئلة أخطأتِه من قبل</div>
     <div style="font-size:14px;color:#7F1D1D;line-height:1.9">
-      أخطأتِ فيه ${toAr(qzCard.wrong)} مرات${qzCard.prev?` — وفي المرة الماضية اخترتِ <b>${esc(qzCard.prev)}</b>`:""}.
+      أخطأتِ فيه ${arTimes(qzCard.wrong)}${qzCard.prev?` — وفي المرة الماضية اخترتِ <b>${esc(qzCard.prev)}</b>`:""}.
       اقرئي التفسير أعلاه قبل الانتقال، فهذا النوع سيعود.
     </div>
     ${fadeLink?`<button class="btn" style="background:#059669;margin:12px 0 0" onclick="startFade('${fadeLink}')">🎓 تدرّبي عليه خطوة بخطوة</button>`:""}
@@ -16124,7 +16367,7 @@ function renderQuiz(){
     ${svg}
     ${gateBox}
     ${seqBoxHTML()}
-    ${(gateOpen()&&!seqGated())?`<div class="choices">${choices}</div>`:""}
+    ${(gateOpen()&&!seqGated())?`<div class="choices">${posConfirmHTML(q.d,"choose")}${choices}</div>`:""}
     ${explain}
     ${locked?clipButtonHTML(q):""}
     ${locked?clipHTML():""}

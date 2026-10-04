@@ -98,7 +98,7 @@ await page.evaluate(d=>{
   pronResult={heard:d.heard,ok:s.ok,sc:s,note:"",engine:"azure"};render();
 },SPACE_TWICE);
 let t=await page.textContent('#app');
-ok(t.includes('قلتِها ٢ مرات'),'يُقال لها كم مرة قالتها');
+ok(t.includes('قلتِها مرّتين'),'يُقال لها كم مرة قالتها');
 ok(t.includes('لم نخصم عليكِ'),'ويُطمئنها أنها لم تُعاقَب');
 ok(t.includes('✓ نطق صحيح'),'والنتيجة صحيحة');
 // وبلا تكرار لا تظهر الملاحظة

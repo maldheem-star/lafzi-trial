@@ -1,5 +1,7 @@
 const {chromium}=require('/opt/node22/lib/node_modules/playwright');
 let fails=0;const ok=(c,m)=>{console.log((c?'  ✓ ':'  ✗ FAIL ')+m);if(!c)fails++};
+// `toAr` في الصفحة لا في هذا السياق — نسخةٌ للمقابلة النصّية وحدها
+const toArT=n=>String(n).replace(/[0-9]/g,d=>'٠١٢٣٤٥٦٧٨٩'[+d]);
 (async()=>{
 const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium'});
 const logs=[];
@@ -80,17 +82,27 @@ await page.evaluate(()=>{
   idx=0;picked=null;locked=false;done=false;score=0;answered=[];questionShownAt=Date.now()-3000;
   mode="quiz";currentMode="quant";gateStart(filtered[0]);gateLeft=0;gateStop();render();
 });
+// ===== والسطر صار يتصدّره الموضع — مراجعةُ ٣ أكتوبر لا دهسٌ =====
+// كُتبت الدعوى يوم كان حقل الإجابة نصَّ الخيار وحده. ومنذ خلط مواضع أقسام القدرات
+// (٣ أكتوبر) صار يبدأ بـ«موضع ن · الصواب موضع م» كما في `gram` منذ ٢٥ أغسطس، فمقابلةُ
+// النصّ الكامل حرفياً تُكذّب سلوكاً صحيحاً. **وما جاءت له الدعوى باقٍ بحرفه**: نصُّ
+// إجابتها وشكلُ الخطأ (الصواب والفرق) حاضران في السطر — ويُقابَلان الآن بعد الصدر،
+// والصدرُ نفسه يُقابَل بترتيب العرض الحقيقي لا برقمٍ مكتوب.
+const qpos=await page.evaluate(()=>{const o=quizOrd(filtered[0]);
+  return {pick:o.indexOf(1)+1,ans:o.indexOf(0)+1}});
 await page.evaluate(()=>choose(1));
 await page.waitForTimeout(500);
 const qlog=logs.find(l=>l.domain==='quant');
+const qpre='موضع '+toArT(qpos.pick)+' · الصواب موضع '+toArT(qpos.ans)+' · ';
 ok(!!qlog,'سطر الكمّي وصل');
 ok(qlog&&qlog.q_text&&qlog.q_text.includes('مساحة مستطيل'),`وفيه نصّ السؤال («${(qlog&&qlog.q_text||'').slice(0,30)}…») — كان null قبل اليوم`);
-ok(qlog&&qlog.response&&qlog.response.indexOf('١٧ سم²')===0,'ومعه إجابتها المختارة');
+ok(qlog&&String(qlog.response||'').indexOf(qpre)===0,`ويتصدّره الموضع المعروض (${qpre.trim()})`);
+ok(qlog&&String(qlog.response||'').indexOf('١٧ سم²')===qpre.length,'ومعه إجابتها المختارة');
 ok(qlog&&qlog.is_correct===false,'والنتيجة صحيحة الحساب');
 ok(qlog&&typeof qlog.elapsed_ms==='number','والزمن');
 // شكل الخطأ لا وقوعه في الكمّي كذلك (١٦ أغسطس): بيانات هيا الحيّة كشفت ٨ من ١٩ خطأً
 // فرقها بالضبط ±١ — فرقٌ صحيحٌ يُذكر الآن في السجلّ نفسه، بعُرف basicsErrDelta نفسه
-ok(qlog&&qlog.response==='١٧ سم² · الصواب ٦٠ سم² · فرق −٤٣',`وشكل الخطأ معه (${qlog&&qlog.response})`);
+ok(qlog&&qlog.response===qpre+'١٧ سم² · الصواب ٦٠ سم² · فرق −٤٣',`وشكل الخطأ معه (${qlog&&qlog.response})`);
 
 console.log('\n٥ب) الكسور والرسوم لا تُحوَّل رقماً — quizErrDelta ترفضها بهدوء');
 const shapes=await page.evaluate(()=>({
@@ -110,10 +122,12 @@ await page.evaluate(()=>{
   idx=0;picked=null;locked=false;done=false;score=0;answered=[];questionShownAt=Date.now();
   mode="quiz";currentMode="quant";gateStart(filtered[0]);gateLeft=0;gateStop();render();
 });
+const opos=await page.evaluate(()=>{const o=quizOrd(filtered[0]);return o.indexOf(0)+1});
 await page.evaluate(()=>choose(0));
 await page.waitForTimeout(400);
 const okLog=logs.find(l=>l.domain==='quant');
-ok(okLog&&okLog.response==='٦٠ سم²','والإجابة الصحيحة تُسجَّل كما هي بلا إطالة');
+const opre='موضع '+toArT(opos)+' · الصواب موضع '+toArT(opos)+' · ';
+ok(okLog&&okLog.response===opre+'٦٠ سم²','والإجابة الصحيحة تُسجَّل كما هي بلا إطالة (ومعها موضعها) — '+(okLog&&okLog.response));
 
 console.log('\n٦) فحص شامل على بنك الكمّي الحقيقي');
 const sweep=await page.evaluate(()=>{
