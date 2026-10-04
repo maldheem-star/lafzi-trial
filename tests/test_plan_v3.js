@@ -193,7 +193,12 @@ async function mk(browser,q){
     await page.evaluate(()=>render());
     const r=await page.evaluate(()=>({
       missing:censusMissing(),
-      mock:app.innerHTML.indexOf('محاكاة الاختبار')>=0,
+      // **بالدالّة لا بنصّ الزرّ**: الدعوى «زرُّ المحاكاة مبلوغ» لا «اسمُه كذا».
+      // وقد كُسرت بإعادة تسميةٍ مشروعة (٤ أكتوبر: صار «محاكاة اختبار الإنجليزية»
+      // تمييزاً عن «محاكاة شاملة» الموهبية) — فهو درس «الأعداد المكتوبة في
+      // الاختبارات فخّ صامت» واقعاً على **النصوص** المكتوبة لا الأعداد وحدها.
+      mock:[...document.querySelectorAll('button')]
+        .some(b=>(b.getAttribute('onclick')||'').trim()==='startMock()'),
       modes:document.querySelectorAll('.mode').length,
     }));
     ok(r.missing.length===0,(q||'هيا')+': لا دالّة مفقودة — '+r.missing.join(','));

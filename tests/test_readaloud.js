@@ -221,7 +221,14 @@ function ok(c,m){if(c){pass++;console.log("  ✓ "+m)}else{fail++;console.log(" 
       const p=await ctx.newPage();
       await p.goto(`${BASE}/${file}`,{waitUntil:"domcontentloaded"});
       await p.waitForFunction(()=>typeof startRead==="function",{timeout:15000});
-      await p.evaluate(()=>{startRead();gateLeft=0;readChoose(0)});
+      // **وبانتظارٍ على الحالة لا على مهلةٍ ثابتة**: `startRead` تبني خطّتها قبل الرسم،
+      // فنقرةٌ تقع قبل جهوز العنصر لا تُنتج صندوقاً — ومهلةُ ١٥٠ملّي تكفي على آلةٍ
+      // خالية وقد لا تكفي داخل الجولة الكاملة. (سقط القسم في جولة ٤ أكتوبر الكاملة
+      // ونجح منفرداً، ولم يكن في رسالته ما يقول أيُّ السببين — وهو ما يُصلَح أدناه.)
+      await p.evaluate(async()=>{await startRead();gateLeft=0;readChoose(0)});
+      await p.waitForFunction(()=>[...document.querySelectorAll("div")]
+        .some(d=>/بصوتٍ واضح/.test(d.textContent)&&/rgb\(240, 253, 244\)/.test(d.style.background||"")),
+        {timeout:15000}).catch(function(){});
       for(const [name,st] of states){
         // التحويل إلى خطاب المذكّر يقع في **مراقب DOM** (`genderizeInit`) لا في الرسم
         // نفسه، فقراءةُ النصّ فور `render()` تقيس ما قبل التحويل لا ما يراه إلياس.
@@ -232,7 +239,13 @@ function ok(c,m){if(c){pass++;console.log("  ✓ "+m)}else{fail++;console.log(" 
         const txt=await p.evaluate(()=>{
           const b=[...document.querySelectorAll("div")].find(d=>/بصوتٍ واضح/.test(d.textContent)&&/rgb\(240, 253, 244\)/.test(d.style.background||""));
           return b?b.innerText:"";});
-        ok(txt.length>0&&!badRe.test(txt),`${who} · ${name}: بلا خطابٍ ${label}`);
+        // **سببان لا سبب**: دعوى واحدة كانت تبتلع «الصندوق غائب» و«الخطاب خاطئ» معاً،
+        // فتقول رسالتُها «بلا خطابٍ مذكّر» في الحالتين — وهو نقضُ «شكل الخطأ لا وقوعه»
+        // واقعاً في اختبارٍ كُتب لحراسة الخطاب. وقع فعلاً في جولة ٤ أكتوبر: خمسُ
+        // دعاوى سقطت ولم يُعرَف أيُّهما، فلزم تشغيلٌ منفردٌ لتمييزه.
+        ok(txt.length>0,`${who} · ${name}: الصندوق معروضٌ فعلاً`);
+        ok(!badRe.test(txt),`  وبلا خطابٍ ${label}`
+          +(badRe.test(txt)?` — ${(txt.match(badRe)||[""])[0]}`:""));
       }
       await p.close();
     }

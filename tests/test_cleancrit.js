@@ -121,10 +121,16 @@ console.log('\n٦) جولةٌ حقيقية بنقراتٍ فعلية — الص�
   const r=await q.evaluate(()=>{
     const h=(document.getElementById('writeCrit')||{}).innerHTML||"";
     return{rows:(h.match(/⋯|✓|○/g)||[]).length,pend:/⋯/.test(h),
-      hasClean:/سليمة نحوياً/.test(h),len:h.length};
+      hasClean:/سليمة نحوياً/.test(h),len:h.length,
+      keys:writeCriteria(writeCur()).map(function(c){return c.k})};
   });
   ok(r.hasClean&&r.pend,'السطر معروضٌ حيّاً بعلامته المعلَّقة');
-  ok(r.rows===4,'وأربعة شروطٍ لا ثلاثة — '+r.rows);
+  // **بالأسماء لا بالعدد**: الدعوى هي «السلامة النحوية انضمّت إلى الثلاثة ولم تُزحها»،
+  // والعددُ كان اختصاراً لها — فكسره معيارٌ مشروعٌ أُضيف في ٤ أكتوبر (`byhand`) ولم
+  // يقل أيُّ شرطٍ تغيّر. درسُ «الأعداد المكتوبة في الاختبارات فخّ صامت» (١٨ أغسطس).
+  ok(['one','req','words','clean'].every(function(k){return r.keys.indexOf(k)>=0}),
+     'والأربعة المقصودة حاضرةٌ بأسمائها — '+r.keys.join(','));
+  ok(r.rows===r.keys.length,'وعددُ العلامات المرسومة يطابق عددَ الشروط ('+r.rows+'/'+r.keys.length+')');
   await q.context().close();
 }
 
