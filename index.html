@@ -101,6 +101,18 @@
   .mode.full .m-name{color:#fff}.mode.full .m-sub{color:#CBD5E1}
   .mode.prog{grid-column:1/-1;background:#EFF6FF;border-color:#BFDBFE}
   .mode.prog .m-name{color:#1D4ED8}
+  /* بلاطةٌ مُصغَّرة: نصفُ الصفّ لا صفٌّ كامل، واللونُ شريطٌ على حافّة البدء (يمينُ RTL)
+     لا خلفيّةٌ كاملة — فيبقى تمييزُ القسم بلونه وتهبط الكلفة البصرية. */
+  .mode.tile{padding:12px 13px}
+  .mode.tile{border-inline-start-width:5px;border-inline-start-color:var(--tc,#94A3B8)}
+  .mode.tile .m-name{font-size:14px;display:flex;align-items:center;gap:6px}
+  .mode.tile .m-sub{font-size:11px;line-height:1.5}
+  .due-pill{flex:none;margin-inline-start:auto;font-size:11px;font-weight:800;
+    background:#FEF3C7;color:#92400E;border-radius:999px;padding:1px 7px}
+  .mode.full .m-name .due-pill{margin-inline-start:8px}
+  .home-subs{display:block;width:100%;margin:0 0 4px;padding:9px 12px;border-radius:12px;
+    border:1px dashed #CBD5E1;background:#F8FAFC;color:#475569;font-family:inherit;
+    font-size:13px;font-weight:700;cursor:pointer;text-align:center}
   .plan{background:#fff;border-radius:18px;padding:8px 6px;box-shadow:0 8px 24px rgba(15,23,42,.06)}
   .day{display:flex;gap:14px;padding:14px}
   .day+.day{border-top:1px solid #F1F5F9}
@@ -4679,6 +4691,9 @@ const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEn
   "readBankFor","readSrsUpdate","buildReadPlan","startRead","readChoose","readNext","renderRead",
   // القراءة الجهرية: دوالُّها متأخّرةٌ في الملفّ كدوالّ التسجيل، فتُعدّ معها لا بعدها
   "readAloudTarget","readAloudWhole","readAloudMaxMs","readAloudOverBudget","raStart","raStop","raFinish","raReset","raRetry","readAloudHTML","raLogText","raSatisfied","raBlockHint","raSkipLog",
+  // ترتيبُ الصفحة الرئيسة (٤ أكتوبر): آليّتُها مشتركةٌ بين الصفحتين، فسقوطُها يُفرِغ
+  // الصفحة كلَّها لا زرّاً — فتُعدّ كي يُسمَّى العطل بدل أن يُرى بياضاً
+  "homeDue","homeSubsOn","homeToggleSubs","homeSubsBtnHTML","homeGroupsHTML",
   "genBankLoad","genBankAdd","parseGenBlock","fetchTutorGen","genTopUp","genCallsFor","genFire","genSweepFlight","genGateLog","genLogText","lvChain","stretchDepth","mcOrder","ordFor","posLog","listenOrd","readOrd","quizOrd","quizItemDefect","quizRejectLog","clipAutoOpen","arTimes","agreeSlip","agreeToks","gramAgvOffered","parseGenPickBlock","parseGenVideoBlock","errCollect","errDraw","errCount","errQuizCount","startErrors","errCheck","errChoose","errNext","errReplay","renderErrors",
   "minpairBankFor","minpairSrsUpdate","buildMinpairPlan","startMinpair","minpairPlay","minpairChoose","minpairNext","renderMinpair",
   "gramBankFor","gramSrsUpdate","buildGramPlan","startGram","gramChoose","gramNext","renderGram","fetchTutorGenGram","gramGenTopUp",
@@ -6899,6 +6914,11 @@ const MASC_W={
   // مذكّرٌ ونصفُه مؤنّث. عيبٌ قائمٌ قبل تعديل اليوم، ولا تُغطّيه قاعدةُ `تِ⇐تَ` العامّة
   // لأن الأمر المؤنّث ينتهي بياء. ويُقال إنه **وُجد عرَضاً** لا بفحصٍ منهجيّ للخطاب.
   "عودي":"عُد",
+  // «اعرضي/أخفي» — زرُّ الكشف التدريجي في الصفحة الرئيسة (٤ أكتوبر). نصُّه مشترَكٌ
+  // بين الصفحتين (آليةٌ واحدة)، فكان يقول لإلياس «📖 **اعرضي** شرحاً». **كشفته
+  // اللقطة الإلزامية لا الاختبار**، كما كُشفت «عودي» قبله. والأمرُ المؤنّث ينتهي
+  // بياءٍ فلا تُغطّيه قاعدةُ `تِ⇐تَ` العامّة — فالإدراجُ هنا لا يُعارض قاعدةً قائمة.
+  "اعرضي":"اعرض","أخفي":"أخفِ",
   "تأكدي":"تأكد","تأكّدي":"تأكّد","أوجدي":"أوجد","احسبي":"احسب","احذفي":"احذف","استعملي":"استعمل",
   "افتحي":"افتح","انقلي":"انقل","اصعدي":"اصعد","انتبهي":"انتبه","رتّبي":"رتّب","اربطي":"اربط",
   "ابحثي":"ابحث","كوّني":"كوّن","تذكّري":"تذكّر","أخبريني":"أخبرني","قولي":"قل","قوليها":"قلها",
@@ -16184,6 +16204,104 @@ function render(){if(mode==="mock")return renderMock();if(mode==="seq")return re
 // صفحة الأخوين قسمٌ واحد: المحادثة. بقيّة الأقسام بُنيت على أخطائها هي — بنك
 // أسئلتها، وتباعدها، ومنهج صفّها السادس — فوضعها أمام ولدٍ آخر يُشغله بما ليس له.
 // ورابط تشخيص الصوت يبقى: بلا ميكروفون لا محادثة أصلاً، فهو جزء من القسم لا قسم.
+// ===== ترتيبُ الصفحة الرئيسة: مجموعاتٌ دلاليّة وبلاطاتٌ مُصغَّرة — ٤ أكتوبر =====
+// الأمر: «قصر او رتب الصفحة الرئيسية حسب الحاجة والمعايير العلمية».
+// والمقاسُ قبل التعديل: صفحةُ هيا **٢٨ زرّاً في قائمةٍ مسطّحة بعنوانٍ واحد**،
+// ٣١١١px = ٣٫٤٦ شاشة؛ وصفحتا الأخوين **بلا عنوانٍ إطلاقاً** (١٣-١٤ زرّاً).
+//
+// والمعاييرُ منشورةٌ مُراجَعة لا مخترَعة (مفصَّلةٌ بمصادرها في CLAUDE.md):
+//  · **Bailly, Oulasvirta, Brumby & Howes — CHI 2014**، نموذجُ زمن البحث البصري في
+//    القوائم الخطّية: الزمنُ دالّةٌ في خمسة عوامل أوّلها **طولُ القائمة** وثانيها
+//    **تنظيمها** وخامسها **التمرّس**. فتقصيرُ الطول المعروض وتنظيمُه مكسبٌ مقاسٌ لا ذوق.
+//  · **Dumais, Cutrell & Chen — CHI 2001**: واجهةُ الفئات أسرع **٥٠٪** من قائمةٍ
+//    مسطّحة، **وحتى لو أُلحق باسم الفئة بكل سطرٍ في القائمة** — فالحدودُ البصرية هي
+//    المكسب لا التسمية.
+//  · **وحدٌّ صريحٌ من الأدبيات نفسها يُقيّد التصميم**: الحدودُ البصرية تنفع **حيث
+//    تتماسك الدلالة**، وتجميعُ ما لا يترابط دلالياً **يُبطئ** البحث لا يُسرّعه.
+//    فالمجموعاتُ دلاليّة، **ولا مجموعةَ «المستحقّ اليوم»** — ذاك يخلط الرياضيات
+//    بالإنجليزية بالنطق في صندوقٍ واحد، وهو بعينه ما يُحذّر منه المعيار.
+//    (وهذا نقض تصميمي الأوّل قبل أن يُكتَب — وُثِّق بدل أن يُطوى.)
+//  · **Landauer & Nachbar — CHI 1985**: العريضُ الضحل أسرع من الضيّق العميق.
+//    فلا عنصرَ يُدفَن خلف نقرةٍ إضافية: **كلُّ زرٍّ يبقى نقرةً واحدة كما كان**.
+//  · **Nielsen — الكشفُ التدريجي**: الشرحُ **يُخفى لا يُحذَف**، ويُستعاد بزرٍّ واحد
+//    على مستوى الصفحة (لا لكل عنصرٍ على حدة، فلا يُضاف عمقٌ).
+//  · **ولا يُستعمَل Hick's law هنا وإن بدا مناسباً**: البحثُ في قائمةٍ غير مرتّبة
+//    **خطّيٌّ لا لوغاريتمي**، والأدبياتُ تنصّ صريحاً أن القانون لا ينطبق على مسح
+//    قائمةٍ عشوائية الترتيب. فنموذجُ Bailly هو الصحيح هنا، والاستشهادُ بـHick كان
+//    سيكون استشهاداً خاطئاً بمعيارٍ صحيح.
+//
+// **والترتيبُ داخل المجموعة بالمستحقّ (FSRS) لا بما نُقر عليه أكثر** — فالترتيبُ
+// بالشعبية حلقةٌ تُرسّخ المهجور (popularity bias)، وهيا هَجرت ثمانية أقسامٍ فعلاً
+// فترتيبُها بالاستعمال كان سيدفنها إلى الأبد. وFSRS معيارُ المشروع المعتمَد أصلاً،
+// وشارةُ المستحقّ **عُرفُ Anki** نفسه (عددُ المستحقّ بجانب كل رزمة).
+const HOME_SRS={listen:[LISTEN_SRS_KEY,listenBankFor],read:[READ_SRS_KEY,readBankFor],
+  gram:[GRAM_SRS_KEY,gramBankFor],step:[STEP_SRS_KEY,stepBankFor],
+  minpair:[MINPAIR_SRS_KEY,minpairBankFor],video:[VIDEO_SRS_KEY,videoBankFor],
+  write:[WRITE_SRS_KEY,writeBankFor]};
+// المستحقُّ وحده (عنصرٌ له سجلٌّ وحلَّ أجلُه) — **لا البكر**: البكرُ لا ينفد عملياً
+// بعد `topUpPlan`، فشارتُه كانت ستُساوي حجم الجلسة في كل قسمٍ فلا تقول شيئاً.
+// والمُحتسَبُ هو **نفس مُرشِّح `due` في البانيات** حرفياً، فلا تكذب الشارة على الجلسة.
+function homeDue(sec){
+  try{
+    const e=HOME_SRS[sec];if(!e)return null;
+    const st=JSON.parse(lsGet(e[0])||"{}"),today=srsToday();
+    const POOL=bankStretched(sec,profileOf().level,e[1])||[];
+    let n=0;for(let i=0;i<POOL.length;i++){const r=st[POOL[i].id];if(r&&r.due<=today)n++}
+    return n;
+  }catch(err){return null}   // الربطُ الجديد لا يجوز أن يكون نقطةَ عطلٍ جديدة
+}
+const HOME_SUBS_KEY="mawhiba_home_subs_v1";
+function homeSubsOn(){return lsGet(HOME_SUBS_KEY)==="1"}
+function homeToggleSubs(){lsSet(HOME_SUBS_KEY,homeSubsOn()?"0":"1");render();window.scrollTo(0,0)}
+function homeSubsBtnHTML(){
+  // الأساسُ مؤنّثٌ دائماً و`MASC_W` يُحوّل للأخوين — فلا يُكتب المذكّر هنا، وإلّا
+  // رأته هيا مذكّراً ولا شيء يُحوّله في الاتّجاه المعاكس (درس ١٣ سبتمبر).
+  return `<button class="home-subs" onclick="homeToggleSubs()">${homeSubsOn()
+    ?"🔽 أخفي الشرح تحت كل زرّ":"📖 اعرضي شرحاً تحت كل زرّ"}</button>`;
+}
+// الجدولُ يُبنى في كل صفحةٍ **بنصوصها هي** لا بنصٍّ مشترك: تحويلُ الجنس يقع في مراقب
+// DOM عبر `MASC_W`، وأيُّ صيغةٍ مؤنّثة خارج الجدول تظهر لإلياس كما هي. فالمشترَكُ
+// **الآليةُ** وحدها، والنصُّ يبقى حيث كُتب — فلا يُخاطَر بخطابٍ مكسور لأجل تجريد.
+function homeGroupsHTML(items,groups){
+  const show=homeSubsOn();
+  return groups.map(function(g){
+    const raw=items.filter(function(x){return x.g===g.id});
+    if(!raw.length)return "";
+    // **والترتيبُ ثابتٌ لا يُعاد بالمستحقّ — وهذا تصحيحُ قرارٍ لي قبل شحنه.**
+    // أوّلُ تصميمٍ رتّب العناصر بعدد المستحقّ تنازلياً، فيناقض عاملين في نموذج
+    // Bailly نفسه: **موضعُ الهدف** و**التمرّس** — ومنفعةُ التمرّس لا تتحقّق إلّا
+    // في قائمةٍ يثبت فيها موضعُ كل زرّ. **وسابقةُ Anki التي استشهدتُ بها لا
+    // تُعيد ترتيب الرزم أصلاً**: ترتيبُها ثابتٌ وعددُ المستحقّ شارةٌ بجانبه.
+    // فالمستحقُّ يُشار إليه ولا يُحرّك شيئاً.
+    const body=raw.map(function(x){
+      const d=x.sec?homeDue(x.sec):null;
+      if(x.raw)return x.raw;
+      const pill=(d>0)?`<span class="due-pill">${toAr(d)} مستحقّ</span>`:"";
+      if(x.lead)return `<button class="mode full" style="background:${x.c};border-color:${x.c}" onclick="${x.go}">`+
+        `<span class="m-name">${x.n}${pill}</span><div class="m-sub">${x.s}</div></button>`;
+      return `<button class="mode tile" style="--tc:${x.c}" onclick="${x.go}">`+
+        `<span class="m-name">${x.n}${pill}</span>${(show&&x.s)?`<div class="m-sub">${x.s}</div>`:""}</button>`;
+    }).join("");
+    return `<div class="section-title"><span>${g.t}</span></div><div class="modes">${body}</div>`;
+  }).join("");
+}
+const HOME_GROUPS=[
+  {id:"qudrat",t:"🧠 القدرات — موهبة"},
+  {id:"math",t:"🔢 الرياضيات والأساسيات"},
+  {id:"eng_in",t:"🎧 الإنجليزية — فهم"},
+  {id:"eng_acc",t:"✍️ الإنجليزية — نحوٌ ودقّة"},
+  {id:"eng_out",t:"🗣️ الإنجليزية — إنتاجٌ ونطق"},
+  {id:"exam",t:"📝 اختباراتٌ كاملة"},
+  {id:"course",t:"📚 مقرّرك الجامعي"},
+  {id:"meas",t:"📊 القياس والمتابعة"}
+];
+// **وترتيبُ المجموعات بهويّة الصفحة لا باستعمالها**: صدرُ صفحة الأخوين يَعِد
+// «تكلّم بالإنجليزية»، وزرُّ المحادثة كان أوّلَ أزرارها منذ بُنيت — فإنزالُه ثالثاً
+// يُخالف وعدَ الصدر، ويُخالف عاملَ **موضع الهدف** عند Bailly (موضعٌ تعلَّمه المتعلّم
+// أسابيع). ولا يُرتَّب بالاستعمال: محادثتُهما مهجورةٌ ٣٠-٤١ يوماً، والترتيبُ
+// بالاستعمال كان سيدفنها — وهو بعينه انحياز الشعبية الذي مُنع أعلاه.
+const HOME_GROUPS_COACH=["eng_out","eng_in","eng_acc","exam","course","meas"]
+  .map(function(id){return HOME_GROUPS.filter(function(g){return g.id===id})[0]});
 function renderHomeCoachOnly(){
   const p=profileOf();
   app.innerHTML=`
@@ -16193,22 +16311,37 @@ function renderHomeCoachOnly(){
     <p>محادثة حرّة مع شريك يردّ عليك بالإنجليزية، ويعلّمك أسلوب الكلام — ونقيس وضوح أصواتك في كل جملة.</p>
     <div class="alias"><label>اسمك:</label><input id="aliasIn" value="${alias()}" placeholder="${p.name}" oninput="saveAlias(this.value)"></div>
   </div>
-  <div class="modes">
-    <button class="mode full" style="background:${p.color};border-color:${p.color}" onclick="startCoach()"><span class="m-name">🗣️ ابدأ المحادثة</span><div class="m-sub">اختر موقفاً، ثم تكلّم — ثماني جمل في الجلسة</div></button>
-    <button class="mode full" style="background:#0284C7;border-color:#0284C7" onclick="startListen()"><span class="m-name">🎧 فهم الاستماع</span><div class="m-sub">استمع لمقطعٍ قصير، وأجب عن معناه — مستوى ${p.level||"A2"}</div></button>
-    <button class="mode full" style="background:#7C3AED;border-color:#7C3AED" onclick="startRead()"><span class="m-name">📖 فهم المقروء</span><div class="m-sub">اقرأ نصّاً قصيراً، وأجب عن معناه — مستوى ${p.level||"A2"}</div></button>
-    <button class="mode full" style="background:#059669;border-color:#059669" onclick="startWrite()"><span class="m-name">📝 الكتابة</span><div class="m-sub">اكتب نصّاً حرّاً عن سؤالٍ نموذجي — تصحيح نحوي فوري يغذّي «أخطائي» — مستوى ${p.level||"A2"}</div></button>
-    <button class="mode full" style="background:#9333EA;border-color:#9333EA" onclick="startGram()"><span class="m-name">✍️ دقّة القواعد</span><div class="m-sub">أربع جملٍ، صحيحةٌ واحدة — اختر ثم اقرأ لماذا كل خيار صحيح أو خاطئ</div></button>
-    <button class="mode full" style="background:#9D174D;border-color:#9D174D" onclick="startBuildSec()"><span class="m-name">🧩 بناء الجملة</span><div class="m-sub">كلماتٌ مبعثرة ترتّبها جملةً صحيحة — ثلاث درجات: بالعدد، ثمّ بكلماتٍ دخيلة، ثمّ بلا بنك</div></button>
-    <button class="mode full" style="background:#B45309;border-color:#B45309" onclick="startStep()"><span class="m-name">📋 نمط اختبار STEP</span><div class="m-sub">أسئلة الاختبار نفسها: ترتيب الكلمات، الفراغات، الترقيم والكبتلة، وترتيب فقرة — مع شرح كل خيار بعد الإجابة</div></button>
-    <button class="mode full" style="background:#0891B2;border-color:#0891B2" onclick="startMinpair()"><span class="m-name">👂 لعبة الاستماع</span><div class="m-sub">كلمتان متشابهتا النطق (chose/choose) — أيّهما سمعت؟ ثم مثالٌ يشرح معناها</div></button>
-    ${seqCardHTML()}
-    <button class="mode full" style="background:#DC2626;border-color:#DC2626" onclick="startVideo()"><span class="m-name">🎬 فيديو تعليمي</span><div class="m-sub">قصّة قصيرة مشهداً مشهداً، بصوتٍ إنجليزي، ثم سؤال فهم — مستوى ${p.level||"A2"}</div></button>
-    ${p.id==="mohammed"?`<button class="mode full" style="background:#059669;border-color:#059669" onclick="goStatMenu()"><span class="m-name">📊 إحصاء ١٠٢</span><div class="m-sub">${toAr(STAT_BANK.length)} سؤالاً من مقرّرك: المجموعات، النزعة المركزية، التشتّت، الانحدار، العدّ، الاحتمال، المتغيّر العشوائي، التوزيع الثنائي — بحلٍّ خطوةً خطوة</div></button>`:""}
-    <button class="mode full" style="background:#0F172A;border-color:#0F172A" onclick="loadKpi()"><span class="m-name">📊 لوحة القياس</span><div class="m-sub">دقّة كل قسم آخر سبعة أيام، وتنبيهٌ حين تكون المادّة أسهل من اللازم أو تتكرّر</div></button>
-    <button class="mode full" style="background:#7C2D12;border-color:#7C2D12" onclick="startMock()"><span class="m-name">📝 محاكاة الاختبار</span><div class="m-sub">ورقة كاملة بصيغة كامبردج: استماع وقراءة وقواعد وتحليل كتابي — بلا تصحيحٍ حتى النهاية</div></button>
-    ${errCount()?`<button class="mode full" style="background:#DB2777;border-color:#DB2777" onclick="startErrors()"><span class="m-name">🎯 أخطائي · ${toAr(errCount())} مستحقّة</span><div class="m-sub">تصحيحات محادثتك السابقة — تُبنى كلمةً كلمة، وتعود عند حافّة النسيان</div></button>`:""}
-  </div>
+  ${homeSubsBtnHTML()}
+  ${homeGroupsHTML([
+    {g:"eng_in",sec:"listen",lead:1,c:"#0284C7",go:"startListen()",n:"🎧 فهم الاستماع",
+      s:`استمع لمقطعٍ قصير، وأجب عن معناه — مستوى ${p.level||"A2"}`},
+    {g:"eng_in",sec:"read",c:"#7C3AED",go:"startRead()",n:"📖 فهم المقروء",
+      s:`اقرأ نصّاً قصيراً، وأجب عن معناه — مستوى ${p.level||"A2"}`},
+    {g:"eng_in",sec:"video",c:"#DC2626",go:"startVideo()",n:"🎬 فيديو تعليمي",
+      s:`قصّة قصيرة مشهداً مشهداً، بصوتٍ إنجليزي، ثم سؤال فهم — مستوى ${p.level||"A2"}`},
+    {g:"eng_acc",sec:"gram",lead:1,c:"#9333EA",go:"startGram()",n:"✍️ دقّة القواعد",
+      s:"أربع جملٍ، صحيحةٌ واحدة — اختر ثم اقرأ لماذا كل خيار صحيح أو خاطئ"},
+    {g:"eng_acc",sec:"step",c:"#B45309",go:"startStep()",n:"📋 نمط اختبار STEP",
+      s:"ترتيب الكلمات، الفراغات، الترقيم والكبتلة، وترتيب فقرة — مع شرح كل خيار"},
+    {g:"eng_acc",sec:"minpair",c:"#0891B2",go:"startMinpair()",n:"👂 لعبة الاستماع",
+      s:"كلمتان متشابهتا النطق (chose/choose) — أيّهما سمعت؟ ثم مثالٌ يشرح معناها"},
+    {g:"eng_acc",c:"#9D174D",go:"startBuildSec()",n:"🧩 بناء الجملة",
+      s:"كلماتٌ مبعثرة ترتّبها جملةً صحيحة — أربع درجات متدرّجة"},
+    {g:"eng_acc",raw:seqCardHTML()},
+    {g:"eng_out",lead:1,c:p.color,go:"startCoach()",n:"🗣️ ابدأ المحادثة",
+      s:"اختر موقفاً، ثم تكلّم — ثماني جمل في الجلسة"},
+    {g:"eng_out",sec:"write",c:"#059669",go:"startWrite()",n:"📝 الكتابة",
+      s:`نصٌّ حرٌّ عن سؤالٍ نموذجي — تصحيح نحوي فوري يغذّي «أخطائي» — ${p.level||"A2"}`},
+    ...(errCount()?[{g:"eng_out",c:"#DB2777",go:"startErrors()",
+      n:`🎯 أخطائي · ${toAr(errCount())} مستحقّة`,
+      s:"تصحيحات محادثتك السابقة — تُبنى كلمةً كلمة، وتعود عند حافّة النسيان"}]:[]),
+    {g:"exam",lead:1,c:"#7C2D12",go:"startMock()",n:"📝 محاكاة الاختبار",
+      s:"ورقة كاملة بصيغة كامبردج: استماع وقراءة وقواعد وتحليل كتابي — بلا تصحيحٍ حتى النهاية"},
+    ...(p.id==="mohammed"?[{g:"course",lead:1,c:"#059669",go:"goStatMenu()",n:"📊 إحصاء ١٠٢",
+      s:`${toAr(STAT_BANK.length)} سؤالاً من مقرّرك: المجموعات، النزعة المركزية، التشتّت، الانحدار، العدّ، الاحتمال، المتغيّر العشوائي، التوزيع الثنائي — بحلٍّ خطوةً خطوة`}]:[]),
+    {g:"meas",c:"#0F172A",go:"loadKpi()",n:"📊 لوحة القياس",
+      s:"دقّة كل قسم آخر سبعة أيام، وتنبيهٌ حين تكون المادّة أسهل من اللازم أو تتكرّر"}
+  ],HOME_GROUPS_COACH)}
   <button class="link-btn" onclick="startAudioDiag()">🔊 الصوت ما يشتغل؟ اضغط هنا لتشخيص السبب</button>
   <div class="tips">
     <h3>💡 كيف تستفيد أكثر</h3>
@@ -16231,35 +16364,60 @@ function renderHome(){
   </div>
   ${weakSuggestion?`<div style="background:linear-gradient(135deg,#FEF3C7,#FDE68A);border-radius:18px;padding:18px;margin-bottom:16px;box-shadow:0 6px 20px rgba(217,119,6,.15)"><div style="font-weight:800;font-size:15px;color:#92400E;margin-bottom:6px">🎯 اقتراح لكِ</div><div style="font-size:14px;color:#78350F;line-height:1.7;margin-bottom:12px">مستواكِ في «${DOMAINS[weakSuggestion.domKey].name}» يحتاج تقوية (${toAr(weakSuggestion.pct)}%). جرّبي وضع التقوية — يعلّمكِ خطوة بخطوة، أسهل من الاختبار المباشر.</div><button class="btn" style="background:#D97706;margin:0" onclick="goFadeMenu()">🎓 ابدئي التقوية خطوة بخطوة</button></div>`:""}
   ${errCount()?`<div style="background:linear-gradient(135deg,#FCE7F3,#FBCFE8);border-radius:18px;padding:18px;margin-bottom:16px;box-shadow:0 6px 20px rgba(219,39,119,.15)"><div style="font-weight:800;font-size:15px;color:#9D174D;margin-bottom:6px">🎯 أخطاؤكِ المستحقّة اليوم</div><div style="font-size:14px;color:#831843;line-height:1.7;margin-bottom:12px">${toAr(errCount())} ${errCount()===1?"بطاقة تنتظركِ":"بطاقات تنتظركِ"} — من محادثتك وإملائك وخطتك معاً. تُراجَع في مكان واحد، وتعود عند حافّة النسيان لا قبله.</div><button class="btn" style="background:#DB2777;margin:0" onclick="startErrors()">ابدئي المراجعة</button></div>`:""}
-  <div class="section-title"><span>ابدئي التدريب</span></div>
-  <div class="modes">
-    <button class="mode" onclick="start('verbal')"><span class="dot" style="background:#2563EB"></span><span class="m-name">الاستدلال اللغوي</span><div class="m-sub">فهم مقروء، تناظر، منطق — بالذكاء الاصطناعي</div></button>
-    <button class="mode" onclick="start('quant')"><span class="dot" style="background:#0D9488"></span><span class="m-name">الرياضي والمكاني</span><div class="m-sub">متتاليات، نسب، حجوم، مسارات</div></button>
-    <button class="mode" onclick="start('science')"><span class="dot" style="background:#7C3AED"></span><span class="m-name">الاستدلال العلمي</span><div class="m-sub">استنتاج علمي بمشهد — بالذكاء الاصطناعي</div></button>
-    <button class="mode" onclick="start('flex')"><span class="dot" style="background:#D97706"></span><span class="m-name">المرونة والأنماط</span><div class="m-sub">أنماط، هرم، نرد، ترتيب، ألغاز</div></button>
-    <button class="mode full" onclick="start('full')"><span class="m-name">🎯 محاكاة شاملة (٤٨ سؤالاً)</span><div class="m-sub">من كل المجالات — الأقرب للاختبار الحقيقي</div></button>
-    <button class="mode" style="border-color:#FDE68A" onclick="goFadeMenu()"><span class="m-name">🎓 وضع التقوية (تلاشٍ تدريجي)</span><div class="m-sub">اختاري مهارة وتدرّبي عليها خطوة بخطوة — مبني على دراسات التعلّم</div></button>
-    <button class="mode prog" onclick="loadProgress()"><span class="m-name">📈 متابعة التقدّم</span><div class="m-sub">نتائجك السابقة وتحليل المستوى لكل مجال</div></button>
-    <button class="mode full" style="background:#0F766E;border-color:#0F766E" onclick="startBasics('mixed')"><span class="m-name">🔀 الأساسيات متشابكة — الأربع معاً</span><div class="m-sub">ضرب وقسمة وجمع وطرح مخلوطة في الجلسة الواحدة: تتدرّبين على <b>اختيار الطريقة</b> لا على تنفيذها وحده. أصعب في أثنائها وأثبت بعدها</div></button>
-    <button class="mode full" style="background:#0D9488;border-color:#0D9488" onclick="startBasics('multdiv')"><span class="m-name">🧱 تدريب الأساسيات: عائلات الحقائق</span><div class="m-sub">ضرب/قسمة مرتبطان + جمع وطرح بطرق سهلة بلا حمل ولا استلاف + أساسيات النسبة المئوية</div></button>
-    <button class="mode full" style="background:#0F766E;border-color:#0F766E" onclick="startFactPlan()"><span class="m-name">🧮 طلاقة الحقائق · ١٠ دقائق</span><div class="m-sub">استرجاع فوري للجمع والطرح والضرب بلا عدّ أو أصابع، بتباعد ذكي</div></button>
-    <button class="mode full" style="background:#0F766E;border-color:#0F766E" onclick="startMath6()"><span class="m-name">🧮 رياضيات الصف السادس</span><div class="m-sub">دروس كتابك بترتيبه — أسئلة تتولّد بلا تكرار، وشرحٌ بالخطوات الأربع بعد كل إجابة</div></button>
-    <button class="mode full" style="background:#4338CA;border-color:#4338CA" onclick="startEngPlan()"><span class="m-name">⭐ خطة الإنجليزية اليومية · ٤٠ دقيقة</span><div class="m-sub">شرح ثم تدريب، بتباعد ذكي — لا يتكرّر أي عنصر إلا في يوم استحقاقه (منهج الصف السادس)</div></button>
-    <button class="mode full" style="background:#0E7490;border-color:#0E7490" onclick="startDictation()"><span class="m-name">✍️ إملاء بالإنجليزية</span><div class="m-sub">استمعي للكلمة، ثم اكتبيها — مستوى A1</div></button>
-    <button class="mode full" style="background:#0284C7;border-color:#0284C7" onclick="startListen()"><span class="m-name">🎧 فهم الاستماع</span><div class="m-sub">استمعي لمقطعٍ قصير، وأجيبي عن معناه — مستوى ${profileOf().level||"A2"}</div></button>
-    <button class="mode full" style="background:#7C3AED;border-color:#7C3AED" onclick="startRead()"><span class="m-name">📖 فهم المقروء</span><div class="m-sub">اقرئي نصّاً قصيراً، وأجيبي عن معناه — مستوى ${profileOf().level||"A2"}</div></button>
-    <button class="mode full" style="background:#059669;border-color:#059669" onclick="startWrite()"><span class="m-name">📝 الكتابة</span><div class="m-sub">اكتبي نصّاً حرّاً عن سؤالٍ نموذجي — تصحيح نحوي فوري يغذّي «أخطائي» — مستوى ${profileOf().level||"A2"}</div></button>
-    <button class="mode full" style="background:#9333EA;border-color:#9333EA" onclick="startGram()"><span class="m-name">✍️ دقّة القواعد</span><div class="m-sub">أربع جملٍ، صحيحةٌ واحدة — اختاري ثم اقرئي لماذا كل خيار صحيح أو خاطئ</div></button>
-    <button class="mode full" style="background:#B45309;border-color:#B45309" onclick="startStep()"><span class="m-name">📋 نمط اختبار STEP</span><div class="m-sub">أسئلة الاختبار نفسها: ترتيب الكلمات، الفراغات، الترقيم والكبتلة، وترتيب فقرة — مع شرح كل خيار بعد الإجابة</div></button>
-    <button class="mode full" style="background:#0891B2;border-color:#0891B2" onclick="startMinpair()"><span class="m-name">👂 لعبة الاستماع</span><div class="m-sub">كلمتان متشابهتا النطق (chose/choose) — أيّتهما سمعتِ؟ ثم مثالٌ يشرح معناها</div></button>
-    ${seqCardHTML()}
-    <button class="mode full" style="background:#DC2626;border-color:#DC2626" onclick="startVideo()"><span class="m-name">🎬 فيديو تعليمي</span><div class="m-sub">قصّة قصيرة مشهداً مشهداً، بصوتٍ إنجليزي، ثم سؤال فهم — مستوى ${profileOf().level||"A2"}</div></button>
-    <button class="mode full" style="background:#0F172A;border-color:#0F172A" onclick="loadKpi()"><span class="m-name">📊 لوحة القياس</span><div class="m-sub">دقّة كل قسم آخر سبعة أيام، وتنبيهٌ حين تكون المادّة أسهل من اللازم أو تتكرّر</div></button>
-    <button class="mode full" style="background:#7C2D12;border-color:#7C2D12" onclick="startMock()"><span class="m-name">📝 محاكاة الاختبار</span><div class="m-sub">ورقة كاملة بصيغة كامبردج: استماع وقراءة وقواعد وتحليل كتابي — بلا تصحيحٍ حتى النهاية</div></button>
-    <button class="mode full" style="background:#7C3AED;border-color:#7C3AED" onclick="startPronunciation()"><span class="m-name">🎤 تمرين النطق</span><div class="m-sub">تحقّق أساسي هل نطقتِ الكلمة صح (يحتاج ميكروفون) — وليس تصحيح لهجة دقيق</div></button>
-    <button class="mode full" style="background:#0E7490;border-color:#0E7490" onclick="startCoach()"><span class="m-name">🗣️ تكلّمي بالإنجليزية</span><div class="m-sub">محادثة حرّة مع شريك يردّ عليكِ بالإنجليزية — ونقيس وضوح أصواتك في كل جملة</div></button>
-    <button class="mode full" style="background:#DB2777;border-color:#DB2777" onclick="startSpeaking()"><span class="m-name">🗣️ التحدّث · جمل من كتابك</span><div class="m-sub">جمل قصيرة جاهزة من وحدة Welcome: تسمعينها ثم تقولينها كاملة — تبدأ بالنص أمامك وتنتهي بالسمع فقط</div></button>
-  </div>
+  ${homeSubsBtnHTML()}
+  ${homeGroupsHTML([
+    {g:"qudrat",lead:1,c:"#1E293B",go:"start('full')",n:"🎯 محاكاة شاملة (٤٨ سؤالاً)",
+      s:"من كل المجالات — الأقرب للاختبار الحقيقي"},
+    {g:"qudrat",c:"#2563EB",go:"start('verbal')",n:"الاستدلال اللغوي",
+      s:"فهم مقروء، تناظر، منطق — بالذكاء الاصطناعي"},
+    {g:"qudrat",c:"#0D9488",go:"start('quant')",n:"الرياضي والمكاني",
+      s:"متتاليات، نسب، حجوم، مسارات"},
+    {g:"qudrat",c:"#7C3AED",go:"start('science')",n:"الاستدلال العلمي",
+      s:"استنتاج علمي بمشهد — بالذكاء الاصطناعي"},
+    {g:"qudrat",c:"#D97706",go:"start('flex')",n:"المرونة والأنماط",
+      s:"أنماط، هرم، نرد، ترتيب، ألغاز"},
+    {g:"qudrat",c:"#F59E0B",go:"goFadeMenu()",n:"🎓 وضع التقوية",
+      s:"اختاري مهارة وتدرّبي عليها خطوة بخطوة — مبني على دراسات التعلّم"},
+    {g:"math",lead:1,c:"#0F766E",go:"startBasics('mixed')",n:"🔀 الأساسيات متشابكة — الأربع معاً",
+      s:"ضرب وقسمة وجمع وطرح مخلوطة في الجلسة الواحدة: تتدرّبين على <b>اختيار الطريقة</b> لا على تنفيذها وحده. أصعب في أثنائها وأثبت بعدها"},
+    {g:"math",c:"#0D9488",go:"startBasics('multdiv')",n:"🧱 عائلات الحقائق",
+      s:"ضرب/قسمة مرتبطان + جمع وطرح بطرق سهلة بلا حمل ولا استلاف + أساسيات النسبة المئوية"},
+    {g:"math",c:"#0F766E",go:"startFactPlan()",n:"🧮 طلاقة الحقائق · ١٠ دقائق",
+      s:"استرجاع فوري للجمع والطرح والضرب بلا عدّ أو أصابع، بتباعد ذكي"},
+    {g:"math",c:"#0F766E",go:"startMath6()",n:"🧮 رياضيات الصف السادس",
+      s:"دروس كتابك بترتيبه — أسئلة تتولّد بلا تكرار، وشرحٌ بالخطوات الأربع بعد كل إجابة"},
+    {g:"eng_in",sec:"listen",lead:1,c:"#0284C7",go:"startListen()",n:"🎧 فهم الاستماع",
+      s:`استمعي لمقطعٍ قصير، وأجيبي عن معناه — مستوى ${profileOf().level||"A2"}`},
+    {g:"eng_in",sec:"read",c:"#7C3AED",go:"startRead()",n:"📖 فهم المقروء",
+      s:`اقرئي نصّاً قصيراً، وأجيبي عن معناه — مستوى ${profileOf().level||"A2"}`},
+    {g:"eng_in",sec:"video",c:"#DC2626",go:"startVideo()",n:"🎬 فيديو تعليمي",
+      s:`قصّة قصيرة مشهداً مشهداً، بصوتٍ إنجليزي، ثم سؤال فهم — مستوى ${profileOf().level||"A2"}`},
+    {g:"eng_acc",lead:1,c:"#4338CA",go:"startEngPlan()",n:"⭐ خطة الإنجليزية اليومية · ٤٠ دقيقة",
+      s:"شرح ثم تدريب، بتباعد ذكي — لا يتكرّر أي عنصر إلا في يوم استحقاقه (منهج الصف السادس)"},
+    {g:"eng_acc",sec:"gram",c:"#9333EA",go:"startGram()",n:"✍️ دقّة القواعد",
+      s:"أربع جملٍ، صحيحةٌ واحدة — اختاري ثم اقرئي لماذا كل خيار صحيح أو خاطئ"},
+    {g:"eng_acc",sec:"step",c:"#B45309",go:"startStep()",n:"📋 نمط اختبار STEP",
+      s:"ترتيب الكلمات، الفراغات، الترقيم والكبتلة، وترتيب فقرة — مع شرح كل خيار"},
+    {g:"eng_acc",sec:"minpair",c:"#0891B2",go:"startMinpair()",n:"👂 لعبة الاستماع",
+      s:"كلمتان متشابهتا النطق (chose/choose) — أيّتهما سمعتِ؟ ثم مثالٌ يشرح معناها"},
+    {g:"eng_acc",raw:seqCardHTML()},
+    {g:"eng_out",lead:1,c:"#0E7490",go:"startCoach()",n:"🗣️ تكلّمي بالإنجليزية",
+      s:"محادثة حرّة مع شريك يردّ عليكِ بالإنجليزية — ونقيس وضوح أصواتك في كل جملة"},
+    {g:"eng_out",sec:"write",c:"#059669",go:"startWrite()",n:"📝 الكتابة",
+      s:`نصٌّ حرٌّ عن سؤالٍ نموذجي — تصحيح نحوي فوري يغذّي «أخطائي» — ${profileOf().level||"A2"}`},
+    {g:"eng_out",c:"#DB2777",go:"startSpeaking()",n:"🗣️ التحدّث · جمل من كتابك",
+      s:"جمل قصيرة جاهزة من وحدة Welcome: تسمعينها ثم تقولينها كاملة"},
+    {g:"eng_out",c:"#7C3AED",go:"startPronunciation()",n:"🎤 تمرين النطق",
+      s:"تحقّق أساسي هل نطقتِ الكلمة صح (يحتاج ميكروفون) — وليس تصحيح لهجة دقيق"},
+    {g:"eng_out",c:"#0E7490",go:"startDictation()",n:"✍️ إملاء بالإنجليزية",
+      s:"استمعي للكلمة، ثم اكتبيها — مستوى A1"},
+    {g:"exam",lead:1,c:"#7C2D12",go:"startMock()",n:"📝 محاكاة اختبار الإنجليزية",
+      s:"ورقة كاملة بصيغة كامبردج: استماع وقراءة وقواعد وتحليل كتابي — بلا تصحيحٍ حتى النهاية"},
+    {g:"meas",c:"#1D4ED8",go:"loadProgress()",n:"📈 متابعة التقدّم",
+      s:"نتائجك السابقة وتحليل المستوى لكل مجال"},
+    {g:"meas",c:"#0F172A",go:"loadKpi()",n:"📊 لوحة القياس",
+      s:"دقّة كل قسم آخر سبعة أيام، وتنبيهٌ حين تكون المادّة أسهل من اللازم أو تتكرّر"}
+  ],HOME_GROUPS)}
   <button class="link-btn" onclick="startAudioDiag()">🔊 الصوت ما يشتغل؟ اضغطي هنا لتشخيص السبب</button>
   <div class="tips">
     <h3>💡 استراتيجيات موهبة</h3>
