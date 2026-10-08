@@ -4699,6 +4699,8 @@ const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEn
   "gramBankFor","gramSrsUpdate","buildGramPlan","startGram","gramChoose","gramNext","renderGram","fetchTutorGenGram","gramGenTopUp",
   "stepBankFor","stepSrsUpdate","buildStepPlan","startStep","stepChoose","stepSeqPick","stepSeqUnpick","stepSeqSubmit","stepNext","renderStep","fetchTutorGenStep","stepGenTopUp","fetchTutorGenVideo","videoGenTopUp",
   "videoBankFor","videoSrsUpdate","buildVideoPlan","startVideo","videoPlay","videoNextScene","videoChoose","videoNext","renderVideo",
+  // رياضيات السادس: شاشةُ الفهرس هي بابُ القسم الآن، فسقوطُ دالّةٍ منها يُفرِغ القسم كلَّه
+  "math6Lessons","math6Ready","math6Pool","math6ScopePool","math6ChapterIndex","math6ChName","math6TypeOf","buildMath6Plan","goMath6Menu","startMath6","math6Choose","math6Next","renderMath6","renderMath6Menu","renderMath6Result",
   "statBidi","statBidiLine","statBankFor","statSrsUpdate","buildStatPlan","goStatMenu","startStat","startStatWs","statChoose","statNext","renderStat","renderStatMenu","renderStatResult",
   "writeTokens","writeTtr","writeSim","writePrevLoad","writePrevAdd","writeSelfSim",
   "accLoad","accSave","accRecord","accRate","stretchOn","bankStretched",
@@ -11694,7 +11696,12 @@ function math6Pool(){
   // بعينه، والمولَّد لا يتكرّر أصلاً فيُقاس درسُه. نفس التمييز بين LISTEN_BANK والتوليد.
   const by=math6LessonById();
   math6BookLoad().forEach(function(r){
-    const L=by[r.lesson]||{};
+    // التهيئة ليست درساً في الفهرس فلا تجدها `by`، فكانت أسئلتها الاثنتا عشرة تُعرض
+    // «تهيئة · من الكتاب» بلا اسم موضوعها. وشاشةُ الفهرس (٨ أكتوبر) تعرض الأسماء،
+    // فيُسمّى موضوعُها من `MATH6_PREP` نفسها لا من نصٍّ بديل.
+    const pm=/^m(\d+)_prep/.exec(String(r.lesson||""));
+    const PR=(pm&&MATH6_PREP[pm[1]])?{no:"تهيئة",t:MATH6_PREP[pm[1]].name,sk:"مهارة سابقة"}:null;
+    const L=by[r.lesson]||PR||{};
     out.push({id:"bk:"+r.id,no:L.no||"تهيئة",t:L.t||"من الكتاب",ch:r.ch,
       sk:r.sk||L.sk||null,book:r,
       gen:function(){return{q:r.q,c:r.choices.slice(),a:r.answer,w:r.why,_src:r.src,_page:r.page}}});
@@ -11707,8 +11714,38 @@ function math6LessonById(){
   _math6ById={};math6Lessons().forEach(function(l){_math6ById[l.id]=l});
   return _math6ById;
 }
+// ===== فهرسُ الكتاب شاشةً، والنوعُ معروضاً لا مسجَّلاً وحده — ٨ أكتوبر =====
+// طلبُ صاحب المشروع ومعه صورُ فهرس الكتاب: «حط قسم للرياضيات وصنف الاسئلة لكل موضوع
+// في الفهرس.. لكي تعلم هيا اسم ونوع كل سؤال حينما تتدرب وتحل الاسئلة».
+//
+// **والتصنيف كان مبنيّاً أصلاً** في `MATH6_PLAN`: الفصل واسمه، ورقم الدرس كما يكتبه
+// الكتاب، وعنوانه، وصفحته، و**نوعه** (`sk`) — ويُسجَّل في `_sk` مع كل إجابة. والناقص
+// **عرضُه** لا تأليفُه: بطاقة السؤال تحمل الرقم والعنوان ولا تحمل النوع، ولا شاشةَ
+// تُظهر الفهرس أصلاً فتُعرف المواضيع قبل الجلسة. فهذا عرضٌ لموجود، لا بناءٌ من الصفر.
+//
+// والنطاقُ متغيّرٌ مستقلّ لا توسيعٌ لمعنًى آخر — نفس قرار `statScope` (٥ سبتمبر):
+// خلطُ معنيين في متغيّرٍ واحد يُنتج عطلاً صامتاً.
+let math6Chapter="";          // "" = كل الفصول · رقمٌ = فصلٌ بعينه
+const MATH6_CH_MIN=3;         // عتبةُ زرّ الفصل — نفس عتبة قائمة فصول الإحصاء، لا رقمٌ جديد
+function math6ScopePool(ch){
+  const P=math6Pool();
+  if(ch===""||ch==null)return P;
+  return P.filter(function(l){return Number(l.ch)===Number(ch)});
+}
+// فهرسُ المتاح لكل موضوع: المولَّد والمنقول يُعدّان **منفصلين** لأنهما مختلفان في
+// المعنى — المولَّد لا ينفد (عنصرٌ واحد في الخطّة لكل جلسة، بأرقامٍ جديدة كل مرّة)،
+// وأسئلة الكتاب ثابتةٌ تُعدّ بعينها. فجمعُهما في رقمٍ واحد يقول ما ليس صحيحاً.
+function math6ChapterIndex(ch){
+  const gen={},book={};
+  math6ScopePool(ch).forEach(function(l){
+    const raw=l.book?String(l.book.lesson||""):String(l.id);
+    const k=/^m\d+_prep/.test(raw)?"prep":raw;
+    if(l.book)book[k]=(book[k]||0)+1;else gen[k]=(gen[k]||0)+1;
+  });
+  return {gen:gen,book:book};
+}
 function buildMath6Plan(){
-  const st=math6SrsLoad(),today=srsToday(),POOL=math6Pool();
+  const st=math6SrsLoad(),today=srsToday(),POOL=math6ScopePool(math6Chapter);
   const due=shuffle(POOL.filter(function(l){return st[l.id]&&st[l.id].due<=today}));
   const fresh=shuffle(POOL.filter(function(l){return !st[l.id]}));
   let out=planNewMix(due,fresh,MATH6_N);
@@ -11716,7 +11753,9 @@ function buildMath6Plan(){
 }
 let math6Lessons_=[],math6Items=[],math6Idx=0,math6Picked=-1,math6Locked=false,
     math6Score=0,math6ShownAt=0,math6Done=false;
-function startMath6(){
+function goMath6Menu(){mode="math6Menu";window.scrollTo(0,0);render();math6BookFetch()}
+function startMath6(ch){
+  math6Chapter=(ch===undefined||ch===null)?"":String(ch);
   math6Lessons_=buildMath6Plan();
   // يُولَّد سؤالُ كل درسٍ مرّةً واحدة عند بدء الجلسة: لو وُلِّد عند العرض لتغيّر
   // السؤال مع كل إعادة رسمٍ للشاشة (وهي تقع عند كل نقرة وكل ثانيةٍ من البوّابة).
@@ -11804,7 +11843,7 @@ function math6Next(){
   math6Idx++;math6Setup();render();
 }
 function renderMath6(){
-  if(!math6Items.length){app.innerHTML=`<div class="card" style="text-align:center">لا شيء مستحقّ اليوم — عودي غداً 🌱</div><button class="link-btn" onclick="home()">→ الرئيسية</button>`;return}
+  if(!math6Items.length){app.innerHTML=`<div class="card" style="text-align:center">لا شيء مستحقّ الآن — جرّبي فصلاً آخر 🌱</div><button class="link-btn" onclick="goMath6Menu()">→ فهرس الكتاب</button>`;return}
   if(math6Done)return renderMath6Result();
   const it=math6Cur(),L=it._l;
   const prog=`<div class="bar">${math6Items.map(function(_,i){return `<div class="seg" style="background:${i<=math6Idx?'#0F766E':'#E2E8F0'};opacity:${i<=math6Idx?1:.5}"></div>`}).join("")}</div>`;
@@ -11820,7 +11859,11 @@ function renderMath6(){
   ${prog}
   <div class="meta"><span>${toAr(math6Idx+1)} من ${toAr(math6Items.length)}</span><span>رياضيات السادس · الفصل ${toAr(L.ch)}</span></div>
   <div class="card">
-    <span class="tag" style="background:#CCFBF1;color:#0F766E">🧮 ${esc(L.no)} · ${esc(L.t)}</span>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">
+      <span class="tag" style="background:#CCFBF1;color:#0F766E">🧮 ${esc(L.no)} · ${esc(L.t)}</span>
+      ${math6TypeOf(L)?`<span class="tag" style="background:#FEF3C7;color:#92400E">🏷️ النوع: ${esc(math6TypeOf(L))}</span>`:""}
+    </div>
+    <div style="margin-top:7px;font-size:12px;color:#64748B">${esc(math6ChName(L.ch))}</div>
     ${it._src?`<div style="margin-top:8px;font-size:12px;color:#0F766E;background:#F0FDFA;border-radius:8px;padding:5px 10px;display:inline-block">📖 من الكتاب · ${esc(it._src)}</div>`:""}
     <div style="margin:14px 0 4px;font-size:17px;line-height:1.9;font-weight:600;color:#0F172A">${esc(it.q)}</div>
     ${m6BoxHTML()}
@@ -11834,16 +11877,102 @@ function renderMath6Result(){
   // النتيجة تُفصَّل بالدرس لا بالمجموع وحده: «٤ من ٦» لا تقول أيّ درسٍ يحتاج عودة.
   const rows=math6Items.map(function(it){
     const mark=(it._picked===undefined)?"—":(it._ok?"✅":"❌");
-    return `<div style="display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid #F1F5F9;font-size:14px"><span style="color:#334155">${esc(it._l.no)} · ${esc(it._l.t)}</span><span>${mark}</span></div>`;
+    // والنوعُ في سطر النتيجة كذلك: «أيّ درسٍ أخطأتُ فيه» وحدها لا تقول **أيّ نوعٍ من
+    // المهارة** تعثّر، وهو ما يُجمَّع عبر الدروس (`sk` واحدٌ لعدّة دروس بتصميم الكتاب).
+    const sk=math6TypeOf(it._l)?`<span style="color:#92400E;font-size:12px"> · ${esc(math6TypeOf(it._l))}</span>`:"";
+    return `<div style="display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid #F1F5F9;font-size:14px"><span style="color:#334155">${esc(it._l.no)} · ${esc(it._l.t)}${sk}</span><span>${mark}</span></div>`;
   }).join("");
   app.innerHTML=`
   <div class="card">
     <div class="score-row"><span class="score-big" style="color:${pct>=70?'#059669':pct>=50?'#D97706':'#DC2626'}">${toAr(math6Score)}</span><span class="score-total">/ ${toAr(math6Items.length)}</span><span class="score-pct">${toAr(pct)}%</span></div>
     <div style="color:#64748B;font-size:15px;margin-bottom:14px">${pct>=85?"ممتاز! 🌟":pct>=60?"جيّد، واصلي 💪":"لا بأس — هذه الدروس تعود للمراجعة قريباً 🌱"}</div>
     <div style="margin-bottom:14px">${rows}</div>
-    <button class="btn" style="background:#0F766E" onclick="startMath6()">🔁 جلسة أخرى</button>
+    <button class="btn" style="background:#0F766E" onclick="startMath6('${esc(math6Chapter)}')">🔁 جلسة أخرى${math6Chapter?" من الفصل "+toAr(math6Chapter):""}</button>
+    <button class="link-btn" onclick="goMath6Menu()">→ فهرس الكتاب</button>
     <button class="link-btn" onclick="home()">→ الرئيسية</button>
   </div>`;
+}
+// اسمُ الفصل من الكتاب نفسه لا اختصارٌ من عندي — فما تقرؤه هي على الشاشة هو ما
+// تقرؤه في فهرس كتابها بالحرف.
+function math6ChName(ch){
+  const c=MATH6_PLAN.filter(function(x){return Number(x.ch)===Number(ch)})[0];
+  return "الفصل "+toAr(ch)+(c?": "+c.name:"");
+}
+// النوعُ يُعرض حين يُضيف: `sk` في الكتاب اسمُ **عائلةِ** المهارة، فيتشارك فيه أكثرُ
+// من درس («خطة حل المسألة» أربعةُ دروس، و«النظام المتري» ثلاثة). ويساوي عنوانَ الدرس
+// في ستّة عشر درساً — وعرضُ «🏷️ النوع: العوامل الأولية» تحت «١-٢ · العوامل الأولية»
+// تكرارٌ يُقرأ خللاً لا تصنيفاً. فيُعرض حيث يختلف، وحيث تطابقا فالعنوانُ هو النوع.
+function math6TypeOf(L){
+  const sk=L&&L.sk?String(L.sk):"";
+  return (sk&&sk!==String(L.t||""))?sk:"";
+}
+// ===== شاشةُ الفهرس: كل موضوعٍ باسمه ونوعه وما هو متاحٌ له =====
+// نفس بنية `renderStatMenu` حرفياً (جلسةٌ شاملة ثمّ فصلٌ بعينه) — لا مكوّنَ واجهةٍ
+// جديد. والفرقُ من طبيعة المحتوى لا اجتهاداً: الإحصاء بنكٌ ثابتٌ فيكفيه عددُ أسئلة
+// الفصل، وهذا فهرسُ كتابٍ مدرسيّ فتُعرض **دروسُه كلُّها** صفّاً صفّاً بأرقامها
+// وعناوينها وأنواعها — وهو عينُ ما طُلب: «صنف الاسئلة لكل موضوع في الفهرس».
+//
+// **والدرسُ بلا أسئلة يُقال لا يُخفى**: ستّةُ دروسٍ في الفهرس بلا مولّدٍ ولا سؤالٍ
+// منقول (التمثيل البياني، وخطط حل المسألة الثلاث…)، فتُعرض رماديةً بنصٍّ صريح بدل
+// أن تُحذف من الفهرس فيظنّ القارئ أن الكتاب خمسةٌ وعشرون درساً لا واحدٌ وثلاثون.
+function renderMath6Menu(){
+  const chBlocks=MATH6_PLAN.map(function(c){
+    const idx=math6ChapterIndex(c.ch),pool=math6ScopePool(c.ch).length;
+    const rows=[];
+    if(MATH6_PREP[c.ch]){
+      rows.push({no:"تهيئة",t:MATH6_PREP[c.ch].name,sk:"مهارة سابقة",p:MATH6_PREP[c.ch].p,
+        gen:idx.gen.prep||0,book:idx.book.prep||0});
+    }
+    c.lessons.forEach(function(l){
+      rows.push({no:l.no,t:l.t,sk:l.sk,p:l.p,gen:idx.gen[l.id]||0,book:idx.book[l.id]||0});
+    });
+    const rowsHTML=rows.map(function(r){
+      const has=r.gen>0||r.book>0;
+      const avail=r.book>0
+        ? (toAr(r.book)+" سؤالاً من الكتاب"+(r.gen>0?" + أسئلةٌ تتولّد":""))
+        : (r.gen>0?"أسئلةٌ تتولّد بأرقامٍ جديدة":"لا أسئلة بعد");
+      return `<div style="padding:7px 0;border-bottom:1px solid #F1F5F9">
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
+          <span style="font-size:14px;font-weight:600;color:${has?"#0F172A":"#94A3B8"}">${esc(r.no)} · ${esc(r.t)}</span>
+          <span style="font-size:11.5px;color:#94A3B8;white-space:nowrap">ص ${toAr(r.p)}</span>
+        </div>
+        <div style="margin-top:3px;font-size:12px;color:#64748B;display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+          ${math6TypeOf(r)?`<span style="background:${has?"#FEF3C7":"#F1F5F9"};color:${has?"#92400E":"#94A3B8"};border-radius:6px;padding:2px 7px">🏷️ ${esc(math6TypeOf(r))}</span>`:""}
+          <span style="color:${has?"#0F766E":"#94A3B8"}">${esc(avail)}</span>
+        </div></div>`;
+    }).join("");
+    // والعددان يُفرَّقان في النصّ كما يُفرَّقان في العدّ: «درسٌ يتولّد» ليس «سؤالاً»
+    // — يُنتج واحداً في الجلسة بأرقامٍ جديدة كل مرّة، وسؤالُ الكتاب ثابتٌ بعينه.
+    // فجمعُهما في رقمٍ واحد يقول للقارئ ما ليس صحيحاً.
+    const nGen=Object.keys(idx.gen).reduce(function(s,k){return s+idx.gen[k]},0);
+    const nBook=Object.keys(idx.book).reduce(function(s,k){return s+idx.book[k]},0);
+    const sub=toAr(nGen)+" درساً تتولّد أسئلته"+(nBook?" و"+toAr(nBook)+" سؤالاً من الكتاب":"")
+      +" · الجلسة "+toAr(MATH6_N)+" أسئلة";
+    const btn=pool>=MATH6_CH_MIN
+      ? `<button class="mode full" style="background:#0F766E;border-color:#0F766E" onclick="startMath6('${esc(String(c.ch))}')">
+           <span class="m-name">▶︎ تدرّبي على الفصل ${toAr(c.ch)}</span>
+           <div class="m-sub">${esc(sub)}</div></button>`
+      : `<div style="background:#F8FAFC;border:1px dashed #CBD5E1;border-radius:12px;padding:10px 12px;font-size:12.5px;color:#64748B;line-height:1.8">
+           لا جلسةَ مستقلّة لهذا الفصل بعد: المتاح فيه ${esc(sub.split(" · ")[0])} فقط — ودروسُ التمثيل البياني تحتاج رسوماً لم تُبنَ. ودروسُه المتاحة تدخل الجلسة الشاملة كغيرها.</div>`;
+    return `<div class="section-title"><span>${esc(math6ChName(c.ch))}</span></div>
+      <div class="card" style="padding:12px 14px">${rowsHTML}</div>
+      <div class="modes">${btn}</div>`;
+  }).join("");
+  const lessons=math6Lessons().length,ready=math6Ready().length;
+  const nBook=math6BookLoad().length,noQ=lessons-ready;
+  app.innerHTML=`
+  <button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
+  <div class="hero" style="background:linear-gradient(135deg,#0F766E,#0F172A)">
+    <h1>رياضيات الصف السادس</h1>
+    <p>فهرس كتابك كما هو: ${toAr(MATH6_PLAN.length)} فصول و${toAr(lessons)} درساً. لكل سؤالٍ اسمُ درسه ونوعُ مهارته — يظهران معه وأنتِ تحلّين.</p>
+    <p style="opacity:.85">تتولّد أسئلةٌ جديدة في ${toAr(ready)} درساً${nBook?`، ومعها ${toAr(nBook)} سؤالاً منقولاً من صفحات الكتاب`:""}${noQ?`. و${toAr(noQ)} دروسٍ بلا أسئلة بعد — مكتوبةٌ في الفهرس رماديةً لا محذوفة`:""}.</p>
+  </div>
+  <div class="modes">
+    <button class="mode full" style="background:#0D9488;border-color:#0D9488" onclick="startMath6('')">
+      <span class="m-name">🎲 جلسة شاملة — كل الفصول</span>
+      <div class="m-sub">${toAr(MATH6_N)} أسئلة مخلوطة من المنهج كلّه، بتباعدٍ ذكي يُعيد ما تعثّرتِ فيه</div></button>
+  </div>
+  ${chBlocks}`;
 }
 
 // ===== قسم STEP: نوعية أسئلة اختبار كفايات اللغة الإنجليزية (١٨ أغسطس) =====
@@ -16293,7 +16422,7 @@ function renderKpi(){
 }
 
 // ===== العرض =====
-function render(){if(mode==="mock")return renderMock();if(mode==="seq")return renderSeq();if(mode==="kpi")return renderKpi();if(mode==="home")return renderHome();if(mode==="listen")return renderListen();if(mode==="read")return renderRead();if(mode==="write")return renderWrite();if(mode==="gram")return renderGram();if(mode==="build")return renderBuild();if(mode==="math6")return renderMath6();if(mode==="step")return renderStep();if(mode==="statMenu")return renderStatMenu();if(mode==="stat")return renderStat();if(mode==="minpair")return renderMinpair();if(mode==="video")return renderVideo();if(mode==="errors")return renderErrors();if(mode==="engplan")return renderEngPlan();if(mode==="factplan")return renderFactPlan();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="speak")return renderSpeak();if(mode==="coach")return renderCoach();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
+function render(){if(mode==="mock")return renderMock();if(mode==="seq")return renderSeq();if(mode==="kpi")return renderKpi();if(mode==="home")return renderHome();if(mode==="listen")return renderListen();if(mode==="read")return renderRead();if(mode==="write")return renderWrite();if(mode==="gram")return renderGram();if(mode==="build")return renderBuild();if(mode==="math6Menu")return renderMath6Menu();if(mode==="math6")return renderMath6();if(mode==="step")return renderStep();if(mode==="statMenu")return renderStatMenu();if(mode==="stat")return renderStat();if(mode==="minpair")return renderMinpair();if(mode==="video")return renderVideo();if(mode==="errors")return renderErrors();if(mode==="engplan")return renderEngPlan();if(mode==="factplan")return renderFactPlan();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="speak")return renderSpeak();if(mode==="coach")return renderCoach();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
 
 // صفحة الأخوين قسمٌ واحد: المحادثة. بقيّة الأقسام بُنيت على أخطائها هي — بنك
 // أسئلتها، وتباعدها، ومنهج صفّها السادس — فوضعها أمام ولدٍ آخر يُشغله بما ليس له.
@@ -16478,8 +16607,8 @@ function renderHome(){
       s:"ضرب/قسمة مرتبطان + جمع وطرح بطرق سهلة بلا حمل ولا استلاف + أساسيات النسبة المئوية"},
     {g:"math",c:"#0F766E",go:"startFactPlan()",n:"🧮 طلاقة الحقائق · ١٠ دقائق",
       s:"استرجاع فوري للجمع والطرح والضرب بلا عدّ أو أصابع، بتباعد ذكي"},
-    {g:"math",c:"#0F766E",go:"startMath6()",n:"🧮 رياضيات الصف السادس",
-      s:"دروس كتابك بترتيبه — أسئلة تتولّد بلا تكرار، وشرحٌ بالخطوات الأربع بعد كل إجابة"},
+    {g:"math",c:"#0F766E",go:"goMath6Menu()",n:"🧮 رياضيات الصف السادس",
+      s:"فهرس كتابك كما هو — كل سؤال باسم درسه ونوع مهارته، وشرحٌ بالخطوات الأربع بعد كل إجابة"},
     {g:"eng_in",sec:"listen",lead:1,c:"#0284C7",go:"startListen()",n:"🎧 فهم الاستماع",
       s:`استمعي لمقطعٍ قصير، وأجيبي عن معناه — مستوى ${profileOf().level||"A2"}`},
     {g:"eng_in",sec:"read",c:"#7C3AED",go:"startRead()",n:"📖 فهم المقروء",

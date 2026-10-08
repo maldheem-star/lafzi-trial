@@ -11,7 +11,9 @@ const BASE='http://127.0.0.1:8931/';
 const MUST={
   haya:["start('verbal')","start('quant')","start('science')","start('flex')","start('full')",
     "goFadeMenu()","loadProgress()","loadKpi()","startBasics('mixed')","startBasics('multdiv')",
-    "startFactPlan()","startMath6()","startEngPlan()","startDictation()","startListen()",
+    // قسمُ الرياضيات بابُه شاشةُ الفهرس الآن (٨ أكتوبر) لا الجلسةُ مباشرةً — نفس شكل
+    // `goStatMenu()` عند محمد. والدعوى هي هي: القسم مبلوغٌ بنقرةٍ واحدة ولم يضع.
+    "startFactPlan()","goMath6Menu()","startEngPlan()","startDictation()","startListen()",
     "startRead()","startWrite()","startGram()","startStep()","startMinpair()","startSeq()",
     "startVideo()","startMock()","startPronunciation()","startCoach()","startSpeaking()",
     "startAudioDiag()"],
