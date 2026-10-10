@@ -354,6 +354,112 @@ console.log('\n١٣) جلسةٌ كاملة تمضي إلى شاشة النتيج
   ok(fin.done&&fin.txt,'الجلسة انتهت إلى شاشة النتيجة');
 }
 
+console.log('\n١٤) الإملاء والنطق يسحبان من البنك نفسه بتباعدٍ — لا shuffle أعمى');
+{
+  const r=await p.evaluate(()=>{
+    ['mawhiba_dict_srs_v1','mawhiba_pron_srs_v1','mawhiba_word_err_v1','mawhiba_seen_v1']
+      .forEach(function(k){lsSet(k,'{}')});
+    const d=wordPlan(DICT_SRS_KEY,8,'dictation','spell');
+    const s=wordPlan(PRON_SRS_KEY,8,'pron','say');
+    // كلُّ عنصرٍ يحمل معناه وفئته — فشاشةُ الإملاء تعرض المعنى بعد القفل
+    const whole=d.every(function(i){return i.w&&i.m&&i.c});
+    // المُتقَن لا يعود بنفس احتمال الضعيف: نُتقن عشرين كلمة ثم نقيس كم منها يعود
+    const t=srsToday(),st={};
+    const mastered=VOCAB_BANK.slice(0,20).map(function(v){return v.w});
+    mastered.forEach(function(w){st[w]={box:3,seen:5,due:t+30,s:40,d:4,last:t}});
+    lsSet('mawhiba_dict_srs_v1',JSON.stringify(st));
+    let back=0;
+    for(let i=0;i<20;i++)wordPlan(DICT_SRS_KEY,8,'dictation','spell')
+      .forEach(function(x){if(mastered.indexOf(x.id)>=0)back++});
+    return {n:d.length,pron:s.length,whole:whole,
+      uniq:new Set(d.map(function(i){return i.id})).size,back:back,pool:VOCAB_BANK.length};
+  });
+  ok(r.n===8&&r.pron===8,`جلسةُ إملاءٍ ${r.n} وجلسةُ نطقٍ ${r.pron} — من بنكٍ واحد حجمُه ${r.pool}`);
+  ok(r.uniq===r.n,'ولا كلمةَ مكرّرة داخل الجلسة');
+  ok(r.whole,'وكلُّ كلمةٍ تحمل معناها وفئتها');
+  ok(r.back===0,`والمُتقَنةُ البعيدةُ موعدِها لا تعود في عشرين جلسة (${r.back}) — كانت تعود بنفس الاحتمال`);
+}
+
+console.log('\n١٥) الضعيفُ يتقدّم داخل المستحقّ — والذاكرةُ كانت تُكتب ولا تُقرأ');
+{
+  const r=await p.evaluate(()=>{
+    ['mawhiba_dict_srs_v1','mawhiba_word_err_v1'].forEach(function(k){lsSet(k,'{}')});
+    const t=srsToday(),st={},ten=VOCAB_BANK.slice(0,10).map(function(v){return v.w});
+    ten.forEach(function(w){st[w]={box:1,seen:2,due:t-1,s:3,d:5,last:t-3}});
+    lsSet('mawhiba_dict_srs_v1',JSON.stringify(st));
+    wordErrRecord(ten[9],'spell',false,'xxx');wordErrRecord(ten[9],'spell',false,'xxx');
+    wordErrRecord(ten[8],'spell',false,'yyy');
+    const pl=wordPlan(DICT_SRS_KEY,8,'dictation','spell').map(function(i){return i.id});
+    return {first:pl[0],second:pl[1],weak2:ten[9],weak1:ten[8]};
+  });
+  ok(r.first===r.weak2,`الأكثرُ تعثّراً أوّلاً («${r.first}» — خطآن)`);
+  ok(r.second===r.weak1,`ثمّ الذي يليه («${r.second}» — خطأ)`);
+}
+
+console.log('\n١٦) التنبيه المتقاطع: على المهارتين معاً لا على واحدة — وحالةُ `gate` بنصّها');
+{
+  logs=[];
+  const r=await p.evaluate(()=>{
+    lsSet('mawhiba_word_err_v1','{}');
+    const out={};
+    wordErrRecord('gate','spell',false,'kate');wordErrRecord('gate','spell',false,'kate');
+    out.spellOnly=wordCrossWeak('gate');
+    out.htmlSpellOnly=wordCrossHTML('gate').length;
+    wordErrRecord('gate','say',false,'kate');wordErrRecord('gate','say',false,'kate');
+    out.both=wordCrossWeak('gate');
+    const h=wordCrossHTML('gate');
+    out.html=h.length>50;out.namesLetter=/k/.test(h)&&/g/.test(h);
+    out.again=wordCrossHTML('gate').length>50;   // يُعرض كل مرّة
+    // وصوابٌ لاحق في الإملاء يُطفئه — فلا يبقى تنبيهاً على عثرةٍ انتهت
+    wordErrRecord('gate','spell',true,'gate');
+    out.afterRight=wordCrossWeak('gate');
+    out.sub=letterSub('kate','gate');
+    out.noSub=letterSub('kat','gate');            // طولٌ مختلف: ليس استبدالاً
+    out.noSub2=letterSub('ktae','gate');          // حرفان مختلفان: ليس استبدالاً مفرداً
+    return out;
+  });
+  await p.waitForTimeout(350);
+  ok(!r.spellOnly&&r.htmlSpellOnly===0,'تعثّرٌ في الإملاء وحده لا يُطلق التنبيه');
+  ok(r.both&&r.html,'وتعثّرٌ في المهارتين معاً يُطلقه');
+  ok(r.namesLetter,'ويُسمّي الحرف المُستبدَل (k مكان g) — شكلُ الخطأ لا وقوعه');
+  ok(r.sub&&r.sub.got==='k'&&r.sub.want==='g'&&r.sub.at===0,'و`letterSub` تُحدّد الموضع والحرفين');
+  ok(!r.noSub&&!r.noSub2,'ولا تُسمّي حذفاً ولا خلطاً استبدالاً — فلا بلاغَ كاذب');
+  ok(!r.afterRight,'وصوابٌ لاحق يُطفئه');
+  const rows=logs.map(x=>(x&&x.rows)||x).flat().filter(x=>x&&x.qtype==='word_cross_weak');
+  ok(rows.length===1,`ويُسجَّل مرّةً واحدة لا مع كل رسم (${rows.length})`);
+  ok(rows[0]&&/kate/.test(String(rows[0].q_text||'')),'ومعه ما كتبته فعلاً');
+}
+
+console.log('\n١٧) «أخطائي» يجد معنى كلمةٍ من خارج الستّ والعشرين القديمة');
+{
+  const r=await p.evaluate(()=>{
+    const w='grandmother';   // في بنك المفردات، وليست في DICTATION_A1
+    return {inOld:DICTATION_A1.some(function(x){return x.w===w}),
+      m:(vocabOf(w)||{}).m};
+  });
+  ok(!r.inOld&&!!r.m,`«grandmother» خارج البنك القديم ومعناها موجود («${r.m}») — فلا تظهر في «أخطائي» بلا معنى`);
+}
+
+console.log('\n١٨) جلسةُ إملاءٍ حقيقية: الآليةُ تُسمَّى، والتباعدُ يُحدَّث');
+{
+  logs=[];
+  await p.evaluate(()=>{
+    ['mawhiba_dict_srs_v1','mawhiba_word_err_v1'].forEach(function(k){lsSet(k,'{}')});
+    startDictation();
+    dictSession=[{w:'gate',m:'بوابة'}];dictIdx=0;dictStage=4;dictLocked=false;dictScore=0;
+    dictShownAt=Date.now();render();
+  });
+  await p.waitForSelector('#dictIn');
+  await p.evaluate(()=>{document.getElementById('dictIn').value='kate';dictCheck()});
+  await p.waitForTimeout(400);
+  const row=logs.map(x=>(x&&x.rows)||x).flat().filter(x=>x&&x.domain==='dictation_a1').pop();
+  const srs=await p.evaluate(()=>({srs:!!wordSrsLoad(DICT_SRS_KEY)['gate'],err:wordErrOf('gate')}));
+  ok(row&&/letter_sub k→g/.test(String(row.response||'')),
+    `الآليةُ مسمّاةٌ في السطر — «${String(row&&row.response||'').slice(0,40)}»`);
+  ok(srs.srs,'وسجلُّ تباعد الكلمة تحدَّث — فلا تعود بنفس احتمال المُتقَنة');
+  ok(srs.err&&(srs.err.spell|0)===1,'وذاكرةُ الخطأ المشتركة سجّلت المهارة');
+}
+
 await b.close();
 console.log(`\n${fails?'✗ FAIL':'=== كل الاختبارات نجحت ==='} ${pass} ناجح · ${fails} ساقط`);
 process.exit(fails?1:0);

@@ -4709,7 +4709,9 @@ const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEn
   "ttsServerAllow","ttsServerFail","ttsServerWin","wbNeed","wbLeft",
   "azExpandWords",
   "bktLoad","bktSave","bktStep","bktKey","skOf","bktRecord","bktOf","bktMastered","bktToMastery",
-  "VOCAB_BANK","VOCAB_BY_CAT","VOCAB_CATS","vocabOf","vocabOpts","vocabPlan","vocabMasterRecord",
+  "vocabOf","vocabOpts","vocabPlan","vocabMasterRecord",
+  "wordErrLoad","wordErrRecord","wordErrOf","letterSub","wordCrossWeak",
+  "wordCrossHTML","wordSrsLoad","wordSrsUpdate","wordPlan",
   "vocabMastered","vocabMasterCount","vocabStageCheck","vocabSrsUpdate","startVocab","vocabSetupRound",
   "vocabChoose","vocabCheck","vocabNext","vocabHintShow","vocabHintText","vocabInput","vocabNorm",
   "vocabPasteBlock","pasteBlockCore","vocabMeterHTML","renderVocab","renderVocabResult","vocabSpeak",
@@ -8159,10 +8161,79 @@ let dictStage=1,dictStreak=0,dictMiss=0,dictShownAt=0;
 function dictCur(){return dictSession[dictIdx]||{}}
 function dictIsBuild(){return !!dictCur().build}
 function dictText(){const it=dictCur();return it.build?String(it.s||""):String(it.w||"")}
+// ===== ذاكرةُ خطأ الكلمة مشتركةٌ بين المهارتين — ٩ أكتوبر =====
+// كان لكلّ مهارةٍ ذاكرتُها: `dictErrLoad` للإملاء (تُقرأ في «أخطائي» وحدها)
+// و`pronWeakLoad` للنطق (تُقرأ في خلاصة المحادثة) — **ولا واحدة تعرف الأخرى**.
+// وثمنُ ذلك مقاسٌ في سجلّها: `gate` نُطقت ٢٠ مرّة بمتوسّط ٥٥٪ وكُتبت ١٣ مرّة بصفر
+// صواب، وكتبت `kate` ١٢ مرّة من ١٣ — **سببٌ صوتيّ واحد يُنتج عَرَضين**، وبقي ١٣
+// محاولةَ إملاءٍ صفراً بلا علاج لأن القسمين لا يتقابلان.
+const WORD_ERR_KEY="mawhiba_word_err_v1";
+function wordErrLoad(){try{return JSON.parse(lsGet(WORD_ERR_KEY)||"{}")}catch(e){return{}}}
+function wordErrSave(o){try{lsSet(WORD_ERR_KEY,JSON.stringify(o))}catch(e){}}
+function wordErrRecord(w,skill,ok,got){
+  const k=String(w||"").toLowerCase();if(!k)return null;
+  const m=wordErrLoad(),r=m[k]||{spell:0,say:0,last:""};
+  if(ok)r[skill]=0;else{r[skill]=(r[skill]|0)+1;if(got)r.last=String(got).slice(0,40)}
+  m[k]=r;wordErrSave(m);return r;
+}
+function wordErrOf(w){return wordErrLoad()[String(w||"").toLowerCase()]||null}
+// **شكلُ الخطأ لا وقوعه** (درس ١٣ أغسطس) مطبَّقاً على الإملاء: استبدالُ حرفٍ واحد
+// في موضعٍ واحد آليةٌ تُسمّى وتُجمَّع بالاستعلام (`kate` ⇐ `gate` هو `g→k`)، خلافَ
+// حذفٍ أو زيادةٍ أو خلطٍ تامّ — وثلاثتُها أخطاءٌ مختلفة لا تُعالَج بعلاجٍ واحد.
+function letterSub(typed,target){
+  const a=String(typed||"").toLowerCase(),b=String(target||"").toLowerCase();
+  if(!a||a.length!==b.length||a===b)return null;
+  let at=-1;
+  for(let i=0;i<b.length;i++)if(a[i]!==b[i]){if(at>=0)return null;at=i}
+  return at<0?null:{at:at,got:a[at],want:b[at]};
+}
+// ضعيفةٌ في المهارتين معاً — وهذه وحدها تستحقّ تنبيهاً، فتعثّرٌ في واحدة قد يكون زلّة
+const WORD_CROSS_MIN=2;
+function wordCrossWeak(w){
+  const r=wordErrOf(w);
+  return !!(r&&(r.spell|0)>=WORD_CROSS_MIN&&(r.say|0)>=WORD_CROSS_MIN);
+}
+let _wordCrossLogged={};
+function wordCrossHTML(w){
+  const k=String(w||"").toLowerCase();
+  if(!wordCrossWeak(k))return "";
+  const r=wordErrOf(k)||{},sub=letterSub(r.last,k);
+  if(!_wordCrossLogged[k]){_wordCrossLogged[k]=1;
+    try{logAnswer("gen","word_cross_weak",null,k+" · إملاء "+toAr(r.spell|0)+" · نطق "+toAr(r.say|0)
+      +(sub?" · "+sub.got+"→"+sub.want:""),k,null,
+      {q_text:("[ضعفٌ في المهارتين] "+k+" — آخر ما كُتب: «"+(r.last||"?")+"»"
+        +(sub?" · استبدالُ حرفٍ واحد "+sub.got+"→"+sub.want:"")).slice(0,300)})}catch(e){}}
+  return `<div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:12px;padding:10px 12px;margin:10px 0;text-align:right">
+    <div style="font-size:13px;color:#9A3412;line-height:1.9">📌 هذه الكلمة تتعثّرين فيها <b>كتابةً ونطقاً معاً</b>${r.last?` — وآخر ما كتبتِ <b dir="ltr" style="display:inline-block;font-family:Georgia,serif">${esc(r.last)}</b>`:""}</div>
+    ${sub?`<div style="font-size:13px;color:#C2410C;line-height:1.9;margin-top:4px">الفرق حرفٌ واحد: تنطقينه <b dir="ltr" style="display:inline-block;font-family:Georgia,serif">${esc(sub.got)}</b> والصواب <b dir="ltr" style="display:inline-block;font-family:Georgia,serif">${esc(sub.want)}</b> — فاسمعي 🔊 وركّزي على هذا الصوت.</div>`:""}
+  </div>`;
+}
+// ===== والإملاء والنطق يسحبان من بنك المفردات نفسه، بتباعدٍ وأولويّةٍ للضعيف =====
+// كانا `shuffle(DICTATION_A1).slice(0,8)` وحدهما من بين ثلاثة عشر باباً: بلا FSRS
+// وبلا `planNewMix` وبلا `seenRank`. وأثرُه مقاس: ٢٦ كلمة تُعاد ١٢٫٣ مرّة إملاءً
+// و١٦٫٩ نطقاً، أسوأُها `match` ٢٤ مرّة و`storm` ١٨ — والكلمةُ المُتقَنة تعود بنفس
+// احتمال التي عثرت فيها. فنفس بنية البانيات الإحدى عشرة، لا آلية جديدة.
+const DICT_SRS_KEY="mawhiba_dict_srs_v1",PRON_SRS_KEY="mawhiba_pron_srs_v1";
+function wordSrsLoad(k){try{return JSON.parse(lsGet(k)||"{}")}catch(e){return{}}}
+function wordSrsUpdate(key,id,ok){
+  const st=wordSrsLoad(key),r=st[id]||{box:0,seen:0};
+  const n=fsrsUpdate(r,ok,srsToday());
+  r.box=n.box;r.due=n.due;r.seen=n.seen;r.s=n.s;r.d=n.d;r.last=n.last;
+  st[id]=r;try{lsSet(key,JSON.stringify(st))}catch(e){}
+}
+function wordPlan(key,n,domain,skill){
+  const st=wordSrsLoad(key),today=srsToday(),err=wordErrLoad();
+  const POOL=VOCAB_BANK.map(function(v){return{id:v.w,w:v.w,m:v.m,c:v.c}});
+  const wk=function(i){return (err[i.id]&&(err[i.id][skill]|0))||0};
+  const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}))
+    .sort(function(a,b){return wk(b)-wk(a)});   // الضعيفُ أوّلاً داخل المستحقّ
+  const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
+  return topUpPlan(planNewMix(due,fresh,n),POOL,n,domain);
+}
 function startDictation(){
   // ثماني كلمات ثم أربع جمل: الكلمة تربط الصوت بالحروف، والجملة تربط الكلمات بالترتيب.
   // وهي الاستماع والبناء معاً — أنفع من كلٍّ وحده، وبلا شاشة جديدة.
-  const words=shuffle(DICTATION_A1).slice(0,8);
+  const words=wordPlan(DICT_SRS_KEY,8,"dictation","spell");
   const sents=shuffle(engBuildFor(profileOf().level)).slice(0,4)
     .map(function(x){return{s:x.s,m:x.m,id:x.id,build:true,chunks:x.chunks||null}});
   mode="dictation";dictSession=words.concat(sents);dictIdx=0;dictInput="";dictLocked=false;dictScore=0;dictDone=false;
@@ -8188,8 +8259,14 @@ function dictCheck(){
   const dictOk=val===dictSession[dictIdx].w.toLowerCase();
   if(dictOk)dictScore++;
   dictErrRecord(dictSession[dictIdx].w,dictOk,val);
+  wordErrRecord(dictSession[dictIdx].w,"spell",dictOk,val);
+  wordSrsUpdate(DICT_SRS_KEY,String(dictSession[dictIdx].w).toLowerCase(),dictOk);
   // الكلمة وما كتبته: بدونهما أعرف أنها أخطأت ولا أعرف كيف — حرف ناقص؟ حرف متحرّك خطأ؟
-  logAnswer("dictation_a1","stage"+dictStage,dictOk,val,dictSession[dictIdx].w,
+  // **وشكلُ الخطأ يُسمّى حين يكون آليةً**: استبدالُ حرفٍ واحد (`kate` ⇐ `gate`) يُجمَّع
+  // بالاستعلام، خلافَ «فرقٌ ما» الذي يُقرأ ضعفاً عامّاً — درس ١٣ أغسطس على الإملاء.
+  const _sub=dictOk?null:letterSub(val,dictSession[dictIdx].w);
+  logAnswer("dictation_a1","stage"+dictStage,dictOk,val+(_sub?" · letter_sub "+_sub.got+"→"+_sub.want:""),
+    dictSession[dictIdx].w,
     dictShownAt?Date.now()-dictShownAt:null,{q_text:dictSession[dictIdx].w});
   // تدرّج المرحلة: صعود بإتقان متتالٍ، ونزول تلقائي عند تكرار الخطأ حتى لا تعلق على مستوى أصعب من قدرتها
   if(dictOk){
@@ -8261,6 +8338,7 @@ function renderDictation(){
     ${ttsHelpHTML("هذا القسم يحتاج الصوت، ولا نصّ يُقرأ بدلاً منه. افحصي الصوت أوّلاً، أو عودي لهذا القسم لاحقاً.")}
     <div style="margin:18px 0"><button type="button" onclick="dictReplay()" style="background:#0E7490;color:#fff;border:none;border-radius:50%;width:64px;height:64px;font-size:26px;cursor:pointer">🔊</button></div>
     <div style="font-size:13px;color:#64748B;margin-bottom:16px">اضغطي على السمّاعة لسماع الكلمة، ثم اكتبيها بالإنجليزي</div>
+    ${wordCrossHTML(item.w)}
     ${hintBox}
     <input id="dictIn" ${dictLocked?"disabled":""} style="width:100%;padding:14px;border-radius:12px;border:2px solid #E2E8F0;font-size:20px;text-align:center;direction:ltr;font-family:Georgia,serif" placeholder="type here" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" onkeydown="if(event.key==='Enter')dictCheck()">
     ${feedback}
@@ -8321,7 +8399,9 @@ function errCollect(){
   });
   const de=dictErrLoad();
   Object.keys(de).forEach(function(w){
-    const meta=DICTATION_A1.filter(function(x){return x.w.toLowerCase()===w})[0];
+    // المعنى من بنك المفردات (٦٨٠) لا من البنك القديم (٢٦): الإملاء يسحب من
+    // البنك كلّه الآن، فبحثٌ في السابق كان سيُعيد كلمةً بلا معناها.
+    const meta=vocabOf(w)||DICTATION_A1.filter(function(x){return x.w.toLowerCase()===w})[0];
     out.push({kind:"word",key:w,w:(meta?meta.w:w),m:(meta?meta.m:""),last:de[w].last||""});
   });
   const ie=itemErrLoad(),POOL=engPool(),lvNow=profileOf().level;
@@ -10440,11 +10520,16 @@ function pasteBlockCore(ev,noteId,qtype,itemId,label,detail){
   }
   return false;
 }
+// `writePasteTries`/`writePasteLogged` تبقى **هي العدّادين** لا نسخةً عنهما: صُفِّرا
+// صراحةً في اختبارٍ قائم لفصل أقسامه، فلو صارا مرآةً تُكتب ولا تُقرأ لمرّ التصفير
+// بلا أثر — وهو بعينه صنفُ «التفصيل يصل ويُرمى». فتُزامَن القيمة قبل النداء وبعده.
 function writePasteBlock(ev){
   const it=(typeof writeCur==="function")?writeCur():null;
-  writePasteTries=(_pasteTries["write_paste_blocked"]|0)+1;
+  _pasteTries["write_paste_blocked"]=writePasteTries|0;
+  _pasteLogged["write_paste_blocked"]=writePasteLogged|0;
   const r=pasteBlockCore(ev,"writePasteNote","write_paste_blocked",(it&&it.id)||null,
     "[لصق مُنع في الكتابة]","المستوى "+((it&&it.lv)||"?"));
+  writePasteTries=_pasteTries["write_paste_blocked"]|0;
   writePasteLogged=_pasteLogged["write_paste_blocked"]|0;
   return r;
 }
@@ -14809,7 +14894,7 @@ function micSupported(){return !!(navigator.mediaDevices&&navigator.mediaDevices
 const PRON_GROQ_FN_URL=SB_URL+"/functions/v1/assess-pronunciation-groq";
 let pronSession=[],pronIdx=0,pronResult=null,pronListening=false,pronScore=0,pronDone=false,pronUnsupported=false;
 function startPronunciation(){
-  mode="pron";pronSession=shuffle(DICTATION_A1).slice(0,8);pronIdx=0;pronResult=null;pronListening=false;pronScore=0;pronDone=false;
+  mode="pron";pronSession=wordPlan(PRON_SRS_KEY,8,"pron","say");pronIdx=0;pronResult=null;pronListening=false;pronScore=0;pronDone=false;
   pronBusy=false;pronElapsed=0;if(pronTimer){clearInterval(pronTimer);pronTimer=null}
   pronUnsupported=!micSupported();
   window.scrollTo(0,0);render();
@@ -15193,6 +15278,11 @@ async function pronFinish(){
     pronResult={heard:az.data.heard||az.data.lexical||"",ok:sc.ok,sc,note:"",engine:"azure"};
     if(sc.ok)pronScore++;
     pronWeakRecord(sc.weak,sc.pct);
+    // الكلمةُ نفسها تُسجَّل ضعفاً/إتقاناً في مهارة النطق، بجانب تسجيل الصوت — فذاك
+    // فونيمٌ عابرٌ للكلمات وهذه كلمةٌ بعينها، والتقاطعُ بينها وبين الإملاء هو ما كان
+    // مفقوداً (`gate` ⇐ `kate`). ويُحدَّث تباعدُها فلا تعود بنفس احتمال المُتقَنة.
+    wordErrRecord(target,"say",sc.ok,az.data.heard||"");
+    wordSrsUpdate(PRON_SRS_KEY,String(target).toLowerCase(),sc.ok);
     // نحفظ ما يُقاس لا ما يُعرض فقط: الدقّة وحدها تُميّز «نطقٌ سليم مع تكرار» عن «نطقٌ ضعيف»،
     // وأضعف الأصوات هي الجسر إلى أخطاء إملائها (gate←kate، prize←price) — كلّها فرق جهر
     logAnswer("pronunciation_a1","word",sc.ok,az.data.heard||"",target,Math.round(pronElapsed*1000),
@@ -15216,6 +15306,8 @@ async function pronFinish(){
       const sc=pronScoreOf(target,data.heard,data.judged);
       pronResult={heard:data.heard,ok:sc.ok,sc,note:data.note||"",engine:"groq"};
       if(sc.ok)pronScore++;
+      wordErrRecord(target,"say",sc.ok,data.heard||"");
+      wordSrsUpdate(PRON_SRS_KEY,String(target).toLowerCase(),sc.ok);
       logAnswer("pronunciation_a1","word",sc.ok,data.heard,target,Math.round(pronElapsed*1000),{score_pct:sc.pct,engine:"groq",azure_fail:azureLastFail||null});
     }else if(data&&data.error==="not_configured"){
       pronResult={heard:"",ok:false,error:true,notConfigured:true};
@@ -15283,6 +15375,7 @@ function renderPron(){
          كانت الشاشة تطلب نطق كلمة لا سبيل لمعرفتها إطلاقاً -->
     <div style="font-size:34px;font-weight:800;letter-spacing:1px;direction:ltr;color:#1E293B;margin:6px 0 2px">${item.w}</div>
     <div style="font-size:14px;color:#64748B;margin-bottom:10px">${item.m}</div>
+    ${wordCrossHTML(item.w)}
     <button class="link-btn" style="font-size:12px;margin:0 0 10px" onclick="startAudioDiag()">🔧 الصوت أو الميكروفون لا يعمل؟ افحصي هنا</button>
     <div style="display:flex;gap:12px;justify-content:center;align-items:center;margin:10px 0 18px">
       <button type="button" onclick="speakEnglish(pronSession[${pronIdx}].w)" style="background:#ECFEFF;border:1.5px solid #A5F3FC;color:#0891B2;border-radius:50%;width:56px;height:56px;font-size:22px;cursor:pointer">🔊</button>
