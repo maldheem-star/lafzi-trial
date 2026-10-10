@@ -4709,6 +4709,12 @@ const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEn
   "ttsServerAllow","ttsServerFail","ttsServerWin","wbNeed","wbLeft",
   "azExpandWords",
   "bktLoad","bktSave","bktStep","bktKey","skOf","bktRecord","bktOf","bktMastered","bktToMastery",
+  "vocabOf","vocabOpts","vocabPlan","vocabMasterRecord",
+  "wordErrLoad","wordErrRecord","wordErrOf","letterSub","wordCrossWeak",
+  "wordCrossHTML","wordSrsLoad","wordSrsUpdate","wordPlan",
+  "vocabMastered","vocabMasterCount","vocabStageCheck","vocabSrsUpdate","startVocab","vocabSetupRound",
+  "vocabChoose","vocabCheck","vocabNext","vocabHintShow","vocabHintText","vocabInput","vocabNorm",
+  "vocabPasteBlock","pasteBlockCore","vocabMeterHTML","renderVocab","renderVocabResult","vocabSpeak",
   "writeLfp","mockBand","mockLogLoad","mockLogAdd","mockSeenRecently","mockPickFrom",
   "buildMockPaper","startMock","mockCur","mockQuestion","mockChoose","mockFinish","renderMock","renderMockResult",
   "posRecord","posBiasOf","posBiasArmed","posTagFor","posConfirmOk","posConfirmHTML","posCancel","posPendClear",
@@ -7697,6 +7703,413 @@ function engBuildFor(level){
 
 // ===== إملاء إنجليزي: تستمع للكلمة بصوت أمريكي ثم تكتبها (مستوى A1) =====
 // كلمات حقيقية من منهج الصف السادس (نفس مفردات ENG_ITEMS)، لا كلمات عامة عشوائية
+// ===== المفردات: المعنى والنطق والإملاء على كلمةٍ واحدة — ٩ أكتوبر =====
+// سأل صاحب المشروع: «هل عند هيا حفظ معاني ونطق وكتابة مفردات؟» والقياس أجاب: الثلاثة
+// موجودة وتعمل (٧١٠ محاولة معنًى · ٤٨٣ نطقاً · ٣٩٠ إملاءً)، **لكن على كلمتين مختلفتين
+// تماماً**: بنك المعاني ٧٨ كلمة، وبنك الإملاء/النطق ٢٦، و**تقاطعُهما صفر**. فلا كلمةً
+// واحدة تمرّ بالمهارات الثلاث.
+//
+// **والدليل الحاسم من سجلّها**: `gate` نُطقت ٢٠ مرّة بمتوسّط ٥٥٪ وبثلاث إصابات، وكُتبت
+// ١٣ مرّة بـ**صفر** صواب — وكتبت `kate` **١٢ مرّة من ١٣**. سببٌ صوتيّ واحد (/k/ مكان
+// /g/) يُنتج عَرَضين، والقسمان يسجّلان كلٌّ عَرَضه ولا يرى الآخر.
+//
+// **وبنكٌ من ٢٦ كلمة يُعاد ١٢-١٧ مرّة لكل كلمة** (أسوأها `match` ٢٤ مرّة و`storm` ١٨) —
+// لأن `startDictation`/`startPronunciation` كانا `shuffle().slice(0,8)` وحدهما من بين
+// ثلاثة عشر باباً: بلا FSRS وبلا `planNewMix` وبلا `seenRank`.
+//
+// **والحدّ أمرُ صاحب المشروع نصّاً**: «يجب ألا يقل عدد المفردات عن ٥٠٠ كلمة في المرحلة
+// الأولى.. واذا أجادتها، عطني خبر للانتقال إلى المرحلة التالية».
+//
+// **والمصدر يُقال لا يُجمَّل**: NGSL الرسمية (CC BY-SA 4.0) غيرُ قابلةٍ للجلب من هذه
+// البيئة (سياسة الشبكة تردّ `000`/`403` — جُرِّب فعلاً)، فالبنك **مؤلَّفٌ على مواصفة
+// Cambridge YLE الموضوعية** (Starters/Movers) لا منقولٌ منها — كما يؤلّف هذا المشروع
+// `LISTEN_BANK` و`VIDEO_BANK` و`MINPAIR_BANK` بنفس المنطق المعلَن، وكما تؤلّف كل جهةٍ
+// معياريّة موادّها. والتواتر مسنودٌ بقائمة K1 الموجودة أصلاً في الملفّ.
+// ===== بنك المفردات — المرحلة الأولى =====
+// التبويب الموضوعي من مواصفة Cambridge YLE (Starters/Movers) — وهي نفس الجهة المعيارية
+// المعتمدة في هذا المشروع لصيغة الاختبار. والتبويب ليس زينة: المموّهات تُولَّد من نفس
+// الفئة (قاعدة Haladyna/Downing/Rodriguez 2002: كل مموّهٍ معقول)، فلا تُؤلَّف يدوياً.
+// وأيّام الأسبوع والأشهر مستثناةٌ عمداً — بنك `ENG_ITEMS` يحملها أصلاً (u0_day1..7).
+const VOCAB_CATS={
+  animals:"الحيوانات",body:"الجسم والصحّة",clothes:"الملابس",colors:"الألوان",family:"العائلة",
+  food:"الطعام والشراب",home:"البيت",school:"المدرسة",places:"الأماكن",transport:"المواصلات",
+  leisure:"الرياضة والترفيه",time:"الوقت",nature:"الطبيعة والطقس",jobs:"المهن",
+  adj:"الصفات",verbs:"الأفعال"};
+const VOCAB_RAW={
+animals:"cat=قطة|dog=كلب|bird=طائر|fish=سمكة|horse=حصان|camel=جمل|sheep=خروف|goat=عنزة|"+
+ "cow=بقرة|chicken=دجاجة|duck=بطة|rabbit=أرنب|mouse=فأر|lion=أسد|tiger=نمر|elephant=فيل|"+
+ "monkey=قرد|bear=دبّ|wolf=ذئب|fox=ثعلب|giraffe=زرافة|crocodile=تمساح|snake=ثعبان|"+
+ "lizard=سحلية|frog=ضفدع|turtle=سلحفاة|spider=عنكبوت|ant=نملة|bee=نحلة|butterfly=فراشة|"+
+ "beetle=خنفساء|worm=دودة|shark=سمكة قرش|whale=حوت|dolphin=دلفين|octopus=أخطبوط|"+
+ "eagle=نسر|owl=بومة|parrot=ببغاء|penguin=بطريق|kangaroo=كنغر|donkey=حمار|pigeon=حمامة|"+
+ "insect=حشرة|feather=ريشة|tail=ذيل",
+body:"head=رأس|hair=شعر|face=وجه|eye=عين|ear=أذن|nose=أنف|mouth=فم|tooth=سنّ|tongue=لسان|"+
+ "lip=شفة|neck=رقبة|shoulder=كتف|arm=ذراع|elbow=مرفق|hand=يد|finger=إصبع|thumb=إبهام|"+
+ "nail=ظُفر|chest=صدر|stomach=معدة|leg=ساق|knee=رُكبة|foot=قدم|toe=إصبع القدم|skin=جلد|"+
+ "bone=عظم|heart=قلب|brain=دماغ|blood=دم|body=جسم|voice=صوت|medicine=دواء|health=صحّة",
+clothes:"shirt=قميص|trousers=بنطال|jeans=جينز|dress=فستان|skirt=تنورة|coat=معطف|"+
+ "jacket=سُترة|sweater=كنزة صوفية|shoes=حذاء|socks=جوارب|boots=حذاء طويل|sandals=صندل|"+
+ "hat=قبعة|cap=طاقية|scarf=وشاح|gloves=قفازات|belt=حزام|tie=ربطة عنق|pocket=جيب|"+
+ "button=زرّ|glasses=نظارة|ring=خاتم|bag=حقيبة|umbrella=مظلة|uniform=زيّ موحد|"+
+ "helmet=خوذة|towel=منشفة|pyjamas=منامة",
+colors:"red=أحمر|blue=أزرق|green=أخضر|yellow=أصفر|black=أسود|white=أبيض|brown=بنّي|"+
+ "orange=برتقالي|pink=وردي|purple=بنفسجي|grey=رمادي|gold=ذهبي|silver=فضّي",
+family:"family=عائلة|father=أب|mother=أم|parents=الوالدان|son=ابن|daughter=ابنة|brother=أخ|"+
+ "sister=أخت|baby=رضيع|child=طفل|grandfather=جدّ|grandmother=جدّة|uncle=عمّ|aunt=عمّة|"+
+ "cousin=ابن العمّ|husband=زوج|wife=زوجة|friend=صديق|neighbour=جار|guest=ضيف|man=رجل|"+
+ "woman=امرأة|boy=ولد|girl=بنت",
+food:"food=طعام|bread=خبز|rice=أرزّ|meat=لحم|egg=بيضة|cheese=جبن|butter=زبدة|milk=حليب|"+
+ "water=ماء|juice=عصير|tea=شاي|coffee=قهوة|sugar=سكّر|salt=ملح|pepper=فلفل|oil=زيت|"+
+ "honey=عسل|jam=مربّى|soup=حساء|salad=سلطة|sandwich=شطيرة|pizza=بيتزا|pasta=معكرونة|"+
+ "cake=كعكة|biscuit=بسكويت|chocolate=شوكولاتة|sweets=حلويات|chips=رقائق بطاطس|"+
+ "yoghurt=لبن زبادي|apple=تفاحة|banana=موزة|grapes=عنب|lemon=ليمون|mango=مانجو|"+
+ "melon=شمّام|watermelon=بطيخ|strawberry=فراولة|peach=خوخ|pear=إجاصة|raisin=زبيب|"+
+ "fig=تينة|olive=زيتونة|tomato=طماطم|potato=بطاطس|onion=بصل|garlic=ثوم|carrot=جزر|"+
+ "cucumber=خيار|lettuce=خسّ|bean=فاصولياء|pea=بازلاء|corn=ذرة|nut=مكسّرات|"+
+ "breakfast=فطور|lunch=غداء|dinner=عشاء|meal=وجبة|flour=طحين",
+home:"house=منزل|room=غرفة|kitchen=مطبخ|bedroom=غرفة نوم|bathroom=حمّام|garden=حديقة|"+
+ "door=باب|window=نافذة|wall=حائط|floor=أرضية|roof=سطح|stairs=درج|ceiling=سقف|"+
+ "table=طاولة|chair=كرسيّ|bed=سرير|sofa=أريكة|shelf=رفّ|cupboard=خزانة|mirror=مرآة|"+
+ "lamp=مصباح|clock=ساعة حائط|carpet=سجادة|curtain=ستارة|blanket=بطانية|pillow=وسادة|"+
+ "key=مفتاح|lock=قُفل|plate=طبق|cup=كوب|glass=كأس|bowl=سَلطانية|spoon=ملعقة|fork=شوكة|"+
+ "knife=سكّين|bottle=قارورة|pot=قِدر|pan=مقلاة|fridge=ثلاجة|oven=فُرن|soap=صابون|"+
+ "brush=فرشاة|box=صندوق|basket=سلّة|garage=مرآب|toothbrush=فرشاة أسنان",
+school:"school=مدرسة|class=صفّ|lesson=درس|teacher=معلّم|student=طالب|homework=واجب منزلي|"+
+ "test=اختبار|exam=امتحان|book=كتاب|notebook=دفتر|page=صفحة|pen=قلم حبر|pencil=قلم رصاص|"+
+ "ruler=مسطرة|rubber=ممحاة|paper=ورق|crayon=قلم تلوين|desk=مكتب|board=لوح|chalk=طبشور|"+
+ "glue=صمغ|scissors=مقصّ|map=خريطة|dictionary=قاموس|library=مكتبة|answer=جواب|"+
+ "question=سؤال|word=كلمة|sentence=جملة|number=رقم|story=قصة|poem=قصيدة|project=مشروع|"+
+ "grade=درجة|mistake=خطأ|homeroom=صفّ التحضير",
+places:"city=مدينة|town=بلدة|village=قرية|country=بلد|street=شارع|road=طريق|bridge=جسر|"+
+ "park=حديقة عامة|shop=متجر|market=سوق|mall=مركز تجاري|bank=مصرف|hospital=مستشفى|"+
+ "clinic=عيادة|pharmacy=صيدلية|restaurant=مطعم|cafe=مقهى|hotel=فندق|museum=متحف|"+
+ "zoo=حديقة حيوان|cinema=سينما|theatre=مسرح|stadium=ملعب|airport=مطار|station=محطة|"+
+ "port=ميناء|beach=شاطئ|farm=مزرعة|factory=مصنع|office=مكتب عمل|mosque=مسجد|"+
+ "castle=قلعة|tower=برج|bakery=مخبز|gate=بوابة|corner=زاوية|address=عنوان|place=مكان|"+
+ "building=مبنى|flat=شقّة|lift=مصعد|roundabout=دوّار",
+transport:"car=سيارة|bus=حافلة|train=قطار|plane=طائرة|ship=سفينة|boat=قارب|bike=دراجة|"+
+ "motorbike=دراجة نارية|taxi=سيارة أجرة|truck=شاحنة|van=شاحنة صغيرة|tractor=جرّار|"+
+ "helicopter=مروحية|rocket=صاروخ|wheel=عجلة|engine=محرّك|ticket=تذكرة|seat=مقعد|"+
+ "journey=رحلة|traffic=زحام|petrol=بنزين|platform=رصيف المحطة",
+leisure:"game=لعبة|ball=كرة|football=كرة قدم|basketball=كرة سلة|tennis=تنس|swimming=سباحة|"+
+ "running=جري|race=سباق|match=مباراة|team=فريق|player=لاعب|coach=مدرّب|goal=هدف|"+
+ "prize=جائزة|medal=ميدالية|winner=فائز|chess=شطرنج|puzzle=أحجية|toy=لعبة أطفال|"+
+ "doll=دمية|kite=طائرة ورقية|balloon=بالون|card=بطاقة|music=موسيقى|song=أغنية|"+
+ "guitar=قيثارة|piano=بيانو|drum=طبل|violin=كمان|concert=حفل موسيقي|film=فيلم|"+
+ "camping=تخييم|picnic=نزهة|hobby=هواية|holiday=عطلة|camera=كاميرا",
+time:"time=وقت|day=يوم|week=أسبوع|month=شهر|year=سنة|hour=ساعة زمنية|minute=دقيقة|"+
+ "second=ثانية|morning=صباح|afternoon=بعد الظهر|evening=مساء|night=ليل|noon=ظهر|"+
+ "midnight=منتصف الليل|today=اليوم|tomorrow=غداً|yesterday=أمس|calendar=تقويم|"+
+ "season=فصل السنة|winter=شتاء|summer=صيف|spring=ربيع|autumn=خريف|future=المستقبل|past=الماضي|birthday=عيد ميلاد|age=عمر|moment=لحظة|"+
+ "century=قرن|weekend=نهاية الأسبوع",
+nature:"weather=طقس|sun=شمس|moon=قمر|star=نجمة|sky=سماء|cloud=سحابة|rain=مطر|snow=ثلج|"+
+ "wind=ريح|storm=عاصفة|fog=ضباب|ice=جليد|thunder=رعد|lightning=برق|rainbow=قوس قزح|"+
+ "heat=حرارة|shadow=ظلّ|air=هواء|fire=نار|earth=الأرض|world=العالم|sea=بحر|ocean=محيط|"+
+ "river=نهر|lake=بحيرة|mountain=جبل|hill=تلّ|valley=وادٍ|desert=صحراء|forest=غابة|"+
+ "tree=شجرة|leaf=ورقة شجر|flower=زهرة|grass=عشب|plant=نبات|seed=بذرة|root=جِذر|"+
+ "sand=رمل|stone=حجر|rock=صخرة|island=جزيرة|cave=كهف|field=حقل|space=الفضاء|planet=كوكب",
+jobs:"job=مهنة|doctor=طبيب|nurse=ممرّضة|engineer=مهندس|pilot=طيار|driver=سائق|"+
+ "farmer=مزارع|waiter=نادل|cleaner=عامل نظافة|policeman=شرطي|firefighter=رجل إطفاء|"+
+ "soldier=جندي|dentist=طبيب أسنان|vet=طبيب بيطري|journalist=صحفي|writer=كاتب|"+
+ "artist=فنّان|singer=مُغنٍّ|actor=مُمثّل|scientist=عالِم|lawyer=محامٍ|manager=مدير|"+
+ "seller=بائع|baker=خبّاز|butcher=جزّار|barber=حلّاق|mechanic=ميكانيكي|secretary=سكرتير|business=عمل تجاري",
+adj:"big=كبير|small=صغير|long=طويل|short=قصير|tall=طويل القامة|high=عالٍ|low=منخفض|"+
+ "wide=واسع|narrow=ضيّق|thick=سميك|thin=نحيف|heavy=ثقيل|light=خفيف|strong=قويّ|"+
+ "weak=ضعيف|fast=سريع|slow=بطيء|new=جديد|old=قديم|young=صغير السنّ|clean=نظيف|"+
+ "dirty=قذِر|hot=حارّ|cold=بارد|warm=دافئ|cool=معتدل البرودة|wet=مبلّل|dry=جافّ|"+
+ "full=ممتلئ|empty=فارغ|open=مفتوح|closed=مغلق|easy=سهل|hard=صعب|soft=ناعم|"+
+ "loud=مرتفع الصوت|quiet=هادئ|bright=ساطع|dark=مُعتم|deep=عميق|sharp=حادّ|"+
+ "sweet=حلو المذاق|sour=حامض|salty=مالح|delicious=لذيذ|beautiful=جميل|ugly=قبيح|"+
+ "rich=غنيّ|poor=فقير|happy=سعيد|sad=حزين|angry=غاضب|afraid=خائف|tired=متعب|"+
+ "hungry=جائع|thirsty=عطشان|sick=مريض|healthy=معافى|busy=مشغول|free=متفرّغ|"+
+ "ready=مستعدّ|brave=شجاع|kind=لطيف|clever=ذكيّ|lazy=كسول|funny=مُضحك|careful=حَذِر|"+
+ "famous=مشهور|important=مهمّ|expensive=غالي الثمن|cheap=رخيص|early=مبكّر|"+
+ "late=متأخّر|modern=حديث|ancient=عريق|dangerous=خطير|safe=آمن|polite=مؤدّب|"+
+ "honest=صادق|wonderful=رائع",
+verbs:"go=يذهب|come=يأتي|eat=يأكل|drink=يشرب|sleep=ينام|wake=يستيقظ|walk=يمشي|run=يجري|"+
+ "jump=يقفز|swim=يسبح|climb=يتسلّق|fall=يسقط|sit=يجلس|stand=يقف|close=يُغلق|read=يقرأ|"+
+ "write=يكتب|speak=يتحدّث|listen=يستمع|hear=يسمع|see=يرى|look=ينظر|watch=يشاهد|"+
+ "say=يقول|tell=يحكي|ask=يسأل|reply=يردّ|learn=يتعلّم|teach=يُعلّم|study=يدرس|"+
+ "remember=يتذكّر|forget=ينسى|understand=يفهم|think=يفكّر|know=يعرف|help=يساعد|"+
+ "give=يعطي|take=يأخذ|bring=يُحضر|send=يُرسل|buy=يشتري|sell=يبيع|pay=يسدّد|cost=يُكلّف|"+
+ "find=يجد|lose=يفقد|keep=يحتفظ|put=يضع|carry=يحمل|pull=يسحب|push=يدفع|throw=يرمي|"+
+ "catch=يلتقط|hold=يُمسك|touch=يلمس|break=يكسر|build=يبني|make=يصنع|cut=يقطع|"+
+ "wash=يغسل|cook=يطبخ|tidy=يرتّب|draw=يرسم|paint=يُلوّن|sing=يغنّي|dance=يرقص|"+
+ "play=يلعب|win=يفوز|start=يبدأ|finish=ينهي|stop=يتوقّف|wait=ينتظر|try=يحاول|"+
+ "want=يريد|need=يحتاج|like=يُحبّ|love=يعشق|hate=يكره|hope=يأمل|feel=يشعر|"+
+ "laugh=يضحك|cry=يبكي|smile=يبتسم|shout=يصرخ|whisper=يهمس|call=يتّصل|visit=يزور|"+
+ "meet=يلتقي|live=يعيش|die=يموت|grow=ينمو|change=يتغيّر|move=يتحرّك|travel=يُسافر|"+
+ "fly=يطير|drive=يقود|ride=يركب|wear=يلبس|show=يعرض|choose=يختار|count=يعدّ|"+
+ "measure=يقيس|repeat=يُكرّر|invent=يخترع|improve=يُحسّن|repair=يُصلح|use=يستخدم|"+
+ "work=يعمل|rest=يستريح|breathe=يتنفّس|smell=يشمّ|taste=يتذوّق"};
+
+const VOCAB_BANK=(function(){
+  const out=[];
+  Object.keys(VOCAB_RAW).forEach(function(c){
+    VOCAB_RAW[c].split("|").forEach(function(p){
+      if(!p)return;const i=p.indexOf("=");if(i<0)return;
+      out.push({w:p.slice(0,i),m:p.slice(i+1),c:c});
+    });
+  });
+  return out;
+})();
+const VOCAB_BY_CAT=(function(){const o={};VOCAB_BANK.forEach(function(v){(o[v.c]=o[v.c]||[]).push(v)});return o})();
+const VOCAB_BY_WORD=(function(){const o={};VOCAB_BANK.forEach(function(v){o[v.w]=v});return o})();
+function vocabOf(w){return VOCAB_BY_WORD[String(w||"").toLowerCase()]||null}
+const VOCAB_N=10;
+// **الحدّ أمرُ صاحب المشروع نصّاً**: «يجب ألا يقل عدد المفردات عن ٥٠٠ كلمة في المرحلة
+// الأولى». والبنك أوسع منه، فالحدُّ معيارُ **إجادة** لا معيارُ حجم: ٥٠٠ كلمة مُجادة.
+const VOCAB_STAGE1_MIN=500;
+
+// ===== معيارُ الإجادة: الاسترجاع الفعّال، متباعداً =====
+// **Laufer & Goldstein 2004** (*Language Learning* 54:399) يرتّبون معرفة الكلمة أربع
+// درجات بصعوبةٍ مُقاسة: تعرّفٌ سلبي ⇐ تعرّفٌ فعّال ⇐ استرجاعٌ سلبي ⇐ **استرجاعٌ فعّال**
+// (أن تُنتج الكلمة من معناها) وهو أصعبها. فالإجادة تُحتسَب على هذه الدرجة وحدها — ولا
+// تُحتسَب على التعرّف، لأن ٥٥٪ على أربعة خيارات لا تقول إنها تملك الكلمة.
+//
+// **وفي يومين مختلفين لا في جلسةٍ واحدة**: إصابةٌ واحدة قد تكون أثر الخيار المعروض قبل
+// لحظات، والتباعدُ هو ما يفصل التعلّم عن الذاكرة العاملة — وهو أساس FSRS المعتمَد هنا.
+// وخطأٌ لاحق يُصفّر العدّاد: لا إجادةَ بأثرٍ رجعي.
+//
+// **والنطق خارج شرط الإجادة عمداً** — وهذا يُقال لا يُخفى: أعطالُ المحرّك والميكروفون
+// موثَّقةٌ في هذا الملفّ (`synthesis-failed` على جهازها، و`play_autoplay_blocked`،
+// ومتصفّح سناب شات يحجب الاثنين)، فتعليقُ المرحلة عليه كان سيجعلها **غير قابلة للعبور
+// لسببٍ خارج قدرتها**. يُقاس ويُعرض، ولا يُبنى عليه حكمُ انتقال.
+const VOCAB_MASTER_KEY="mawhiba_vocab_master_v1";
+const VOCAB_MASTER_REQ=2;
+function vocabMasterLoad(){try{return JSON.parse(lsGet(VOCAB_MASTER_KEY)||"{}")}catch(e){return{}}}
+function vocabMasterSave(o){try{lsSet(VOCAB_MASTER_KEY,JSON.stringify(o))}catch(e){}}
+function vocabMasterRecord(w,ok){
+  const m=vocabMasterLoad(),k=String(w||"").toLowerCase(),d=srsToday();
+  const r=m[k]||{n:0,d:-1};
+  if(!ok)r.n=0;
+  else if(r.d!==d){r.n=(r.n|0)+1;r.d=d}
+  m[k]=r;vocabMasterSave(m);return r;
+}
+function vocabMastered(w){
+  const r=vocabMasterLoad()[String(w||"").toLowerCase()];
+  return !!(r&&(r.n|0)>=VOCAB_MASTER_REQ);
+}
+function vocabMasterCount(){
+  const m=vocabMasterLoad();let n=0;
+  Object.keys(m).forEach(function(k){if((m[k].n|0)>=VOCAB_MASTER_REQ&&VOCAB_BY_WORD[k])n++});
+  return n;
+}
+// ===== خبرُ اكتمال المرحلة — «عطني خبر للانتقال إلى المرحلة التالية» =====
+// والخبر لا يُعلَّق على أن يتذكّر أحدٌ أن يسأل (درس ١٨ أغسطس): سطرٌ يصل السجلّ **مرّةً
+// واحدة ويبقى** (المفتاح محلّي فلا يُعاد عند كل تحميل)، وشارةٌ على الشاشة. فيُقرأ
+// بالاستعلام ويُبلَّغ به.
+const VOCAB_STAGE_KEY="mawhiba_vocab_stage_v1";
+function vocabStageLoad(){try{return JSON.parse(lsGet(VOCAB_STAGE_KEY)||"{}")}catch(e){return{}}}
+function vocabStageCheck(){
+  const n=vocabMasterCount();
+  if(n<VOCAB_STAGE1_MIN)return n;
+  const st=vocabStageLoad();
+  if(st.done1)return n;
+  st.done1=srsToday();try{lsSet(VOCAB_STAGE_KEY,JSON.stringify(st))}catch(e){}
+  try{logAnswer("gen","vocab_stage_done",null,"المرحلة ١ · "+toAr(n)+" كلمة مُجادة",null,null,
+    {q_text:("[المفردات · المرحلة ١ مكتملة] أُجيدت "+n+" كلمة من "+VOCAB_BANK.length
+      +" بالاسترجاع الفعّال في يومين مختلفين — الحدّ "+VOCAB_STAGE1_MIN
+      +". خبرٌ لصاحب المشروع: جاهزة للمرحلة التالية.").slice(0,300)})}catch(e){}
+  return n;
+}
+
+const VOCAB_SRS_KEY="mawhiba_vocab_srs_v1";
+function vocabSrsLoad(){try{return JSON.parse(lsGet(VOCAB_SRS_KEY)||"{}")}catch(e){return{}}}
+function vocabSrsSave(o){try{lsSet(VOCAB_SRS_KEY,JSON.stringify(o))}catch(e){}}
+function vocabSrsUpdate(id,ok){
+  const st=vocabSrsLoad(),r=st[id]||{box:0,seen:0};
+  const n=fsrsUpdate(r,ok,srsToday());
+  r.box=n.box;r.due=n.due;r.seen=n.seen;r.s=n.s;r.d=n.d;r.last=n.last;
+  st[id]=r;vocabSrsSave(st);
+}
+// ===== المموّهات تُولَّد من نفس الفئة لا تُؤلَّف يدوياً =====
+// **Haladyna, Downing & Rodriguez 2002** (المعيار المعتمَد في هذا المشروع لكتابة سؤال
+// الاختيار من متعدد): كل مموّهٍ **معقول**. ومعنًى من فئةٍ أخرى يُستبعَد بلا قراءة السؤال
+// («فراشة» مقابل «مصرف») فلا يقيس شيئاً — ولهذا التبويب الموضوعي بنيةٌ لا زينة.
+// ولا معنى مكرّراً داخل الفئة (يحرسه الاختبار)، وإلّا صار المموّه صواباً ثانياً.
+function vocabOpts(v){
+  const pool=(VOCAB_BY_CAT[v.c]||[]).filter(function(x){return x.w!==v.w&&x.m!==v.m});
+  const picks=shuffle(pool).slice(0,3).map(function(x){return x.m});
+  return shuffle([v.m].concat(picks));
+}
+// ===== بانيةُ الجلسة — نفس بنية البانيات الإحدى عشرة حرفياً =====
+// والترتيب بين الوجهين منشورٌ لا مخترَع: التعرّف أسهل من الاسترجاع عند Laufer & Goldstein،
+// فلا تُطلب كلمةٌ إنتاجاً قبل أن يُصاب تعرّفُها مرّةً (`box>0` في سجلّ التعرّف).
+function vocabPlan(){
+  const st=vocabSrsLoad(),today=srsToday(),items=[];
+  VOCAB_BANK.forEach(function(v){
+    const kR="recog:"+v.w,kA="recall:"+v.w;
+    items.push({id:kR,facet:"recog",w:v.w,m:v.m,c:v.c});
+    if(st[kR]&&(st[kR].box|0)>0)items.push({id:kA,facet:"recall",w:v.w,m:v.m,c:v.c});
+  });
+  const due=shuffle(items.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
+  const fresh=shuffle(items.filter(function(i){return !st[i.id]}));
+  const out=planNewMix(due,fresh,VOCAB_N);
+  return topUpPlan(out,items,VOCAB_N,"vocab");
+}
+let vocabItems=[],vocabIdx=0,vocabOrder=[],vocabChoices=[],vocabPicked=-1,vocabLocked=false,
+  vocabScore=0,vocabShownAt=0,vocabDone=false,vocabTyped="",vocabHint=0,vocabFixed=false;
+function vocabCur(){return vocabItems[vocabIdx]||null}
+function startVocab(){posPendClear();
+  vocabItems=vocabPlan();vocabIdx=0;vocabScore=0;vocabDone=false;
+  mode="vocab";vocabSetupRound();window.scrollTo(0,0);render();
+}
+function vocabSetupRound(){
+  const it=vocabCur();
+  vocabPicked=-1;vocabLocked=false;vocabTyped="";vocabHint=0;vocabFixed=false;vocabShownAt=Date.now();
+  vocabChoices=[];vocabOrder=[];
+  if(it&&it.facet==="recog"){
+    vocabChoices=vocabOpts(it);
+    vocabOrder=vocabChoices.map(function(_,i){return i});
+    // الأرضيّة مشتقّةٌ من زمنها المقاس في بنك المعاني القائم (وسيطٌ ٢٫٦ث على ٤١٥ إجابة):
+    // نصفُه أرضيّةً وهو سقفُها — فلا تُحبَس إجابةٌ صادقة، ويُمنَع النقر على ٠٫٢٦ث المرصود.
+    secGateStart("vocab",it.w,"vocab:recog");
+  }else{gateStop();gateSecs=0;gateLeft=0}
+  if(it)setTimeout(function(){vocabSpeak()},250);
+}
+function vocabSpeak(){const it=vocabCur();if(it)speakEnglish(it.w)}
+function vocabHintShow(){if(vocabLocked)return;vocabHint++;render()}
+function vocabHintText(w){
+  if(vocabHint<=0)return "";
+  const s=String(w||"");
+  if(vocabHint===1)return s.slice(0,1)+" "+s.slice(1).split("").map(function(){return "_"}).join(" ");
+  return s.split("").map(function(c,i){return i<2?c:"_"}).join(" ");
+}
+// اللصقُ مغلق في الاسترجاع — والسببُ هو بعينه سببُ غلقه في الكتابة (٦ أكتوبر): معيارٌ
+// يُقاس على إنتاجٍ لم تُنتجه لا يقيس شيئاً. والتصحيحُ التلقائي للوحة الهاتف قد يُسلّمها
+// الكلمة كاملةً، فيُوسَم في السطر ولا يُسقط الدرجة — نفس تفريق ٢٩ أغسطس بلا عقابٍ على
+// استعمال هاتف، والوسمُ يُقاس قبل أن يُبنى عليه حكم.
+function vocabPasteBlock(ev){
+  return pasteBlockCore(ev,"vocabPasteNote","vocab_paste_blocked",
+    (vocabCur()||{}).w||null,"[لصق مُنع في المفردات]");
+}
+function vocabInput(ev){
+  const t=ev&&ev.target?ev.target:null;
+  vocabTyped=t?String(t.value||""):vocabTyped;
+  const ty=(ev&&ev.inputType)||"";
+  if(ty==="insertReplacementText"||ty==="insertCompositionText")vocabFixed=true;
+}
+function vocabNorm(s){return String(s||"").trim().toLowerCase().replace(/\s+/g," ")}
+function vocabChoose(i){
+  const it=vocabCur();
+  if(!it||vocabLocked||it.facet!=="recog"||!gateOpen())return;
+  if(!posConfirmOk("vocab",i,vocabChoices[vocabOrder[i]]))return;
+  vocabPicked=i;vocabLocked=true;
+  const chosen=vocabChoices[vocabOrder[i]],ok=chosen===it.m;
+  if(ok)vocabScore++;
+  vocabSrsUpdate(it.id,ok);
+  const shown=vocabOrder.map(function(oi,k){
+    return (k+1)+") "+vocabChoices[oi]+(vocabChoices[oi]===it.m?" ✓":"")}).join(" | ");
+  posRecord("vocab",i+1,vocabChoices.length);
+  logAnswer("vocab","recog",ok,"موضع "+toAr(i+1)+" · "+chosen
+    +(ok?"":" · الصواب "+it.m)+posTagFor("vocab"),it.w,Date.now()-vocabShownAt,
+    {_sk:"vocab:"+it.c,q_text:("ما معنى \""+it.w+"\"؟ [فئة:"+it.c+"] الخيارات: "+shown).slice(0,300)});
+  render();
+}
+function vocabCheck(){
+  const it=vocabCur();
+  if(!it||vocabLocked||it.facet!=="recall")return;
+  const el=document.getElementById('vocabIn');
+  if(el)vocabTyped=String(el.value||"");
+  if(!vocabNorm(vocabTyped))return;
+  vocabLocked=true;
+  const ok=vocabNorm(vocabTyped)===vocabNorm(it.w);
+  if(ok)vocabScore++;
+  vocabSrsUpdate(it.id,ok);
+  // الإجادةُ تُحتسَب هنا وحدها — هذه درجةُ الاسترجاع الفعّال
+  vocabMasterRecord(it.w,ok);
+  vocabStageCheck();
+  logAnswer("vocab","recall",ok,vocabNorm(vocabTyped)+(ok?"":" · الصواب "+it.w)
+    +(vocabHint?" · تلميح:"+toAr(vocabHint):"")+(vocabFixed?" · إدخال:تصحيح تلقائي":""),
+    it.w,Date.now()-vocabShownAt,
+    {_sk:"vocab:"+it.c,q_text:("اكتبي بالإنجليزية: «"+it.m+"» [فئة:"+it.c+"]"
+      +(vocabHint?" · تلميح:"+vocabHint:"")).slice(0,300)});
+  render();
+}
+function vocabNext(){posPendClear();
+  if(vocabIdx+1>=vocabItems.length){vocabDone=true;gateStop();render();return}
+  vocabIdx++;vocabSetupRound();render();
+}
+function vocabMeterHTML(){
+  const n=vocabMasterCount(),pct=Math.min(100,Math.round(n/VOCAB_STAGE1_MIN*100));
+  const done=n>=VOCAB_STAGE1_MIN;
+  return `<div style="background:${done?'#F0FDF4':'#F8FAFC'};border:1px solid ${done?'#86EFAC':'#E2E8F0'};border-radius:12px;padding:10px 12px;margin-bottom:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;color:#334155">
+      <span>المرحلة ١ · أجدتِ <b>${toAr(n)}</b> من ${toAr(VOCAB_STAGE1_MIN)}</span>
+      <span style="color:#64748B">البنك ${toAr(VOCAB_BANK.length)} كلمة</span>
+    </div>
+    <div style="height:8px;border-radius:99px;background:#E2E8F0;margin-top:8px;overflow:hidden">
+      <div style="height:100%;width:${pct}%;background:${done?'#16A34A':'#0E7490'}"></div>
+    </div>
+    ${done?`<div style="font-size:12px;color:#166534;margin-top:8px;line-height:1.8">🎉 أكملتِ المرحلة الأولى — ووصل الخبر لوالدك للانتقال إلى المرحلة التالية.</div>`:""}
+  </div>`;
+}
+function renderVocab(){
+  if(vocabDone)return renderVocabResult();
+  const it=vocabCur();
+  if(!it){vocabDone=true;return renderVocabResult()}
+  const prog=vocabItems.map(function(_,i){
+    return `<div class="seg" style="background:${i<=vocabIdx?'#0E7490':'#E2E8F0'};opacity:${i<=vocabIdx?1:.5}"></div>`}).join("");
+  const catName=VOCAB_CATS[it.c]||it.c;
+  let inner;
+  if(it.facet==="recog"){
+    const opts=gateOpen()?vocabOrder.map(function(oi,k){
+      const txt=vocabChoices[oi],right=txt===it.m;
+      const bg=vocabLocked?(right?"#DCFCE7":(k===vocabPicked?"#FEE2E2":"#fff")):"#fff";
+      const bc=vocabLocked?(right?"#16A34A":(k===vocabPicked?"#DC2626":"#E2E8F0")):"#E2E8F0";
+      return `<button type="button" onclick="vocabChoose(${k})" ${vocabLocked?"disabled":""}
+        style="display:block;width:100%;text-align:right;padding:12px 14px;margin-bottom:8px;border-radius:12px;border:2px solid ${bc};background:${bg};font-size:16px;font-family:inherit;cursor:pointer">${esc(txt)}</button>`;
+    }).join(""):"";
+    const fb=vocabLocked?`<div class="explain"><div class="explain-title" style="color:${vocabChoices[vocabOrder[vocabPicked]]===it.m?'#059669':'#B45309'}">${vocabChoices[vocabOrder[vocabPicked]]===it.m?"✓ صحيح":"المعنى الصحيح:"}</div><div class="explain-body"><b dir="ltr" style="display:inline-block;font-family:Georgia,serif">${esc(it.w)}</b> = ${esc(it.m)}</div></div>`:"";
+    inner=`<span class="tag" style="background:#CFFAFE;color:#0E7490">📖 المعنى · ${esc(catName)}</span>
+      <div style="font-size:34px;font-weight:800;direction:ltr;font-family:Georgia,serif;color:#1E293B;margin:14px 0 6px">${esc(it.w)}</div>
+      <button type="button" onclick="vocabSpeak()" style="background:#ECFEFF;border:1.5px solid #A5F3FC;color:#0891B2;border-radius:50%;width:48px;height:48px;font-size:20px;cursor:pointer;margin-bottom:12px">🔊</button>
+      ${secGateHTML("المعاني")}
+      ${posConfirmHTML("vocab","vocabChoose")}
+      ${opts}${fb}`;
+  }else{
+    const hint=vocabHintText(it.w);
+    const okNow=vocabLocked&&vocabNorm(vocabTyped)===vocabNorm(it.w);
+    const fb=vocabLocked?`<div class="explain"><div class="explain-title" style="color:${okNow?'#059669':'#B45309'}">${okNow?"✓ أحسنتِ — كتبتِها صحيحة":"الكلمة الصحيحة:"}</div><div class="explain-body">${okNow?"":`<div style="font-size:24px;font-weight:800;letter-spacing:3px;direction:ltr;font-family:Georgia,serif;margin:6px 0">${dictDiff(vocabNorm(vocabTyped),it.w)}</div><div style="font-size:12px;color:#64748B;margin-bottom:6px">الأخضر = حرف صحيح في مكانه، الأحمر = خطأ أو ناقص</div>`}تعني «${esc(it.m)}».</div></div>`:"";
+    inner=`<span class="tag" style="background:#FEF3C7;color:#92400E">✍️ اكتبيها بالإنجليزية · ${esc(catName)}</span>
+      <div style="font-size:28px;font-weight:800;color:#1E293B;margin:14px 0 4px">${esc(it.m)}</div>
+      <div style="font-size:12px;color:#64748B;margin-bottom:14px">اكتبي الكلمة الإنجليزية التي تعني هذا</div>
+      ${hint?`<div style="font-size:24px;font-weight:800;letter-spacing:4px;direction:ltr;font-family:Georgia,serif;color:#0F766E;margin-bottom:12px">${hint}</div>`:""}
+      <input id="vocabIn" ${vocabLocked?"disabled":""} value="${esc(vocabTyped)}"
+        oninput="vocabInput(event)" onpaste="return vocabPasteBlock(event)" ondrop="return vocabPasteBlock(event)"
+        onkeydown="if(event.key==='Enter')vocabCheck()"
+        style="width:100%;padding:14px;border-radius:12px;border:2px solid #E2E8F0;font-size:20px;text-align:center;direction:ltr;font-family:Georgia,serif"
+        placeholder="type here" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+      <div id="vocabPasteNote" style="font-size:12px;color:#94A3B8;margin-top:8px;line-height:1.7">اللصق مغلق هنا — اكتبي الجواب بأصابعك.</div>
+      ${(!vocabLocked&&vocabHint<2)?`<button class="link-btn" style="font-size:12px;margin:8px 0 0" onclick="vocabHintShow()">💡 أعطيني أول حرف</button>`:""}
+      ${fb}`;
+  }
+  const btn=vocabLocked
+    ?`<button class="btn" style="background:#0E7490" onclick="vocabNext()">${vocabIdx+1>=vocabItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`
+    :(it.facet==="recall"?`<button class="btn" style="background:#0E7490" onclick="vocabCheck()">تحقّقي ←</button>`:"");
+  app.innerHTML=`
+  <button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
+  <div class="bar">${prog}</div>
+  <div class="meta"><span>${toAr(vocabIdx+1)} من ${toAr(vocabItems.length)}</span><span>المفردات · المرحلة ١</span></div>
+  ${vocabMeterHTML()}
+  <div class="card" style="text-align:center">${inner}</div>
+  ${btn}`;
+  if(!vocabLocked&&it.facet==="recall"){const el=document.getElementById('vocabIn');if(el)el.focus()}
+}
+function renderVocabResult(){
+  const n=vocabItems.length||1,pct=Math.round(vocabScore/n*100);
+  const recall=vocabItems.filter(function(i){return i.facet==="recall"}).length;
+  app.innerHTML=`
+  <button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
+  <div class="card" style="text-align:center">
+    <div style="font-size:44px;font-weight:800;color:#0E7490">${toAr(vocabScore)}/${toAr(n)}</div>
+    <div style="font-size:14px;color:#64748B;margin-top:6px">${toAr(pct)}٪ · منها ${toAr(recall)} سؤالَ كتابةٍ بالإنجليزية</div>
+  </div>
+  ${vocabMeterHTML()}
+  <button class="btn" style="background:#0E7490" onclick="startVocab()">جلسة أخرى</button>
+  <button class="link-btn" onclick="home()">→ الرئيسية</button>`;
+}
 const DICTATION_A1=[
  {w:"taxi",m:"سيارة أجرة"},{w:"gate",m:"بوابة"},
  {w:"insect",m:"حشرة"},{w:"camel",m:"جمل"},{w:"eagle",m:"نسر"},
@@ -7748,10 +8161,79 @@ let dictStage=1,dictStreak=0,dictMiss=0,dictShownAt=0;
 function dictCur(){return dictSession[dictIdx]||{}}
 function dictIsBuild(){return !!dictCur().build}
 function dictText(){const it=dictCur();return it.build?String(it.s||""):String(it.w||"")}
+// ===== ذاكرةُ خطأ الكلمة مشتركةٌ بين المهارتين — ٩ أكتوبر =====
+// كان لكلّ مهارةٍ ذاكرتُها: `dictErrLoad` للإملاء (تُقرأ في «أخطائي» وحدها)
+// و`pronWeakLoad` للنطق (تُقرأ في خلاصة المحادثة) — **ولا واحدة تعرف الأخرى**.
+// وثمنُ ذلك مقاسٌ في سجلّها: `gate` نُطقت ٢٠ مرّة بمتوسّط ٥٥٪ وكُتبت ١٣ مرّة بصفر
+// صواب، وكتبت `kate` ١٢ مرّة من ١٣ — **سببٌ صوتيّ واحد يُنتج عَرَضين**، وبقي ١٣
+// محاولةَ إملاءٍ صفراً بلا علاج لأن القسمين لا يتقابلان.
+const WORD_ERR_KEY="mawhiba_word_err_v1";
+function wordErrLoad(){try{return JSON.parse(lsGet(WORD_ERR_KEY)||"{}")}catch(e){return{}}}
+function wordErrSave(o){try{lsSet(WORD_ERR_KEY,JSON.stringify(o))}catch(e){}}
+function wordErrRecord(w,skill,ok,got){
+  const k=String(w||"").toLowerCase();if(!k)return null;
+  const m=wordErrLoad(),r=m[k]||{spell:0,say:0,last:""};
+  if(ok)r[skill]=0;else{r[skill]=(r[skill]|0)+1;if(got)r.last=String(got).slice(0,40)}
+  m[k]=r;wordErrSave(m);return r;
+}
+function wordErrOf(w){return wordErrLoad()[String(w||"").toLowerCase()]||null}
+// **شكلُ الخطأ لا وقوعه** (درس ١٣ أغسطس) مطبَّقاً على الإملاء: استبدالُ حرفٍ واحد
+// في موضعٍ واحد آليةٌ تُسمّى وتُجمَّع بالاستعلام (`kate` ⇐ `gate` هو `g→k`)، خلافَ
+// حذفٍ أو زيادةٍ أو خلطٍ تامّ — وثلاثتُها أخطاءٌ مختلفة لا تُعالَج بعلاجٍ واحد.
+function letterSub(typed,target){
+  const a=String(typed||"").toLowerCase(),b=String(target||"").toLowerCase();
+  if(!a||a.length!==b.length||a===b)return null;
+  let at=-1;
+  for(let i=0;i<b.length;i++)if(a[i]!==b[i]){if(at>=0)return null;at=i}
+  return at<0?null:{at:at,got:a[at],want:b[at]};
+}
+// ضعيفةٌ في المهارتين معاً — وهذه وحدها تستحقّ تنبيهاً، فتعثّرٌ في واحدة قد يكون زلّة
+const WORD_CROSS_MIN=2;
+function wordCrossWeak(w){
+  const r=wordErrOf(w);
+  return !!(r&&(r.spell|0)>=WORD_CROSS_MIN&&(r.say|0)>=WORD_CROSS_MIN);
+}
+let _wordCrossLogged={};
+function wordCrossHTML(w){
+  const k=String(w||"").toLowerCase();
+  if(!wordCrossWeak(k))return "";
+  const r=wordErrOf(k)||{},sub=letterSub(r.last,k);
+  if(!_wordCrossLogged[k]){_wordCrossLogged[k]=1;
+    try{logAnswer("gen","word_cross_weak",null,k+" · إملاء "+toAr(r.spell|0)+" · نطق "+toAr(r.say|0)
+      +(sub?" · "+sub.got+"→"+sub.want:""),k,null,
+      {q_text:("[ضعفٌ في المهارتين] "+k+" — آخر ما كُتب: «"+(r.last||"?")+"»"
+        +(sub?" · استبدالُ حرفٍ واحد "+sub.got+"→"+sub.want:"")).slice(0,300)})}catch(e){}}
+  return `<div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:12px;padding:10px 12px;margin:10px 0;text-align:right">
+    <div style="font-size:13px;color:#9A3412;line-height:1.9">📌 هذه الكلمة تتعثّرين فيها <b>كتابةً ونطقاً معاً</b>${r.last?` — وآخر ما كتبتِ <b dir="ltr" style="display:inline-block;font-family:Georgia,serif">${esc(r.last)}</b>`:""}</div>
+    ${sub?`<div style="font-size:13px;color:#C2410C;line-height:1.9;margin-top:4px">الفرق حرفٌ واحد: تنطقينه <b dir="ltr" style="display:inline-block;font-family:Georgia,serif">${esc(sub.got)}</b> والصواب <b dir="ltr" style="display:inline-block;font-family:Georgia,serif">${esc(sub.want)}</b> — فاسمعي 🔊 وركّزي على هذا الصوت.</div>`:""}
+  </div>`;
+}
+// ===== والإملاء والنطق يسحبان من بنك المفردات نفسه، بتباعدٍ وأولويّةٍ للضعيف =====
+// كانا `shuffle(DICTATION_A1).slice(0,8)` وحدهما من بين ثلاثة عشر باباً: بلا FSRS
+// وبلا `planNewMix` وبلا `seenRank`. وأثرُه مقاس: ٢٦ كلمة تُعاد ١٢٫٣ مرّة إملاءً
+// و١٦٫٩ نطقاً، أسوأُها `match` ٢٤ مرّة و`storm` ١٨ — والكلمةُ المُتقَنة تعود بنفس
+// احتمال التي عثرت فيها. فنفس بنية البانيات الإحدى عشرة، لا آلية جديدة.
+const DICT_SRS_KEY="mawhiba_dict_srs_v1",PRON_SRS_KEY="mawhiba_pron_srs_v1";
+function wordSrsLoad(k){try{return JSON.parse(lsGet(k)||"{}")}catch(e){return{}}}
+function wordSrsUpdate(key,id,ok){
+  const st=wordSrsLoad(key),r=st[id]||{box:0,seen:0};
+  const n=fsrsUpdate(r,ok,srsToday());
+  r.box=n.box;r.due=n.due;r.seen=n.seen;r.s=n.s;r.d=n.d;r.last=n.last;
+  st[id]=r;try{lsSet(key,JSON.stringify(st))}catch(e){}
+}
+function wordPlan(key,n,domain,skill){
+  const st=wordSrsLoad(key),today=srsToday(),err=wordErrLoad();
+  const POOL=VOCAB_BANK.map(function(v){return{id:v.w,w:v.w,m:v.m,c:v.c}});
+  const wk=function(i){return (err[i.id]&&(err[i.id][skill]|0))||0};
+  const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}))
+    .sort(function(a,b){return wk(b)-wk(a)});   // الضعيفُ أوّلاً داخل المستحقّ
+  const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
+  return topUpPlan(planNewMix(due,fresh,n),POOL,n,domain);
+}
 function startDictation(){
   // ثماني كلمات ثم أربع جمل: الكلمة تربط الصوت بالحروف، والجملة تربط الكلمات بالترتيب.
   // وهي الاستماع والبناء معاً — أنفع من كلٍّ وحده، وبلا شاشة جديدة.
-  const words=shuffle(DICTATION_A1).slice(0,8);
+  const words=wordPlan(DICT_SRS_KEY,8,"dictation","spell");
   const sents=shuffle(engBuildFor(profileOf().level)).slice(0,4)
     .map(function(x){return{s:x.s,m:x.m,id:x.id,build:true,chunks:x.chunks||null}});
   mode="dictation";dictSession=words.concat(sents);dictIdx=0;dictInput="";dictLocked=false;dictScore=0;dictDone=false;
@@ -7777,8 +8259,14 @@ function dictCheck(){
   const dictOk=val===dictSession[dictIdx].w.toLowerCase();
   if(dictOk)dictScore++;
   dictErrRecord(dictSession[dictIdx].w,dictOk,val);
+  wordErrRecord(dictSession[dictIdx].w,"spell",dictOk,val);
+  wordSrsUpdate(DICT_SRS_KEY,String(dictSession[dictIdx].w).toLowerCase(),dictOk);
   // الكلمة وما كتبته: بدونهما أعرف أنها أخطأت ولا أعرف كيف — حرف ناقص؟ حرف متحرّك خطأ؟
-  logAnswer("dictation_a1","stage"+dictStage,dictOk,val,dictSession[dictIdx].w,
+  // **وشكلُ الخطأ يُسمّى حين يكون آليةً**: استبدالُ حرفٍ واحد (`kate` ⇐ `gate`) يُجمَّع
+  // بالاستعلام، خلافَ «فرقٌ ما» الذي يُقرأ ضعفاً عامّاً — درس ١٣ أغسطس على الإملاء.
+  const _sub=dictOk?null:letterSub(val,dictSession[dictIdx].w);
+  logAnswer("dictation_a1","stage"+dictStage,dictOk,val+(_sub?" · letter_sub "+_sub.got+"→"+_sub.want:""),
+    dictSession[dictIdx].w,
     dictShownAt?Date.now()-dictShownAt:null,{q_text:dictSession[dictIdx].w});
   // تدرّج المرحلة: صعود بإتقان متتالٍ، ونزول تلقائي عند تكرار الخطأ حتى لا تعلق على مستوى أصعب من قدرتها
   if(dictOk){
@@ -7850,6 +8338,7 @@ function renderDictation(){
     ${ttsHelpHTML("هذا القسم يحتاج الصوت، ولا نصّ يُقرأ بدلاً منه. افحصي الصوت أوّلاً، أو عودي لهذا القسم لاحقاً.")}
     <div style="margin:18px 0"><button type="button" onclick="dictReplay()" style="background:#0E7490;color:#fff;border:none;border-radius:50%;width:64px;height:64px;font-size:26px;cursor:pointer">🔊</button></div>
     <div style="font-size:13px;color:#64748B;margin-bottom:16px">اضغطي على السمّاعة لسماع الكلمة، ثم اكتبيها بالإنجليزي</div>
+    ${wordCrossHTML(item.w)}
     ${hintBox}
     <input id="dictIn" ${dictLocked?"disabled":""} style="width:100%;padding:14px;border-radius:12px;border:2px solid #E2E8F0;font-size:20px;text-align:center;direction:ltr;font-family:Georgia,serif" placeholder="type here" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" onkeydown="if(event.key==='Enter')dictCheck()">
     ${feedback}
@@ -7910,7 +8399,9 @@ function errCollect(){
   });
   const de=dictErrLoad();
   Object.keys(de).forEach(function(w){
-    const meta=DICTATION_A1.filter(function(x){return x.w.toLowerCase()===w})[0];
+    // المعنى من بنك المفردات (٦٨٠) لا من البنك القديم (٢٦): الإملاء يسحب من
+    // البنك كلّه الآن، فبحثٌ في السابق كان سيُعيد كلمةً بلا معناها.
+    const meta=vocabOf(w)||DICTATION_A1.filter(function(x){return x.w.toLowerCase()===w})[0];
     out.push({kind:"word",key:w,w:(meta?meta.w:w),m:(meta?meta.m:""),last:de[w].last||""});
   });
   const ie=itemErrLoad(),POOL=engPool(),lvNow=profileOf().level;
@@ -10007,24 +10498,40 @@ function writeLive(ev){
 // فيُقاس كم مرّةً يُحاوَل ولمن — وبلا هذا يستحيل الحكم على أثر الحجب أصلاً.
 let writePasteTries=0,writePasteLogged=0;
 const WRITE_PASTE_LOG_CAP=2;
-function writePasteBlock(ev){
+// ===== نواةٌ واحدة لحجب اللصق — لا نسخةٌ موازية لكل صندوق (٩ أكتوبر) =====
+// قسم المفردات يحتاج الحجبَ نفسه لنفس السبب، فاستُخرجت النواة بدل أن تُكتب ثانيةً:
+// «التعارض يقع في الاسم لا في المنطق» (١٨ أغسطس)، و`writeSentenceParts` الموازية
+// (٢٩ أغسطس) هي ما يُراد تجنّبه. والسلوك المُختبَر لم يتغيّر: نفس المنع ونفس نصّ
+// التنبيه ونفس سقف الضجيج ونفس `domain='gen'` — الداعي وحده صار اثنين.
+const _pasteTries={},_pasteLogged={};
+function pasteBlockCore(ev,noteId,qtype,itemId,label,detail){
   try{if(ev&&ev.preventDefault)ev.preventDefault()}catch(e){}
-  writePasteTries++;
-  const box=document.getElementById('writePasteNote');
+  const n=(_pasteTries[qtype]=(_pasteTries[qtype]|0)+1);
+  const box=document.getElementById(noteId);
   if(box){
     box.style.color="#B91C1C";box.style.fontWeight="700";
     box.textContent="⛔ اللصق مغلق هنا — اكتبي الجواب بأصابعك."
-      +(writePasteTries>1?" (المحاولة "+toAr(writePasteTries)+")":"");
+      +(n>1?" (المحاولة "+toAr(n)+")":"");
   }
-  if(writePasteLogged<WRITE_PASTE_LOG_CAP){
-    writePasteLogged++;
-    const it=(typeof writeCur==="function")?writeCur():null;
-    try{logAnswer("gen","write_paste_blocked",null,
-      ((ev&&ev.type)||"paste")+" · المحاولة "+writePasteTries,(it&&it.id)||null,null,
-      {q_text:("[لصق مُنع في الكتابة] "+((ev&&ev.type)||"paste")
-        +" · المستوى "+((it&&it.lv)||"?")).slice(0,300)})}catch(e){}
+  if((_pasteLogged[qtype]|0)<WRITE_PASTE_LOG_CAP){
+    _pasteLogged[qtype]=(_pasteLogged[qtype]|0)+1;
+    try{logAnswer("gen",qtype,null,((ev&&ev.type)||"paste")+" · المحاولة "+n,itemId||null,null,
+      {q_text:(label+" "+((ev&&ev.type)||"paste")+(detail?" · "+detail:"")).slice(0,300)})}catch(e){}
   }
   return false;
+}
+// `writePasteTries`/`writePasteLogged` تبقى **هي العدّادين** لا نسخةً عنهما: صُفِّرا
+// صراحةً في اختبارٍ قائم لفصل أقسامه، فلو صارا مرآةً تُكتب ولا تُقرأ لمرّ التصفير
+// بلا أثر — وهو بعينه صنفُ «التفصيل يصل ويُرمى». فتُزامَن القيمة قبل النداء وبعده.
+function writePasteBlock(ev){
+  const it=(typeof writeCur==="function")?writeCur():null;
+  _pasteTries["write_paste_blocked"]=writePasteTries|0;
+  _pasteLogged["write_paste_blocked"]=writePasteLogged|0;
+  const r=pasteBlockCore(ev,"writePasteNote","write_paste_blocked",(it&&it.id)||null,
+    "[لصق مُنع في الكتابة]","المستوى "+((it&&it.lv)||"?"));
+  writePasteTries=_pasteTries["write_paste_blocked"]|0;
+  writePasteLogged=_pasteLogged["write_paste_blocked"]|0;
+  return r;
 }
 let writeItems=[],writeIdx=0,writeDone=false,writeScore=0,writeShownAt=0,writeTyped="",
   writeSubmitted=false,writeBusy=false,writeFix=[],writeFixFail="",writeCount=0,writeLtDropped=0,writeLtJudged=0,
@@ -14387,7 +14894,7 @@ function micSupported(){return !!(navigator.mediaDevices&&navigator.mediaDevices
 const PRON_GROQ_FN_URL=SB_URL+"/functions/v1/assess-pronunciation-groq";
 let pronSession=[],pronIdx=0,pronResult=null,pronListening=false,pronScore=0,pronDone=false,pronUnsupported=false;
 function startPronunciation(){
-  mode="pron";pronSession=shuffle(DICTATION_A1).slice(0,8);pronIdx=0;pronResult=null;pronListening=false;pronScore=0;pronDone=false;
+  mode="pron";pronSession=wordPlan(PRON_SRS_KEY,8,"pron","say");pronIdx=0;pronResult=null;pronListening=false;pronScore=0;pronDone=false;
   pronBusy=false;pronElapsed=0;if(pronTimer){clearInterval(pronTimer);pronTimer=null}
   pronUnsupported=!micSupported();
   window.scrollTo(0,0);render();
@@ -14771,6 +15278,11 @@ async function pronFinish(){
     pronResult={heard:az.data.heard||az.data.lexical||"",ok:sc.ok,sc,note:"",engine:"azure"};
     if(sc.ok)pronScore++;
     pronWeakRecord(sc.weak,sc.pct);
+    // الكلمةُ نفسها تُسجَّل ضعفاً/إتقاناً في مهارة النطق، بجانب تسجيل الصوت — فذاك
+    // فونيمٌ عابرٌ للكلمات وهذه كلمةٌ بعينها، والتقاطعُ بينها وبين الإملاء هو ما كان
+    // مفقوداً (`gate` ⇐ `kate`). ويُحدَّث تباعدُها فلا تعود بنفس احتمال المُتقَنة.
+    wordErrRecord(target,"say",sc.ok,az.data.heard||"");
+    wordSrsUpdate(PRON_SRS_KEY,String(target).toLowerCase(),sc.ok);
     // نحفظ ما يُقاس لا ما يُعرض فقط: الدقّة وحدها تُميّز «نطقٌ سليم مع تكرار» عن «نطقٌ ضعيف»،
     // وأضعف الأصوات هي الجسر إلى أخطاء إملائها (gate←kate، prize←price) — كلّها فرق جهر
     logAnswer("pronunciation_a1","word",sc.ok,az.data.heard||"",target,Math.round(pronElapsed*1000),
@@ -14794,6 +15306,8 @@ async function pronFinish(){
       const sc=pronScoreOf(target,data.heard,data.judged);
       pronResult={heard:data.heard,ok:sc.ok,sc,note:data.note||"",engine:"groq"};
       if(sc.ok)pronScore++;
+      wordErrRecord(target,"say",sc.ok,data.heard||"");
+      wordSrsUpdate(PRON_SRS_KEY,String(target).toLowerCase(),sc.ok);
       logAnswer("pronunciation_a1","word",sc.ok,data.heard,target,Math.round(pronElapsed*1000),{score_pct:sc.pct,engine:"groq",azure_fail:azureLastFail||null});
     }else if(data&&data.error==="not_configured"){
       pronResult={heard:"",ok:false,error:true,notConfigured:true};
@@ -14861,6 +15375,7 @@ function renderPron(){
          كانت الشاشة تطلب نطق كلمة لا سبيل لمعرفتها إطلاقاً -->
     <div style="font-size:34px;font-weight:800;letter-spacing:1px;direction:ltr;color:#1E293B;margin:6px 0 2px">${item.w}</div>
     <div style="font-size:14px;color:#64748B;margin-bottom:10px">${item.m}</div>
+    ${wordCrossHTML(item.w)}
     <button class="link-btn" style="font-size:12px;margin:0 0 10px" onclick="startAudioDiag()">🔧 الصوت أو الميكروفون لا يعمل؟ افحصي هنا</button>
     <div style="display:flex;gap:12px;justify-content:center;align-items:center;margin:10px 0 18px">
       <button type="button" onclick="speakEnglish(pronSession[${pronIdx}].w)" style="background:#ECFEFF;border:1.5px solid #A5F3FC;color:#0891B2;border-radius:50%;width:56px;height:56px;font-size:22px;cursor:pointer">🔊</button>
@@ -15249,14 +15764,14 @@ function gateOpen(){return gateSecs===0||gateLeft<=0}
 // فلا تُحبَس أسرعُ إجابةٍ صادقة قطّ. و`pick` مطابقٌ عمداً لشكل `gram` (مذكورٌ في ملفّ
 // المشروع)، فيأخذ أرقامه المُجرَّبة نفسها لا رقماً جديداً.
 const SEC_GATE_FLOOR={listen:3,read:5,gram:4,minpair:2,video:4,math6:3,build:4,
-  "step:pick":4,"step:gap":2,"step:order":4};
+  "vocab:recog":2,"step:pick":4,"step:gap":2,"step:order":4};
 // **وسقفٌ لكل قسم عند زمنها المقاس حين تنخرط فعلاً** — تصحيحٌ لعيبٍ في أوّل تصميمٍ لي:
 // حساب الطول وحده أعطى ١٨-٢٥ ثانية لعنصر قواعد (أربع جملٍ متشابهة تُجمَع كلماتها)،
 // وزمنها الوسيط المنخرط ٧٫٨ ثانية. فبوّابةٌ فوق ذلك تحبسها وهي تعمل بجدّ — والبوّابة
 // بُنيت لتمنع النقر لا لتُعاقب الاجتهاد. ومقارنة أربع جملٍ متقاربة ليست قراءة اثنتين
 // وثلاثين كلمة جديدة: تُمسح الفروق لا تُقرأ الجمل كاملةً.
 const SEC_GATE_MAX={listen:5,read:9,gram:8,minpair:3,video:11,math6:12,build:9,
-  "step:pick":8,"step:gap":5,"step:order":11};
+  "vocab:recog":3,"step:pick":8,"step:gap":5,"step:order":11};
 // ===== انحيازُ الموضع: «response set» — قياسٌ أوّلاً، ثمّ بوّابةٌ مشروطة =====
 // خلطُ المواضع الذي شُحن ١٤ سبتمبر جعل هذا **قابلاً للقياس لأوّل مرّة**، فكشف عند
 // هيا (٢٠-٢٤ سبتمبر) شكلاً لا يُخطئه أحد: اختارت **الزرّ الثاني** في ٢٤ من ٣٢ استماعاً
@@ -16422,7 +16937,7 @@ function renderKpi(){
 }
 
 // ===== العرض =====
-function render(){if(mode==="mock")return renderMock();if(mode==="seq")return renderSeq();if(mode==="kpi")return renderKpi();if(mode==="home")return renderHome();if(mode==="listen")return renderListen();if(mode==="read")return renderRead();if(mode==="write")return renderWrite();if(mode==="gram")return renderGram();if(mode==="build")return renderBuild();if(mode==="math6Menu")return renderMath6Menu();if(mode==="math6")return renderMath6();if(mode==="step")return renderStep();if(mode==="statMenu")return renderStatMenu();if(mode==="stat")return renderStat();if(mode==="minpair")return renderMinpair();if(mode==="video")return renderVideo();if(mode==="errors")return renderErrors();if(mode==="engplan")return renderEngPlan();if(mode==="factplan")return renderFactPlan();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="speak")return renderSpeak();if(mode==="coach")return renderCoach();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
+function render(){if(mode==="mock")return renderMock();if(mode==="seq")return renderSeq();if(mode==="kpi")return renderKpi();if(mode==="home")return renderHome();if(mode==="listen")return renderListen();if(mode==="read")return renderRead();if(mode==="write")return renderWrite();if(mode==="gram")return renderGram();if(mode==="build")return renderBuild();if(mode==="math6Menu")return renderMath6Menu();if(mode==="math6")return renderMath6();if(mode==="step")return renderStep();if(mode==="statMenu")return renderStatMenu();if(mode==="stat")return renderStat();if(mode==="minpair")return renderMinpair();if(mode==="video")return renderVideo();if(mode==="errors")return renderErrors();if(mode==="engplan")return renderEngPlan();if(mode==="factplan")return renderFactPlan();if(mode==="vocab")return renderVocab();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="speak")return renderSpeak();if(mode==="coach")return renderCoach();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
 
 // صفحة الأخوين قسمٌ واحد: المحادثة. بقيّة الأقسام بُنيت على أخطائها هي — بنك
 // أسئلتها، وتباعدها، ومنهج صفّها السادس — فوضعها أمام ولدٍ آخر يُشغله بما ليس له.
@@ -16632,6 +17147,8 @@ function renderHome(){
       s:"جمل قصيرة جاهزة من وحدة Welcome: تسمعينها ثم تقولينها كاملة"},
     {g:"eng_out",c:"#7C3AED",go:"startPronunciation()",n:"🎤 تمرين النطق",
       s:"تحقّق أساسي هل نطقتِ الكلمة صح (يحتاج ميكروفون) — وليس تصحيح لهجة دقيق"},
+    {g:"eng_out",c:"#0E7490",go:"startVocab()",n:"🔤 المفردات · معنى ونطق وكتابة",
+      s:`كلمةٌ واحدة بثلاث مهارات: معناها، ونطقها، وكتابتها — بنكٌ من ${toAr(VOCAB_BANK.length)} كلمة، والمرحلة الأولى ${toAr(VOCAB_STAGE1_MIN)}`},
     {g:"eng_out",c:"#0E7490",go:"startDictation()",n:"✍️ إملاء بالإنجليزية",
       s:"استمعي للكلمة، ثم اكتبيها — مستوى A1"},
     {g:"exam",lead:1,c:"#7C2D12",go:"startMock()",n:"📝 محاكاة اختبار الإنجليزية",
