@@ -135,7 +135,19 @@ console.log('\n٦) التسليح على الآلية لا على العنصر �
     window.logAnswer=function(d,q,c,resp){rows.push({d,c,resp});};
     try{lsSet('mawhiba_basics_shape_v1','{}');lsSet('mawhiba_gram_srs','{}')}catch(e){}
     startGram();
-    const out={armedAfter:[],picks:[]};
+    // ===== العنصران يُثبَّتان لا يُترَكان للقرعة — ٩ أكتوبر =====
+    // كان القسم يعتمد على أن تُعطيه جلسةُ `startGram()` **عنصرين** يُتاح فيهما زلّةُ
+    // مطابقةٍ، وبنكُ المستوى لا يضمن ذلك: فكان يسقط نحو مرّةٍ من ثلاث ثمّ ينجح —
+    // وهو بعينه «اختبارٌ يتقلّب بالقرعة» (درس ٥ سبتمبر)، يُقرأ سقوطُه ضجيجاً فيُعاد
+    // تشغيله. والدعوى هي هي بحرفها (زلّتان في **عنصرين مختلفين** تُسلّحان مفتاح
+    // الآلية لا مفتاح العنصر) — المُزال هو الاحتمال لا ما يُفحَص.
+    const POOL=bankStretched('gram',profileOf().level,gramBankFor);
+    const offers=POOL.filter(function(it){
+      const right=(it.c.find(function(c){return c.ok})||{}).t;
+      return it.c.some(function(c){return !c.ok&&agreeSlip(right,c.t)==='agree_verb'});
+    });
+    if(offers.length>=2){gramItems=[offers[0],offers[1]];gramIdx=0;gramSetupRound()}
+    const out={armedAfter:[],picks:[],offers:offers.length};
     // أخطئ بزلّة مطابقةٍ حيثما أتيحت — عناصر مختلفة، آليةٌ واحدة
     let hit=0;
     for(let n=0;n<12&&!gramDone&&hit<2;n++){
@@ -149,6 +161,9 @@ console.log('\n٦) التسليح على الآلية لا على العنصر �
     return Object.assign(out,{rows,sameItem:out.picks.length===2&&out.picks[0]===out.picks[1],
       itemArmed:out.picks.length?shapeArmed('gram:'+out.picks[0]):null});
   });
+  // والفحصُ لا يمرّ فارغاً: إن لم يحمل البنك عنصرين يُتاح فيهما الفخّ فالدعوى
+  // لم تُقَس أصلاً، ويُقال ذلك بدل أن يُعدّ نجاحاً (درس «الفحص الفارغ»).
+  ok(r.offers>=2,`بنكُ المستوى يُتيح الزلّة في ${r.offers} عنصراً — والدعوى تحتاج اثنين`);
   ok(r.picks.length===2,`زلّتان في عنصرين: ${r.picks.join(' · ')}`);
   ok(r.sameItem===false,'وهما عنصران مختلفان — فالتسليح على العنصر لا يقع أصلاً');
   ok(r.itemArmed===false,'ولم يُسلَّح مفتاحُ العنصر (أُخطئ مرّةً واحدة)');
