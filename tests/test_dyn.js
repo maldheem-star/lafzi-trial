@@ -140,12 +140,20 @@ txt=await page.textContent('#app');
 ok(txt.includes('حللتِها وحدك'),'والجواب الصحيح بالنقطة اللاتينية مقبول');
 
 console.log('\n٧) الحقل الفارغ لا يحرق محاولة إتقان');
+// **ويُنتظَر هدوءُ الشبكة قبل التصفير**: السجلّ يُلتقَط من **اعتراض الطلب** لا من
+// `logAnswer`، والاعتراضُ غيرُ متزامن — فسطرُ القسم السادس قد يصل بعد التصفير فيُعَدّ
+// على السابع. قِيس: سقوطٌ واحد في ثماني تشغيلات، ورسالتُه «ولا يُرسَل سجلّ» وهي صادقة
+// في وصفها كاذبة في نسبتها. فلا تُغيَّر الدعوى، بل يُنتظَر أن يستقرّ العدد أوّلاً.
+await (async()=>{let a=-1,b=await page.evaluate(()=>(window.__LOGS||[]).length);
+  while(a!==b){await page.waitForTimeout(400);a=b;b=await page.evaluate(()=>(window.__LOGS||[]).length)}})();
 await page.evaluate(()=>{window.__LOGS=[];startBasics('multdiv');basicsStage=5;basicsFinalCount=0;basicsNew()});
 const before=await page.evaluate(()=>basicsFinalCount);
 await page.evaluate(()=>{document.getElementById('basicsIn').value='';basicsSubmit()});
 ok(await page.evaluate(()=>basicsFinalCount)===before,'ضغطة على حقل فارغ ⇒ لا تُحتسب');
 ok(await page.evaluate(()=>basicsLocked)===false,'والسؤال يبقى مفتوحاً');
-ok((await page.evaluate(()=>window.__LOGS)).length===0,'ولا يُرسَل سجلّ');
+await page.waitForTimeout(500);   // ولو وصل سطرٌ متأخّر لظهر هنا، فالدعوى تبقى صارمة
+ok((await page.evaluate(()=>window.__LOGS)).length===0,
+  `ولا يُرسَل سجلّ (${JSON.stringify((await page.evaluate(()=>window.__LOGS)).map(l=>l.domain+'/'+l.qtype))})`);
 await page.evaluate(()=>{document.getElementById('basicsIn').value='   ';basicsSubmit()});
 ok(await page.evaluate(()=>basicsLocked)===false,'والمسافات وحدها كذلك');
 

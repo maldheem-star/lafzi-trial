@@ -94,7 +94,13 @@ await m.waitForTimeout(150);
 const before=await m.evaluate(()=>Object.keys(statSrsLoad()).length);
 const first=await m.evaluate(()=>{
   const it=statCur(),i=it.c.findIndex(x=>x.ok);
-  statChoose(i);return{id:it.id,sol:it.sol.slice(0,20)};
+  statChoose(i);
+  // النجمتان تصيران عريضاً في العرض (`statBold`)، فلا تظهران في innerText — ومقارنةُ
+  // النصّ الخام بالمعروض كانت تسقط على عنصرٍ واحدٍ من ١٥٠ (`sw1_v4`: «كل ما **يُقاس**»)،
+  // أي مرّةً كل ~١٥ جولة بحكم القرعة وحدها. والدعوى هي هي — «الصندوق يحمل حلّ هذا
+  // السؤال بعينه» — فتُقابَل بما يُعرض فعلاً لا بما كُتب (درس ٥ سبتمبر: اختبارٌ
+  // يتقلّب بالقرعة أسوأ من اختبارٍ يسقط).
+  return{id:it.id,sol:String(it.sol).replace(/\*\*(.+?)\*\*/g,'$1').slice(0,20)};
 });
 await m.waitForTimeout(300);
 ok(await m.evaluate(()=>statScore)===1,'الإجابة الصحيحة زادت النتيجة');
@@ -103,6 +109,21 @@ ok(await m.evaluate(()=>Object.keys(statSrsLoad()).length)>before,'ودخل مخ
 t=await m.textContent('#app');
 ok(t.includes('الحلّ خطوةً خطوة'),'وظهر صندوق الحلّ');
 ok(t.includes(first.sol.slice(0,12)),'وفيه نصّ حلّ هذا السؤال بعينه');
+// وحارسٌ حتميّ لا يُترك للقرعة: العنصر الذي كشف التقلّب بعينه.
+// وسجلُّه يُستعاد بعده: القسمُ التالي يشترط سطراً واحداً، وهذا الفحص يُنتج ثانياً.
+{
+  const keep=logs.slice();
+  const probe=await m.evaluate(()=>{
+    const it=STAT_BANK.filter(x=>x.id==='sw1_v4')[0];
+    if(!it)return null;
+    statItems=[it];statIdx=0;statSetupRound();render();
+    statChoose(it.c.findIndex(x=>x.ok));
+    return String(it.sol).replace(/\*\*(.+?)\*\*/g,'$1').slice(0,14);
+  });
+  const tp=await m.textContent('#app');
+  ok(!probe||tp.includes(probe),'وعنصرُ «كل ما يُقاس» بعينه — نجمتاه تصيران عريضاً ولا تُقارَن خاماً');
+  logs.length=0;keep.forEach(x=>logs.push(x));
+}
 
 console.log('\n٧) التسجيل يحمل ما يلزم للتشخيص');
 const L=logs.filter(x=>x.domain==='stat');
