@@ -12514,13 +12514,13 @@ function renderMath6Menu(){
 // **والمفتاح من المصدر لا من حكمي**: الملفّ «محلولة» يُظلّل الخيار الصحيح بمستطيلٍ
 // أخضر (fill = 0.357,0.890,0.416)، فيُقرأ النصُّ الواقع تحت كل مستطيل ويُقابَل
 // بخيارات العنصر. **ودليلُ أن الأخضر هو المفتاح رقمٌ لا ظنّ**: توزيعُ الصواب على
-// المواضع الأربعة خرج ٣٤٤/٣٢٨/٣١٣/٣٥٠ — متوازنٌ كما يُنتظَر من مفتاحٍ حقيقي، ولو
+// المواضع الأربعة خرج ٣٣٥/٣١٣/٢٩٤/٣٣٣ — متوازنٌ كما يُنتظَر من مفتاحٍ حقيقي، ولو
 // كان الأخضر يُظلّل شيئاً آخر (كلمةَ مفتاحٍ في السؤال مثلاً) لانهار التوزيع.
 // والأصفرُ في الملفّ يُظلّل كلمات السؤال، فلا يُقرأ.
 //
 // **وقُوبل خمسةٌ وعشرون عنصراً عشوائياً بحكمٍ نحويّ يدويّ: ٢٥ من ٢٥ مطابقة.**
 //
-// **والإسقاطُ يُعَدّ بسببه** (٢٣٩ من ١٥٧٤ عنصراً مستخرَجاً): ١٨٥ توأماً مطابقاً
+// **والإسقاطُ يُعَدّ بسببه** (٢٩٩ من ١٥٧٤ عنصراً مستخرَجاً): ٢٤٥ توأماً
 // (المصدر يُعيد العنصر نفسه بين النماذج)، و١٥ عنصر «أيُّ الكلمات المسطَّرة خطأ؟»
 // فقدت التسطير في الاستخراج فلم تظهر خياراتُها في نصّه (فهي غير قابلةٍ للحلّ)،
 // و١٢ بثلاثة خيارات (حرفُ خيارٍ ضاع في سطرٍ ملتفّ)، و١٠ بلا تظليلٍ أخضر أصلاً،
@@ -12529,10 +12529,15 @@ function renderMath6Menu(){
 //
 // **ومقارنةُ التوائم والخيارات حسّاسةٌ للحالة والترقيم** — درس ٢٢ أغسطس: أوّل بناءٍ
 // جرّدهما فأسقط **٨٩** عنصر كبتلةٍ وترقيمٍ ظلماً، وخياراتُها لا تختلف إلّا بهما
-// («My School Year» مقابل «My school year»). صارت المقارنة بالنصّ كما هو.
+// («My School Year» مقابل «My school year»). صارت المقارنة بالنصّ كما هو **لعناصر الكبتلة
+// والترقيم وحدها**، وبالنصّ المطبَّع لما سواها — وإلّا مرّ العنصرُ نفسه مرّتين
+// لفارق نقطةٍ أو حرفٍ كبير في صدره («In which sentence Is…» مقابل «… is…»)، وقد
+// كشفه `bank_dupes` بعد الشحن الأوّل: ٨٧ زوجاً فوق ٠٫٨ من ٨٩٠ ألف مقارنة (١٣٪ من البنك).
+// وعنصرُ الكبتلة يُقابَل بصوابه هو: النماذج تُعيد الجملة نفسها بمموّهٍ مختلفٍ قليلاً،
+// وصوابُها واحد — فهي سؤالٌ واحد لا سؤالان. والنتيجة ١٣٪ ⇐ **٦٪**.
 //
 // **ولا ترشيحَ بمستوى — والسببُ قياسٌ لا رأي**: المعيار المعتمَد لصعوبة النصّ هنا
-// Flesch-Kincaid، وقياسُه على ١٣٣٥ عنصراً أعطى وسيطاً **٣٫٩** و**٦٣٪ من البنك في
+// Flesch-Kincaid، وقياسُه على ١٢٧٥ عنصراً أعطى وسيطاً **٣٫٩** و**٦٣٪ من البنك في
 // نطاقٍ واحد** (دون ٥) — لأن العنصر جملةٌ واحدة، فالمقياس يقيس طولها لا صعوبة
 // تركيبها: «The chocolate cake was eaten» (مبني للمجهول، B1) يخرج بنفس درجة
 // «Tom goes to Italy» (مضارع بسيط، A1). فلا يُبنى ترشيحٌ على مقياسٍ لا يُفرّق
@@ -12542,11 +12547,11 @@ function renderMath6Menu(){
 //
 // **وأسماءُ القواعد مشتقّةٌ من عناصرها لا منقولةٌ من الدورة**: الملفّ يكتب
 // «(Rule 7)» ولا يعرّفها، فالاسم العربي استُخلص من فحص عناصر كل قاعدة — ويُقال
-// إنه مشتقٌّ كي لا يُقرأ على أنه نصُّ الدورة. و٣٢٠ عنصراً في المصدر بلا وسمٍ
+// إنه مشتقٌّ كي لا يُقرأ على أنه نصُّ الدورة. و٢٨٥ عنصراً في المصدر بلا وسمٍ
 // إطلاقاً (نماذج ٨ و١١ و١٢ و١٥ و٢٢) فتبقى «بلا وسم» ولا تُوسَم بالحدس.
 //
 // **ولا شرحَ لكل خيار** خلافَ `STEP_BANK` و`GRAM_BANK`: المصدر لا يشرح، وتأليفُ
-// ١٣٣٥ شرحاً ليس نقلاً للملفّات. فيُعرَض الصواب بعد القفل ويُقال صريحاً إن المصدر
+// ١٢٧٥ شرحاً ليس نقلاً للملفّات. فيُعرَض الصواب بعد القفل ويُقال صريحاً إن المصدر
 // لا يشرح — ولا يُدَّعى ما ليس فيه.
 //
 // **وما لم يُشحَن ولماذا**: نماذج ٤٩-٥٠-٥١ (قراءةٌ وقواعد). ملفُّها المحلول ٣٧
@@ -12566,8 +12571,8 @@ function renderMath6Menu(){
 // ويُقال إنهما مستعارانِ حتى يُقاس زمنُه هو.
 //
 // **والبنك نصٌّ مرصوص يُفكَّك مرّةً عند التحميل** — نفس أسلوب `VOCAB_RAW` المعتمَد
-// في هذا الملفّ (٩ أكتوبر) لا صيغةٌ ثانية: ١٣٣٥ عنصراً بـ٢٢٠ كيلوبايت نصّاً، بدل
-// ١٣٣٥ كائناً حرفياً في المصدر.
+// في هذا الملفّ (٩ أكتوبر) لا صيغةٌ ثانية: ١٢٧٥ عنصراً بـ٢١٢ كيلوبايت نصّاً، بدل
+// ١٢٧٥ كائناً حرفياً في المصدر.
 // الاسمُ عربيٌّ خالص والأمثلةُ الإنجليزية في حقلٍ مستقلّ — لا لتجميلٍ بل لأن سطراً
 // يخلط العربية بمقطعٍ لاتيني ينكسر في منتصف المقطع عند الالتفاف، فيُقرأ بترتيبٍ
 // خاطئ (درس ٢٥ أغسطس، والعلاجُ المعتمَد: يُفصَل المقطع في سطرٍ بلا عربية).
@@ -12858,7 +12863,6 @@ const WEJ_RAW=`5|62|1|1|We ........ football three days ago.|play|played|have pl
 12|76|8|0|I'm sorry the soup is not very tasty. I couldn't find ........ spices.|any|a lot|some|much
 12|78|8|2|The bookseller has many books that ........ outdated.|am|is|are|were
 12|80|14|1|Choose the CORRECT ORDER to make the following sentences into a paragraph (1) By 6:30 he is outside waiting for his school bus. (2) When he returns home, he eats his breakfast. (3) His mother wakes him up so that he can pray Fajr at a mosque in his neighborhood. (4) Ali's mornings are very busy. (5) After he finishes his prayer, he reads the Qur'an for about 20 minutes.|(3), (4), (1), (5), (2)|(4), (3), (5), (2), (1)|(3), (5), (1), (2), (4)|(4), (1), (2), (3), (5)
-12|81|11|2|Which one of the underlined words or phrases is INCORRECT? Evening classes are the worse part of my class schedule this semester.|Evening|are|worse|of
 12|82|5|2|Ali just got a job in Japan, ........ now he wants to learn Japanese.|but|so|so that|since
 12|83|1|2|Chris ........ eggs and cheese every morning.|use to eat|used to eat|is used to eat|used to eating
 12|84|7|3|I came across a friend of ........ when I was shopping at the mall.|I|my|me|mine
@@ -12950,7 +12954,6 @@ const WEJ_RAW=`5|62|1|1|We ........ football three days ago.|play|played|have pl
 14|93|9|2|Adam is leaving ........ Wednesday.|in|at|on|to
 14|94|11|0|My car is ........ his.|less expensive than|the more expensive|the most expensive than|a little expensive than
 14|95|6|0|Whenever I travel to the United States, I ........ my cousins.|visit|am visiting|visited|have visited
-14|96|2|3|If you had turned up the volume, I ........ The TV much better.|heard|could hear|am hearing|would have heard
 14|97|1|1|Tom ........ to Italy every year.|go.|goes.|is goes.|is going.
 14|98|4|0|I found this pencil on the floor ........ is it?|whose|whom|which|who
 14|99|12|3|I have no idea how ........ to build a nest there.|did the bird manage|did manage the bird|managed the bird|the bird managed
@@ -13179,10 +13182,6 @@ const WEJ_RAW=`5|62|1|1|We ........ football three days ago.|play|played|have pl
 20|96|14|0|In which sentence is all CAPITALIZATION correct?|At first, my sister, Kate, wanted to study chemistry at King Faisal University, but one of her teachers, Mrs. Carter, told her to join the College of Engineering after she finishes the first semester in January.|At first, my Sister, Kate, wanted to study Chemistry at King Faisal University, but one of her Teachers, mrs. Carter, told her to join the College of engineering after she finishes the First Semester in January.|At first, my sister, kate, wanted to study Chemistry at King faisal university, but one of her Teachers, Mrs. Carter, told her to join the college of Engineering after she finishes the first semester in January.|At First, my sister, Kate, wanted to study chemistry at King Faisal University, but one of her teachers, mrs. Carter, told her to join the College of engineering after she finishes the First Semester in January.
 20|97|7|3|A: Is it Rami's turn to start the game? B: No, it isn't. It's ........|you|you're|your|yours
 20|99|1|1|All members of my family ........ the pilgrimage to Makkah at least once in their lives.|are performing|have performed|were performed|have been performed
-20|100|4|2|Mr. Amir, ........ the students call Uncle Amir, taught the boys Physical education several times a week.|he|him|whom|which
-21|61|2|2|If it rains tomorrow. I ........ my raincoat.|wear|am wear|will wear|going to wear
-21|62|1|3|Adam ........ a book now|reads|reading|is reads|is reading
-21|63|1|3|When I go to King Saud University Library, I usually ........|am studying|will study|studied|study
 21|64|1|0|Which one of the underlined words or phrases is INCORRECT? I don't had enough money to buy a bus ticket, so I'II have to walk to school today.|had|to buy|so|have to
 21|65|14|2|Which of the following sentences as the CORRECT WORD ORDER?|A lot of value to our company both Ben and Mike add, but are more important to us Ben's IT skills than Mike's marketing knowledge.|Ben and Mike add a lot of value to our company both, but Ben's IT skills are more important to us than Mike's marketing knowledge.|Both Ben and Mike add a lot of value to our company, but Ben's IT skills are more important to us than Mike's marketing knowledge.|But Ben's IT skills are more important to us than Mike's marketing knowledge, a lot of value to our company Ben and Mike both add.
 21|66|9|3|Which sentence is correct?|Your maintenance appointment has on Tuesday or Wednesday.|You're maintenance appointment will be on Tuesday or Wednesday.|You're maintenance appointment is on Tuesday or Wednesday.|Your maintenance appointment will be on Tuesday or Wednesday.
@@ -13216,13 +13215,10 @@ const WEJ_RAW=`5|62|1|1|We ........ football three days ago.|play|played|have pl
 21|94|14|0|Which sentence as the CORRECT WORD ORDER?|Our neighbor said she would like to visit Italy after she has sold her farm and has more time to travel.|After she has sold her farm our neighbor said she would like to visit Italy and has more time to travel.|Our neighbor said she would like to visit, and has more time to travel, after she has sold her farm Italy.|Our neighbor said she would like to visit after she has sold her farm and has more time to travel Italy.
 21|95|10|0|Which one of the underlined words or phrases is INCORRECT? Language teachers like explain, giving examples, and engaging students in discussions. After each lesson, they need to evaluate it before planning the next one.|explain|in|After|planning
 21|96|14|0|In which sentence is all CAPATALIZATION correct?|At first, my cousin, Dave, wanted to work as a technician at Microsoft Corporation, but his best friend, Mr. Carter told him to get a job at Apple instead after completing his contract.|At first, my Cousin, Dave, wanted to work as a Technician at Microsoft Corporation, but his best friend, mr. Carter told him to get a job at Apple instead after completing his Contract.|At first, my cousin, dave, wanted to work as a Technician at Microsoft corporation, but his best Friend, Mr. Carter told him to get a job at apple instead after completing his Contract.|At First, my cousin, Dave, wanted to work as a technician at Microsoft Corporation, but his best friend, mr. Carter told him to get a job at Apple instead after completing his contract.
-21|98|6|0|Would someone please tell him the correct answer to the question that he ........ ?|asked|asking|asked it|is asking it
-21|99|13|1|The strawberries ........ by the children who picked them.|have all eating|were all eaten|were all eating|had all eaten.
 22|61|14|3|Choose the sentence with the RIGHT WORD ORDER.|Do you football often play?|Do you football play often?|Do you play often football?|Do you often play football?
 22|62|4|3|Hey John, ........ took my book?|whom|who|which|whose
 22|63|10|1|Kate's teacher told her ........ the main idea in her paper.|no repeating|not to repeat|don't repeat|not repeat
 22|64|6|3|Peter studied very hard for four years before he ........ from university.|graduates|is graduating|graduated|has graduated
-22|65|6|3|I drank several cups of tea while I ........ this essay.|have written|wrote|write|was writing
 22|66|1|3|Mr. Ahmad: Ali, you need to submit your economics essay today. Ali: But I haven't finish it ........ !|already|just|still|yet
 22|67|8|0|The finance course wasn't very popular. It didn't have ........ students.|many|much|more|some
 22|68|7|0|Dave: Do you want me to pick the book up for you? Bob: No. I'll do it.|myself|mine|my|me
@@ -13286,8 +13282,6 @@ const WEJ_RAW=`5|62|1|1|We ........ football three days ago.|play|played|have pl
 23|95|14|1|In which sentence is all CAPATALIZATION correct?|Three days ago, he bought two tickets to prepare for the match at london stadium next week.|Three days ago, he bought two tickets to prepare for the match at London Stadium next week.|Three days ago, he bought two tickets to prepare for the match at London stadium next week.|Three days ago, He bought two tickets to prepare for the match at London Stadium next week.
 23|96|14|0|In which sentence is all CAPATALIZATION correct?|At first, my sister, Mona, wanted to study biology at King Fahd University, but one of her teachers, Mr. Cater, persuaded her to join the College of Engineering after she finishes the first semester in January.|At first, my sister, Mona, wanted to study Biology King Fahd University, but one of her Teachers, Carter, persuaded her to join the College of engineering after she finishes the First Semester in January.|At first, my brother, mona, wanted to study Biology at King Fahd university, but one of her Teachers, Mrs. Carter, persuaded her to join the college of Engineering after she finishes the first semester in January.|At First, my sister, Mona, wanted to study biology at King Fahd University, but one of her teachers, mrs. Carter, persuaded her to join the College of engineering after she finishes the First Semester in January.
 23|97|8|1|He did not have ........ money in his wallet, so the stopped by the cash machine.|tots|much|plenty|many
-23|100|4|2|Mr. Amir, ........ ........ the students call Uncle Amir, taught the boys physical education several times a week.|he|him|whom|which
-24|63|14|3|In which of the following sentences is all PUNCTUATION correct?|After all, the exams are finished, whos going to be the first in the class.|After all the exams are finished, who's going to be the first in the class.|After all, the exam's are finished, whos' going to be the first in the class?|After all the exams are finished, who's going to be the first in the class?
 24|68|1|0|Which of the underlined words or phrases is INCORRECT? Last month, Ghala speaks three times about her new business plan to her manager.|speaks|about|plan|her manager
 24|70|3|0|Excuse me Jan, ........ you please buy some pens from the bookshop for me?|would|should|shall|must
 24|71|2|1|If you want to be a college professor you ........ hard for many years.|must|must work|must working|must to working
@@ -13312,9 +13306,7 @@ const WEJ_RAW=`5|62|1|1|We ........ football three days ago.|play|played|have pl
 24|90|3|0|He said that the class ........ at 1:30, but it actually started at 6:30.|would start|has started|starting|start
 24|91|1|0|The students ........ a new way to process water for six months now.|have been developing|has developed|is developing|develops
 24|92|14|1|Which Sentence is CAPITALIZATION correct?|Last week, she listened to three lectures to prepare for her three lectures at london university tomorrow.|Last week, she listened to three lectures to prepare for her three lectures at London University tomorrow.|Last week, she listened to three lectures to prepare for her three lectures at London university tomorrow.|Last week, She listened to three lectures to prepare for her three lectures at london University tomorrow.
-24|93|5|3|Roger was too lazy to work last night, ........ he had a cup of coffee and watched some YouTube videos.|because|why|but|so
 24|95|10|0|Which one of the underlined words or phrases is INCORRECIT? University professors like read, writing, and publishing during their work day. After a lot of reading, they need some time relax before starting to write.|read|their|After|starting
-24|96|14|0|In which sentence is all CAPITALIZATION correct?|At first, my sister, Kate, wanted to study chemistry at King Faisal University, but one of her teachers, Mrs. Carter, told her to join the College of Engineering after she finishes the first semester in January.|At first, my Sister, Kate, wanted to study Chemistry at King Faisal University, but one of her Teachers, mrs. Carter, told her to join the College of engineering after she finishes the First Semester in January.|At first, my sister, Kate, wanted to study Chemistry at King faisal university, but one of her Teachers, Mrs. Carter, told her to join the college of Engineering after she finishes the first semester in January.|At First, my sister, Kate, wanted to study chemistry at King Faisal University, but one of her teachers, mrs. Carter, told her to join the College of engineering after she finishes the First Semester in January.
 25|63|1|0|Guided tours ........ ........ be given by the Ministry of Information in the coming Janadriyah Festival next month.|will|ought|must to|could to
 25|65|7|0|Ben: Have you read the most important text in the course materials yet? Mike: Yes, I read ........ last week.|it|him|these|those
 25|67|6|1|Lucy ........ when her mother told her to come and eat.|studied|was studying|is studying|will study
@@ -13348,8 +13340,6 @@ const WEJ_RAW=`5|62|1|1|We ........ football three days ago.|play|played|have pl
 26|80|7|3|I've lost my bag. Have you seen ........ ?|these|him|those|it
 26|81|11|2|The girls took part in the game very ........|active|activeness|actively|activity
 26|89|12|3|I have no idea where ........|is the student who joined last week.|is the student who last week joined.|the student who last week joined is|the student who joined last week is.
-27|62|1|3|Now it is 10:00 PM. The train ........ at 11:00 pm.|arriving|arrived|has arrived|will arrive
-27|64|14|3|Which of the following sentences has the CORRECT WORD ORDER?|He burned incense so that his house would smell nice, for an hour in the morning, through the rest of the day.|So that his house would smell nice, he burned incense for an hour in the morning, through the rest of the day.|Through the rest of the day he burned incense for an hour in the morning so that his house would smell nice.|He burned incense for an hour in the morning so that his house would smell nice through the rest of the day.
 27|65|9|0|Which of the underlined words or phrases is INCORRECT? My mother she gave that book to me when I graduated from middle school.|she|to me|graduated|middle school
 27|66|9|3|Mark flew to Paris from London and then he ........|an Uber to my office took to surprise me|to surpise me to my office took an Uber|took an Uber to surpise me to my office|took an Uber to my office to surprise me
 27|67|9|3|The basketball game started at 6 o'clock, ........|and just for the second quarter in time we arrived|and we for the second quarter just arrived in time|and just in time we arrived for the second quarter|and we arrived just in time for the second quarter
@@ -13381,8 +13371,6 @@ const WEJ_RAW=`5|62|1|1|We ........ football three days ago.|play|played|have pl
 27|94|5|0|Peter was preparing the hot dogs ........ Paul was lighting the barbeque fire.|while|until|so that|even if
 27|95|5|1|The students returned from the trip ........ they had visited many places and enjoyed themselves a lot.|before|after|until|unless
 27|96|8|0|Which of the underlined words or phrases is INCORRECT? I think all childs should help their parents. When they're busy, help them look after their younger brothers and sisters and make sure they don't get into trouble.|childs|their|look after|don't
-27|98|3|2|In the game of Monopoly, if a player gets a "go to jail card", he ........ directly to jail.|must going|must to go|must go|must
-28|64|1|0|Which one of the underlined words or phrases is INCORRECT? I don't had enough money to buy a bus ticket, So I'll have to walk to school today.|had|to buy|So|have to
 28|65|14|1|Which of the following sentences has the CORRECT WORD ORDER?|A lot of calcium both yogurt and milk contain, but the bacteria in yogurt than the fats in milk are healthier.|Both yogurt and milk contain a lot of calcium, but the bacteria in the yogurt are healthier than the fats in the milk.|Yogurt and milk contain calcium both a lot of, but in yogurt are healthier the bacteria than in milk the fats.|But in yogurt the bacteria are healthier than in milk the fats, a lot of calcium both yogurt and milk contain.
 28|66|9|3|Which sentence is correct?|Your package delivery has next Tuesday.|You're package delivery will be next Tuesday.|You're package delivery is next Tuesday.|Your package delivery will be next Tuesday.
 28|67|14|2|In which sentence is all PUNCTUATION correct?|After all, the vehicle's are washed, whos' going to have the nicest car?|After all the vehicles are washed, who's going to have the nicest car.|After all the vehicles are washed, who's going to have the nicest car?|After all, the vehicles are washed, whos going to have the nicest car.
@@ -13441,21 +13429,13 @@ const WEJ_RAW=`5|62|1|1|We ........ football three days ago.|play|played|have pl
 29|89|13|2|The new college campus ........ five years ago.|had been built|has been built|was built|is built
 29|90|12|1|I don't know how ........ graduate a year early.|managed Ken to|Ken managed to|did manage Ken to|did Ken managed to
 30|61|14|3|Choose the sentence with the RIGHT PUNCTUATION.|Paul doesnt have many friend's in New York.|Paul doesnt have many friends in New York.|Paul doesn't have many friend's in New York.|Paul doesn't have many friends in New York.
-30|68|6|1|I ........ ........ a lot when I was at home last week. I always do that after the final exams.|sleep|slept|have slept|had slept
-30|72|4|2|I need to find someone to teach me Arabic ........ teacher would you recommend?|Who|Where|Which|Whose
-30|73|8|1|Alex: Did you buy all of the course books yesterday? Ben: No, I didn't have money.|some|any|a lot|many
 30|76|6|1|Take a break when you ........ feeling tired from all the reading.|started|start|starts|starting
-30|83|3|2|Ted lives far from the university; he ........ want to buy a car to get there in the morning.|can|could|might|should
 30|84|2|3|If Rakan ........ how difficult the exam was going to be, he would have prepared better.|know|knew|has known|had known
 30|85|10|0|When he was young, my brother often talked about ........ a doctor.|becoming|to become|become|became
 30|90|14|1|Choose the BEST WAY to make the sentences into a paragraph. (1) Prince Abdulaziz has won many racing competitions since then. (2) He has always enjoyed sports and began racing cars from a very young age. (3) Prince Abdulaziz Bin Turki is one of Saudi Arabia's most famous sportsmen. (4) So, he went to the BMW racing school in Bahrain in 2005.|(1), (3), (2), (4)|(3), (2), (4), (1)|(3), (4), (2). (1)|(1). (4), (3), (2)
 30|93|14|1|Choose the sentence with the RIGHT PUNCTUATION.|Mr. Ahmads son is late today.|Mr. Ahmad's son is late today.|Mr. Ahmads' son is late today.|Mr. Ahmad son is late today.
 30|94|1|3|Ben: Have you ever gone swimming in a river? Bob: NO, I haven't. I've tried that.|already|sometimes|rarely|never
-30|95|14|3|Choose the sentence with the RIGHT WORD ORDER.|The university club sports was established in 2003.|In 2003, the club sports university was established.|In 2003, was established the university sports club.|The university sports club was established in 2003.
-30|97|14|1|In which sentence is all CAPITALIZATION correct?|The 2010 FIFA World Cup was held in South Africa, and the next will be hosted by brazil in 2014, the first time on the Continent of South America since 1978.|The 2010 FIFA World Cup was held in South Africa, and the next will be hosted by Brazil in 2014, the first time on the continent of South America since 1978.|The 2010 FIFA World cup was held in South Africa. and the next will be hosted by Brazil in 2014, the first time on the continent of south America since 1978.|The 2010 FIFA WORLD CUP was held in South Africa, and the next will be hosted by Brazil in 2014, the first time on the Continent of South America since 1978.
 30|99|14|1|In which sentence is all PUNCTUATION correct?|"What is it?" she asked, bracing herself.|"What is it?" she asked bracing herself.|What is it, she asked, bracing herself.|What is it? She, asked bracing herself.
-31|61|5|2|He went to university in the UK ........ a PhD in physics.|get|getting|to get|to getting
-31|62|10|2|In my opinion, it is not economical ........ your money on cheap, poor-quality products.|spend|spent|to spend|be spending
 31|65|5|3|I want to go to university ........ get a good job in the future.|for to|and for|so that to|in order to
 31|66|6|1|Which one of the underlined words or phrases is INCORRECT? Kate forgot where she have put her keys when she was going to work so she came back to look for them.|forgot|have|when|came
 31|67|9|3|Rakan came to see us ........ the evening.|with|to|on|in
@@ -13594,10 +13574,7 @@ const WEJ_RAW=`5|62|1|1|We ........ football three days ago.|play|played|have pl
 34|95|5|1|My sister doesn't speak French ........|so does my brother|neither does my brother|so doesn't my brother.|neither doesn't my brother
 34|96|13|1|Which one of the underlined words or phrases is INCORRECT? The lost watch was finded in the last place you would think of. It was a happy end to a sad story.|was|finded|last|story
 34|100|2|2|If I ........ More time, I ........ More.|had/ learn|have/ learn|had/ would learn|have/ would learn
-38|61|0|0|Go outside and ........ the gardener some water. He needs a break.|bring|to bring|bringing|will bring
-38|62|0|2|In which sentence is all CAPITALIZATION correct?|Among John's favorite places to travel were malaysia, morocco, and any exotic Location with a nice, clean beach.|Among John's favorite places to travel were Malaysia, Morocco, and any Exotic Location with a nice, clean beach.|Among John's favorite places to travel were Malaysia, Morocco, and any exotic location with a nice, clean beach.|Among John's favorite Places to Travel were Malaysia, Morocco, and any exotic location with a nice, clean beach.
 38|63|0|1|George: May I speak to Mr. Ben, please? Secretary: I'm afraid he ........ a meeting right now. Could you call back?|runs|is running|ran|has run
-38|64|0|3|The boys' mother told them to finish all of their breakfast, ........ they stuffed their mouths until their plates were empty.|However|Since|As|So
 38|65|0|0|Which one of the underlined words or phrases is INCORRECT? Mona she studied French for 8 years before she felt like she reached a good level.|she|for|before|reached
 38|66|0|3|I arrived to work at 9 a.m. and then I ........|at home left my mobile phone that I realized.|Left my mobile phone that I realized at home.|Realized my mobile phone at home that I left.|Realized that I left my mobile phone at home.
 38|67|0|3|Will and Bob were the first to arrive at the dinner party and then ........|After Mike and Chris came with a box of chocolates soon.|With a box of chocolates Mike and Chris came soon after.|Soon after came with a box of chocolates Mike and Chris.|Soon after Mike and Chris came with a box of chocolates.
@@ -13622,12 +13599,8 @@ const WEJ_RAW=`5|62|1|1|We ........ football three days ago.|play|played|have pl
 38|87|0|1|The new office block should ........ by the spring, so we can move in before the summer break starts.|Build|Be built|Be building|Have been built
 38|88|0|0|Do answer the door, ........ you?|Will|May|Shall|Could
 38|89|0|0|The salesperson ........ I deal each time is not available today.|With whom|With who|Whom with|Who with
-38|91|0|1|Tom ........ to Italy every year.|go|goes|is goes|is going
-38|97|0|3|A: Is it John's turn to start the game? B: No, it isn't. It's ........|you|you're|your|yours
 38|98|0|3|When Lisa ........ a child, she learnt to read Arabic.|has been|had been|is|was
 38|100|0|3|I took a lot of notes while the professor ........|has spoken|spoke|speak|was speaking
-39|62|0|2|In which sentence is all CAPITALIZATION correct?|Among John's favorite places to travel were malaysia, morocco, and any exotic location with a nice, clean beach.|Among John's favorite places to travel were Malaysia, Morocco, and any Exotic location with a nice, clean beach.|Among John's favorite places to travel were Malaysia, Morocco, and any exotic location with a nice, clean beach.|Among John's favorite Places to Travel were Malaysia, Morocco, and any exotic location with a nice, clean beach.
-39|64|0|3|The boys' mother told them to finish all of their breakfast, ........ they stuffed their mouths until their plates were empty.|however|since|as|so
 39|65|0|3|it takes many years of study ........ become a doctor.|for to|and for|so that to|in order to
 39|66|0|3|which one of the underlined words or phrases is INCORRECT? Tom and Adam arrived home with a lot of takeout food, but they were too late. Lisa and kat have already finished eating.|arrived|they|too|have
 39|67|0|2|Mr. Smith has bad eyesight, so he hates driving ........ night.|with|on|at|in
@@ -13660,12 +13633,7 @@ const WEJ_RAW=`5|62|1|1|We ........ football three days ago.|play|played|have pl
 39|94|0|1|Which sentence has the CORRECT WORD ORDER?|He was disappointed to hear Ben was ahead of him in geography Tom was first in his class at but math and science.|Tom was first in his class at math and science, but he was disappointed to hear Ben was ahead of him in geography.|Was disappointed to hear Ben was ahead of him in geography but Tom he was first in his class at math and science.|Tom was first in his class at math and science, but to hear Ben was ahead of him in geography he was disappointed.
 39|95|0|0|Kate visits her grandmother every weekend, ........ her brother doesn't always come along.|But|Then|Also|Therefore
 39|96|0|2|Jane: I love eating at KFC. Sara: Me too ........ their new spicy chicken?|Have you been trying|Were you tried|Have you tried|Are you try
-39|98|0|1|Working in a university last year ........ very interesting.|Is|Was|Can be|Could be
-39|99|0|3|All of your travel plans have been made. When you arrive, someone ........ ........ for you at the airport.|Waits|Will wait|Is waiting|Will be waiting
-39|100|0|3|Dairy products should ........ to keep them fresh.|Refrigerate|Refrigerating|Be refrigerate|Be refrigerated
-40|62|0|1|Hannah: Excuse me. I am looking for my backpack Librarian: There are three backpacks on the lost and found shelf. Could you tell me ........ one is yours?|that|which|what|this
 40|63|0|3|In which sentence is all CAPITALIZATION correct?|Not all muslims speak Arabic or are from the middle east; Indonesia and Malaysia are two asian countries with millions of Citizens who practice Islam.|Not all Muslims speak Arabic or are from the middle East; Indonesia and Malaysia are two Asian Countries with Millions of citizens who practice Islam.|Not all muslims speak Arabic or are from the Middle East; Indonesia and Malaysia are Two Asian Countries with millions of citizens who practice islam.|Not all Muslims speak Arabic or are from the Middle East: Indonesia and Malaysia are two Asian countries with millions of citizens who practice Islam.
-40|64|0|0|Paul: I left my coat in the car. Will: Here, you can borrow ........|mine|my|our|it
 40|65|0|0|In which sentence is all CAPITALIZATION correct?|The first person to ever see Mars was Mr. Galileo Galilei in 1610.|The first Person to ever see Mars was Mr. Galileo Galilei in 1610.|The first Person to ever see mars was Mr. Galileo Galilei in 1610.|The first person to ever see mars was mr. galileo galilei in 1610.
 40|66|0|1|Dave was hoping to reach Jubail by 4 o'clock, ........ his car broke down on the way.|and|but|so|or
 40|67|0|0|Peter loves cooking, so he thought he'd try to make some ........ .|Indian food|indian food|Indian Food|indian Food
@@ -13691,9 +13659,6 @@ const WEJ_RAW=`5|62|1|1|We ........ football three days ago.|play|played|have pl
 40|87|0|2|I used to tell my parents that ........ to California, I'd never have met my wife.|haven't we moved|have we not moved|hadn't we moved|had we not moved
 40|88|0|0|There's something wrong with the window. It just ........ open.|can't|couldn't|won't|wouldn't
 40|89|0|0|Don't call him now. He ........ lunch.|may be having|may have|can be having|can have
-41|61|0|3|The computer costs so ........ money that the family decided not to buy it.|Most|More|Many|much
-41|62|0|2|In which sentence is all CAPITALIZATION correct?|Running late, he yelled, "Stop!" as he chased after the kingdom university bus that took him to work every morning.|Running late, he yelled, "Stop!" as he chased after the Kingdom university bus that took him to work every morning.|Running late, he yelled, "Stop!" as he chased after the Kingdom University bus that took him to work every morning.|Running late, He yelled, "Stop!" as he chased after the Kingdom University bus that took him to work every morning.
-41|64|0|1|The students had been studying lesson one and the teacher wanted ........ lesson two.|begin|to begin|they begin|that they begin
 41|65|0|1|Which sentence has the CORRECT WORD ORDER?|Did you complete your master's degree where?|Where did you complete your master's degree?|Where your master's degree did you complete?|Where you did complete your master's degree?
 41|69|0|3|In which sentence is all PUNCTIUATION correct?|After the arrival of their new baby Jane and Dave wanted to buy a bigger house. However, they couldn't afford it.|After the arrival of their new baby, Jane and Dave wanted to buy a bigger house however, they couldn't afford it.|After the arrival of their new baby, Jane and Dave wanted to buy a bigger house. However they couldn't afford it.|After the arrival of their new baby, Jane and Dave wanted to buy a bigger house. However, they couldn't afford it.
 41|70|0|0|German is still not a very popular language among ........|French|no French|the French|any French
@@ -13724,9 +13689,6 @@ const WEJ_RAW=`5|62|1|1|We ........ football three days ago.|play|played|have pl
 41|96|0|0|Lucy: Can you help me move the couch to the other side of the room? Mary: We can try, but I think it's ........ heavy.|too|any|much|more
 41|97|0|1|I don't understand this sentence. What ........ ?|does mean this word|does this word mean|this word means|means this word
 41|98|0|3|That's a beautiful new jacket! Where ........ you buy it?|are|were|have|did
-41|99|0|0|The children could not ........ out to ride their bikes because it was raining.|go|going|gone|to go
-42|62|0|3|Now it is 10:00 PM. The train ........ at 11:00 PM.|arriving|arrived|has arrived|will arrive
-42|63|0|2|If you promise to keep a secret, I ........ You what happened.|tell|telling|will tell|would tell
 42|65|0|3|I want to buy a car ........ get a job as a driver.|for to|and for|so that to|in order to
 42|66|0|1|Which one of the underlined words or phrases is INNCORRECT? Lisa forgot where she have put her handbag when she came to see me yesterday.|forgot|have|when|came
 42|67|0|3|Mark came to Ben's office ........ the evening.|with|to|on|in
@@ -13757,7 +13719,6 @@ const WEJ_RAW=`5|62|1|1|We ........ football three days ago.|play|played|have pl
 42|93|0|0|Choose the best way to make the following sentences into a paragraph: (1) Their nice holiday would be possible at last, so they were overjoyed. (2) My brother, Chris, was living in London with his family. (3) My parents were never able to save enough to go on a nice holiday. (4) He decided to invite them to come and stay with him.|(3), (2), (4), (1).|(4), (1), (3), (2).|(1), (4), (2), (3).|(4), (3), (2), (1).
 42|94|0|1|Which sentence has the CORRECT WORD ORDER?|The Royal Museum in the 1850s opened the British government called the first public library.|In the 1850s, the British government opened the first public library, called The Royal Museum.|The Royal Museum opened the British government called the first public library, in the 1850s.|Opened the British government called the Royal Museum the first public library, in the 1850s.
 42|95|0|0|Mona speaks Spanish fluently, ........ her brother's Spanish is very weak.|but|then|since|therefore
-43|64|0|1|The students had been studying lesson one and the teacher wanted ........ lesson two.|begin.|to begin|they begin|that they begin
 43|65|0|3|Amy wants to do a computing degree ........ work in a technology business.|for to|and for|so that to|in order to
 43|66|0|1|Which one of the underlined words or phrases is INCORRECT? Amy felt unwell after lunch; she thought it might be what she have eaten.|felt|have|what|after
 43|67|0|1|The teacher told Muhammed to visit his office ........ the morning.|with|in|to|on
@@ -13789,33 +13750,20 @@ const WEJ_RAW=`5|62|1|1|We ........ football three days ago.|play|played|have pl
 43|93|0|0|Choose the BEST WAY to make the following sentences in a paragraph: (1) Ahmed helped them through the early months at the school. (2) Five years on, they now think of Kuwait as home. (3) Emma and Jack were excited about their new job in Kuwait. (4) When they arrived, they met their new boss, Ahmed.|(3), (4), (1), (2).|(1), (4), (3), (2).|(3), (1), (2), (4).|(1), (3), (2), (4).
 43|94|0|1|Which sentence has the CORRECT WORD ORDER?|China overtook the USA to become in 2012 the biggest exporter of goods in the world.|In 2012, China overtook the USA to become the biggest exporter of goods in the world.|Overtook China the USA in 2012 to become the biggest exporter of goods in the world.|In 2012, to become the biggest exporter of goods China overtook the USA in the world.
 43|95|0|0|Chris learned how to play tennis when he was young, ........ his brother can't play at all.|but|then|since|therefore
-43|97|0|1|I do not understand this sentence. What ........ ?|does mean this word|does this word mean|this word means|means this word
-44|69|0|1|Professor Smith presented some very good arguments ........ ,Mr. Carter was still able to win the debate.|so|but|and|because
 44|94|0|1|Which sentence has the CORRECT WORD ORDER?|Its first, in 1926 opened Route 66 the U.S. government called major highway.|In 1926, the U.S. government opened its firstK major highway, called Route 66.|Route 66 opened the U.S, government called its first major highway in 1926.|Opened the U.S. government called Route 66 its first major highway in 1926.
 44|95|0|0|Fawzia speaks Arabic fluently, ........ her friend's Arabic is terrible.|but|then|since|therefore
-44|97|0|0|He worked ........ forty years before he decided to retire.|for|from|since|during
 44|98|0|3|Wife: The maintenance man was here today. Husband: Good! ........ You remember to tell him to fix the stairs?|Are|Were|Do|Did
-44|99|0|0|Does Chris have to go home now? Let him ........ a while longer.|stay.|stays.|to stay.|staying
 44|100|0|3|Ashgan cannot remember ........|where are kept the files.|where are the files kept.|where the files kept are.|where the files are kept.
 45|65|0|3|Which of the following sentences has the CORRECT WORD ORDER?|Mona is now at right the restaurant.|At the restaurant right now is Mona.|Right now at the restaurant is Mona.|Mona is at the restaurant right now.
 45|66|0|2|In which sentence is all PUNCTUATION correct?|Some people enjoy visiting museums during their holidays there are some things that you should think about when going to a museum including opening times guided tours and where to eat lunch.|Some people enjoy visiting museums doing their holidays, there are some things that you should think about when going to a museum, including opening times guided tours and where to eat lunch.|Some people enjoy visiting museums during their holidays. There are some. things that you should think about when going to museum including opening times, guided tours, and where to eat lunch.|Some people enjoy visiting museums during their holidays: there are some things that you should think about when going to a museum including, opening times, guided tours, and, where to eat lunch.
-45|67|0|2|Which sentence has the CORRECT WORD ORDER?|I drink Pepsi never late at night.|I drink never Pepsi late at night.|I never drink Pepsi late at night.|Never I drink Pepsi late at night
 45|68|0|0|Which sentence is all CAPITALIZATION correct?|The boy and his father came home late.|The Boy and his father came home late.|The boy and his Father came home late.|The Boy and his Father came home late.
-45|69|0|2|Choose the CORRECT ORDER to make the following sentences into a paragraph: (1) Later that week, her manager called her and said that she had given the best presentation in the history of the company. (2)When she stood up to give her presentation, she was nervous but confident that she had prepared well. (3)All her colleagues were really proud of her. (4)She made sure to sleep early on the night before the presentation so that she would be well rested and focused. (5)Helen worked really hard on her latest presentation at work that was coming up.|(3), (4), (2), (1), (5).|(3), (5), (4), (2), (1).|(5), (4), (2), (1), (3).|(5), (4), (3), (2), (1).
-45|74|0|1|I just saw your brother in the hospital ........ happened to him?|who|what|whom|where
 45|76|0|0|I will call you before I ........ home so you know I'm on my way.|leave|will leave|had left|left
-45|77|0|2|This book ........ By a famous English written in 1603.|wrote|is written|was written|Writes
-45|79|0|0|I miss my best friend. If only he ........ here with me!|were|had been|will be|Is
 45|81|0|2|I'm so happy my father stoppedHe used to smoke 40 cigarettes a day.|to smoke|to smoking|Smoking|Smoke
-45|82|0|3|I know you didn't break the window. It ........ by Emma's sister.|Broke|Broken|is broken|was broken
 45|83|0|0|I'm afraid you're late for dinner. All the food has ........ .|been eaten|been eating|eaten ate|ate
 45|86|0|2|If Adila had not spent all her money, she ........ to borrow 20 dollars from me.|hadn't had|won't have had|wouldn't have had|hasn't had
 45|89|0|1|Chris has lived in his house all his life. He seems ........ Everyone in the neighborhood.|that he know|to know|Knowing|to be known
 45|92|0|0|Which sentence has the CORRECT WORD ORDER?|Ahmed went to the British Embassy to get a document approved, but when he arrived, he was not allowed in because he had not made an. appointment first.|But when he arrived, Ahmed went to the British Embassy to get a document approved, he was not allowed in because he had not made an appointment first.|He was not allowed in because he had not made an appointment first, but when he arrived, Ahmed went to the British Embassy to get a document approved.|When he arrived he was not allowed in, but because he had not made an appointment first, Ahmed went to the British Embassy to get a document approved.
 45|94|0|3|Karen didn't understand the task her manager gave her, ........ she kept asking for more information.|Because|For|If|so
-45|95|0|1|My sister doesn't speak French. ........ .|so does my brother|neither does my brother|so doesn't my brother.|neither doesn't my brother
-45|96|0|1|Which one of the underlined words or phrases is INCORRECT? The lost watch was finded in the last place you would think of. It was a happy end to a sad story.|Was|finded|Last|Story
-45|99|0|2|Mr. Amir, the students call Uncle Amir, taught the boys physical education several times a week|he|him|whom|which
 46|65|0|1|Which of the following sentences has the CORRECT WORD ORDER?|Did you finish your dinner when?|When did you finish your dinner?|Did your dinner finish you when?|When you did finish your dinner?
 46|69|0|3|In which sentence is all PUNCTUATION correct?|Before Alex submitted his application he made sure he had entered all information correctly even though he thought he had he was still not certain his application was complete.|Before Alex submitted his application, he made sure he had entered all information correctly. Even though he thought he had he was still not certain his application was complete.|Before Alex submitted his application, he made sure, he had entered all information correctly, even though he thought he had he was still not certain his application was complete.|Before Alex submitted his application, he made sure he had entered all information correctly. Even though he thought he had, he was still not certain his application was complete.
 46|70|0|2|I don't have ........ cash on me. Can I pay by card?|a lot|many|much|a few
@@ -13842,9 +13790,6 @@ const WEJ_RAW=`5|62|1|1|We ........ football three days ago.|play|played|have pl
 46|94|0|3|Helen didn't know how to get to the university, ........ she kept asking for directions.|because|for|if|so
 46|95|0|0|Which sentence has the CORRECT WORD ORDER?|Steve Jobs, the American tech genius, is remembered as the person who made the first real smartphone, having introduced the iPhone to the world.|To the world, as the person who made the first real smartphone, is remembered Steve Jobs, the American tech genius, having introduced the iPhone.|Having introduced the iPhone to the world, Steve Jobs, the American tech genius, as the person who made the first real smartphone, is remembered.|As the person who made the first real smartphone, is remembered Steve Jobs, the American tech genius, having introduced the iPhone to the world.
 46|96|0|1|I can't reach the door; it is ........ far away.|any|too|more|much
-46|98|0|2|In the game of Monopoly, if a player gets a "go to jail card", he directly to jail.|must going|must to go|must go|must
-46|99|0|2|Mr. Amir, the students call uncle Amir, taught the boys physical education several times a week.|he|him|whom|which
-47|64|0|1|Steve's watch was not working properly, ........ he took it to a repair shop.|but|so|because|while
 47|65|0|0|Which one of the underlined words or phrases is INCORRECT? my sister she gave that car to me when I got my first job.|she|to me|got|first job
 47|66|0|3|Lisa took the train from Boston to New York and then she ........|the subway to my apartment took to surprise me.|to surprise me to my apartment took the subway.|took the subway to surprise me to my apartment.|took the subway to my apartment to surprise me.
 47|67|0|3|The film started at 7 o'clock, ........|and just for the commercials in time we arrived.|and we for the commercials just arrived in time.|and just in time we arrived for the commercials.|and we arrived just in time for the commercials.
