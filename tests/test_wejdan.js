@@ -174,15 +174,26 @@ console.log('\n٦) التباعد لا يُعيد ما أُتقِن');
     const st={};const mastered=WEJ_BANK.slice(0,20).map(function(x){return x.id});
     mastered.forEach(function(id){st[id]={box:6,seen:6,due:srsToday()+40,s:60,d:5,last:srsToday()}});
     lsSet(WEJ_SRS_KEY,JSON.stringify(st));
-    let back=0,total=0;
+    let back=0,total=0,backMix=0;
     for(let k=0;k<20;k++){
-      wejRule=-1;const plan=buildWejPlan();
+      wejRule=-1;
+      // ما تختاره البانيةُ نفسها (مستحقٌّ + بكرٌ) قبل حارس التوائم
+      const stt=wejSrsLoad(),today=srsToday(),POOL=wejPool();
+      const due=shuffle(POOL.filter(function(i){return stt[i.id]&&stt[i.id].due<=today}));
+      const fresh=shuffle(POOL.filter(function(i){return !stt[i.id]}));
+      backMix+=planNewMix(due,fresh,WEJ_N).filter(function(x){return mastered.indexOf(x.id)>=0}).length;
+      const plan=buildWejPlan();
       total+=plan.length;
       back+=plan.filter(function(x){return mastered.indexOf(x.id)>=0}).length;
     }
-    return {back:back,total:total};
+    return {back:back,total:total,backMix:backMix};
   });
-  ok(r.back===0,`المُتقَنُ البعيدُ موعدِه لا يعود في عشرين جلسة (عاد ${r.back})`);
+  ok(r.backMix===0,`اختيارُ البانية نفسها لا يحمل مُتقَناً بعيدَ الموعد إطلاقاً (${r.backMix} في عشرين جلسة)`);
+  // **وحدُّ الدعوى يُقال بالرقم**: `planNoTwins` يُكمل النقص بسحبٍ عشوائي من البنك كلّه
+  // **بلا نظرٍ في التباعد** — وهي خاصّةُ المساعِد المشترك لا هذا القسم. وقياسُها على
+  // ٤٠٠ جلسة: ٥ من ٣٢٠٠ خانة (٠٫١٦٪). فالدعوى «نادرٌ لا معدوم»، وعتبةُ ٣ من ١٦٠ (١٫٩٪)
+  // أوسعُ من المقاس عشرَ مرّات فلا تتقلّب، وتسقط لو انكسر التباعد فعلاً.
+  ok(r.back<=3,`ولا يعود إلّا نادراً بديلاً لتوأم — ${r.back} من ١٦٠ خانة (المقاس ٠٫١٦٪)`);
   ok(r.total===160,`وحجمُ الجلسة ثابتٌ ثمانيةً (${r.total}/160)`);
   const dueBack=await p.evaluate(()=>{
     const st={};const due=WEJ_BANK.slice(30,38).map(function(x){return x.id});

@@ -78,7 +78,7 @@ function ok(c,m){if(c){pass++;console.log("  ✓ "+m)}else{fail++;console.log(" 
     ok(!/اقرئي .* بصوتٍ واضح/.test(before),"قبل الإجابة: لا صندوق قراءة جهرية");
     ok(!/🎤 اقرئي بصوتك/.test(before),"وقبلها لا زرّ ميكروفون");
     // تُفتح البوّابة ثم يُجاب
-    await p.evaluate(()=>{gateLeft=0;gateStop&&gateStop();render();readChoose(0);render()});
+    await p.evaluate(()=>{gateLeft=0;gateStop&&gateStop();render();readChoose(0);if(!readLocked)readChoose(0);render()});
     const after=await p.evaluate(()=>document.body.innerText);
     ok(/بصوتٍ واضح/.test(after),"وبعد الإجابة: الصندوق ظهر");
     // ===== دعوى رُوجعت ولم تُدهَس — ٣ أكتوبر =====
@@ -109,7 +109,7 @@ function ok(c,m){if(c){pass++;console.log("  ✓ "+m)}else{fail++;console.log(" 
     await p.waitForFunction(()=>typeof startRead==="function",{timeout:15000});
     const blocked=await p.evaluate(()=>{
       startRead();const n=readItems.length;
-      gateLeft=0;readChoose(0);
+      gateLeft=0;readChoose(0);if(!readLocked)readChoose(0);
       const idx0=readIdx;readNext();readNext();
       return {n:n,moved:readIdx!==idx0,finished:readDone};
     });
@@ -118,7 +118,7 @@ function ok(c,m){if(c){pass++;console.log("  ✓ "+m)}else{fail++;console.log(" 
     const r=await p.evaluate(()=>{
       // جهازٌ أثبت أنه بلا ميكروفون — نفس حال المتصفّحات المدمجة الموثَّقة
       startRead();const n=readItems.length;let done=0;
-      for(let i=0;i<n;i++){gateLeft=0;readChoose(0);raResult={err:"no_api"};readNext();done++}
+      for(let i=0;i<n;i++){gateLeft=0;readChoose(0);if(!readLocked)readChoose(0);raResult={err:"no_api"};readNext();done++}
       return {n:n,done:done,finished:readDone};
     });
     ok(r.done===r.n&&r.finished,`وبجهازٍ بلا ميكروفون: جلسةٌ كاملة (${r.n} عنصراً) تُنهَى`);
@@ -132,7 +132,7 @@ function ok(c,m){if(c){pass++;console.log("  ✓ "+m)}else{fail++;console.log(" 
     await p.goto(`${BASE}/index.html`,{waitUntil:"domcontentloaded"});
     await p.waitForFunction(()=>typeof startRead==="function",{timeout:15000});
     const r=await p.evaluate(()=>{
-      startRead();gateLeft=0;readChoose(0);
+      startRead();gateLeft=0;readChoose(0);if(!readLocked)readChoose(0);
       raResult={ok:true,sc:{pct:91,weak:[],by:"azure"},engine:"azure"};
       const shown=/٩١%/.test(document.body.innerText)||(render(),/٩١%/.test(document.body.innerText));
       readNext();
@@ -159,7 +159,7 @@ function ok(c,m){if(c){pass++;console.log("  ✓ "+m)}else{fail++;console.log(" 
     await p.goto(`${BASE}/index.html`,{waitUntil:"domcontentloaded"});
     await p.waitForFunction(()=>typeof raFinish==="function",{timeout:15000});
     const r=await p.evaluate(async()=>{
-      startRead();gateLeft=0;readChoose(0);
+      startRead();gateLeft=0;readChoose(0);if(!readLocked)readChoose(0);
       const it=readCur();const target=readAloudTarget(it);
       // محاولةٌ قصيرة: المسار الوحيد الذي يمكن بلوغه بلا ميكروفون حقيقي
       raStartedAt=Date.now()-100;raElapsed=0.1;
@@ -225,7 +225,12 @@ function ok(c,m){if(c){pass++;console.log("  ✓ "+m)}else{fail++;console.log(" 
       // فنقرةٌ تقع قبل جهوز العنصر لا تُنتج صندوقاً — ومهلةُ ١٥٠ملّي تكفي على آلةٍ
       // خالية وقد لا تكفي داخل الجولة الكاملة. (سقط القسم في جولة ٤ أكتوبر الكاملة
       // ونجح منفرداً، ولم يكن في رسالته ما يقول أيُّ السببين — وهو ما يُصلَح أدناه.)
-      await p.evaluate(async()=>{await startRead();gateLeft=0;readChoose(0)});
+      // **ونقرةٌ ثانية عند الحاجة**: بوّابةُ تأكيد انحياز الموضع تُسلَّح بعد ثماني
+      // نقراتٍ يغلب فيها موضعٌ واحد، فتردّ أوّل نقرةٍ طلباً للتأكيد — وهذا الملفّ
+      // يضغط `readChoose(0)` عشرات المرّات في سياقٍ واحد، فيُسلَّحها بحكم القرعة.
+      // وقيس فعلاً: سقوطٌ واحد في عشر تشغيلات، وستُّ دعاوى معه تقول «الصندوق غائب»
+      // ولا تقول لماذا. فالتأكيد هو ما يفعله المتعلّم نفسه، لا تعطيلٌ للبوّابة.
+      await p.evaluate(async()=>{await startRead();gateLeft=0;readChoose(0);if(!readLocked)readChoose(0)});
       await p.waitForFunction(()=>[...document.querySelectorAll("div")]
         .some(d=>/بصوتٍ واضح/.test(d.textContent)&&/rgb\(240, 253, 244\)/.test(d.style.background||"")),
         {timeout:15000}).catch(function(){});
