@@ -135,7 +135,12 @@
   .letter{width:26px;height:26px;flex-shrink:0;border-radius:8px;background:#F1F5F9;color:#64748B;display:grid;place-items:center;font-size:13px;font-weight:800}
   .explain{margin-top:18px;padding:16px;border-radius:14px;background:#F8FAFC;border-inline-start:4px solid #F59E0B}
   .explain-title{font-weight:800;margin-bottom:6px}.explain-body{color:#475569;line-height:1.8;font-size:15px}
-  .btn{margin-top:14px;width:100%;padding:15px;border-radius:14px;border:none;color:#fff;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit}
+  /* خلفيةٌ افتراضية — بلاها يرث الزرُّ رماديَّ المتصفّح (#EFEFEF) ونصُّه أبيض، فتباينُه
+     ١٫١:١ أي غيرُ مقروء. وقع ذلك في **١٤ زرّاً من ١٢٨** (منها «رجوع» و«ورقة أخرى» في
+     شاشة المحاكاة) — كشفته لقطةُ شاشة لا قياسُ DOM. والعلاج في الصنف لا في الأزرار:
+     الخلفيةُ السطرية تتقدّم عليه، فأيُّ زرٍّ يُكتب غداً بلا خلفيةٍ يبقى مقروءاً. */
+  .btn{margin-top:14px;width:100%;padding:15px;border-radius:14px;border:none;background:#334155;color:#fff;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit}
+  .btn.ghost{background:#fff;color:#334155;border:1.5px solid #CBD5E1}
   .link-btn{margin-top:14px;width:100%;padding:13px;border-radius:14px;border:none;background:transparent;color:#64748B;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
   .score-row{display:flex;align-items:baseline;gap:10px;margin-bottom:4px}
   .score-big{font-size:52px;font-weight:800}.score-total{font-size:22px;color:#94A3B8}
@@ -4721,7 +4726,10 @@ const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEn
   "posCxOf","posCxTake","posCxNote",
   "quizFromCache","quizGenTopUp","quizRotNext",
   "wejCounts","wejSrsLoad","wejSrsUpdate","wejPool","buildWejPlan","goWejMenu","startWej",
-  "wejCur","wejSetupRound","wejChoose","wejNext","renderWejMenu","renderWej","renderWejResult"];
+  "wejCur","wejSetupRound","wejChoose","wejNext","renderWejMenu","renderWej","renderWejResult",
+  "placeSecOf","placeLoad","placeSave","placeBankSize","placeReady","placeCoverage","placeChance",
+  "placeQ","placePool","goPlaceMenu","startPlaceSec","placeCur","placePlay","placeMed","placeAgg",
+  "placeChoose","placeFinish","placeAnsQ","placeCefr","renderPlaceMenu","renderPlace","renderPlaceReport"];
 function censusMissing(){return CENSUS.filter(function(n){return typeof window[n]!=="function"})}
 function censusHTML(){
   var miss=censusMissing();
@@ -18333,6 +18341,299 @@ function renderMockResult(){
   </div>`;
 }
 
+// ===== تحديد المستوى بنمط STEP: أربعةُ أقسام بأوزان الاختبار نفسها — ١٣ أكتوبر =====
+// طلبُ صاحب المشروع: «حط اختبار تحديد مستوى لاختبار step بشرط أن تكون الاسئلة نصاً من
+// ملفات وجدان»، ثمّ «أبغاك تغطي إلى ١٠٠٪»، ثمّ اختار الطريق الأوّل للاستماع (من البنك
+// القائم في التطبيق بوسم مصدر، لأن ملفّات وجدان بلا استماع إطلاقاً).
+//
+// **والأوزان من الاختبار نفسه لا من اختياري، ويُصدِّقها ترقيمُ وجدان**: النموذج ٤٩
+// عنوانه «Reading & Grammar» وأسئلته تبدأ من ٢١ وتنتهي بـ١٠٠ — فالعشرون الأولى هي
+// الاستماع، و٢١-٦٠ قراءة (٤٠)، و٦١-١٠٠ تراكيب وتحليلٌ كتابي (٤٠). وهذا مصدرٌ ثالث
+// مستقلّ يوافق توزيع ٢٠/٤٠/٣٠/١٠ بعد أن تعذّرت الصفحة الرسمية في البحث.
+//
+// وأربعةُ قيودٍ مُعلنة على الشاشة لا في هذا التعليق وحده:
+//   ١) **التغطية رقمٌ يُعرض ويُحسب** من البنوك غير الفارغة لا من قائمة الأقسام: قسمُ
+//      المقروء بنكُه فارغٌ حتى تُرفع صفحات النموذج ٤٩ المحلولة (٣٦٫٩م.ب فوق حدّ
+//      التنزيل ١٠، فالمفتاحُ الأخضر محجوب — قِيس لا رُجِّح). فتقول الورقة «٦٠٪ من وزن
+//      الاختبار» ولا تدّعي مئةً.
+//   ٢) **لا درجةَ STEP ولا جدولَ مواءمةٍ لـCEFR** — لا يوجد معيارٌ منشور لذلك (بُحث
+//      فلم يوجد؛ وجدولُ STEP التايلندي اختبارٌ آخر لا يُستعار). فيُعرض الخام وملفُّ
+//      القواعد وتقديرُ CEFR **من محتوى ما أُصيب** (English Profile) لا من رقم.
+//   ٣) **لا تُحدَّث جدولة FSRS** — كما لا تُحدِّثها المحاكاة الأسبوعية: الامتحان يقيس
+//      ولا يُدرّس، وإدخالُ مئة عنصرٍ في المراجعة يُفسد تباعدَ قسم التدريب نفسه.
+//   ٤) **بلا تغذيةٍ راجعة حتى النهاية** — ولا شرحَ أصلاً: مفتاحُ وجدان لا يشرح خياراته،
+//      وهذا هنا موافقٌ للغرض لا نقصٌ فيه.
+//
+// **وقسمُ الاستماع يمتدّ على المستويات** (٤ لكل درجة A1→C1) لا على مستوى المتعلّم —
+// وهذا ما يجعله تحديدَ مستوى: بنكُ درجةٍ واحدة لا يُفرّق شيئاً، وبنكُ خمس درجات يُنتج
+// ملفَّ دقّةٍ بالدرجة يُشتقّ منه التقدير. والبنك يكفي بلا تأليفٍ جديد (مقاسٌ: ١٠/١٠/
+// ١٠/٨/٨ = ٤٦ عنصراً مؤلَّفاً). **ومن `LISTEN_BANK` المؤلَّف وحده لا المولَّد**: العنصر
+// المولَّد يختلف من جهازٍ لجهاز، فورقةُ تحديد مستوى تفقد قابليّةَ المقابلة بين الأبناء
+// وبين جلستين لو دخلها.
+//
+// وأقسامٌ أربعة في جلسةٍ واحدة تبلغ مئة عنصر — وبزمن إلياس المقاس على وجدان (وسيط
+// ٥٣٫٦ث) تلك ساعاتٌ لا جلسة. **فكل قسمٍ جلسةٌ على حدة** كما يُدار STEP نفسه بأقسامٍ
+// موقوتة، والتقريرُ يجمع ما اكتمل ويقول ما لم يكتمل.
+const PLACE_KEY="mawhiba_place_v1";
+// قطعُ النموذج ٤٩ تُضاف هنا متى وصل مفتاحُها — ولا يُشحَن منها عنصرٌ بمفتاحٍ من حكمي
+// (درس ١٣ أكتوبر: ٣٩ مفتاحاً كان البنك يُدرّس بها الخطأ الشائع صواباً).
+const PLACE_READ_BANK=[];
+// مخطَّطُ التراكيب: ثلاثون خانةً على قواعد وجدان ١-١٣ بطريقة **أكبر الباقي** (Hamilton)
+// على أوزان الدورة نفسها، وأرضيّةُ خانةٍ لكل قاعدة فلا تغيب قاعدة. والقواعدُ بلا وسمٍ
+// في المصدر (٢٨٤ عنصراً) خارج المخطَّط: المخطَّط يُسند كل عنصرٍ إلى خانةِ محتوى، وعنصرٌ
+// بلا وسمٍ لا خانةَ له — ووسمُه بحدسي يخالف قرار ١٢ أكتوبر صراحةً.
+const PLACE_STRUCT_PLAN={1:5,2:3,3:2,4:2,5:2,6:3,7:2,8:2,9:2,10:2,11:2,12:1,13:2};
+const PLACE_LISTEN_LEVELS=["A1","A2","B1","B2","C1"],PLACE_LISTEN_PER=4;
+const PLACE_SECTIONS=[
+  {k:"listen",t:"فهم الاستماع",    icon:"🎧",w:20,n:20,src:"مؤلَّف"},
+  {k:"read",  t:"فهم المقروء",     icon:"📖",w:40,n:40,src:"وجدان"},
+  {k:"struct",t:"التراكيب",        icon:"🧩",w:30,n:30,src:"وجدان"},
+  {k:"write", t:"التحليل الكتابي", icon:"✒️",w:10,n:10,src:"وجدان"},
+];
+function placeSecOf(k){for(let i=0;i<PLACE_SECTIONS.length;i++)if(PLACE_SECTIONS[i].k===k)return PLACE_SECTIONS[i];return null}
+function placeLoad(){try{return JSON.parse(lsGet(PLACE_KEY)||"{}")}catch(e){return{}}}
+function placeSave(o){try{lsSet(PLACE_KEY,JSON.stringify(o))}catch(e){}}
+// حجمُ البنك يُقاس ولا يُفترَض — فقسمٌ بنكُه أضيقُ من ورقته لا يُفتَح ويُقال سببُه
+function placeBankSize(k){
+  if(k==="listen")return LISTEN_BANK.filter(function(x){return PLACE_LISTEN_LEVELS.indexOf(x.lv)>=0}).length;
+  if(k==="read")return PLACE_READ_BANK.length;
+  if(k==="write")return WEJ_BANK.filter(function(x){return x.r===14}).length;
+  return WEJ_BANK.filter(function(x){return !!PLACE_STRUCT_PLAN[x.r]}).length;
+}
+function placeReady(k){const s=placeSecOf(k);return !!s&&placeBankSize(k)>=s.n}
+function placeCoverage(){let w=0;PLACE_SECTIONS.forEach(function(s){if(placeReady(s.k))w+=s.w});return w}
+// الخياراتُ ثلاثةٌ في الاستماع وأربعةٌ في وجدان، فخطُّ الصدفة يُشتقّ من المعروض فعلاً
+function placeChance(ans){
+  if(!ans||!ans.length)return 0;
+  let s=0;ans.forEach(function(a){s+=1/(a.nc||4)});
+  return Math.round(100*s/ans.length);
+}
+function placeQ(x){
+  const it=x.it;
+  if(x.sec==="struct"||x.sec==="write"){
+    return {q:it.q,c:it.c.map(function(o){return o.t}),a:it.c.findIndex(function(o){return o.ok})};
+  }
+  return {q:it.q,c:it.c,a:it.a};
+}
+// الاستبعادُ والترخّي مُعادان من `mockPickFrom`/`mockSeenRecently` القائمتين — نفس
+// تلوّثِ إعادة الاختبار ونفس العلاج، فلا دالّةَ ثانية تتباعد عنهما
+function placePool(k){
+  const out=[];
+  if(k==="listen"){
+    const st=listenSrsLoad();
+    PLACE_LISTEN_LEVELS.forEach(function(lv){
+      const pool=LISTEN_BANK.filter(function(x){return x.lv===lv});
+      mockPickFrom(pool,st,PLACE_LISTEN_PER).forEach(function(it){out.push({sec:"listen",it:it,lvl:lv})});
+    });
+    return out;
+  }
+  if(k==="read"){
+    return mockPickFrom(PLACE_READ_BANK,{},placeSecOf("read").n)
+      .map(function(it){return{sec:"read",it:it,lvl:it.lv||null}});
+  }
+  const st=wejSrsLoad();
+  if(k==="write"){
+    return mockPickFrom(WEJ_BANK.filter(function(x){return x.r===14}),st,placeSecOf("write").n)
+      .map(function(it){return{sec:"write",it:it,lvl:null}});
+  }
+  Object.keys(PLACE_STRUCT_PLAN).forEach(function(r){
+    const pool=WEJ_BANK.filter(function(x){return x.r===+r});
+    mockPickFrom(pool,st,PLACE_STRUCT_PLAN[r]).forEach(function(it){out.push({sec:"struct",it:it,lvl:null})});
+  });
+  return out;
+}
+let placeSec=null,placeItems=[],placeIdx=0,placeAns=[],placeOrder=[],
+  placeStart=0,placeShownAt=0,placePlays=0,placeDone=false;
+function goPlaceMenu(){mode="placeMenu";window.scrollTo(0,0);render()}
+function startPlaceSec(k){
+  if(!placeSecOf(k)||!placeReady(k))return;
+  placeSec=k;placeItems=placePool(k);placeIdx=0;placeAns=[];placeDone=false;
+  placeStart=Date.now();placeShownAt=Date.now();placePlays=0;
+  placeOrder=placeItems.map(function(x){return shuffle(placeQ(x).c.map(function(_,i){return i}))});
+  mode="place";window.scrollTo(0,0);render();
+  if(k==="listen")setTimeout(function(){placePlay()},300);
+}
+function placeCur(){return placeItems[placeIdx]}
+// العدّاد يزيد عند بدء النطق فعلاً لا عند طلبه — نفس تصحيح `listenPlay`
+function placePlay(){
+  const x=placeCur();if(!x||!x.it.audio)return;
+  speakEnglish(x.it.audio,function(r){if(r&&r.ok){placePlays++;render()}});
+}
+function placeMed(a){
+  const v=(a||[]).filter(function(x){return typeof x==="number"&&x>0}).sort(function(p,q){return p-q});
+  return v.length?v[Math.floor(v.length/2)]:0;
+}
+function placeAgg(ans,key){
+  const o={};
+  ans.forEach(function(a){
+    const k=a[key];if(k===null||k===undefined)return;
+    const c=o[k]||(o[k]={n:0,ok:0});c.n++;if(a.ok)c.ok++;
+  });
+  return o;
+}
+function placeChoose(i){
+  const x=placeCur();if(!x||placeDone)return;
+  const Q=placeQ(x),ord=placeOrder[placeIdx],real=ord[i];
+  placeAns.push({sec:x.sec,id:x.it.id,lvl:x.lvl,r:(x.it.r==null?null:x.it.r),
+    pick:real,ok:real===Q.a,pos:i+1,posA:ord.indexOf(Q.a)+1,nc:Q.c.length,
+    txt:Q.c[real],ms:Date.now()-placeShownAt,plays:placePlays});
+  if(placeIdx+1>=placeItems.length){placeFinish();return}
+  placeIdx++;placeShownAt=Date.now();placePlays=0;render();
+  if(placeSec==="listen")setTimeout(function(){placePlay()},300);
+}
+function placeFinish(){
+  placeDone=true;
+  const n=placeAns.length,ok=placeAns.filter(function(a){return a.ok}).length;
+  const secs=Math.round((Date.now()-placeStart)/1000),med=placeMed(placeAns.map(function(a){return a.ms}));
+  const st=placeLoad();
+  st[placeSec]={n:n,ok:ok,secs:secs,d:todayStr(),medMs:med,chance:placeChance(placeAns),
+    byLevel:placeAgg(placeAns,"lvl"),byRule:placeAgg(placeAns,"r"),byPos:placeAgg(placeAns,"pos")};
+  placeSave(st);
+  // كلُّ عنصرٍ على حدة بموضعه المعروض وزمنه — فبعد أوراقٍ عدّة تُحسب نسبُ الصواب لكل
+  // عنصر، وهي **أوّلُ معايرةِ صعوبةٍ حقيقية** لهذا البنك. وبلا هذا لا تُعاير أبداً.
+  placeAns.forEach(function(a){
+    logAnswer("wejplace",placeSec,a.ok,
+      "موضع "+toAr(a.pos)+" · الصواب موضع "+toAr(a.posA)+" · "+a.txt+(a.plays?" · plays:"+toAr(a.plays):""),
+      a.id,a.ms,
+      {_sk:(a.r!=null?("وجدان · "+(WEJ_RULES[a.r]||("قاعدة "+a.r))):(a.lvl||placeSec)),
+       q_text:("تحديد مستوى · "+placeSec+(a.lvl?" · "+a.lvl:"")+(a.r!=null?" · ر"+a.r:"")+" · "+placeAnsQ(a)).slice(0,1200)});
+  });
+  logAnswer("wejplace","section",n?(ok/n)>=0.6:false,toAr(ok)+"/"+toAr(n),null,secs*1000,
+    {score_pct:n?Math.round(100*ok/n):0,
+     q_text:("تحديد مستوى · قسم "+placeSec+" · تغطية "+toAr(placeCoverage())+"٪ · صدفة "+
+       toAr(placeChance(placeAns))+"٪ · وسيط "+toAr(Math.round(med/1000))+"ث").slice(0,400)});
+  window.scrollTo(0,0);render();
+}
+// نصُّ السؤال يدخل السجلّ كما دخل في كل قسمٍ آخر — بلا هذا لا تشخيص
+function placeAnsQ(a){
+  for(let i=0;i<placeItems.length;i++)if(placeItems[i].it.id===a.id)return placeQ(placeItems[i]).q;
+  return "";
+}
+function placeCefr(byLevel){
+  let best=null;
+  PLACE_LISTEN_LEVELS.forEach(function(lv){
+    const o=byLevel&&byLevel[lv];
+    if(o&&o.n>=PLACE_LISTEN_PER&&(o.ok/o.n)>=0.85)best=lv;
+  });
+  return best;
+}
+function renderPlaceMenu(){
+  const st=placeLoad(),cov=placeCoverage();
+  const anyDone=PLACE_SECTIONS.some(function(s){return st[s.k]&&st[s.k].n});
+  app.innerHTML=`${profileBarHTML()}
+  <button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
+  <div class="card">
+    <h2>🎯 تحديد المستوى بنمط STEP</h2>
+    <p class="sub">أربعةُ أقسام بأوزان اختبار STEP نفسها، كلُّ قسمٍ جلسةٌ على حدة.
+    الأسئلة نصُّها من ملفّات وجدان، والاستماع من بنك التطبيق المؤلَّف (موسومٌ بمصدره).</p>
+    <div style="background:${cov>=100?"#ECFDF5":"#FFFBEB"};border:1px solid ${cov>=100?"#10B981":"#F59E0B"};
+      border-radius:10px;padding:.7rem;margin:.6rem 0;font-size:.92em;color:#334155">
+      <b>التغطية الآن: ${toAr(cov)}٪ من وزن الاختبار.</b>
+      ${cov<100?`قسمُ المقروء (٤٠٪) ينتظر مفتاحَ قطعِ النموذج ٤٩ — ملفُّه فوق حدّ التنزيل،
+      فلا يُشحَن بمفتاحٍ مستنتَج.`:""}
+    </div>
+    ${PLACE_SECTIONS.map(function(s){
+      const r=st[s.k],ready=placeReady(s.k),pct=r&&r.n?Math.round(100*r.ok/r.n):0;
+      // صفٌّ عموديّ لا أفقيّ: `.btn` عرضُها ١٠٠٪ في الأصل، فحشرُها في صفٍّ مرن
+      // يسحق عمودَ النصّ فتتبعثر أرقامُه — كشفته لقطةُ شاشة لا قياسُ DOM.
+      return `<div style="padding:.7rem .2rem;border-bottom:1px solid #E2E8F0">
+        <div style="font-weight:700;color:#0F172A">${s.icon} ${esc(s.t)}</div>
+        <div style="font-size:.85em;color:#64748B;margin-top:.15rem">وزنُه ${toAr(s.w)}٪ من الاختبار — ${toAr(s.n)} عنصراً</div>
+        <div style="font-size:.85em;color:${ready?"#64748B":"#B45309"};margin-top:.1rem">${
+          ready?(r&&r.n?("آخرُ محاولة "+esc(r.d)+" — النتيجة "+toAr(r.ok)+" من "+toAr(r.n)+" ("+toAr(pct)+"٪)"):"لم يُبدأ بعد"):
+            ("بنكُه غيرُ جاهز: "+toAr(placeBankSize(s.k))+" عنصراً من "+toAr(s.n)+" المطلوبة")}</div>
+        ${ready?`<button class="btn" style="margin-top:.5rem;padding:.6rem;font-size:.95em;background:#7C2D12"
+          onclick="startPlaceSec('${s.k}')">${r&&r.n?"أعيدي هذا القسم":"ابدئي هذا القسم"}</button>`:""}
+      </div>`}).join("")}
+    ${anyDone?`<button class="btn" style="margin-top:.8rem" onclick="mode='placeReport';render()">📋 التقرير</button>`:
+      `<p class="sub" style="margin-top:.8rem">ابدئي بأيّ قسم، والتقريرُ يظهر بعد أوّل قسمٍ يكتمل.</p>`}
+  </div>`;
+}
+function renderPlace(){
+  if(placeDone)return renderPlaceReport();
+  const x=placeCur();
+  if(!x){app.innerHTML=`${profileBarHTML()}<div class="card"><p class="sub">لا ورقة.</p>
+    <button class="btn" onclick="goPlaceMenu()">رجوع</button></div>`;return}
+  const s=placeSecOf(placeSec),Q=placeQ(x),ord=placeOrder[placeIdx];
+  const prog=`<div class="bar">${placeItems.map(function(_,i){return `<div class="seg" style="background:${i<=placeIdx?'#7C2D12':'#E2E8F0'};opacity:${i<=placeIdx?1:.5}"></div>`}).join("")}</div>`;
+  const choices=ord.map(function(wi,k){
+    return `<button class="choice" style="direction:ltr;text-align:left;font-family:Georgia,serif"
+      onclick="placeChoose(${k})"><span class="letter">${L[k]}</span>${esc(Q.c[wi])}</button>`}).join("");
+  const audio=placeSec==="listen"?`
+    ${ttsHelpHTML("هذا القسم يحتاج الصوت، ولا نصّ يُقرأ بدلاً منه. افحصي الصوت أوّلاً، أو عودي لهذا القسم لاحقاً.")}
+    <div style="margin:14px 0"><button type="button" onclick="placePlay()" style="background:#0284C7;color:#fff;border:none;border-radius:50%;width:64px;height:64px;font-size:26px;cursor:pointer">🔊</button></div>
+    <div style="font-size:12px;color:#64748B;margin-bottom:12px">استمعي مرّتين، ثم اختاري${placePlays?` — استمعتِ ${toAr(placePlays)} ${placePlays===1?"مرّة":"مرّات"}`:""}</div>`:"";
+  const passage=(placeSec==="read"&&x.it.passage)?`<div style="direction:ltr;text-align:left;font-family:Georgia,serif;font-size:14px;color:#334155;line-height:1.9;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:12px;margin-bottom:12px">${esc(x.it.passage)}</div>`:"";
+  app.innerHTML=`
+  <button class="link-btn" onclick="goPlaceMenu()">→ إنهاء والرجوع للأقسام</button>
+  ${prog}
+  <div class="meta"><span>${toAr(placeIdx+1)} من ${toAr(placeItems.length)}</span><span>تحديد المستوى · ${esc(s.t)}</span></div>
+  <div class="card">
+    <span class="tag" style="background:#FEF3C7;color:#92400E">${s.icon} ${esc(s.t)} — ${toAr(s.w)}٪</span>
+    <div style="font-size:.8em;color:#94A3B8;margin-top:6px">بلا تصحيحٍ حتى نهاية القسم — الامتحان يقيس ولا يُدرّس</div>
+    ${passage}
+    <div class="q" style="margin-top:10px;direction:ltr;text-align:left;font-family:Georgia,serif">${esc(Q.q)}</div>
+    ${audio}
+    <div class="choices">${choices}</div>
+  </div>`;
+  if(placeSec==="listen"&&placePlays===0)setTimeout(function(){placePlay()},300);
+}
+function renderPlaceReport(){
+  const st=placeLoad(),cov=placeCoverage();
+  const done=PLACE_SECTIONS.filter(function(s){return st[s.k]&&st[s.k].n});
+  let wSum=0,wScore=0;
+  done.forEach(function(s){const r=st[s.k];wSum+=s.w;wScore+=s.w*(r.ok/r.n)});
+  const weighted=wSum?Math.round(100*wScore/wSum):0;
+  const li=st.listen,cefr=li?placeCefr(li.byLevel):null;
+  // النقرُ الأعمى يُوسَم ولا يُغيَّر الحكم: زمنٌ وسيطٌ دون ثلاث ثوانٍ مع دقّةٍ عند
+  // الصدفة أو دونها — فالدرجةُ حينها لا تقيس فهماً، ويُقال ذلك بدل أن يُقرأ مستوًى
+  const blind=done.filter(function(s){const r=st[s.k];
+    return r.medMs&&r.medMs<3000&&(100*r.ok/r.n)<=(r.chance||25)+5});
+  const ruleRows=(function(){
+    const r=st.struct;if(!r||!r.byRule)return "";
+    return Object.keys(r.byRule).map(Number).sort(function(a,b){return a-b}).map(function(k){
+      const o=r.byRule[k],p=Math.round(100*o.ok/o.n);
+      return `<div style="display:flex;justify-content:space-between;gap:.5rem;padding:.3rem .6rem;border-bottom:1px solid #F1F5F9;font-size:.88em">
+        <span style="flex:1;min-width:0">${esc(WEJ_RULES[k]||("قاعدة "+k))}</span>
+        <b style="color:${p>=85?"#0F766E":p>=50?"#B45309":"#B91C1C"}">${toAr(o.ok)}/${toAr(o.n)}</b></div>`}).join("");
+  })();
+  const lvRows=(li&&li.byLevel)?PLACE_LISTEN_LEVELS.map(function(lv){
+    const o=li.byLevel[lv];if(!o)return "";
+    const p=Math.round(100*o.ok/o.n);
+    return `<div style="display:flex;justify-content:space-between;padding:.3rem .6rem;border-bottom:1px solid #F1F5F9;font-size:.88em">
+      <span>${lv}</span><b style="color:${p>=85?"#0F766E":p>=50?"#B45309":"#B91C1C"}">${toAr(o.ok)}/${toAr(o.n)}</b></div>`}).join(""):"";
+  app.innerHTML=`${profileBarHTML()}
+  <button class="link-btn" onclick="goPlaceMenu()">→ رجوع للأقسام</button>
+  <div class="card">
+    <h2>📋 تقرير تحديد المستوى</h2>
+    <div style="font-size:2.1rem;font-weight:800;color:#7C2D12">${toAr(weighted)}%</div>
+    <div style="color:#475569;margin-bottom:.6rem">موزونةً على الأقسام المكتملة
+      (${toAr(wSum)}٪ من ١٠٠ من وزن الاختبار)</div>
+    ${PLACE_SECTIONS.map(function(s){
+      const r=st[s.k];
+      return `<div style="display:flex;justify-content:space-between;padding:.45rem .7rem;border-bottom:1px solid #E2E8F0">
+        <span>${s.icon} ${esc(s.t)} <span style="color:#94A3B8;font-size:.85em">${toAr(s.w)}٪</span></span>
+        ${r&&r.n?`<b style="color:${(100*r.ok/r.n)>=70?"#0F766E":"#B45309"}">${toAr(r.ok)}/${toAr(r.n)}</b>`:
+          `<span style="color:#94A3B8;font-size:.85em">${placeReady(s.k)?"لم يُبدأ":"بنكُه معلَّق"}</span>`}</div>`}).join("")}
+    ${lvRows?`<div style="margin-top:.9rem"><b style="font-size:.92em;color:#475569">دقّةُ الاستماع بالدرجة</b>${lvRows}
+      <p class="sub" style="margin-top:.4rem">${cefr?`أعلى درجةٍ بلغت فيها ٨٥٪: <b>${cefr}</b> — تقديرٌ من محتوى ما أُصيب
+        (English Profile وقاعدة الـ٨٥٪)، <b>لا</b> تحويلٌ من درجة STEP: لا جدولَ مواءمةٍ منشوراً لذلك.`:
+        `لم تبلغ ٨٥٪ في أيّ درجة — فلا تقديرَ يُعلَن، وهذا أصدقُ من إعلانِ درجةٍ لم تُبلَغ.`}</p></div>`:""}
+    ${ruleRows?`<div style="margin-top:.9rem"><b style="font-size:.92em;color:#475569">التراكيب — إشارةٌ لكل قاعدة</b>${ruleRows}
+      <p class="sub" style="margin-top:.4rem">هذه <b>إشاراتٌ لا درجات</b>: قاعدةٌ على عنصرين لا تحمل ثباتاً،
+      ومعيارُ إعلانِ درجةٍ فرعية (PRMSE عند Haberman) لا يُحسب قبل تراكم أوراق.</p></div>`:""}
+    ${blind.length?`<div style="margin-top:.8rem;background:#FEF2F2;border:1px solid #FCA5A5;border-radius:10px;padding:.7rem;font-size:.9em;color:#991B1B">
+      ⚑ ${blind.map(function(s){return esc(s.t)}).join(" · ")}: زمنٌ وسيطٌ دون ثلاث ثوانٍ ودقّةٌ عند خطّ الصدفة —
+      فهذه قراءةٌ لا تقيس فهماً، ولا تُقرأ مستوًى.</div>`:""}
+    <p class="sub" style="margin-top:.8rem">⚠️ هذه <b>ليست درجةَ STEP</b>. الورقةُ تغطّي ${toAr(cov)}٪ من وزن
+    الاختبار${cov<100?" (والمقروء معلَّق)":""}، ولا كتابةَ حرّة ولا نطقَ فيها — يُقاسان في قسميهما.</p>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.6rem">
+      <button class="btn" onclick="home()">الرئيسية</button>
+      <button class="btn ghost" onclick="goPlaceMenu()">الأقسام</button>
+    </div>
+  </div>`;
+}
+
 // ===== لوحة القياس: تجميعٌ تلقائي لا انتظارَ سؤال — ٢١ أغسطس =====
 // كل مؤشّر في خطة «سلّم الإنجليزية» كان مكتوباً كاستعلام SQL لا يشغّله أحد تلقائياً:
 // كل رقمٍ يتطلّب أن يُسأل صاحب المشروع ثم أستعلم أنا. وهذا حرفياً صنف العطل الموثَّق
@@ -18434,7 +18735,7 @@ function renderKpi(){
 }
 
 // ===== العرض =====
-function render(){if(mode==="mock")return renderMock();if(mode==="seq")return renderSeq();if(mode==="kpi")return renderKpi();if(mode==="home")return renderHome();if(mode==="listen")return renderListen();if(mode==="read")return renderRead();if(mode==="write")return renderWrite();if(mode==="gram")return renderGram();if(mode==="build")return renderBuild();if(mode==="math6Menu")return renderMath6Menu();if(mode==="math6")return renderMath6();if(mode==="step")return renderStep();if(mode==="wejMenu")return renderWejMenu();if(mode==="wej")return renderWej();if(mode==="statMenu")return renderStatMenu();if(mode==="stat")return renderStat();if(mode==="minpair")return renderMinpair();if(mode==="video")return renderVideo();if(mode==="errors")return renderErrors();if(mode==="engplan")return renderEngPlan();if(mode==="factplan")return renderFactPlan();if(mode==="vocab")return renderVocab();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="speak")return renderSpeak();if(mode==="coach")return renderCoach();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
+function render(){if(mode==="placeMenu")return renderPlaceMenu();if(mode==="place")return renderPlace();if(mode==="placeReport")return renderPlaceReport();if(mode==="mock")return renderMock();if(mode==="seq")return renderSeq();if(mode==="kpi")return renderKpi();if(mode==="home")return renderHome();if(mode==="listen")return renderListen();if(mode==="read")return renderRead();if(mode==="write")return renderWrite();if(mode==="gram")return renderGram();if(mode==="build")return renderBuild();if(mode==="math6Menu")return renderMath6Menu();if(mode==="math6")return renderMath6();if(mode==="step")return renderStep();if(mode==="wejMenu")return renderWejMenu();if(mode==="wej")return renderWej();if(mode==="statMenu")return renderStatMenu();if(mode==="stat")return renderStat();if(mode==="minpair")return renderMinpair();if(mode==="video")return renderVideo();if(mode==="errors")return renderErrors();if(mode==="engplan")return renderEngPlan();if(mode==="factplan")return renderFactPlan();if(mode==="vocab")return renderVocab();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="speak")return renderSpeak();if(mode==="coach")return renderCoach();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
 
 // صفحة الأخوين قسمٌ واحد: المحادثة. بقيّة الأقسام بُنيت على أخطائها هي — بنك
 // أسئلتها، وتباعدها، ومنهج صفّها السادس — فوضعها أمام ولدٍ آخر يُشغله بما ليس له.
@@ -18572,6 +18873,8 @@ function renderHomeCoachOnly(){
     ...(errCount()?[{g:"eng_out",c:"#DB2777",go:"startErrors()",
       n:`🎯 أخطائي · ${toAr(errCount())} مستحقّة`,
       s:"تصحيحات محادثتك السابقة — تُبنى كلمةً كلمة، وتعود عند حافّة النسيان"}]:[]),
+    {g:"exam",lead:1,c:"#7C2D12",go:"goPlaceMenu()",n:"🎯 تحديد المستوى بنمط STEP",
+      s:`أربعةُ أقسامٍ بأوزان STEP نفسها، كلُّ قسمٍ جلسة — أسئلتُه نصُّها من ملفّات وجدان، والتغطية الآن ${toAr(placeCoverage())}٪`},
     {g:"exam",lead:1,c:"#7C2D12",go:"startMock()",n:"📝 محاكاة الاختبار",
       s:"ورقة كاملة بصيغة كامبردج: استماع وقراءة وقواعد وتحليل كتابي — بلا تصحيحٍ حتى النهاية"},
     ...(p.id==="mohammed"?[{g:"course",lead:1,c:"#059669",go:"goStatMenu()",n:"📊 إحصاء ١٠٢",
@@ -18652,6 +18955,8 @@ function renderHome(){
       s:`كلمةٌ واحدة بثلاث مهارات: معناها، ونطقها، وكتابتها — بنكٌ من ${toAr(VOCAB_BANK.length)} كلمة، والمرحلة الأولى ${toAr(VOCAB_STAGE1_MIN)}`},
     {g:"eng_out",c:"#0E7490",go:"startDictation()",n:"✍️ إملاء بالإنجليزية",
       s:"استمعي للكلمة، ثم اكتبيها — مستوى A1"},
+    {g:"exam",lead:1,c:"#7C2D12",go:"goPlaceMenu()",n:"🎯 تحديد المستوى بنمط STEP",
+      s:`أربعةُ أقسامٍ بأوزان STEP نفسها، كلُّ قسمٍ جلسة — أسئلتُه نصُّها من ملفّات وجدان، والتغطية الآن ${toAr(placeCoverage())}٪`},
     {g:"exam",lead:1,c:"#7C2D12",go:"startMock()",n:"📝 محاكاة اختبار الإنجليزية",
       s:"ورقة كاملة بصيغة كامبردج: استماع وقراءة وقواعد وتحليل كتابي — بلا تصحيحٍ حتى النهاية"},
     {g:"meas",c:"#1D4ED8",go:"loadProgress()",n:"📈 متابعة التقدّم",
