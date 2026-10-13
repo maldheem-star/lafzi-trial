@@ -89,6 +89,54 @@ console.log('\n٢) مفتاحُ الدورة لم يُفقَد في التفكي
   await p.context().close();
 }
 
+// ===== ٢ب) حارسُ ارتدادٍ على ٣٩ مفتاحاً كان خطأً — ١٣ أكتوبر =====
+// العيب: المطابقة في الاستخراج كانت تختار **أطول** خيارٍ يحتوي النصّ الأخضر، فيفوز
+// المموّه الذي هو «الصواب + كلمة زائدة»: must to ⇐ must، more faster than ⇐ faster
+// than، is used to eat ⇐ used to eat. فكان البنك يُدرّس الخطأ الشائع صواباً في ٣٩
+// عنصراً من ١٩٩ تُرسَم خياراتُها بصيغة `A.` (نماذج ٨ · ١١ · ١٢ · ١٥ · ٢٢).
+// والصواب أدناه **مقروءٌ من التظليل الأخضر في المصدر** وقُوبل بصرياً بصفحاته.
+// وحدُّ هذا الحارس يُقال: يمنع **الارتداد** على هذه الأعيان، ولا يُعيد التحقّق من
+// المصدر — ذاك يحتاج ملفّ الدورة نفسه وهو خارج المستودع (كـ`pron_bench`).
+console.log('\n٢ب) المفاتيح التي صُحِّحت لا ترتدّ');
+{
+  const p=await mk();
+  const fixed=[
+    ['wj_8_61','I heard that Mr. Davis is traveling to Japan next Friday.'],
+    ['wj_8_62','Instead of taking the elevator to the top; I decided to take the stairs.'],
+    ['wj_8_73','Everybody.'],['wj_8_74','The Jupiter and Mars exhibits at the London Planetarium are fascinating.'],
+    ['wj_8_75','Teach.'],['wj_8_80','Arrive'],['wj_8_88','studied'],['wj_8_91','who'],
+    ['wj_8_96','might reduce'],['wj_11_69','study'],['wj_11_73','going'],['wj_11_82','finish'],
+    ['wj_11_84','who'],['wj_11_88','must go'],['wj_11_89','asked'],['wj_11_90','faster than'],
+    ['wj_11_91','must'],['wj_11_92','bought'],['wj_12_61','your'],['wj_12_72','to be'],
+    ['wj_12_82','so'],['wj_12_83','used to eat'],['wj_12_90','reading'],['wj_12_93','get'],
+    ['wj_12_94','finish'],['wj_12_99','wait'],['wj_15_67','finish'],['wj_15_72','write'],
+    ['wj_15_74','who'],['wj_15_76','started'],['wj_15_79','who'],['wj_15_84','who'],
+    ['wj_15_87','studied'],['wj_15_89','feel'],
+    ['wj_15_97','When living in Saudi Arabia, Sarah loved the coolness of the desert winters, but loathed the heat of the desert summers.'],
+    ['wj_22_62','who'],['wj_22_64','graduated'],['wj_22_76','lend'],['wj_22_87','parking']
+  ];
+  const r=await p.evaluate(fs=>fs.map(function(pr){
+    const it=WEJ_BANK.filter(function(x){return x.id===pr[0]})[0];
+    if(!it)return {id:pr[0],found:false};
+    return {id:pr[0],found:true,want:pr[1],
+      right:(it.c.filter(function(o){return o.ok})[0]||{}).t||''};
+  }),fixed);
+  // المقارنة **حسّاسةٌ للحالة** — أربعةٌ منها لا تختلف عن مموّهها إلّا بكبتلة
+  const bad=r.filter(x=>!x.found||x.right.replace(/\s+/g,' ').trim()!==x.want);
+  ok(bad.length===0,`٣٩ مفتاحاً مُصحَّحاً كما قُرئ من المصدر`+
+    (bad.length?` — انحرف ${bad.length}: ${bad.slice(0,3).map(x=>x.id+' («'+x.right+'»)').join('، ')}`:''));
+  // والعنصرُ المكسور لا يعود: خيارُه الرابع كان يحمل نصَّ السؤال ووسمَ قاعدته
+  const gone=await p.evaluate(()=>WEJ_BANK.some(function(x){return x.id==='wj_12_69'}));
+  ok(!gone,'والعنصر المكسورُ الاستخراج (wj_12_69) محذوفٌ لا مُعاد مفتاحُه');
+  // ولا يعود شكلُه: نصُّ سؤالٍ أو وسمُ قاعدةٍ داخل خيار
+  const broken=await p.evaluate(()=>WEJ_BANK.filter(function(x){
+    return x.c.some(function(o){return /\(\s*Rule\s*\d+\s*\)/i.test(o.t)||/\.{8}|_{5}/.test(o.t)})
+  }).map(function(x){return x.id}));
+  ok(broken.length===0,'ولا خيارَ في البنك كلّه يحمل فراغَ السؤال أو وسمَ قاعدته'+
+    (broken.length?` — ${broken.slice(0,3).join('، ')}`:''));
+  await p.context().close();
+}
+
 // ===== ٣) توزيعُ موضع الصواب في المصدر — دليلُ أن الأخضر هو المفتاح =====
 console.log('\n٣) توزيعُ موضع الصواب في البنك');
 {
