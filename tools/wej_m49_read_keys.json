@@ -3,49 +3,226 @@
   "_key_origin": "مفتاح الدورة نفسه: التظليل الأصفر على سطر الخيار (a/b/c/d). قُرئ من 17 لقطةَ شاشةٍ أرسلها صاحب المشروع (13-14 أكتوبر 2026) لأن الملفّ 36.9 م.ب فوق حدّ تنزيل أداة درايف (10 م.ب) فلا تُقرأ بايتاته ولا طبقةُ رسمه.",
   "_key_color_note": "تنبيه: في هذا الملفّ المفتاحُ أصفرُ لا أخضر (خلافاً لملفّ 5-48)، والأصفرُ نفسُه يُظلّل جملةَ الدليل داخل القطعة — فشرطُ القبول أن يقع التظليل على سطر خيارٍ موسومٍ a/b/c/d وحده.",
   "_validation": "من هذه الستّة والثلاثين، 26 سؤالاً كان جوابُها مشتقّاً عندي من نصّ القطعة قبل ورود المفتاح: طابق 26 من 26. وثلاثةٌ من ترجيحاتي الخاصّة على أسئلة الحكم كانت خاطئة (44 و49 و56) ولم تُشحَن — فالامتناع عن الاشتقاق في أسئلة الحكم كان في محلّه.",
-  "_pending": "الأسئلة 57-60 (القطعة 12: بريد أحمد/حمد · القطعة 13: مرق العظام) لم يصل مفتاحُها بعد — لقطةٌ واحدة باقية.",
-  "_not_shipped_yet": "هذا ملفُّ مفاتيحَ محفوظٌ وقايةً من ارتداد الحاوية. لم يُبنَ منه بنكٌ في index.html بعد.",
+  "_pending": "الأسئلة 57-60 (القطعة 12: بريد أحمد/حمد · القطعة 13: مرق العظام) لم يصل مفتاحُها بعد — لقطةٌ واحدة باقية. وهي كلُّ ما يفصل ورقة المقروء (40 عنصراً) عن الاكتمال، فالبنك 36.",
   "keys": [
-    { "q": 21, "a": "c", "text": "an amateur boxer" },
-    { "q": 22, "a": "a", "text": "took" },
-    { "q": 23, "a": "d", "text": "the supreme court" },
-    { "q": 24, "a": "a", "text": "Leon Spinks" },
-    { "q": 25, "a": "d", "text": "rice" },
-    { "q": 26, "a": "a", "text": "1000" },
-    { "q": 27, "a": "b", "text": "1975" },
-    { "q": 28, "a": "c", "text": "connected to weight problems" },
-    { "q": 29, "a": "d", "text": "It is an important industry" },
-    { "q": 30, "a": "b", "text": "kebabs and rice" },
-    { "q": 31, "a": "b", "text": "Fast food is an important industry" },
-    { "q": 32, "a": "b", "text": "7 million" },
-    { "q": 33, "a": "c", "text": "Geraldo Alckmin" },
-    { "q": 34, "a": "c", "text": "90%" },
-    { "q": 35, "a": "a", "text": "The Aral Sea got smaller" },
-    { "q": 36, "a": "d", "text": "The sand is toxic" },
-    { "q": 37, "a": "d", "text": "farming" },
-    { "q": 38, "a": "a", "text": "took" },
-    { "q": 39, "a": "d", "text": "December" },
-    { "q": 40, "a": "b", "text": "10,000" },
-    { "q": 41, "a": "d", "text": "December" },
-    { "q": 42, "a": "c", "text": "300,000" },
-    { "q": 43, "a": "a", "text": "unplanned" },
-    { "q": 44, "a": "b", "text": "acceptable" },
-    { "q": 45, "a": "d", "text": "confused" },
-    { "q": 46, "a": "a", "text": "ocean" },
-    { "q": 47, "a": "b", "text": "harming" },
-    { "q": 48, "a": "b", "text": "toxic" },
-    { "q": 49, "a": "d", "text": "suggest and encourage" },
-    { "q": 50, "a": "c", "text": "Replacing libraries is a mistake" },
-    { "q": 51, "a": "c", "text": "important to the community" },
-    { "q": 52, "a": "a", "text": "better learning resource" },
-    { "q": 53, "a": "d", "text": "They cost a lot of money to keep" },
-    { "q": 54, "a": "c", "text": "Both the national teams and clubs are doing well." },
-    { "q": 55, "a": "b", "text": "There have been important victories for the both the national team and the clubs." },
-    { "q": 56, "a": "b", "text": "Clubs are impatient when it comes to recruiting and sacking mangers." }
+    {
+      "q": 21,
+      "a": "c",
+      "text": "an amateur boxer"
+    },
+    {
+      "q": 22,
+      "a": "a",
+      "text": "took"
+    },
+    {
+      "q": 23,
+      "a": "d",
+      "text": "the supreme court"
+    },
+    {
+      "q": 24,
+      "a": "a",
+      "text": "Leon Spinks"
+    },
+    {
+      "q": 25,
+      "a": "d",
+      "text": "rice"
+    },
+    {
+      "q": 26,
+      "a": "a",
+      "text": "1000"
+    },
+    {
+      "q": 27,
+      "a": "b",
+      "text": "1975"
+    },
+    {
+      "q": 28,
+      "a": "c",
+      "text": "connected to weight problems"
+    },
+    {
+      "q": 29,
+      "a": "d",
+      "text": "It is an important industry"
+    },
+    {
+      "q": 30,
+      "a": "b",
+      "text": "kebabs and rice"
+    },
+    {
+      "q": 31,
+      "a": "b",
+      "text": "Fast food is an important industry"
+    },
+    {
+      "q": 32,
+      "a": "b",
+      "text": "7 million"
+    },
+    {
+      "q": 33,
+      "a": "c",
+      "text": "Geraldo Alckmin"
+    },
+    {
+      "q": 34,
+      "a": "c",
+      "text": "90%"
+    },
+    {
+      "q": 35,
+      "a": "a",
+      "text": "The Aral Sea got smaller"
+    },
+    {
+      "q": 36,
+      "a": "d",
+      "text": "The sand is toxic"
+    },
+    {
+      "q": 37,
+      "a": "d",
+      "text": "farming"
+    },
+    {
+      "q": 38,
+      "a": "a",
+      "text": "took"
+    },
+    {
+      "q": 39,
+      "a": "d",
+      "text": "December"
+    },
+    {
+      "q": 40,
+      "a": "b",
+      "text": "10,000"
+    },
+    {
+      "q": 41,
+      "a": "d",
+      "text": "December"
+    },
+    {
+      "q": 42,
+      "a": "c",
+      "text": "300,000"
+    },
+    {
+      "q": 43,
+      "a": "a",
+      "text": "unplanned"
+    },
+    {
+      "q": 44,
+      "a": "b",
+      "text": "acceptable"
+    },
+    {
+      "q": 45,
+      "a": "d",
+      "text": "confused"
+    },
+    {
+      "q": 46,
+      "a": "a",
+      "text": "ocean"
+    },
+    {
+      "q": 47,
+      "a": "b",
+      "text": "harming"
+    },
+    {
+      "q": 48,
+      "a": "b",
+      "text": "toxic"
+    },
+    {
+      "q": 49,
+      "a": "d",
+      "text": "suggest and encourage"
+    },
+    {
+      "q": 50,
+      "a": "c",
+      "text": "Replacing libraries is a mistake"
+    },
+    {
+      "q": 51,
+      "a": "c",
+      "text": "important to the community"
+    },
+    {
+      "q": 52,
+      "a": "a",
+      "text": "better learning resource"
+    },
+    {
+      "q": 53,
+      "a": "d",
+      "text": "They cost a lot of money to keep"
+    },
+    {
+      "q": 54,
+      "a": "c",
+      "text": "Both the national teams and clubs are doing well."
+    },
+    {
+      "q": 55,
+      "a": "b",
+      "text": "There have been important victories for the both the national team and the clubs."
+    },
+    {
+      "q": 56,
+      "a": "b",
+      "text": "Clubs are impatient when it comes to recruiting and sacking mangers."
+    }
   ],
   "charts": {
     "_note": "الأسئلة 39-42 معلّقةٌ برسمَين بيانيَّين. البيانات مقروءةٌ من اللقطات، فتُولَّد SVG منها كما وُلِّدت رسومُ أوراق الإحصاء (5 سبتمبر) لا تُرسَم بالعين.",
-    "visitors_2009": { "Jan": 10000, "Feb": 8200, "Mar": 9800, "Apr": 16000, "May": 13400, "Jun": 6000, "Jul": 6000, "Aug": 6000, "Sep": 8000, "Oct": 9600, "Nov": 8000, "Dec": 4800 },
-    "revenue_2009_eur": { "Jan": 300000, "Feb": 200000, "Mar": 100000, "Apr": 120000, "May": 400000, "Jun": 550000, "Jul": 500000, "Aug": 80000, "Sep": 280000, "Oct": 260000, "Nov": 330000, "Dec": 800000 }
-  }
+    "visitors_2009": {
+      "Jan": 10000,
+      "Feb": 8200,
+      "Mar": 9800,
+      "Apr": 16000,
+      "May": 13400,
+      "Jun": 6000,
+      "Jul": 6000,
+      "Aug": 6000,
+      "Sep": 8000,
+      "Oct": 9600,
+      "Nov": 8000,
+      "Dec": 4800
+    },
+    "revenue_2009_eur": {
+      "Jan": 300000,
+      "Feb": 200000,
+      "Mar": 100000,
+      "Apr": 120000,
+      "May": 400000,
+      "Jun": 550000,
+      "Jul": 500000,
+      "Aug": 80000,
+      "Sep": 280000,
+      "Oct": 260000,
+      "Nov": 330000,
+      "Dec": 800000
+    }
+  },
+  "_derived_unverified": {
+    "_note": "اشتقاقي من نصّ القطعة — **غيرُ مصدَّقٍ بمفتاح الدورة ولا يُشحَن**. والسبب رقمٌ لا تحفّظ: ثلاثةٌ من ترجيحاتي على أسئلة الحكم كانت خاطئة (44 · 49 · 56).",
+    "57": "c",
+    "58": "b",
+    "59": "c",
+    "60": "c"
+  },
+  "_shipped": "36 عنصراً في PLACE_READ_BANK داخل index.html (14 أكتوبر)، مفكَّكةً بسكربت من نصّ الملفّ ومُقابَلةً بهذا الملفّ. ويحرسها tests/test_placeread.js بمقابلتها به نصّاً وموضعاً."
 }
