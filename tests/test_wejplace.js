@@ -65,14 +65,33 @@ console.log('\n٢) التغطية رقمٌ يُحسب من البنوك');
     cov:placeCoverage(),
     ready:PLACE_SECTIONS.map(s=>[s.k,placeReady(s.k),placeBankSize(s.k)]),
     readPool:placePool('read').length,
+    readN:placeSecOf('read').n,
+    weights:PLACE_SECTIONS.reduce((a,s)=>(a[s.k]=s.w,a),{}),
+    lens:PLACE_SECTIONS.reduce((a,s)=>(a[s.k]=s.n,a),{}),
   }));
   const m={};r.ready.forEach(x=>m[x[0]]=x);
-  ok(r.cov===60,'التغطية الآن ٦٠٪ (استماع+تراكيب+تحليل) — '+r.cov);
-  ok(m.read[1]===false&&m.read[2]===0,'والمقروء غيرُ جاهز وبنكُه صفر — معلَّقٌ بإعلان');
-  ok(m.listen[1]&&m.struct[1]&&m.write[1],'والثلاثة الباقية جاهزة');
-  ok(r.readPool===0,'ومجمعُ المقروء يُعيد صفراً بلا انكسار');
-  const started=await p.evaluate(()=>{startPlaceSec('read');return mode});
-  ok(started!=='place','ولا يُفتَح قسمٌ بنكُه غيرُ جاهز — mode='+started);
+  // هذا القسم قال أوّلاً «بنكُ المقروء صفر» ثمّ «٣٦ من ٤٠» — وكلاهما كان صحيحاً يومه،
+  // ووصل المفتاح كاملاً (١٤ أكتوبر) فبلغ الأربعين. والدعوى هي هي — **التغطيةُ تُحسب من
+  // البنوك لا تُعلَن** — فصارت تُقابَل بمجموع أوزان الأقسام الجاهزة فعلاً، لا برقمٍ
+  // مكتوب ينكسر مع كل بنكٍ يكتمل (درس «الأعداد المكتوبة في الاختبارات فخّ صامت»).
+  const wantCov=r.ready.reduce((a,x)=>a+(x[1]?r.weights[x[0]]:0),0);
+  ok(r.cov===wantCov,'التغطيةُ = مجموعُ أوزان الجاهز — '+r.cov+'٪ مقابل '+wantCov+'٪');
+  ok(r.ready.every(x=>x[1]===(x[2]>=r.lens[x[0]])),
+    'والجهوزيةُ في كل قسم = بنكٌ يبلغ طولَ ورقته — '+JSON.stringify(r.ready));
+  ok(m.listen[1]&&m.struct[1]&&m.write[1]&&m.read[1],'والأقسام الأربعة جاهزة اليوم');
+  ok(r.readPool===r.readN,'ومجمعُ المقروء يمتلئ بطول ورقته — '+r.readPool);
+  // و«معلَّقٌ لا مكسور» يبقى مقيساً بمحاكاةٍ في الاختبار وحده: بنكٌ أضيقُ من ورقته
+  // لا يُفتَح ولا ينكسر — فالحارسُ باقٍ وإن لم تَقَع حالتُه اليوم في الإنتاج.
+  const short=await p.evaluate(()=>{
+    const saved=PLACE_READ_BANK.splice(PLACE_READ_BANK.length-4,4);
+    const out={cov:placeCoverage(),ready:placeReady('read'),
+      pool:placePool('read').length,mode:(startPlaceSec('read'),mode)};
+    PLACE_READ_BANK.push.apply(PLACE_READ_BANK,saved);
+    return out;
+  });
+  ok(short.ready===false&&short.mode!=='place','ولا يُفتَح قسمٌ بنكُه أضيقُ من ورقته');
+  ok(short.cov===wantCov-40,'وتهبط التغطيةُ بوزنه وحده — '+short.cov+'٪');
+  ok(short.pool<=r.readN,'ومجمعُه لا ينكسر ولا يتجاوز الورقة — '+short.pool);
   await p.context().close();
 }
 
@@ -208,6 +227,7 @@ console.log('\n٧) جلسةٌ كاملة بنقراتٍ على الأزرار ا
     secRow:window.__rows.filter(r=>r[0]==='wejplace'&&r[1]==='section').length,
     itemRows:window.__rows.filter(r=>r[0]==='wejplace'&&r[1]==='write').length,
     qtext:(window.__rows.filter(r=>r[0]==='wejplace'&&r[1]==='write')[0]||[])[6],
+    cov:placeCoverage(),
   }));
   ok(r.done,'القسمُ انتهى بعشر نقراتٍ حقيقية');
   ok(r.itemRows===10,'وعشرةُ سطورٍ للعناصر — '+r.itemRows);
@@ -216,7 +236,10 @@ console.log('\n٧) جلسةٌ كاملة بنقراتٍ على الأزرار ا
   ok(r.qtext&&/تحديد مستوى · write · ر14/.test(r.qtext.q_text||''),
     'ونصُّ السؤال وقاعدتُه في السجلّ — '+((r.qtext&&r.qtext.q_text)||'').slice(0,60));
   ok(/ليست درجةَ STEP/.test(r.txt),'والتقريرُ يُعلن أنها ليست درجةَ STEP');
-  ok(/٦٠٪ من وزن/.test(r.txt)||/تغطّي ٦٠/.test(r.txt),'ويُعلن التغطية — ٦٠٪');
+  // كان يشترط «٦٠٪» حرفياً، واكتملت القراءةُ فصارت ١٠٠٪. والدعوى هي هي — **التقريرُ
+  // يُعلن كم من وزن الاختبار غطّته الأقسامُ المكتملة** — والرقم يُشتقّ من الحيّ.
+  ok(new RegExp(toArJs(r.cov)+'٪ من وزن').test(r.txt),
+    'ويُعلن التغطيةَ المحسوبة — '+r.cov+'٪');
   ok(/إشاراتٌ لا درجات/.test(r.txt)||!/التراكيب — إشارة/.test(r.txt),
     'وإن عُرضت قواعدُ فبوصفها إشاراتٍ لا درجات');
   await p.context().close();
