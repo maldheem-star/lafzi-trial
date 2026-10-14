@@ -65,12 +65,18 @@ console.log('\n٢) التغطية رقمٌ يُحسب من البنوك');
     cov:placeCoverage(),
     ready:PLACE_SECTIONS.map(s=>[s.k,placeReady(s.k),placeBankSize(s.k)]),
     readPool:placePool('read').length,
+    readN:placeSecOf('read').n,
   }));
   const m={};r.ready.forEach(x=>m[x[0]]=x);
   ok(r.cov===60,'التغطية الآن ٦٠٪ (استماع+تراكيب+تحليل) — '+r.cov);
-  ok(m.read[1]===false&&m.read[2]===0,'والمقروء غيرُ جاهز وبنكُه صفر — معلَّقٌ بإعلان');
+  // كُتب أوّلاً «بنكُه صفر» وكان صحيحاً يومه، ثمّ وصلت ٣٦ قطعةً بمفتاحها (١٤ أكتوبر)
+  // فصار الحرفُ يُكذّب سلوكاً صحيحاً. والدعوى هي هي — **معلَّقٌ لا مكسور** — لكنّ العدد
+  // يُشتقّ من الحيّ فلا ينكسر مع كل مفتاحٍ يُضاف (درس «الأعداد المكتوبة فخّ صامت»).
+  ok(m.read[1]===false&&m.read[2]<r.readN,
+    'والمقروء غيرُ جاهز لأن بنكه أضيقُ من ورقته ('+m.read[2]+' من '+r.readN+') — معلَّقٌ بإعلان');
+  ok(m.read[1]===(m.read[2]>=r.readN),'والبوّابة متّسقة: الجهوزية = بنكٌ يبلغ طولَ الورقة');
   ok(m.listen[1]&&m.struct[1]&&m.write[1],'والثلاثة الباقية جاهزة');
-  ok(r.readPool===0,'ومجمعُ المقروء يُعيد صفراً بلا انكسار');
+  ok(r.readPool<=r.readN,'ومجمعُ المقروء لا يتجاوز طولَ الورقة ولا ينكسر — '+r.readPool);
   const started=await p.evaluate(()=>{startPlaceSec('read');return mode});
   ok(started!=='place','ولا يُفتَح قسمٌ بنكُه غيرُ جاهز — mode='+started);
   await p.context().close();

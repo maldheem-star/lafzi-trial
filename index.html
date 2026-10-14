@@ -4729,7 +4729,8 @@ const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEn
   "wejCur","wejSetupRound","wejChoose","wejNext","renderWejMenu","renderWej","renderWejResult",
   "placeSecOf","placeLoad","placeSave","placeBankSize","placeReady","placeCoverage","placeChance",
   "placeQ","placePool","goPlaceMenu","startPlaceSec","placeCur","placePlay","placeMed","placeAgg",
-  "placeChoose","placeFinish","placeAnsQ","placeCefr","renderPlaceMenu","renderPlace","renderPlaceReport"];
+  "placeChoose","placeFinish","placeAnsQ","placeCefr","renderPlaceMenu","renderPlace","renderPlaceReport",
+  "placeChartSvg"];
 function censusMissing(){return CENSUS.filter(function(n){return typeof window[n]!=="function"})}
 function censusHTML(){
   var miss=censusMissing();
@@ -18377,7 +18378,199 @@ function renderMockResult(){
 const PLACE_KEY="mawhiba_place_v1";
 // قطعُ النموذج ٤٩ تُضاف هنا متى وصل مفتاحُها — ولا يُشحَن منها عنصرٌ بمفتاحٍ من حكمي
 // (درس ١٣ أكتوبر: ٣٩ مفتاحاً كان البنك يُدرّس بها الخطأ الشائع صواباً).
-const PLACE_READ_BANK=[];
+// ── قطعُ وجدان ٤٩ وأسئلةُ فهمها ────────────────────────────────────────────────
+// نصُّها ومفتاحُها من الدورة: المفتاح هو التظليل الأصفر على سطر الخيار، قُرئ من
+// لقطات الشاشة (الملفّ ٣٦٫٩ م.ب فوق حدّ تنزيل أداة درايف فلا تُقرأ طبقةُ رسمه).
+// ولا عنصرَ بمفتاحٍ من حكمي — درس ١٣ أكتوبر: ٣٩ مفتاحاً كان البنك يُدرّس بها الخطأ
+// الشائع صواباً. وهذه الكتلةُ **مولَّدةٌ بسكربت** من النصّ ومن
+// `tools/wej_m49_read_keys.json`، ويحرسها `test_placeread.js` بمقابلتها بالملفّ نفسه.
+const PLACE_READ_P={
+  p1:{t:`1) Muhammad Ali is a famous heavyweight boxer. He was born in Louisville, Kentucky, in the USA in 1942. His birth name was Cassius Marcellus Clay. When he was young, he was an amateur boxing champion. In 1960, when he was still an amateur, he won the light heavyweight gold medal at the Olympic games in Rome.
+
+2) After that, Ali became a professional heavyweight boxer. He was 1.88 meters tall and his fighting weight was about 95 kilograms. He had a very successful professional boxing career. In fact, he won the world heavyweight championship three times. The first time was when he beat the former champion, Sonny Liston, in 1964. In the same year, he became a Muslim and assumed the name Muhammad Ali.
+
+3) In 1967 he refused to be drafted for the Vietnam War. Although a jury in a trial found him guilty, later the Supreme Court said that he had had the right to refuse.
+
+4) Ten years later, in 1974, he became world champion again when he beat George Foreman in Zaire. He became champion for the third time in 1978 after beating Leon Spinks. Ali fought his last professional fight in 1981 against Trevor Berbick and then retired from boxing.
+
+5) Heavyweight boxers are usually very strong but not fast, but Ali was very strong and very fast. He said his style was "to float like a butterfly and sting like a bee." Ali liked to talk a lot and people called him the Louisville Lip.`},
+  p2:{t:`Madagascar
+
+1) Madagascar is an island country located off the south eastern coast of Africa. The island is the fourth largest in the world. Only Greenland, New Guinea, and Borneo are larger. Madagascar is known as the Great Red Island for its rich, red soil. Its capital is Antananarivo.
+
+2) Madagascar lies in the western India Ocean. The Mozambique Channel separates the island from the African coast. The central part of Madagascar is a plateau, or high, flat land. Mountains rise above the plateau in some places. Maromokotro Peak in the north is the island's highest point. It rises 9,436 feet (2,876 meters). A narrow plain runs along the east coast. Low plateaus and plains cover the west. Rivers are short and fast flowing in the east and longer in the west. The east coast has a hot, humid tropical climate. The central plateau is cooler. The southwest is dry.
+
+3) Grasses cover most of the island. Some tropical forests and mangrove swamps survive on the coasts. Hundreds of different kinds of orchid also grow in Madagascar. Madagascar has many types of animals that live almost nowhere else in the world. Two examples are lemurs and fossas. Lemurs are monkeylike animals that live in trees. Fossas are catlike mammals that hunt birds and lemurs. Many butterflies, chameleons, and crocodiles also live in the country.
+
+4) Madagascar's people are known as the Malagasy. The Malagasy are more closely related to Indonesians than to Africans, even though the country is closer to Africa than to Indonesia. The Malagasy are divided into about 20 groups. The Merina make up the largest group. The country also has small groups of people from Africa, Asia, France, and the nearby island country of Comoros. Many people of Madagascar speak both the Malagasy and French languages. About half of the people are Christian, and most of the rest follow traditional Malagasy religions. Fewer than one-third of the people live in cities. Almost all the major cities and towns are in the east.
+
+5) Madagascar is a poor country. Most of the people live by growing crops and by raising humped cattle called zebu. Rice is the main food crop. Farmers grow vanilla and cloves to sell to other countries. Vanilla from Madagascar is thought to be the best in the world. Madagascar also produces coffee, sugar, and shrimp. Madagascar's small industries make mainly cloth, clothing, cement, soap, beer, and cigarettes. Mines provide cobalt, chromite, graphite, gold, and gems. Cobalt is the main product. The country's share of world cobalt sales was nearly 4% in 1980.
+
+6) People first came to Madagascar from Indonesia more than 1,100 years ago. Arab sailors arrived on the island in AD 1000. The Portuguese first came to Madagascar in 1500, and the French arrived and set up small towns so they could trade in the 1600s. The Malagasy Merina kingdom controlled much of the island in the early 1800s. The French defeated the Merina in 1895. France then ruled the island as a colony. The island became the independent Malagasy Republic in 1960. In the 1970s, the country's army took power. The country took the name Madagascar in 1975. In 1992, Madagascar held free elections for the first time in 17 years. The new government is working to improve the economy.`},
+  p3:{t:`Fast Food
+
+1) Fast food is the name given to food that can be prepared and served quickly, often served at basic restaurants or in packaged form for convenient takeaway. It is typically inexpensive to buy but unhealthy to eat. The fast-food industry is a multibillion-dollar industry. In the year 2020, the fast-food industry was worth 570 billion dollars daily. The industry is expected to have an annual growth of 2.5% for the next several years.
+
+2) Popular forms of fast food include burgers, fries, pizza, fish and chips, kebabs, and fried chicken. Well-known fast-food franchises and restaurants include McDonalds, Kentucky Fried Chicken (KFC), Pizza Hut, Taco Bell, and Burger King. As well as at restaurants, fast food is usually sold at grocery stores and gas stations. Examples of this include hotdogs, meat pies, and doughnuts.
+
+3) While hamburgers, fries and pizza are seen as traditional fast foods, countries throughout the world sell all types of fast food that may not be so well known. Some examples of these include kebabs, Chinese takeaways (fried noodles, rice and meat dishes), sushi and bento type foods in Japan and fish and chips in the UK, New Zealand and Australia.
+
+4) Because now we understand that a healthy diet is important for good health, more efforts have been made to improve fast food menus by lowering fat levels or at least offering healthier choices. While these health issues are creating more attention, fast food is still linked to weight gain problems, diabetes, and increased healthcare costs.`},
+  p4:{t:`Brazil's water shortage: Sao Paulo suffers its worst drought on record
+
+1) Brazil continues to suffer from a historic drought (lack of water), and millions of people in its largest city might run out of water soon. Sao Paulo, home to around 20 million people, is experiencing its lowest rainfall since 1930, and new water-saving measures have been introduced to deal with such a very difficult situation. 90% of people in Sao Paulo say that they are being affected by the water shortage. People in other cities such as Rio Janeiro with 7 million people and the capital city of Brasilia with 5 million people are not experiencing the same problems that are happening in Sao Paulo.
+
+2) Services, including schools and hospitals, are having to adapt to the country's new water problems. The Candido Fontoura children's hospital has denied that it ran out of water earlier this month, but biologist Analice Dora expressed fear: "Everyone is worried. Hospitals are the one place that can't lack water." If there is not enough water in hospitals, people could die because they cannot get medical treatments. Water is important to hospitals because it is important for the area to be clean.
+
+3) Although there has been a recent increase in rainfall in the region, it hasn't been enough to improve supply in Brazil, a country which normally has 12 per cent of the world's freshwater - more water than any other country in the world.
+
+4) Current reserves in Sao Paulo stand at just 10 per cent - known as the "dead volume" - and the government has warned that it could get worse in the next few months. Reserves are the water that is stored or kept. This is usually used in cases of emergencies.
+
+5) Professor Decio Semensatto from the Federal University of Sao Paulo has compared the current water situation to a "semi-desert." And the water crisis will probably last for years. He says that water utility Sabesp is responsible because it has known for years that drought-like conditions would soon arrive, but did not do much to prevent the future problems. The current crisis has reached a serious point, and water rationing may be necessary. Rationing is where only small amounts of something are available. People will only be able to get small amounts of water and will have to use it for only things that are very important. Sao Paulo State governor Geraldo Alckmin last month admitted that it was already happening. Brazil is not used to such scarcity, but Sao Paulo is getting used to the way things have to run; There are incentives to use less water, fines for those who use too much and the possible installation of more efficient taps. Sabesp will see if such steps can make the difference before it decides whether to formally introduce wider water rationing. President Bolsonaro has not done anything to help resolve the problem. He does not think that it is a problem for the federal government to solve and has said that the local government needs to fix the problem.`},
+  p5:{t:`The Aral Sea
+
+1) The Aral Sea is a large lake located in the former Soviet Union (today's Kazakhstan and Uzbekistan). It was once a beautiful lake, surrounded by trees. It supported a large population of fishermen and farmers, but now living near the Aral Sea is difficult. The fishing industry is almost gone, and farming is impossible.
+
+2) In the 1950s, the Soviet government started several huge national agricultural projects in the region around the Aral Sea. It wanted to produce cotton for export. It extracted the water needed to produce this valuable crop from the rivers that feed the Aral Sea. This was good for the national economy, but terrible for the region. First, the climate around the Aral Sea changed. The land next to a large body of water tends to be warmer in the winter and cooler in the summer than land that is not near water. By 1990, the Aral Sea had lost 60% of its volume and had halved in the area. Due to this change, summers in the area became hotter and winters colder. Second, the government farms used harmful chemicals that were bad for the environment. These caused the water to become toxic, killing fish and making it more difficult to get clean drinking water. The worst effect, however, has been on public health. In summer, when the Aral Sea dries up, the wind blows toxic sand into towns causing several serious health problems including asthma, cancer, and diabetes.`},
+  p6:{chart:"visitors"},
+  p7:{chart:"revenue"},
+  p8:{t:`Red flags that a text is spam
+
+1) It appears unexpectedly. If your "bank" sends you a random text, asking for some action on your part, and it doesn't come from a regular source or at an expected time, check for an accompanying email and call the customer service number listed on the official website to confirm.
+
+2) It makes little sense. If the message has spelling and grammatical errors, or the vocabulary doesn't seem a bit wrong, then it's either from your six-year-old nephew, or most likely it's spam.
+
+3) It contains a strange link. Spam texts often contain a link. Sometimes that link appears to lead to a legitimate site, but on closer inspection, a critical word or letter is missing or misspelled. For example, "amazon.com" could become something like "amzon.com"
+
+4) It leads to mean calls. If you reply to a spam text or open a link, they may follow up by calling you. If you don't ever get a call from a "customer service representative" who makes you feel perplexed, as if you don't know why they are calling, hang up.`},
+  p9:{t:`Acid Rain
+
+1) When humans burn fossil fuels in factories, nitric acid and sulfur oxide which are air pollutants, are released into the atmosphere. Once in the atmosphere, the air pollutants combine with oxygen, water, and other substances floating around to form harmful, airborne acids called acid rain. Once acid rain is in the air, it moves throughout the earth, damaging natural environments such as bodies of water which then threaten aquatic ecosystem.
+
+2) Even though acid rain has the word rain in it, this pollutant can come in any form of precipitation such as snow, fog, or rain. Whatever form acid rain takes, it moves throughout the ecosystem, polluting forests, soil, oceans, lakes, and streams. For example, when acid rain is carried into bodies of water, the water becomes more acidic. High acidic water is bad for sea animals. Animals that have shells have a likely chance of dying because they rely on lower acidic levels to form their shells. Without lower acidic levels in the water, their shells become thinner and thinner. Thinner shells cause higher death rates.`},
+  p10:{t:`Public Libraries
+
+1) As online learning becomes more common and more resources are converted to digital form, some local governments suggest that public libraries should be shut down and, in their place, everyone should be given an iPad with an e-reader subscription.
+
+2) Proponents of this idea believe that it will save local cities and towns money because libraries are actually expensive to maintain. Libraries require a lot of land and real estate to house various books and resources, which makes it somewhat expensive to maintain. They also think it will encourage more people to read because they won't have to travel to a library to get a book; they can simply click on what they want to read and read it from wherever they are. They could also access more materials because libraries won't have to buy physical copies of books; they can simply rent out as many digital copies as they need.
+
+3) However, it would be a serious mistake to replace libraries with tablets. Digital books and resources are associated with less learning and more problems than print resources. A study done on tablet versus book reading found that people read 20-30% slower on tablets, retain 20% less information, and understand 10% less of what they read compared to people who read the same information in print. Additionally, staring too long at a screen has been shown to cause blurred vision, dizziness, dry eyes, headaches, and eye strain, at much higher instances than reading print does. People who use tablets and mobile devices excessively also have a higher incidence of more serious health issues such as fibromyalgia, shoulder and back pain, and muscle strain.
+
+4) While replacing libraries with tablets may seem like a simple solution, it would encourage people to spend even more time looking at digital screens, despite the myriad issues surrounding them. It would also end access to many of the benefits of libraries that people have come to rely on. In many areas, libraries are such an important part of the community network that they could never be replaced by a simple object.`},
+  p11:{t:`The success of Saudi Arabian soccer
+
+Passage A
+
+1) June 1994 was a special month for Saudi Arabian soccer when the team went to a first World Cup and Saeed al-Owaian ran through the Belgium defence in Washington to send the Green Falcons into the knockout stages.
+
+2) October 2021 was surely the best since. At the end of the first week, the national team, with two wins in the final round of qualification against Vietnam and Oman under their belt, defeated Japan, long regarded as Asia's best, 1-0. Five days later, there was a thrilling 3-2 victory over China in front of 50,000 delighted fans in Jeddah.
+
+3) With four of the 10 games in the stage completed, Saudi Arabia is the only one of Asia's 12 surviving qualifiers to have a perfect record. It would be a surprise if the team did not make the short trip to Qatar at the end of 2022.
+
+4) The coach, Herve Renard, who took the job in July 2019 after leaving Morocco, has added a more aggressive and hard-working style to the obvious talent of some players. The four-time Asian champions are in a very good place at the moment.
+
+5) The one area where there is a real need for improvement is in attack. The Green Falcons do not score enough. A player with a real eye for goal would help them improve even further.
+
+Passage B
+
+1) Four days after the national team's victory over China, Al-Hilal and Al-Nassr, the big Riyadh clubs with 26 league titles between them, were in action in the AFC Champions League quarter-finals. They both won easily, which ensured an exciting all-Saudi semi-final three days later. Al-Hilal won 2-1 and went on to victory in the Champions League final on November 23 to win a record fourth Asian title against Pohang Steelers of South Korea.
+
+2) The future would be brighter still if certain problems were solved. Lack of patience when it comes to hiring and firing coaches is no longer surprises but still shocks. Al-Ittihad fired their manager after one game this season, and Al-Taawoun and Al-Tai after two each.
+
+3) By October, seven of 16 clubs had changed coaches, with the season not finished one-third. It is not surprising; there is little or no reason for managers to look beyond the next game or risk playing young players.
+
+4) The league allows seven foreign players per club, compared with four in most Asian nations, and teams like to stack up on attacking talent. This has not helped the national team because it means that few Saudi attacking players get a chance to play. It would not be such a problem if local talent went overseas, but that has yet to happen.`}
+};
+// الرسمان البيانيّان (القطعتان ٦ و٧): بياناتُهما مقروءةٌ من اللقطات، والـSVG **يُولَّد
+// منها** لا يُرسَم بالعين — نفس ما فُعل برسوم أوراق الإحصاء (٥ سبتمبر).
+const PLACE_READ_CHARTS={"visitors":{"Jan":10000,"Feb":8200,"Mar":9800,"Apr":16000,"May":13400,"Jun":6000,"Jul":6000,"Aug":6000,"Sep":8000,"Oct":9600,"Nov":8000,"Dec":4800},"revenue":{"Jan":300000,"Feb":200000,"Mar":100000,"Apr":120000,"May":400000,"Jun":550000,"Jul":500000,"Aug":80000,"Sep":280000,"Oct":260000,"Nov":330000,"Dec":800000}};
+const PLACE_READ_RAW=[
+  {q:21,p:"p1",sk:"تفصيل",s:"According to Paragraph 1), when Ali won the gold medal, he was ….",c:["a professional boxer","a heavyweight boxer","an amateur boxer","a strong boxer"],a:2},
+  {q:22,p:"p1",sk:"معنى كلمة",s:"The word 'assumed' in Paragraph 2) is closest in meaning to ….",c:["took","threw","posited","suspected"],a:0},
+  {q:23,p:"p1",sk:"تفصيل",s:"According to Paragraph 3), who supported Ali when he refused to join the army?",c:["his fans","the jury","the Vietnamese","the supreme court"],a:3},
+  {q:24,p:"p1",sk:"تفصيل",s:"According to the passage, Ali became heavyweight champion for the third time after beating ….",c:["Leon Spinks.","Sonny Liston.","George Forman.","Trevor Berbick."],a:0},
+  {q:25,p:"p2",sk:"تفصيل",s:"What is the main food crop in Madagascar?",c:["cobalt","potatoes","tea","rice"],a:3},
+  {q:26,p:"p2",sk:"تفصيل",s:"When did Arab sailors first arrive in Madagascar?",c:["1000","1100","1500","1600"],a:0},
+  {q:27,p:"p2",sk:"تفصيل",s:"When did the country take the name Madagascar?",c:["1970","1975","1980","1992"],a:1},
+  {q:28,p:"p3",sk:"فكرة",s:"What is one important idea related to fast food that the writer mentions in Paragraph (4)?",c:["that its quality has improved","that it is important for good health","that it is connected to weight problems","that it is prepared at different locations"],a:2},
+  {q:29,p:"p3",sk:"فكرة",s:"What is one important idea related to fast food that the writer mentions in Paragraph (1)?",c:["It is prepared quickly.","It is NOT expensive.","It is NOT a healthy option.","It is an important industry."],a:3},
+  {q:30,p:"p3",sk:"تفصيل",s:"What are examples of unusual fast food?",c:["hamburgers and fries","kebabs and rice","pizza and fried chicken","hotdogs and meat pies"],a:1},
+  {q:31,p:"p3",sk:"فكرة رئيسة",s:"What is the main topic of the passage?",c:["Unusual fast food is sold in many countries.","Fast food is an important industry.","Fast food is NOT good for your health.","Fast food is very expensive nowadays."],a:1},
+  {q:32,p:"p4",sk:"تفصيل",s:"How many people live in Rio de Janeiro?",c:["5 million","7 million","12 million","20 million"],a:1},
+  {q:33,p:"p4",sk:"تفصيل",s:"Who is the governor of Sao Paulo?",c:["Decio Semensatto","Analice Dora","Geraldo Alckmin","Roberto Sitoe"],a:2},
+  {q:34,p:"p4",sk:"تفصيل",s:"How many people in Sao Paulo say that they are being affected by the water shortage?",c:["10%","12%","90%","95%"],a:2},
+  {q:35,p:"p5",sk:"سببٌ وعلاقة",s:"What caused the climate around the Aral Sea to change?",c:["The Aral Sea got smaller.","The people cut down the trees.","The water in the sea got warmer.","The fishermen and farmers left the area."],a:0},
+  {q:36,p:"p5",sk:"سببٌ وعلاقة",s:"What is the main reason people living near the Aral Sea have poor health?",c:["Many people have no work.","The drinking water is dirty.","Summers are too hot.","The sand is toxic."],a:3},
+  {q:37,p:"p5",sk:"معنى كلمة",s:"The word 'agricultural' in paragraph (2) is closest in meaning to ….",c:["energy","building","tourism","farming"],a:3},
+  {q:38,p:"p5",sk:"معنى كلمة",s:"The word 'extracted' in paragraph (2) is closest in meaning to ….",c:["took","checked","boiled","tasted"],a:0},
+  {q:39,p:"p6",sk:"رسمٌ بياني",s:"In what month was number of visitors the lowest?",c:["September","October","November","December"],a:3},
+  {q:40,p:"p6",sk:"رسمٌ بياني",s:"In the month of January, what was the number of visitors?",c:["8,000","10,000","12,000","14,000"],a:1},
+  {q:41,p:"p7",sk:"رسمٌ بياني",s:"In what month was the company's revenue the highest?",c:["September","October","November","December"],a:3},
+  {q:42,p:"p7",sk:"رسمٌ بياني",s:"In the month of January, what was the company's revenue?",c:["100,000","200,000","300,000","400,000"],a:2},
+  {q:43,p:"p8",sk:"معنى كلمة",s:"The word 'random' in paragraph (1) is closest in meaning to ….",c:["unplanned","different","difficult","negative"],a:0},
+  {q:44,p:"p8",sk:"معنى كلمة",s:"The word 'legitimate' in paragraph (3) is closest in meaning to ….",c:["professional","acceptable","known","corporate"],a:1},
+  {q:45,p:"p8",sk:"معنى كلمة",s:"The word 'perplexed' in paragraph (4) is closest in meaning to ….",c:["interested","shocked","unhappy","confused"],a:3},
+  {q:46,p:"p9",sk:"معنى كلمة",s:"The word 'aquatic' in paragraph (1) is closest in meaning to ….",c:["ocean","wildfire","earth","land"],a:0},
+  {q:47,p:"p9",sk:"معنى كلمة",s:"The word 'polluting' in paragraph (2) is closest in meaning to ….",c:["clearing","harming","killing","protecting"],a:1},
+  {q:48,p:"p9",sk:"معنى كلمة",s:"The word 'acidic' in paragraph (2) is closest in meaning to ….",c:["bitter","toxic","healthy","salty"],a:1},
+  {q:49,p:"p10",sk:"تفصيل",s:"What two words does the writer use to say that some local governments are determined to shut down local libraries?",c:["seem and end","believe and think","replace and convert","suggest and encourage"],a:3},
+  {q:50,p:"p10",sk:"موقف الكاتب",s:"Which of the following is the writer's opinion?",c:["Starring at a screen is unhealthy.","People read slower on tables.","Replacing libraries is a mistake.","Online learning is common now."],a:2},
+  {q:51,p:"p10",sk:"موقف الكاتب",s:"How is the writer's view about libraries different from some local government's view?",c:["He thinks libraries provide various resources.","He thinks libraries are expensive to maintain.","He thinks libraries are important to the community.","He thinks libraries should be replaced with digital ones."],a:2},
+  {q:52,p:"p10",sk:"استنتاج",s:"What can we understand from paragraph (3) about print books?",c:["They are a better learning resource.","They are less expensive to buy.","They are bad for your health.","They make you read slower."],a:0},
+  {q:53,p:"p10",sk:"استنتاج",s:"What can we understand from paragraph (2) about libraries?",c:["They are NO longer needed.","They have a lot of material.","They encourage people to read.","They cost a lot of money to keep."],a:3},
+  {q:54,p:"p11",sk:"استنتاج",s:"What can we understand from passages A and B about Saudi Arabian soccer?",c:["The national team is doing better than the clubs.","Two clubs met in the semi-finals of the Asian Champions League.","Both the national teams and clubs are doing well.","The national team are Asian champions."],a:2},
+  {q:55,p:"p11",sk:"استنتاج",s:"What do passages A and B say about recent results?",c:["Club victories led to a record fourth Asian Champions League title.","There have been important victories for the both the national team and the clubs.","All of Saudi Arabia celebrated the results of the national teams and the clubs.","The national team's results mean it has a good chance of World Cup qualifications."],a:1},
+  {q:56,p:"p11",sk:"استنتاج",s:"What do passages A and B say about managers of the Saudi teams?",c:["The national team manager has been in the job longer than many club mangers.","Clubs are impatient when it comes to recruiting and sacking mangers.","The national team managers have been given the chance to succeed.","The national team manager has been in the job longer than any club manager."],a:1}
+];
+// البنكُ يُبنى مرّةً عند التحميل: كلُّ سؤالٍ يحمل نصَّ قطعته (أو رسمَها) فلا يُكرّر
+// النصُّ في المصدر أربع مرّات، والعرضُ يقرأ `passage`/`chart` كما كان يقرؤه.
+const PLACE_READ_BANK=PLACE_READ_RAW.map(function(x){
+  const p=PLACE_READ_P[x.p]||{};
+  return {id:"pr49_"+x.q,q:x.s,c:x.c.slice(),a:x.a,sk:x.sk,n:x.q,
+          passage:p.t||"",chart:p.chart||null,src:"وجدان ٤٩"};
+});
+// رسمٌ خطّيّ من البيانات لا بالعين: محورٌ واحد يضع النقاط والعلامات معاً، وكلُّ علامةٍ
+// تُسمّي قيمةً يبلغها الرسم فعلاً — فالسؤال «كم كان عددُ الزوّار في يناير؟» يُجاب
+// بالقراءة من الرسم لا بالحدس. والألوانُ صريحةٌ في كل شكل (لا تُورَث من الصفحة).
+const PLACE_CHART_MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function placeChartSvg(kind){
+  const d=PLACE_READ_CHARTS&&PLACE_READ_CHARTS[kind];if(!d)return "";
+  const vals=PLACE_CHART_MONTHS.map(function(m){return d[m]||0});
+  const max=Math.max.apply(null,vals);
+  // خطوةُ المحور تُشتقّ من المدى بثماني فترات تقريباً، لا رقمٌ ثابت — فتقع القيمُ
+  // المسؤول عنها (زوّارُ يناير ١٠٠٠٠ · إيرادُ يناير ٣٠٠٠٠٠) **على خطٍّ مُعلَّم**
+  // فتُقرأ قراءةً لا تخميناً. ويحرسه `test_placeread` بمقابلة الرسم بالمفتاح.
+  const raw=max/8,mag=Math.pow(10,Math.floor(Math.log10(raw)));
+  let step=mag;[1,2,2.5,5,10].some(function(f){if(f*mag>=raw){step=f*mag;return true}return false});
+  const top=Math.ceil(max/step)*step,ticks=[];
+  for(let v=0;v<=top+1e-9;v+=step)ticks.push(v);
+  // عرضُ viewBox قريبٌ من عرض الحاوية على الهاتف (~٣٢٠px) عمداً، فلا يُصغَّر النصُّ
+  // إلى ما دون القراءة — عيبٌ كشفته اللقطة لا الاختبار (viewBox ٥٦٠ كان يُصغَّر ٠٫٥٧)
+  const W=344,H=236,L=46,R=10,T=24,B=28;
+  const px=function(i){return L+i*(W-L-R)/(PLACE_CHART_MONTHS.length-1)};
+  const py=function(v){return T+(1-v/top)*(H-T-B)};
+  const fmt=function(v){return v>=1000000?(v/1000000)+"m":v>=1000?(v/1000)+"k":String(v)};
+  const grid=ticks.map(function(v){
+    return '<line x1="'+L+'" y1="'+py(v).toFixed(1)+'" x2="'+(W-R)+'" y2="'+py(v).toFixed(1)+
+      '" stroke="#E2E8F0" stroke-width="1"/><text x="'+(L-6)+'" y="'+(py(v)+3.5).toFixed(1)+
+      '" text-anchor="end" font-size="9.5" fill="#64748B" font-family="Georgia,serif">'+fmt(v)+'</text>'}).join("");
+  const line='<polyline fill="none" stroke="#B45309" stroke-width="2" points="'+
+    vals.map(function(v,i){return px(i).toFixed(1)+","+py(v).toFixed(1)}).join(" ")+'"/>';
+  const dots=vals.map(function(v,i){return '<circle cx="'+px(i).toFixed(1)+'" cy="'+py(v).toFixed(1)+
+    '" r="2.6" fill="#B45309"/>'}).join("");
+  const xs=PLACE_CHART_MONTHS.map(function(m,i){return '<text x="'+px(i).toFixed(1)+'" y="'+(H-B+13)+
+    '" text-anchor="middle" font-size="8.5" fill="#475569" font-family="Georgia,serif">'+m+'</text>'}).join("");
+  const title=kind==="visitors"?"Number of visitors (2009)":"Company revenue in euros (2009)";
+  // **`direction:ltr` على الرسم كلّه**: `<text>` داخل SVG يرث اتّجاه الصفحة RTL، فعنوانُ
+  // الرسم كان يُعرض «os (2009)» — رأسُه مقطوعٌ خارج اللوحة. كشفته لقطةُ شاشة لا اختبار
+  // (النصُّ في DOM سليمٌ تماماً)، وهو فخُّ الاتّجاه نفسه في وسيطٍ جديد — درس ٢٥ أغسطس.
+  return '<svg viewBox="0 0 '+W+' '+H+'" width="100%" role="img" aria-label="'+title+
+    '" direction="ltr" style="display:block;max-width:100%;height:auto;direction:ltr"><rect x="0" y="0" width="'+W+'" height="'+H+
+    '" fill="#F8FAFC"/><text x="'+(L-6)+'" y="'+(T-9)+'" font-size="10.5" fill="#334155" font-family="Georgia,serif">'+
+    title+'</text>'+grid+'<line x1="'+L+'" y1="'+py(0).toFixed(1)+'" x2="'+(W-R)+'" y2="'+py(0).toFixed(1)+
+    '" stroke="#94A3B8" stroke-width="1.2"/><line x1="'+L+'" y1="'+T+'" x2="'+L+'" y2="'+py(0).toFixed(1)+
+    '" stroke="#94A3B8" stroke-width="1.2"/>'+line+dots+xs+'</svg>';
+}
 // مخطَّطُ التراكيب: ثلاثون خانةً على قواعد وجدان ١-١٣ بطريقة **أكبر الباقي** (Hamilton)
 // على أوزان الدورة نفسها، وأرضيّةُ خانةٍ لكل قاعدة فلا تغيب قاعدة. والقواعدُ بلا وسمٍ
 // في المصدر (٢٨٤ عنصراً) خارج المخطَّط: المخطَّط يُسند كل عنصرٍ إلى خانةِ محتوى، وعنصرٌ
@@ -18563,7 +18756,11 @@ function renderPlace(){
     ${ttsHelpHTML("هذا القسم يحتاج الصوت، ولا نصّ يُقرأ بدلاً منه. افحصي الصوت أوّلاً، أو عودي لهذا القسم لاحقاً.")}
     <div style="margin:14px 0"><button type="button" onclick="placePlay()" style="background:#0284C7;color:#fff;border:none;border-radius:50%;width:64px;height:64px;font-size:26px;cursor:pointer">🔊</button></div>
     <div style="font-size:12px;color:#64748B;margin-bottom:12px">استمعي مرّتين، ثم اختاري${placePlays?` — استمعتِ ${toAr(placePlays)} ${placePlays===1?"مرّة":"مرّات"}`:""}</div>`:"";
-  const passage=(placeSec==="read"&&x.it.passage)?`<div style="direction:ltr;text-align:left;font-family:Georgia,serif;font-size:14px;color:#334155;line-height:1.9;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:12px;margin-bottom:12px">${esc(x.it.passage)}</div>`:"";
+  // القطعةُ نصٌّ أو رسمٌ بياني — وأربعةُ أسئلةٍ في النموذج ٤٩ معلّقةٌ برسم، فبلا عرضه
+  // لا تُجاب إلّا بالحدس. والـSVG مولَّدٌ من بياناتٍ محفوظة لا نصٌّ يُهرَّب.
+  const passage=(placeSec!=="read")?"":(
+    x.it.chart?`<div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:10px;margin-bottom:12px;overflow-x:auto">${placeChartSvg(x.it.chart)}</div>`:
+    x.it.passage?`<div style="direction:ltr;text-align:left;font-family:Georgia,serif;font-size:14px;color:#334155;line-height:1.9;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:12px;margin-bottom:12px;white-space:pre-wrap">${esc(x.it.passage)}</div>`:"");
   app.innerHTML=`
   <button class="link-btn" onclick="goPlaceMenu()">→ إنهاء والرجوع للأقسام</button>
   ${prog}

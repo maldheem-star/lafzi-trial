@@ -39,9 +39,9 @@
     { "q": 51, "a": "c", "text": "important to the community" },
     { "q": 52, "a": "a", "text": "better learning resource" },
     { "q": 53, "a": "d", "text": "They cost a lot of money to keep" },
-    { "q": 54, "a": "c", "text": "Both ... are doing well" },
-    { "q": 55, "a": "b", "text": "important victories for both" },
-    { "q": 56, "a": "b", "text": "Clubs are impatient ..." }
+    { "q": 54, "a": "c", "text": "Both the national teams and clubs are doing well." },
+    { "q": 55, "a": "b", "text": "There have been important victories for the both the national team and the clubs." },
+    { "q": 56, "a": "b", "text": "Clubs are impatient when it comes to recruiting and sacking mangers." }
   ],
   "charts": {
     "_note": "الأسئلة 39-42 معلّقةٌ برسمَين بيانيَّين. البيانات مقروءةٌ من اللقطات، فتُولَّد SVG منها كما وُلِّدت رسومُ أوراق الإحصاء (5 سبتمبر) لا تُرسَم بالعين.",
