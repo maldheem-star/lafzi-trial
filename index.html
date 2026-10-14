@@ -18479,7 +18479,25 @@ Passage B
 
 3) By October, seven of 16 clubs had changed coaches, with the season not finished one-third. It is not surprising; there is little or no reason for managers to look beyond the next game or risk playing young players.
 
-4) The league allows seven foreign players per club, compared with four in most Asian nations, and teams like to stack up on attacking talent. This has not helped the national team because it means that few Saudi attacking players get a chance to play. It would not be such a problem if local talent went overseas, but that has yet to happen.`}
+4) The league allows seven foreign players per club, compared with four in most Asian nations, and teams like to stack up on attacking talent. This has not helped the national team because it means that few Saudi attacking players get a chance to play. It would not be such a problem if local talent went overseas, but that has yet to happen.`},
+  p12:{t:`From: <ahmad.adbullah@globalconsiiltants.com>
+
+To: <hamad.salih@globalconsultants.com>
+
+Date: October 28, 2013
+
+Subject: Meeting with PR
+
+I'm having a meeting with the public relations specialist tomorrow afternoon at 1 p.m. I need you to have five final hard copies of our updated company profile ready as well as the PowerPoint presentation preloaded onto the conference room computer with everything set up. Mr. Ali has been asked to make sure there are enough refreshments available for up to ten people. Please make sure you arrive prior to the start time, as I was not pleased when the guests and I arrived before you at the last event. In addition, make sure to bring the extra materials that I discussed with you in my office yesterday. As I will not return to the office today and will be out tomorrow morning. I won't see you until the meeting tomorrow afternoon.
+
+Thank you
+
+Ahmad Abdulla
+
+President
+
+Global Consultant.`},
+  p13:{t:`Many food professionals consider bone broth to be a super-food that should be in stock every day in every kitchen. Bone broth is a traditional food that provides the human body with forms of calcium, magnesium, phosphorus, and other minerals that are easy to consume, digest, and absorb. All of these minerals and nutrients are usually lacking in most people's diets today, leading to weak teeth, bones, immune systems, and bodies in general.`}
 };
 // الرسمان البيانيّان (القطعتان ٦ و٧): بياناتُهما مقروءةٌ من اللقطات، والـSVG **يُولَّد
 // منها** لا يُرسَم بالعين — نفس ما فُعل برسوم أوراق الإحصاء (٥ سبتمبر).
@@ -18520,10 +18538,12 @@ const PLACE_READ_RAW=[
   {q:53,p:"p10",sk:"استنتاج",s:"What can we understand from paragraph (2) about libraries?",c:["They are NO longer needed.","They have a lot of material.","They encourage people to read.","They cost a lot of money to keep."],a:3},
   {q:54,p:"p11",sk:"استنتاج",s:"What can we understand from passages A and B about Saudi Arabian soccer?",c:["The national team is doing better than the clubs.","Two clubs met in the semi-finals of the Asian Champions League.","Both the national teams and clubs are doing well.","The national team are Asian champions."],a:2},
   {q:55,p:"p11",sk:"استنتاج",s:"What do passages A and B say about recent results?",c:["Club victories led to a record fourth Asian Champions League title.","There have been important victories for the both the national team and the clubs.","All of Saudi Arabia celebrated the results of the national teams and the clubs.","The national team's results mean it has a good chance of World Cup qualifications."],a:1},
-  {q:56,p:"p11",sk:"استنتاج",s:"What do passages A and B say about managers of the Saudi teams?",c:["The national team manager has been in the job longer than many club mangers.","Clubs are impatient when it comes to recruiting and sacking mangers.","The national team managers have been given the chance to succeed.","The national team manager has been in the job longer than any club manager."],a:1}
+  {q:56,p:"p11",sk:"استنتاج",s:"What do passages A and B say about managers of the Saudi teams?",c:["The national team manager has been in the job longer than many club mangers.","Clubs are impatient when it comes to recruiting and sacking mangers.","The national team managers have been given the chance to succeed.","The national team manager has been in the job longer than any club manager."],a:1},
+  {q:57,p:"p12",sk:"تفصيل",s:"According to the passage, why was Mr. Ahmad NOT pleased with Mr. Hamad?",c:["Mr. Hamad forgot to bring extra materials at a past event.","Mr. Hamad did NOT order refreshments for a past event.","Mr. Hamad arrived later than him at a past event.","Mr. Hamad was unable to attend a past event."],a:2},
+  {q:58,p:"p12",sk:"تفصيل",s:"When did Mr. Ahmad and Mr. Hamad have their last meeting?",c:["the day after the message was sent.","the day before the message was sent.","the morning that the message was sent.","a few days before the message was sent."],a:1},
+  {q:59,p:"p13",sk:"مرجع ضمير",s:"The word 'that' in the passage refers to ….",c:["phosphorus","magnesium","minerals","calcium"],a:2},
+  {q:60,p:"p13",sk:"معنى كلمة",s:"The word 'lacking' in the passage is closest in meaning to ….",c:["removing","existing","missing","changing"],a:2}
 ];
-// البنكُ يُبنى مرّةً عند التحميل: كلُّ سؤالٍ يحمل نصَّ قطعته (أو رسمَها) فلا يُكرّر
-// النصُّ في المصدر أربع مرّات، والعرضُ يقرأ `passage`/`chart` كما كان يقرؤه.
 const PLACE_READ_BANK=PLACE_READ_RAW.map(function(x){
   const p=PLACE_READ_P[x.p]||{};
   return {id:"pr49_"+x.q,q:x.s,c:x.c.slice(),a:x.a,sk:x.sk,n:x.q,

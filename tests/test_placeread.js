@@ -36,8 +36,9 @@ const mk=async(file,q)=>{
   await p.evaluate(()=>localStorage.clear());
   return p;
 };
-// محاكاةُ بنكٍ بالطول الكامل: الأربعةُ الباقية (٥٧-٦٠) مفتاحُها لم يصل، فتُضاف عناصرُ
-// وسمٍ صريحة **في الاختبار وحده** لفتح البوّابة وفحص العرض. ولا تدخل الشيفرة المشحونة.
+// كان هذا يُضيف عناصرَ وسمٍ لأن الأربعة الأخيرة (٥٧-٦٠) كان مفتاحُها غائباً. ووصل المفتاح
+// (١٤ أكتوبر) فبلغ البنكُ طولَ ورقته، فصار **لا يُضيف شيئاً** ويُبقي الأقسام تعمل على
+// العناصر الحقيقية. ويبقى لأنه يضمن الطول مهما تغيّر البنك، ويقول صراحةً كم أضاف.
 const padToFull=p=>p.evaluate(()=>{
   const n=placeSecOf('read').n,base=PLACE_READ_BANK.length;
   for(let i=base;i<n;i++)PLACE_READ_BANK.push({id:"sim_"+i,q:"SIMULATED pad item "+i+"?",
@@ -199,18 +200,30 @@ console.log('\n٤) الـSVG مولَّدٌ من البيانات');
 console.log('\n٥) البوّابة متّسقة لا رقمٌ مكتوب');
 {
   const p=await mk();
-  const before=await p.evaluate(()=>({n:placeSecOf('read').n,size:placeBankSize('read'),
-    ready:placeReady('read'),cov:placeCoverage(),mode:(startPlaceSec('read'),mode)}));
-  ok(before.size<before.n,'البنك اليوم أضيقُ من الورقة — '+before.size+' من '+before.n);
-  ok(before.ready===false&&before.mode!=='place','فلا يُفتَح القسم');
-  ok(before.cov===60,'والتغطية ٦٠٪ — '+before.cov);
-  const padded=await padToFull(p);
-  const after=await p.evaluate(()=>({size:placeBankSize('read'),ready:placeReady('read'),
-    cov:placeCoverage(),pool:placePool('read').length}));
-  ok(padded.now===before.n,'وبمحاكاة البنك الكامل يبلغ '+padded.now);
-  ok(after.ready===true,'تُفتَح البوّابة بنفسها بلا تعديل — فالقيد بنكٌ لا شيفرة');
-  ok(after.cov===100,'والتغطيةُ تصير ١٠٠٪ — '+after.cov);
-  ok(after.pool===before.n,'والورقة تمتلئ بطولها — '+after.pool);
+  // كُتب هذا القسم يوم كان البنك ٣٦ من ٤٠ فقِيس «قبل» على حاله الطبيعي. ووصل المفتاح
+  // فبلغ الأربعين، فصارت الحالُ الطبيعية هي «بعد». والدعوى هي هي — **القيدُ بنكٌ لا
+  // شيفرة** — فتُقاس الآن في الاتّجاهين بمحاكاةٍ في الاختبار وحده: يُقصَّر البنك فيُقفل،
+  // ويُستعاد فيُفتَح. وهذا أقوى ممّا كان: يُثبت الطرفين لا طرفاً واحداً.
+  const full=await p.evaluate(()=>({n:placeSecOf('read').n,size:placeBankSize('read'),
+    ready:placeReady('read'),cov:placeCoverage(),pool:placePool('read').length}));
+  ok(full.size===full.n,'البنك اليوم بطول ورقته — '+full.size+' من '+full.n);
+  ok(full.ready===true,'فالقسم جاهز');
+  ok(full.cov===100,'والتغطيةُ ١٠٠٪ — '+full.cov);
+  ok(full.pool===full.n,'والورقة تمتلئ بطولها — '+full.pool);
+  const short=await p.evaluate(()=>{
+    window.__saved=PLACE_READ_BANK.splice(PLACE_READ_BANK.length-4,4);
+    return {size:placeBankSize('read'),ready:placeReady('read'),
+      cov:placeCoverage(),mode:(startPlaceSec('read'),mode)};
+  });
+  ok(short.size<full.n,'وبإنقاص أربعةٍ يصير أضيقَ من الورقة — '+short.size);
+  ok(short.ready===false&&short.mode!=='place','فلا يُفتَح القسم — mode='+short.mode);
+  ok(short.cov===60,'والتغطيةُ تهبط إلى ٦٠٪ بنفسها — '+short.cov);
+  const back=await p.evaluate(()=>{
+    PLACE_READ_BANK.push.apply(PLACE_READ_BANK,window.__saved);
+    return {size:placeBankSize('read'),ready:placeReady('read'),cov:placeCoverage()};
+  });
+  ok(back.size===full.n&&back.ready===true&&back.cov===100,
+    'وبإعادتها تُفتَح البوّابة بنفسها بلا تعديل شيفرة — '+back.size+' · '+back.cov+'٪');
   await p.context().close();
 }
 
@@ -334,16 +347,27 @@ console.log('\n٨) العرض على عرض الهاتف');
   await p.context().close();
 }
 
-// ===== ٩) الأربعةُ الباقية مُعلَنةٌ لا مُدَّعاة =====
-console.log('\n٩) الباقي مُعلَنٌ في ملفّ المفاتيح');
+// ===== ٩) مفتاحُ القراءة كاملٌ من المصدر، بلا فجوة =====
+console.log('\n٩) المفتاح كاملٌ ٢١-٦٠');
 {
-  ok(/57|٥٧/.test(KEYS._pending||''),'ملفُّ المفاتيح يقول صراحةً إن ٥٧-٦٠ لم يصل مفتاحُها');
   const qs=KEYS.keys.map(k=>k.q);
-  ok(qs.filter(q=>q>=57).length===0,'ولا مفتاحٌ مشحونٌ للأربعة — فلا عنصرَ بحكمي');
-  ok(Math.min.apply(null,qs)===21&&Math.max.apply(null,qs)===56,
-    'والمدى ٢١-٥٦ بلا فجوة — '+Math.min.apply(null,qs)+'-'+Math.max.apply(null,qs));
-  let gaps=0;for(let q=21;q<=56;q++)if(qs.indexOf(q)<0)gaps++;
+  ok(qs.length===40,'أربعون مفتاحاً — '+qs.length);
+  ok(Math.min.apply(null,qs)===21&&Math.max.apply(null,qs)===60,
+    'والمدى ٢١-٦٠ كترقيم قسم القراءة في النموذج ٤٩ — '+
+    Math.min.apply(null,qs)+'-'+Math.max.apply(null,qs));
+  let gaps=0;for(let q=21;q<=60;q++)if(qs.indexOf(q)<0)gaps++;
   ok(gaps===0,'وصفرُ فجوةٍ داخل المدى — '+gaps);
+  // الأربعةُ الأخيرة بأعيانها: كانت اشتقاقاً عندي موسوماً «غير مصدَّق»، ثمّ وصل المفتاح
+  // فطابقها أربعاً من أربع. فتُثبَّت بالاسم لا بالعدد — فلو عاد اشتقاقٌ مكان مفتاحٍ سقط.
+  const norm=x=>String(x).toLowerCase().replace(/[^a-z0-9%]+/g,' ').trim();
+  const last=[[57,'c','arrived later'],[58,'b','the day before'],[59,'c','minerals'],[60,'c','missing']];
+  let bad=0;
+  last.forEach(a=>{const k=KEYS.keys.find(x=>x.q===a[0]);
+    if(!k||k.a!==a[1]||!norm(k.text).includes(norm(a[2])))bad++});
+  ok(bad===0,'والأربعةُ الأخيرة (٥٧-٦٠) على المفتاح بنصّه — انحرافات '+bad);
+  ok(/^لا شيء/.test(String(KEYS._pending||'').trim()),
+    'وملفُّ المفاتيح يُعلن أن لا شيءَ معلَّقاً — «'+(KEYS._pending||'')+'»');
+  ok(!KEYS._derived_unverified,'ولا اشتقاقَ غيرَ مصدَّقٍ باقٍ في الملفّ');
 }
 
 console.log('\n'+(fail?'✗ FAIL':'✓')+' نجح '+pass+' · فشل '+fail);
