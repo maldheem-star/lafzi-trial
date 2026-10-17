@@ -20,6 +20,21 @@ const mk=async()=>{
   await page.waitForFunction(()=>typeof cxPreStart==='function');
   return page;
 };
+// ===== انتظارُ وصول السطر لا افتراضُ وصوله — ١٧ أكتوبر =====
+// `logs` يمتلئ باعتراض الطلب الشبكي، **وهو غيرُ متزامن**: السطرُ يُرسَل ويُقرأ بعد
+// حين. وكان القسمان ٤ و٦ يفحصانه **فور** الإجابة بلا انتظار — فنجح الرابع صدفةً
+// (تتلوه `await`اتٌ تمنحه وقتاً) وسقط السادس في الجولة الكاملة وحدها بينما ينجح
+// منفرداً ثلاثاً من ثلاث. وهو بعينه صنفُ «الاختبار يقيس اللحظة الخاطئة» الموثَّق
+// في `test_playrace` و`test_dyn §٧` — **والدعوى تبقى صارمة**: ما يُنتظَر وصولُه
+// يجب أن يصل، وإلّا سقط عند المهلة.
+const waitLog = async (pred, ms = 5000) => {
+  const t0 = Date.now();
+  while (Date.now() - t0 < ms) {
+    if (logs.some(pred)) return true;
+    await new Promise(r => setTimeout(r, 50));
+  }
+  return false;
+};
 // تُجيب إجابةً صحيحة أو خاطئة على الاسم المعروض
 const answer=(page,right)=>page.evaluate(r=>{
   const cur=cxPreCur();
@@ -73,7 +88,7 @@ await answer(page,true);
 ok(await page.evaluate(()=>cxPreOn)===false,'والسادسة تفتحها');
 t=await page.textContent('#app');
 ok(t.includes('انظري قبل أن نشرح'),'ونحن الآن في الملاحظة');
-ok(logs.some(l=>l.qtype==='cx_sort_done'&&l.is_correct===true),'والعبور مُسجَّل');
+ok(await waitLog(l=>l.qtype==='cx_sort_done'&&l.is_correct===true),'والعبور مُسجَّل');
 
 console.log('\n٥) خطأ في الأخيرة يُعيدها إلى الصفر — لا تمرّ بالمصادفة');
 await page.evaluate(()=>{cxStart(CONTRAST_PAIRS.filter(x=>x.id==='few_little')[0]);
@@ -90,7 +105,7 @@ function CX_MAX(){return 22}
 ok(await page.evaluate(()=>cxPreFail)===true,'بعد ٢٢ محاولة نقف');
 t=await page.textContent('#app');
 ok(t.includes('نقف هنا الليلة'),'ويُقال لها السبب بلا لوم');
-ok(logs.some(l=>l.qtype==='cx_sort_done'&&l.is_correct===false),'ويُسجَّل التعثّر');
+ok(await waitLog(l=>l.qtype==='cx_sort_done'&&l.is_correct===false),'ويُسجَّل التعثّر');
 await page.click('button[onclick="cxPreQuit()"]');
 await page.waitForTimeout(200);
 ok(await page.evaluate(()=>cxOn)===false,'والتقابل يُغلق');
