@@ -296,10 +296,22 @@ console.log('\n٧) جلسةٌ كاملة بنقراتٍ حقيقية');
   const p=await mk();
   await padToFull(p);
   await p.evaluate(()=>{startPlaceSec('read')});
-  let clicks=0;
+  // بوّابةُ التسرّع المشروطة (١٥ أكتوبر) تُسلَّح بعد تسرّعَين، والنقرُ الآليّ أسرعُ من
+  // أرضيّتها حتماً — فالخياراتُ تُخفى. والدعوى هي هي (أربعون نقرةً حقيقية تُكمل الورقة)،
+  // والمُضافُ أن البوّابة تُكشَف بين العناصر كما يفعل المتعلّم بالانتظار، وأن نقرةً
+  // قبل كشفها لا تُحتسَب إجابة — فيُقاس المنعُ ولا يُتجاوَز صمتاً.
+  let clicks=0,gatedOnce=0,refused=0;
   for(let i=0;i<60;i++){
-    const done=await p.evaluate(()=>placeDone);
-    if(done)break;
+    const st=await p.evaluate(()=>({done:placeDone,open:gateOpen(),n:placeAns.length}));
+    if(st.done)break;
+    if(!st.open){
+      gatedOnce++;
+      // نقرةٌ والبوّابةُ مغلقة: لا زرَّ معروضاً أصلاً، والنداءُ المباشر يُردّ
+      const before=st.n;
+      const after=await p.evaluate(()=>{placeChoose(0);return placeAns.length});
+      if(after===before)refused++;
+      await p.evaluate(()=>gateReveal());
+    }
     const btn=await p.$('.choices button');
     if(!btn)break;
     await btn.click();clicks++;
@@ -308,6 +320,8 @@ console.log('\n٧) جلسةٌ كاملة بنقراتٍ حقيقية');
   const r=await p.evaluate(()=>({done:placeDone,n:placeAns.length,
     st:(placeLoad().read||{}),mode:mode,
     noFeedback:!/صحيح|خطأ|الصواب/.test(document.body.innerText)}));
+  ok(gatedOnce>0,'والبوّابةُ سُلِّحت فعلاً على النقر الآليّ المتسرّع — '+gatedOnce+' مرّة');
+  ok(refused===gatedOnce,'ولا نقرةَ احتُسبت إجابةً وهي مغلقة — '+refused+'/'+gatedOnce);
   ok(clicks===40,'أربعون نقرةً حقيقية أكملت الورقة — '+clicks);
   ok(r.done&&r.n===40,'والجلسةُ انتهت بأربعين إجابة — '+r.n);
   ok(r.st.n===40&&typeof r.st.ok==='number','والنتيجةُ محفوظة — '+r.st.ok+'/'+r.st.n);
