@@ -4730,7 +4730,11 @@ const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEn
   "placeSecOf","placeLoad","placeSave","placeBankSize","placeReady","placeCoverage","placeChance",
   "placeQ","placePool","goPlaceMenu","startPlaceSec","placeCur","placePlay","placeMed","placeAgg",
   "placeChoose","placeFinish","placeAnsQ","placeCefr","renderPlaceMenu","renderPlace","renderPlaceReport",
-  "placeChartSvg"];
+  "placeChartSvg","placeGateKey","placeFloorMs","placeGateArm","placeReportLog",
+  // معنى الكلمة في السياق: شاشةٌ كاملة، فسقوطُ دالّةٍ منها يُفرِغ القسم كلَّه
+  "vctxStem","vctxSentOf","vctxSrsLoad","vctxSrsUpdate","vctxStageLoad","vctxStage",
+  "vctxStageBump","buildVctxPlan","startVctx","vctxSetupRound","vctxCur","vctxChoose",
+  "vctxNext","renderVctx","vctxScrollToHi","renderVctxResult"];
 function censusMissing(){return CENSUS.filter(function(n){return typeof window[n]!=="function"})}
 function censusHTML(){
   var miss=censusMissing();
@@ -17269,15 +17273,21 @@ function gateOpen(){return gateSecs===0||gateLeft<=0}
 // ١٦٫١/١٨٫٠ث. والقاعدة كما وُضعت أصلاً: الأرضيّة نصف **أدنى** وسيطٍ منخرط لا متوسّطه،
 // فلا تُحبَس أسرعُ إجابةٍ صادقة قطّ. و`pick` مطابقٌ عمداً لشكل `gram` (مذكورٌ في ملفّ
 // المشروع)، فيأخذ أرقامه المُجرَّبة نفسها لا رقماً جديداً.
+// ===== وأرضيّةُ ورقة تحديد المستوى ومعنى الكلمة في السياق — ١٥ أكتوبر =====
+// `place:read` و`vctx` **مستعارتان من `read` المُجرَّبة** (٥/٩) لا رقمان جديدان: شكلُ
+// العنصر هو هو (قطعةٌ معروضة وأربعةُ خيارات). **وقِيستا على بيانات إلياس الحيّة قبل
+// الشحن**: أسرعُ إجابةٍ **صحيحة** أنتجها في قسم المقروء ٩٫١٨ث، وتحت تسع ثوانٍ أجاب
+// سبعاً **كلُّها خاطئة** — فالسقف يحجب السبعة ولا يحجب إجابته الصحيحة الأسرع، وهذا
+// حرفاً شرطُ البوّابة في هذا المشروع: «تمنع النقر ولا تُعاقب إجابةً سريعةً صادقة».
 const SEC_GATE_FLOOR={listen:3,read:5,gram:4,minpair:2,video:4,math6:3,build:4,
-  "vocab:recog":2,"step:pick":4,"step:gap":2,"step:order":4};
+  "vocab:recog":2,"step:pick":4,"step:gap":2,"step:order":4,"place:read":5,vctx:5};
 // **وسقفٌ لكل قسم عند زمنها المقاس حين تنخرط فعلاً** — تصحيحٌ لعيبٍ في أوّل تصميمٍ لي:
 // حساب الطول وحده أعطى ١٨-٢٥ ثانية لعنصر قواعد (أربع جملٍ متشابهة تُجمَع كلماتها)،
 // وزمنها الوسيط المنخرط ٧٫٨ ثانية. فبوّابةٌ فوق ذلك تحبسها وهي تعمل بجدّ — والبوّابة
 // بُنيت لتمنع النقر لا لتُعاقب الاجتهاد. ومقارنة أربع جملٍ متقاربة ليست قراءة اثنتين
 // وثلاثين كلمة جديدة: تُمسح الفروق لا تُقرأ الجمل كاملةً.
 const SEC_GATE_MAX={listen:5,read:9,gram:8,minpair:3,video:11,math6:12,build:9,
-  "vocab:recog":3,"step:pick":8,"step:gap":5,"step:order":11};
+  "vocab:recog":3,"step:pick":8,"step:gap":5,"step:order":11,"place:read":9,vctx:9};
 // ===== انحيازُ الموضع: «response set» — قياسٌ أوّلاً، ثمّ بوّابةٌ مشروطة =====
 // خلطُ المواضع الذي شُحن ١٤ سبتمبر جعل هذا **قابلاً للقياس لأوّل مرّة**، فكشف عند
 // هيا (٢٠-٢٤ سبتمبر) شكلاً لا يُخطئه أحد: اختارت **الزرّ الثاني** في ٢٤ من ٣٢ استماعاً
@@ -18657,11 +18667,39 @@ function placePool(k){
 }
 let placeSec=null,placeItems=[],placeIdx=0,placeAns=[],placeOrder=[],
   placeStart=0,placeShownAt=0,placePlays=0,placeDone=false;
+// ===== بوّابةُ تسرّعٍ **مشروطة** في قسم المقروء — ١٥ أكتوبر =====
+// بيانات إلياس الحيّة (١٥ أكتوبر، أربعون عنصراً): **١١ إجابةً دون عشر ثوانٍ ودقّتُها
+// ٩٪** (واحدةٌ من إحدى عشرة) مقابل ٤٤٪ فوق الثلاثين — فالثلثُ السريع لا يقيس شيئاً،
+// والدرجةُ المعلَنة (١٣/٤٠) تحمله. وأسرعُ إجابةٍ صحيحةٍ له ٩٫١٨ث فالسقفُ دونها.
+//
+// **ومشروطةٌ لا مفروضة، وهذا فرقٌ جوهريّ هنا**: الورقةُ امتحانٌ يقيس، وأرضيّةٌ عامّة
+// تُغيّر الأداةَ على **من لا عَرَض عنده** — ومحمد أجاب صفرَ إجاباتٍ سريعة في قسمَي
+// التراكيب والتحليل. فتُسلَّح بعد تسرّعين داخل القسم نفسه وتنحلّ بثلاث إجاباتٍ
+// منخرطة متتالية (`SHAPE_ARM=2` و`WB_REQ=3` — نفس أرقام سلالم المشروع لا أرقامٌ
+// جديدة)، بحرف القاعدة: «تُسلَّح عند العَرَض وتنحلّ عند زواله، فلا يُعاقَب من لا يحتاجها».
+//
+// **وهي فرضيّةٌ تُقاس لا علاجٌ يُدَّعى** — بنفس ما أُعلن في بوّابة تأكيد انحياز الموضع
+// (٢٥ سبتمبر) وسقط بالقياس بعد ستّة أيّام: إن اختفى عنقودُ ما دون التسع ثوانٍ وبقيت
+// الدقّةُ عند ٣٣٪ فالبوّابة لم تُضف شيئاً وتُسقَط. **وتُقال مقايضتُها صريحةً**: STEP
+// الحقيقي بلا أرضيّةٍ زمنية، فهذه تُحسّن صدقَ قياسنا وتُبعد الورقةَ خطوةً عن ظروفه.
+const PLACE_RUSH_ARM=2,PLACE_RUSH_CLEAR=3;
+let placeRush=0,placeCalm=0,placeGateOn=false,placeRushLogged=false;
+function placeGateKey(){return placeSec==="read"?"place:read":null}
+function placeFloorMs(){const k=placeGateKey();return k?(SEC_GATE_FLOOR[k]||0)*1000:0}
+// الأرضيّة تُحسب بطول القطعة فوق الحدّ الأدنى وتُسقَّف — نفس `secGateStart` بلا تعديل
+function placeGateArm(){
+  const k=placeGateKey();
+  if(!k||!placeGateOn){gateStop();gateSecs=0;gateLeft=0;return}
+  const x=placeCur();
+  secGateStart("read",(x&&x.it&&x.it.passage)||"",k);
+}
 function goPlaceMenu(){mode="placeMenu";window.scrollTo(0,0);render()}
 function startPlaceSec(k){
   if(!placeSecOf(k)||!placeReady(k))return;
   placeSec=k;placeItems=placePool(k);placeIdx=0;placeAns=[];placeDone=false;
   placeStart=Date.now();placeShownAt=Date.now();placePlays=0;
+  placeRush=0;placeCalm=0;placeGateOn=false;placeRushLogged=false;
+  gateStop();gateSecs=0;gateLeft=0;
   placeOrder=placeItems.map(function(x){return shuffle(placeQ(x).c.map(function(_,i){return i}))});
   mode="place";window.scrollTo(0,0);render();
   if(k==="listen")setTimeout(function(){placePlay()},300);
@@ -18686,12 +18724,29 @@ function placeAgg(ans,key){
 }
 function placeChoose(i){
   const x=placeCur();if(!x||placeDone)return;
+  if(!gateOpen())return;   // بوّابةٌ بنيوية: لا اختيار قبل أرضيّة القراءة حين تُسلَّح
   const Q=placeQ(x),ord=placeOrder[placeIdx],real=ord[i];
+  const ms=Date.now()-placeShownAt;
   placeAns.push({sec:x.sec,id:x.it.id,lvl:x.lvl,r:(x.it.r==null?null:x.it.r),
+    sk:(x.it.sk||null),
     pick:real,ok:real===Q.a,pos:i+1,posA:ord.indexOf(Q.a)+1,nc:Q.c.length,
-    txt:Q.c[real],ms:Date.now()-placeShownAt,plays:placePlays});
+    txt:Q.c[real],ms:ms,plays:placePlays,gated:!!placeGateOn});
+  // التسليحُ من الزمن المقاس في هذا القسم نفسه لا من تاريخٍ عامّ
+  const floor=placeFloorMs();
+  if(floor){
+    if(ms<floor){placeRush++;placeCalm=0}else{placeCalm++;if(placeCalm>=PLACE_RUSH_CLEAR)placeRush=0}
+    const was=placeGateOn;
+    placeGateOn=placeRush>=PLACE_RUSH_ARM;
+    // سطرٌ واحد لكل قسم: حالةُ سلوكٍ لا حدثُ إجابة (نفس عُرف `pos_bias`/`model_fallback`)
+    if(placeGateOn&&!was&&!placeRushLogged){
+      placeRushLogged=true;
+      try{logAnswer("gen","place_rush",null,"armed:"+placeSec,null,null,
+        {q_text:("[بوّابة تسرّع · تحديد مستوى] قسم "+placeSec+" · تسرّعٌ "+toAr(placeRush)+
+          " دون "+toAr(Math.round(floor/1000))+"ث — سُلِّحت").slice(0,300)})}catch(e){}
+    }
+  }
   if(placeIdx+1>=placeItems.length){placeFinish();return}
-  placeIdx++;placeShownAt=Date.now();placePlays=0;render();
+  placeIdx++;placeShownAt=Date.now();placePlays=0;placeGateArm();render();
   if(placeSec==="listen")setTimeout(function(){placePlay()},300);
 }
 function placeFinish(){
@@ -18708,8 +18763,16 @@ function placeFinish(){
     logAnswer("wejplace",placeSec,a.ok,
       "موضع "+toAr(a.pos)+" · الصواب موضع "+toAr(a.posA)+" · "+a.txt+(a.plays?" · plays:"+toAr(a.plays):""),
       a.id,a.ms,
-      {_sk:(a.r!=null?("وجدان · "+(WEJ_RULES[a.r]||("قاعدة "+a.r))):(a.lvl||placeSec)),
-       q_text:("تحديد مستوى · "+placeSec+(a.lvl?" · "+a.lvl:"")+(a.r!=null?" · ر"+a.r:"")+" · "+placeAnsQ(a)).slice(0,1200)});
+      // ===== وسمُ المهارة في قسم المقروء — ١٥ أكتوبر =====
+      // الوسم (`sk`) موجودٌ في `PLACE_READ_RAW` لكل عنصرٍ منذ شُحن، **وكان لا يبلغ
+      // السجلَّ أصلاً**: `_sk` يقرأ القاعدة ثمّ الدرجة، وعنصرُ المقروء بلا أيٍّ منهما
+      // فيسقط إلى اسم القسم. فتقريرُ «أيُّ المهارات التسع أضعف» استُخرج بمطابقةِ نصٍّ
+      // على السؤال لا بوسمٍ — وذاك يعمل اليوم ويكسره أوّلُ عنصرٍ تتغيّر صياغتُه.
+      // وهذا بعينه «ما لا يُسجَّل الآن لا يُشخَّص لاحقاً» واقعاً على حقلٍ **محسوبٍ
+      // أصلاً ويُرمى** — صنفُ `coachSetFail` و`quotaSummary` نفسه، مرّةً ثالثة.
+      {_sk:(a.r!=null?("وجدان · "+(WEJ_RULES[a.r]||("قاعدة "+a.r))):(a.sk||a.lvl||placeSec)),
+       q_text:("تحديد مستوى · "+placeSec+(a.lvl?" · "+a.lvl:"")+(a.r!=null?" · ر"+a.r:"")+
+         (a.sk?" · "+a.sk:"")+(a.gated?" · بوّابة":"")+" · "+placeAnsQ(a)).slice(0,1200)});
   });
   logAnswer("wejplace","section",n?(ok/n)>=0.6:false,toAr(ok)+"/"+toAr(n),null,secs*1000,
     {score_pct:n?Math.round(100*ok/n):0,
@@ -18772,6 +18835,8 @@ function renderPlace(){
   const choices=ord.map(function(wi,k){
     return `<button class="choice" style="direction:ltr;text-align:left;font-family:Georgia,serif"
       onclick="placeChoose(${k})"><span class="letter">${L[k]}</span>${esc(Q.c[wi])}</button>`}).join("");
+  // الخياراتُ تُخفى حتى تنفتح البوّابة لا تُعرَض باهتة — نفس قرار قسم وجدان (١٣ أكتوبر)
+  const gateBox=secGateHTML("الخيارات"),gOpen=gateOpen();
   const audio=placeSec==="listen"?`
     ${ttsHelpHTML("هذا القسم يحتاج الصوت، ولا نصّ يُقرأ بدلاً منه. افحصي الصوت أوّلاً، أو عودي لهذا القسم لاحقاً.")}
     <div style="margin:14px 0"><button type="button" onclick="placePlay()" style="background:#0284C7;color:#fff;border:none;border-radius:50%;width:64px;height:64px;font-size:26px;cursor:pointer">🔊</button></div>
@@ -18791,12 +18856,44 @@ function renderPlace(){
     ${passage}
     <div class="q" style="margin-top:10px;direction:ltr;text-align:left;font-family:Georgia,serif">${esc(Q.q)}</div>
     ${audio}
-    <div class="choices">${choices}</div>
+    <div class="choices">${gateBox}${gOpen?choices:""}</div>
   </div>`;
   if(placeSec==="listen"&&placePlays===0)setTimeout(function(){placePlay()},300);
 }
+// ===== التقريرُ نفسه يدخل السجلّ — ١٥ أكتوبر =====
+// السطورُ كانت تنتهي عند `section`، فالدرجةُ الموزونة وتقديرُ CEFR **الذي يراه المتعلّم
+// على الشاشة** غائبان عن السجلّ: استخرجتُهما بإعادة الحساب من صفوف العناصر، أي أنّي
+// أحسبُ ما عُرض لا أقرؤه. وأيُّ تغييرٍ في `placeCefr` غداً يجعل تاريخَ التقارير غير
+// قابلٍ للمقابلة بما رآه فعلاً. **فيُسجَّل ما عُرض** — نفس نقص «لا سطرَ يُثبت أن صندوق
+// التأكيد عُرض» (١ أكتوبر) مسدوداً هنا.
+// **وسطرٌ واحد لكل حالة**: المفتاحُ بصمةُ الأقسام المكتملة ودرجاتها، فإعادةُ فتح
+// الشاشة لا تُكرّره، وقسمٌ جديدٌ يكتمل يُنتج سطراً جديداً — لا ضجيجٌ ولا كتمان.
+const PLACE_REPORT_KEY="mawhiba_place_report_v1";
+function placeReportLog(){
+  try{
+    const st=placeLoad(),done=PLACE_SECTIONS.filter(function(s){return st[s.k]&&st[s.k].n});
+    if(!done.length)return;
+    let wSum=0,wScore=0;
+    done.forEach(function(s){const r=st[s.k];wSum+=s.w;wScore+=s.w*(r.ok/r.n)});
+    const weighted=wSum?Math.round(100*wScore/wSum):0;
+    const li=st.listen,cefr=li?placeCefr(li.byLevel):null;
+    const parts=done.map(function(s){return s.k+":"+st[s.k].ok+"/"+st[s.k].n});
+    const sig=parts.join(",")+"|"+weighted+"|"+(cefr||"-");
+    if(lsGet(PLACE_REPORT_KEY)===sig)return;
+    lsSet(PLACE_REPORT_KEY,sig);
+    logAnswer("wejplace","report",null,toAr(weighted)+"٪ · "+(cefr||"بلا تقدير"),null,null,
+      {score_pct:weighted,
+       _sk:("تقدير CEFR: "+(cefr||"لم يُعلَن")),
+       q_text:("[تقرير تحديد المستوى] موزونة "+toAr(weighted)+"٪ على "+toAr(wSum)+
+         "٪ من الوزن · تغطية "+toAr(placeCoverage())+"٪ · تقدير CEFR "+(cefr||"لم يُعلَن")+" · "+
+         done.map(function(s){const r=st[s.k];
+           return s.k+" "+toAr(r.ok)+"/"+toAr(r.n)+(r.medMs?" (وسيط "+toAr(Math.round(r.medMs/1000))+"ث)":"")}).join(" · ")
+         ).slice(0,1200)});
+  }catch(e){}   // الربطُ الجديد لا يجوز أن يكون نقطةَ عطلٍ جديدة
+}
 function renderPlaceReport(){
   const st=placeLoad(),cov=placeCoverage();
+  placeReportLog();
   const done=PLACE_SECTIONS.filter(function(s){return st[s.k]&&st[s.k].n});
   let wSum=0,wScore=0;
   done.forEach(function(s){const r=st[s.k];wSum+=s.w;wScore+=s.w*(r.ok/r.n)});
@@ -18848,6 +18945,229 @@ function renderPlaceReport(){
       <button class="btn" onclick="home()">الرئيسية</button>
       <button class="btn ghost" onclick="goPlaceMenu()">الأقسام</button>
     </div>
+  </div>`;
+}
+
+// ===== معنى الكلمة في السياق — ١٥ أكتوبر =====
+// **السبب رقمٌ لا انطباع**: ورقةُ تحديد المستوى الكاملة لإلياس (١٤-١٥ أكتوبر، مئةُ
+// عنصر) فصلت مهاراتِ المقروء بلا تداخل — معنى كلمةٍ في سياق **٠ من ١٠**، ومقارنةُ
+// قطعتين ٠ من ٣، وتفصيلٌ منصوصٌ ٤ من ١٥، **وفكرةٌ واستنتاجٌ ٥ من ٧ (٧١٪) ورسمٌ بيانيّ
+// ٣ من ٤**. أي أن المعكوسَ يصحّ: ما يحتاج استنتاجاً أعلى بكثير ممّا جوابُه منصوص.
+// وصفرٌ من عشرة دون التخمين (٢٫٥) — فهو شكلٌ منهجيّ لا تذبذب، وأكبرُ ثقبٍ منفرد في
+// أكبرِ وعاءِ نقاطٍ في STEP (المقروء ٤٠٪).
+//
+// **والمفتاح ليس متّهماً**: العشرة كلُّها من مفاتيح الدورة المقابَلة بالمصدر (١٤ أكتوبر)،
+// وقُوبلت عيّنةٌ منها مرّةً أخرى قبل بناء هذا القسم (`assumed`⇐took · `perplexed`⇐confused
+// · `aquatic`⇐ocean · `polluting`⇐harming · `random`⇐unplanned) فكلُّها سليمة. فالصفر حقيقي.
+//
+// **والصيغة من الاختبار نفسه لا مخترَعة**: `The word 'X' … is closest in meaning to` هي
+// نصُّ وجدان حرفياً، وهي بنيةُ مفردات السياق في STEP وفي TOEFL/IELTS سواءً.
+//
+// **موصولٌ لا مبنيّ من جديد**: البنكُ **نفسُ `PLACE_READ_RAW`** يُرشَّح بوسمه (`sk`) فلا
+// مفتاحٌ ثانٍ يتباعد عن الأوّل، والقطعُ **نفسُ `PLACE_READ_P`**، والإبرازُ **نفسُ
+// `boldEvidence`** القائمة منذ ١ سبتمبر، والتباعدُ `fsrsUpdate`، والجلسةُ `planNewMix`
+// ثمّ `topUpPlan`، والخلطُ والتسجيلُ بالموضع المعروض كبقيّة الأقسام.
+//
+// **والسلّمُ يتلاشى — وهذا شرطُ المشروع لا زينة**: «الدعم الذي لا يتلاشى يصير عكازاً».
+// درجةٌ صفريّة تُبرز **الجملةَ التي فيها الكلمة** فيُجبَر الرجوعُ إلى السياق، ودرجةٌ
+// أولى بلا إبراز — ظرفُ STEP نفسه. والصعودُ بثلاثٍ متتالية والنزولُ بخطأين: **نفس
+// `WB_REQ`/`WB_BACK` القائمين** لا رقمان جديدان.
+//
+// **وما لا يُدَّعى**: الوسيط ١٢ث في أسئلته العشر يتّسق مع حكمٍ على الكلمة وحدها بلا
+// رجوعٍ إلى جملتها — **لكنّ البيانات لا تفصل «لا يعرف الكلمة» عن «لا يرجع للسياق»**،
+// ولا أخترع لذلك جواباً. والقسمُ يفصلهما بالقياس: فرقُ الدقّة بين الدرجتين هو الجواب.
+//
+// **ولا `planNoTwins` هنا — استثناءٌ مقيسٌ لا إغفال**: صدرُ السؤال قالبٌ ثابت بنصّ
+// الاختبار، فعنصران مشروعان تماماً («amateur» و«former») يختلفان بكلمةٍ واحدة من ثلاث
+// عشرة — فأيُّ مقياس تشابهٍ نصّي يُعطيهما ~٠٫٨٥ ويُسقط الجلسة كلَّها. والمقياسُ لا
+// ينطبق على هذا الشكل، كما لا ينطبق k=3 على عناصر `DICTATION_A1` المفردة (٢٥ أغسطس) —
+// **والحارسُ الحقيقي أن الكلمةَ الهدف فريدةٌ في البنك**، ويُثبته الاختبار لا الادّعاء.
+const VCTX_N=8;
+const VCTX_SRS_KEY="mawhiba_vctx_srs_v1",VCTX_STAGE_KEY="mawhiba_vctx_stage_v1";
+// المؤلَّف: الكلمةُ **من القطعة نفسها** (يتحقّق الاختبار منها بحدود الكلمة في الثلاثين
+// والستّة كلِّها)، والمعنى الصحيح مرادفٌ في سياقها، والمموّهاتُ من حقلٍ دلاليّ مجاور
+// فتبقى معقولةً (Haladyna 2002) — لا واحدٌ منها مرادفٌ ثانٍ، ويحرسه الاختبار.
+// وموضعُ الصواب **مُدوَّرٌ في البيانات نفسها** (٧/٧/٦/٦) لا كلُّه صفراً: درس ١٣ سبتمبر
+// حين كُتبت عناصر C1 كلُّها بـ`a:0` فكاد يُشحَن انحيازُ موضعٍ تامّ.
+const VCTX_EXTRA=[
+  {p:"p1",w:"amateur",c:["non-professional","very strong","retired","world-famous"],a:0},
+  {p:"p1",w:"former",c:["future","previous","famous","foreign"],a:1},
+  {p:"p1",w:"refused",c:["agreed to","asked for","said no to","applied for"],a:2},
+  {p:"p2",w:"separates",c:["joins","crosses","surrounds","divides"],a:3},
+  {p:"p2",w:"humid",c:["damp","dry","cold","windy"],a:0},
+  {p:"p2",w:"defeated",c:["helped","beat","joined","followed"],a:1},
+  {p:"p3",w:"inexpensive",c:["costly","tasty","cheap","rare"],a:2},
+  {p:"p3",w:"annual",c:["monthly","weekly","daily","yearly"],a:3},
+  {p:"p3",w:"linked",c:["connected","compared","opposed","divided"],a:0},
+  {p:"p4",w:"adapt",c:["refuse to move","change to fit","grow larger","come back"],a:1},
+  {p:"p4",w:"denied",c:["agreed it was true","asked about it","said it was not true","explained it"],a:2},
+  {p:"p4",w:"scarcity",c:["plenty","danger","delay","shortage"],a:3},
+  {p:"p4",w:"prevent",c:["stop from happening","prepare for","pay for","speak about"],a:0},
+  {p:"p5",w:"valuable",c:["easy to grow","worth a lot","very light","newly planted"],a:1},
+  {p:"p5",w:"harmful",c:["helpful","natural","damaging","expensive"],a:2},
+  {p:"p5",w:"halved",c:["doubled","disappeared","measured","reduced by half"],a:3},
+  {p:"p9",w:"released",c:["let out","held back","burned up","cooled down"],a:0},
+  {p:"p9",w:"rely",c:["decide","depend","refuse","repeat"],a:1},
+  {p:"p9",w:"threaten",c:["clean up","measure","put in danger","surround"],a:2},
+  {p:"p10",w:"maintain",c:["build quickly","sell cheaply","close down","keep in good condition"],a:3},
+  {p:"p10",w:"retain",c:["keep in memory","read aloud","write down","forget quickly"],a:0},
+  {p:"p10",w:"Proponents",c:["opponents","supporters","readers","officials"],a:1},
+  {p:"p11",w:"patience",c:["skill at playing","love of winning","willingness to wait","fear of losing"],a:2},
+  {p:"p11",w:"thrilling",c:["very long","very close","very fair","very exciting"],a:3},
+  {p:"p12",w:"prior",c:["before","after","during","instead of"],a:0},
+  {p:"p13",w:"absorb",c:["push out","take in","break apart","cook slowly"],a:1}
+];
+function vctxStem(w){return "The word '"+w+"' in the passage is closest in meaning to …."}
+const VCTX_BANK=(function(){
+  const out=[];
+  // المنقولُ أوّلاً: يُرشَّح من بنك الورقة بوسمه، والكلمةُ تُستخرَج من صدر السؤال نفسه
+  // — فمفتاحُ الدورة يبقى في موضعٍ واحد، ولا نسخةَ ثانية تنحرف عنه.
+  PLACE_READ_RAW.forEach(function(x){
+    if(x.sk!=="معنى كلمة")return;
+    const m=/'([^']+)'/.exec(x.s||"");if(!m)return;
+    const p=PLACE_READ_P[x.p]||{};if(!p.t)return;
+    out.push({id:"vc49_"+x.q,w:m[1],q:vctxStem(m[1]),psg:p.t,pk:x.p,
+      c:x.c.slice(),a:x.a,src:"ملف"});
+  });
+  VCTX_EXTRA.forEach(function(x,i){
+    const p=PLACE_READ_P[x.p]||{};if(!p.t)return;
+    out.push({id:"vcx_"+(i+1),w:x.w,q:vctxStem(x.w),psg:p.t,pk:x.p,
+      c:x.c.slice(),a:x.a,src:"مؤلَّف"});
+  });
+  return out;
+})();
+// الجملةُ التي تحوي الكلمة — بحدود الكلمة لا باحتواءٍ نصّي، وإلّا طابقت `rely` داخل
+// `reliable`. وتسقط بهدوء إن تعذّر إيجادُها فيُعرَض النصُّ كما هو (لا شاشةٌ فارغة).
+function vctxSentOf(text,w){
+  const t=String(text||"");if(!t||!w)return "";
+  const re=new RegExp("\\b"+String(w).replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\b","i");
+  const sents=t.match(/[^.!?\n]+[.!?]*/g)||[t];
+  for(let i=0;i<sents.length;i++)if(re.test(sents[i]))return sents[i].trim();
+  return "";
+}
+function vctxSrsLoad(){try{return JSON.parse(lsGet(VCTX_SRS_KEY)||"{}")}catch(e){return{}}}
+function vctxSrsSave(o){try{lsSet(VCTX_SRS_KEY,JSON.stringify(o))}catch(e){}}
+function vctxSrsUpdate(id,ok){
+  const st=vctxSrsLoad(),r=st[id]||{box:0,seen:0};
+  const n=fsrsUpdate(r,ok,srsToday());
+  r.box=n.box;r.due=n.due;r.seen=n.seen;r.s=n.s;r.d=n.d;r.last=n.last;
+  st[id]=r;vctxSrsSave(st);
+}
+function vctxStageLoad(){
+  try{const o=JSON.parse(lsGet(VCTX_STAGE_KEY)||"{}");
+    return {s:o.s===1?1:0,up:o.up|0,dn:o.dn|0}}catch(e){return{s:0,up:0,dn:0}}
+}
+function vctxStage(){return vctxStageLoad().s}
+// نفس سلّم بنك الكلمات حرفاً: ثلاثٌ متتالية صعوداً وخطآن نزولاً
+function vctxStageBump(ok){
+  const o=vctxStageLoad();
+  if(ok){o.up++;o.dn=0;if(o.up>=WB_REQ&&o.s<1){o.s=1;o.up=0}}
+  else{o.dn++;o.up=0;if(o.dn>=WB_BACK&&o.s>0){o.s=0;o.dn=0}}
+  try{lsSet(VCTX_STAGE_KEY,JSON.stringify(o))}catch(e){}
+}
+function buildVctxPlan(){
+  const st=vctxSrsLoad(),today=srsToday(),POOL=VCTX_BANK;
+  const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
+  const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
+  const out=planNewMix(due,fresh,VCTX_N);
+  return topUpPlan(out,POOL,VCTX_N,"vctx");
+}
+let vctxItems=[],vctxIdx=0,vctxOrder=[0,1,2,3],vctxPicked=-1,vctxLocked=false,
+  vctxScore=0,vctxShownAt=0,vctxDone=false,vctxStageWas=0;
+function startVctx(){posPendClear();
+  vctxItems=buildVctxPlan();vctxIdx=0;vctxScore=0;vctxDone=false;vctxStageWas=vctxStage();
+  mode="vctx";vctxSetupRound();window.scrollTo(0,0);render();
+}
+function vctxSetupRound(){
+  vctxOrder=shuffle([0,1,2,3]);vctxPicked=-1;vctxLocked=false;vctxShownAt=Date.now();
+  const it=vctxItems[vctxIdx];
+  secGateStart("vctx",(it&&it.psg)||"","vctx");
+}
+function vctxCur(){return vctxItems[vctxIdx]}
+function vctxChoose(i){
+  if(vctxLocked||!gateOpen())return;
+  const it=vctxCur();if(!it)return;
+  if(!posConfirmOk("vctx",i,it.c[i]))return;
+  vctxPicked=i;vctxLocked=true;
+  const ok=i===it.a,elapsed=Date.now()-vctxShownAt;
+  if(ok)vctxScore++;
+  const pickPos=vctxOrder.indexOf(i)+1,rightPos=vctxOrder.indexOf(it.a)+1;
+  posRecord("vctx",pickPos,it.c.length);
+  vctxSrsUpdate(it.id,ok);
+  vctxStageBump(ok);
+  logAnswer("vctx","s"+vctxStageWas,ok,
+    "موضع "+toAr(pickPos)+" · الصواب موضع "+toAr(rightPos)+" · "+it.c[i]+posTagFor("vctx"),
+    it.id,elapsed,
+    {_sk:("معنى كلمة · "+it.src),
+     q_text:("معنى في سياق · درجة "+toAr(vctxStageWas)+" · "+it.src+" · "+it.w+" · "+
+       vctxOrder.map(function(wi,k){return toAr(k+1)+") "+it.c[wi]+(wi===it.a?" ✓":"")}).join(" | ")).slice(0,600)});
+  render();
+}
+function vctxNext(){posPendClear();
+  if(vctxIdx+1>=vctxItems.length){vctxDone=true;render();return}
+  vctxIdx++;vctxSetupRound();render();
+}
+function renderVctx(){
+  if(!vctxItems.length){app.innerHTML=`<div class="card" style="text-align:center">لا شيء مستحقّ اليوم — عودي غداً 🌱</div><button class="link-btn" onclick="home()">→ الرئيسية</button>`;return}
+  if(vctxDone)return renderVctxResult();
+  const it=vctxCur(),st=vctxStageWas;
+  const sent=vctxSentOf(it.psg,it.w);
+  // الإبرازُ في الدرجة صفر **قبل** الإجابة (فيُجبَر الرجوع للسياق)، وفي الدرجة الأولى
+  // **بعد القفل** وحده — فالظرفُ ظرفُ الاختبار ثمّ يُعلَّم من الخطأ، نفس منطق كشف نصّ
+  // الاستماع بعد الإجابة (١ سبتمبر) لا قبلها.
+  const showHi=(st===0)||vctxLocked;
+  const body=showHi&&sent?boldEvidence(it.psg,sent):esc(it.psg);
+  const prog=`<div class="bar">${vctxItems.map(function(_,i){return `<div class="seg" style="background:${i<=vctxIdx?'#7C3AED':'#E2E8F0'};opacity:${i<=vctxIdx?1:.5}"></div>`}).join("")}</div>`;
+  const choices=vctxOrder.map(function(wi){
+    let bg="#fff",bd="#E2E8F0",col="#0F172A";
+    if(vctxLocked){if(wi===it.a){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(wi===vctxPicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}
+    return `<button class="choice" style="background:${bg};border-color:${bd};color:${col};direction:ltr;text-align:left;font-family:Georgia,serif;display:block" onclick="vctxChoose(${wi})" ${vctxLocked?"disabled":""}>${esc(it.c[wi])}</button>`;
+  }).join("");
+  // سطرٌ عربيّ وسطرٌ لاتينيّ **منفصلان**: خلطُهما في سطرٍ واحد هو بعينه ما انقلب
+  // بصرياً أربع مرّات في قسم الإحصاء (٢٥ أغسطس) — فالمعادلة/الإنجليزية في سطرٍ وحدها.
+  const teach=vctxLocked?`<div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:.7rem;margin-top:.7rem">
+    <div style="font-size:12.5px;color:#1E40AF;line-height:1.9">📘 المعنى في هذا السياق — والجملةُ التي فيها الكلمة مُبرَزةٌ في النصّ أعلاه.</div>
+    <div style="direction:ltr;text-align:left;font-family:Georgia,serif;font-size:14px;color:#1E3A8A;margin-top:.35rem">'${esc(it.w)}' = ${esc(it.c[it.a])}</div>
+  </div>`:"";
+  app.innerHTML=`
+  <button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
+  ${prog}
+  <div class="meta"><span>${toAr(vctxIdx+1)} من ${toAr(vctxItems.length)}</span><span>معنى الكلمة في السياق</span></div>
+  <div class="card">
+    <span class="tag" style="background:#EDE9FE;color:#5B21B6">🔍 ماذا تعني الكلمة هنا؟</span>
+    <div style="font-size:.8em;color:#94A3B8;margin-top:6px">${st===0
+      ?"درجة ١: الجملةُ التي فيها الكلمة مُبرَزة — ارجعي إليها قبل الاختيار."
+      :"درجة ٢: بلا إبراز — كما في الاختبار. ابحثي عن الكلمة في النصّ بنفسك."}</div>
+    <div id="vctxPsg" style="direction:ltr;text-align:left;font-family:Georgia,serif;font-size:14px;color:#334155;line-height:1.9;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:12px;margin:12px 0;white-space:pre-wrap;max-height:260px;overflow-y:auto">${body}</div>
+    <div class="q" style="direction:ltr;text-align:left;font-family:Georgia,serif">${esc(it.q)}</div>
+    <div class="choices" style="margin-top:12px">${secGateHTML("الخيارات")}${posConfirmHTML("vctx","vctxChoose")}${gateOpen()?choices:""}</div>
+    ${teach}
+  </div>
+  ${vctxLocked?`<button class="btn" style="background:#7C3AED" onclick="vctxNext()">${vctxIdx+1>=vctxItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`:""}`;
+  // القطعةُ في صندوقٍ بارتفاعٍ محدود، والجملةُ المُبرَزة قد تقع تحت طيّه — فيقول الشريطُ
+  // «الجملةُ مُبرَزة» ولا تُرى جملةٌ أصلاً. كشفته لقطةُ شاشةٍ لا الاختبار (النصُّ في DOM
+  // سليمٌ تماماً)، فيُمرَّر الصندوقُ إليها بعد الرسم — المعروضُ يوافق المقول.
+  if(showHi)vctxScrollToHi();
+}
+function vctxScrollToHi(){
+  try{
+    const box=document.getElementById("vctxPsg");if(!box)return;
+    const b=box.querySelector("b");if(!b)return;
+    const rb=box.getBoundingClientRect(),r=b.getBoundingClientRect();
+    box.scrollTop=Math.max(0,box.scrollTop+(r.top-rb.top)-40);
+  }catch(e){}
+}
+function renderVctxResult(){
+  const pct=vctxItems.length?Math.round(vctxScore/vctxItems.length*100):0;
+  const now=vctxStage();
+  app.innerHTML=`
+  <div class="card">
+    <div class="score-row"><span class="score-big" style="color:${pct>=70?'#059669':pct>=50?'#D97706':'#DC2626'}">${toAr(vctxScore)}</span><span class="score-total">/ ${toAr(vctxItems.length)}</span><span class="score-pct">${toAr(pct)}%</span></div>
+    <div style="color:#64748B;font-size:15px;margin-bottom:14px">${now>vctxStageWas?"صعدتِ إلى الدرجة الثانية — بلا إبراز من الآن 🌟":
+      now<vctxStageWas?"رجعتِ إلى الدرجة الأولى — الجملةُ ستُبرَز لكِ 🌱":
+      pct>=85?"دقّةٌ ممتازة! 🌟":pct>=60?"جيّد، واصلي 💪":"هذه الكلمات تعود للمراجعة 🌱"}</div>
+    <button class="btn" style="background:#7C3AED" onclick="startVctx()">🔁 جلسة أخرى</button>
+    <button class="link-btn" onclick="home()">→ الرئيسية</button>
   </div>`;
 }
 
@@ -18952,7 +19272,7 @@ function renderKpi(){
 }
 
 // ===== العرض =====
-function render(){if(mode==="placeMenu")return renderPlaceMenu();if(mode==="place")return renderPlace();if(mode==="placeReport")return renderPlaceReport();if(mode==="mock")return renderMock();if(mode==="seq")return renderSeq();if(mode==="kpi")return renderKpi();if(mode==="home")return renderHome();if(mode==="listen")return renderListen();if(mode==="read")return renderRead();if(mode==="write")return renderWrite();if(mode==="gram")return renderGram();if(mode==="build")return renderBuild();if(mode==="math6Menu")return renderMath6Menu();if(mode==="math6")return renderMath6();if(mode==="step")return renderStep();if(mode==="wejMenu")return renderWejMenu();if(mode==="wej")return renderWej();if(mode==="statMenu")return renderStatMenu();if(mode==="stat")return renderStat();if(mode==="minpair")return renderMinpair();if(mode==="video")return renderVideo();if(mode==="errors")return renderErrors();if(mode==="engplan")return renderEngPlan();if(mode==="factplan")return renderFactPlan();if(mode==="vocab")return renderVocab();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="speak")return renderSpeak();if(mode==="coach")return renderCoach();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
+function render(){if(mode==="placeMenu")return renderPlaceMenu();if(mode==="place")return renderPlace();if(mode==="placeReport")return renderPlaceReport();if(mode==="vctx")return renderVctx();if(mode==="mock")return renderMock();if(mode==="seq")return renderSeq();if(mode==="kpi")return renderKpi();if(mode==="home")return renderHome();if(mode==="listen")return renderListen();if(mode==="read")return renderRead();if(mode==="write")return renderWrite();if(mode==="gram")return renderGram();if(mode==="build")return renderBuild();if(mode==="math6Menu")return renderMath6Menu();if(mode==="math6")return renderMath6();if(mode==="step")return renderStep();if(mode==="wejMenu")return renderWejMenu();if(mode==="wej")return renderWej();if(mode==="statMenu")return renderStatMenu();if(mode==="stat")return renderStat();if(mode==="minpair")return renderMinpair();if(mode==="video")return renderVideo();if(mode==="errors")return renderErrors();if(mode==="engplan")return renderEngPlan();if(mode==="factplan")return renderFactPlan();if(mode==="vocab")return renderVocab();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="speak")return renderSpeak();if(mode==="coach")return renderCoach();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
 
 // صفحة الأخوين قسمٌ واحد: المحادثة. بقيّة الأقسام بُنيت على أخطائها هي — بنك
 // أسئلتها، وتباعدها، ومنهج صفّها السادس — فوضعها أمام ولدٍ آخر يُشغله بما ليس له.
@@ -19070,6 +19390,8 @@ function renderHomeCoachOnly(){
       s:`استمع لمقطعٍ قصير، وأجب عن معناه — مستوى ${p.level||"A2"}`},
     {g:"eng_in",sec:"read",c:"#7C3AED",go:"startRead()",n:"📖 فهم المقروء",
       s:`اقرأ نصّاً قصيراً، وأجب عن معناه — مستوى ${p.level||"A2"}`},
+    {g:"eng_in",c:"#7C3AED",go:"startVctx()",n:"🔍 معنى الكلمة في السياق",
+      s:`${toAr(VCTX_BANK.length)} كلمةً داخل قطع وجدان — ما معناها هنا؟ الجملةُ تُبرَز أوّلاً ثم يتلاشى الدعم`},
     {g:"eng_in",sec:"video",c:"#DC2626",go:"startVideo()",n:"🎬 فيديو تعليمي",
       s:`قصّة قصيرة مشهداً مشهداً، بصوتٍ إنجليزي، ثم سؤال فهم — مستوى ${p.level||"A2"}`},
     {g:"eng_acc",sec:"gram",lead:1,c:"#9333EA",go:"startGram()",n:"✍️ دقّة القواعد",
@@ -19147,6 +19469,11 @@ function renderHome(){
       s:`استمعي لمقطعٍ قصير، وأجيبي عن معناه — مستوى ${profileOf().level||"A2"}`},
     {g:"eng_in",sec:"read",c:"#7C3AED",go:"startRead()",n:"📖 فهم المقروء",
       s:`اقرئي نصّاً قصيراً، وأجيبي عن معناه — مستوى ${profileOf().level||"A2"}`},
+    // للثلاثة كقسم وجدان وورقة تحديد المستوى: **نفس المادّة** وقرارُ صاحب المشروع فيها
+    // صريحٌ («في صفحات الثلاثة»، ١٢ أكتوبر). والمادّةُ فوق مستوى هيا (A1) — فتُقاس
+    // دقّتُها هنا على حدة ولا تُفترَض، كما قيل يوم شُحن قسم وجدان نفسه.
+    {g:"eng_in",c:"#7C3AED",go:"startVctx()",n:"🔍 معنى الكلمة في السياق",
+      s:`${toAr(VCTX_BANK.length)} كلمةً داخل قطع وجدان — ما معناها هنا؟ الجملةُ تُبرَز أوّلاً ثم يتلاشى الدعم`},
     {g:"eng_in",sec:"video",c:"#DC2626",go:"startVideo()",n:"🎬 فيديو تعليمي",
       s:`قصّة قصيرة مشهداً مشهداً، بصوتٍ إنجليزي، ثم سؤال فهم — مستوى ${profileOf().level||"A2"}`},
     {g:"eng_acc",lead:1,c:"#4338CA",go:"startEngPlan()",n:"⭐ خطة الإنجليزية اليومية · ٤٠ دقيقة",
