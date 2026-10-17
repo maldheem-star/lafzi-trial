@@ -129,6 +129,10 @@
   .card{background:#fff;border-radius:20px;padding:24px;box-shadow:0 10px 30px rgba(15,23,42,.08);margin-top:14px}
   .tag{display:inline-block;font-size:12px;font-weight:800;padding:5px 12px;border-radius:999px;margin-bottom:16px}
   .q{font-size:20px;font-weight:700;line-height:1.7;margin-bottom:20px}
+  /* نصٌّ ثانوي — مستعملٌ في عشرين موضعاً وكان **بلا تعريف** حتى ١٧ أكتوبر، فيرث حجم
+     المتن ولونه فيزاحم السؤال نفسه في الهرم البصري. كشفته لقطةُ شاشة من جهازٍ حقيقي
+     لا قياسُ DOM — نفس صنف `.btn` بلا خلفية (١٣ أكتوبر). */
+  .sub{font-size:14px;color:#64748B;line-height:1.8}
   .choices{display:grid;gap:10px}
   .choice{text-align:right;padding:14px 16px;border-radius:14px;border:2px solid #E2E8F0;background:#fff;color:#334155;font-size:16px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;display:flex;align-items:center;gap:12px;width:100%}
   .choice:hover:not(:disabled){border-color:#CBD5E1}.choice:disabled{cursor:default}
@@ -267,6 +271,28 @@ function appError(where,e){
     b.onclick=function(){d.parentNode&&d.parentNode.removeChild(d)};
     d.appendChild(b);
     (document.body||document.documentElement).appendChild(d);
+    appErrLog(where,msg,line);
+  }catch(_){}
+}
+// ===== الشريط الأحمر كان أثرَ العطل الوحيد — ١٧ أكتوبر =====
+// عطلُ ورقة المحاكاة (`SyntaxError` عند زرّ الاستماع) لم يصل الجدولَ إطلاقاً: لولا أن
+// صوّره صاحب المشروع بيده لما عُرف أنه وقع. وهذا حرفياً «ما لا يُسجَّل الآن لا يُشخَّص
+// لاحقاً». فيُكتب سطرٌ مع الشريط — بسقف ضجيجٍ لأن خطأً في حلقة رسمٍ يتكرّر بلا حدّ،
+// و`logAnswer` مُعرَّفةٌ بعد هذا الموضع بآلاف الأسطر فيمرّ النداء عبر حارسٍ يسقط بهدوء:
+// **التسجيل لا يجوز أن يصير نقطة عطل** — وهو الدرس نفسه الذي وُصل به `quizGenFail`.
+var APP_ERR_CAP=3,appErrLogged=0,appErrSeen={};
+function appErrLog(where,msg,line){
+  try{
+    var key=String(msg).slice(0,60);
+    if(appErrSeen[key])return; appErrSeen[key]=1;
+    if(appErrLogged>=APP_ERR_CAP)return; appErrLogged++;
+    if(typeof logAnswer!=="function")return;
+    // `mode` مُعرَّفةٌ بـ`let` في كتلةٍ لاحقة، و`typeof` عليها قبل تهيئتها **يرمي** لا
+    // يُعيد "undefined" — فتُقرأ داخل حارسها وحدها، وإلّا أسقط الرميُ السطرَ كلّه.
+    var md="?";try{md=String(mode)}catch(_e){}
+    logAnswer("gen","app_error",null,String(where)+" · "+key,null,null,
+      {q_text:("[عطل تطبيق:"+where+"] "+String(msg)+String(line||"")+
+        " · وضع:"+md).slice(0,300)});
   }catch(_){}
 }
 // ===== جلب بمهلة =====
@@ -11381,7 +11407,7 @@ function renderBuild(){
   if(buildDone)return renderBuildResult();
   const it=buildCur();
   if(!it){buildDone=true;return renderBuildResult()}
-  const prog=`<div class="progress">${buildItems.map(function(_,i){
+  const prog=`<div class="bar">${buildItems.map(function(_,i){
     return `<div class="seg" style="background:${i<buildIdx?'#10B981':i===buildIdx?'#0E7490':'#E2E8F0'}"></div>`}).join("")}</div>`;
   app.innerHTML=`
   <button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
@@ -16449,7 +16475,7 @@ function renderMinpair(){
           <div style="font-size:12px;color:#64748B;margin-bottom:4px">وفي جملة، لترسيخ المعنى والاستعمال:</div>
           <div style="direction:ltr;text-align:left;font-family:Georgia,serif;font-size:15px;color:#0F172A;display:flex;align-items:center;gap:6px;justify-content:center">
             <span>${esc(minpairShowSent||it.s[minpairTarget])}</span>
-            <button type="button" onclick="speakEnglish(${JSON.stringify(minpairShowSent||it.s[minpairTarget])})" style="background:none;border:none;color:#0891B2;cursor:pointer;font-size:16px;padding:0">🔊</button>
+            <button type="button" onclick="speakEnglish(${JSON.stringify(minpairShowSent||it.s[minpairTarget]).replace(/"/g,'&quot;')})" style="background:none;border:none;color:#0891B2;cursor:pointer;font-size:16px;padding:0">🔊</button>
           </div>
         </div>
       </div>`:""}
@@ -17717,7 +17743,7 @@ function posConfirmHTML(domain,fnName){
     <div style="font-size:12px;color:#C2410C;line-height:1.8;margin-bottom:.6rem">تأكّدي قبل القفل — هل هذا ما يقوله النصّ فعلاً؟</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn" style="background:#EA580C;border-color:#EA580C" onclick="${fnName}(${posPend.i})">تأكيد</button>
-      <button class="btn secondary" onclick="posCancel()">تراجع</button>
+      <button class="btn ghost" onclick="posCancel()">تراجع</button>
     </div>
   </div>`;
 }
@@ -18569,7 +18595,7 @@ function renderMock(){
   const x=mockCur(),Q=mockQuestion(x),ord=mockOrder[mockIdx];
   const n=mockPaper.items.length;
   const audio=x.sec==="listen"
-    ? `<button class="btn" style="background:#7C3AED" onclick="speakEnglish(${JSON.stringify(x.it.audio||"")})">🔊 استمع</button>`
+    ? `<button class="btn" style="background:#7C3AED" onclick="speakEnglish(${JSON.stringify(x.it.audio||"").replace(/"/g,'&quot;')})">🔊 استمع</button>`
     : "";
   const passage=x.sec==="read"&&x.it.passage
     ? `<div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:.9rem;
@@ -18585,9 +18611,9 @@ function renderMock(){
     <p class="sub">ورقةٌ كاملة بلا تصحيحٍ حتى النهاية — كالاختبار الحقيقي.</p>
     ${audio}${passage}
     <div class="q" style="direction:ltr;text-align:left;font-family:Georgia,serif">${esc(Q.q)}</div>
-    ${ord.map(function(real,i){
-      return `<button class="opt" style="direction:ltr;text-align:left;font-family:Georgia,serif"
-        onclick="mockChoose(${i})">${esc(Q.c[real])}</button>`}).join("")}
+    <div class="choices">${ord.map(function(real,i){
+      return `<button class="choice" style="direction:ltr;text-align:left;font-family:Georgia,serif"
+        onclick="mockChoose(${i})">${esc(Q.c[real])}</button>`}).join("")}</div>
     <button class="btn ghost" style="margin-top:1rem" onclick="home()">إنهاء وخروج</button>
   </div>`;
 }

@@ -169,8 +169,13 @@ async function mk(browser,q){
       const html=await page.evaluate(()=>app.innerHTML);
       // «صحيحة» ترد في نصّ سؤال القواعد نفسه، فالفحص على أثر التصحيح لا على الكلمة:
       // صندوق الشرح، أو تعليم خيارٍ بصواب/خطأ، أو كشف الإجابة
-      if(/explain-title|class="opt (ok|bad|right|wrong)|✓|✗/.test(html))sawFeedback=true;
-      await page.evaluate(()=>{const b=document.querySelectorAll('.opt');if(b.length)b[0].click()});
+      if(/explain-title|class="choice (ok|bad|right|wrong)|✓|✗/.test(html))sawFeedback=true;
+      // الخيارات تُختار **بحاويتها لا باسم صنفها**: كان المحدِّد `.opt` حرفياً، وهو صنفٌ
+      // بلا تعريفٍ في CSS كشفته لقطةُ جهازٍ حقيقي (١٧ أكتوبر) فاستُبدل بـ`.choice`
+      // المُجرَّب — فسقط هذا القسم بصمت (٠ من ٢٠) ودعواه صحيحةٌ لم تتغيّر. نفس درس
+      // «الأعداد المكتوبة في الاختبارات فخّ صامت» واقعاً على **اسم صنف** هذه المرّة.
+      await page.evaluate(()=>{const b=document.querySelectorAll('#app .choices button');
+        if(b.length)b[0].click()});
       await page.waitForTimeout(30);
     }
     const end=await page.evaluate(()=>({done:mockDone,html:app.innerHTML,ans:mockAns.length}));
