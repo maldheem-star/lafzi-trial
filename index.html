@@ -4729,6 +4729,8 @@ const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEn
   "wejCur","wejSetupRound","wejChoose","wejNext","renderWejMenu","renderWej","renderWejResult",
   // استماع وجدان: شاشةٌ كاملة، فسقوطُ دالّةٍ منها يُفرِغ القسم كلَّه
   "wejlId","wejlSrsLoad","wejlSrsUpdate","wejlOrd","buildWejlPlan","startWejl","wejlCur",
+  "wejrSrsLoad","wejrSrsUpdate","wejrOrd","buildWejrPlan","startWejr","wejrCur",
+  "wejrChoose","wejrNext","wejrEvidence","renderWejr","renderWejrResult","decisiveEvidence",
   "wejlPlay","wejlChoose","wejlNext","renderWejl","renderWejlResult",
   "placeSecOf","placeLoad","placeSave","placeBankSize","placeReady","placeCoverage","placeChance",
   "placeQ","placePool","goPlaceMenu","startPlaceSec","placeCur","placePlay","placeMed","placeAgg",
@@ -4846,6 +4848,42 @@ function evidenceSentence(text,answer){
     if(n>bestN){bestN=n;best=s}
   });
   return bestN>0?best.trim():"";
+}
+// **ولا تُبرَز جملةٌ إلّا إذا رجّحها النصّ وحدها — وإلّا لم تُبرَز ولم تُدَّعَ.**
+// كشفته لقطةُ شاشةٍ لا اختبار (١٧ أكتوبر): سؤال «ما سبب تغيّر المناخ؟» وصوابُه
+// «The Aral Sea got smaller»، فأُبرز **العنوانُ والجملةُ الأولى** بينما الدليلُ
+// «By 1990, the Aral Sea had lost 60% of its volume». والسببُ أن الترجيح بعدد الكلمات
+// المشتركة **يتعادل عند كلمةٍ واحدة** هي كلمةُ الموضوع المتكرّرة، فتفوز أولاها
+// بالترتيب لا بالدلالة.
+//
+// **والقياسُ على البنوك كلِّها قبل العلاج** — نسبةُ الإبراز الاعتباطي من المُبرَز:
+// `listen` ٢٢ من ٣٩ (٥٦٪) · `wejl` ٢١ من ٣٤ (٦٢٪) · `read` ١٥ من ٣٩ (٣٨٪) ·
+// `wejr` ١٤ من ٢٥ (٥٦٪). **وهذا بعينه ما يرفضه المشروع**: «كاشفٌ بهذه النسبة من
+// البلاغ الكاذب يُدرِّب على تجاهله» (٢٥ أغسطس)، و«الدعم الذي يُعلّم خطأً أسوأ من غيابه».
+// **ومنه قسمٌ شُحن في اليوم نفسه (`wejl`)** — فالعيبُ صنفٌ لا حالة، ويُصلَح صنفاً.
+//
+// **والشرط مقاسٌ لا مختار**: كلمتان من المفتاح على الأقلّ **وتفوّقٌ صارم** على الجملة
+// التالية. والتعادلُ يعني أن النصّ لا يُرجّح واحدةً — فتُعرَض القطعةُ كاملةً بلا إبراز،
+// وهي معروضةٌ أصلاً فلا يُفقَد شيءٌ غيرُ ادّعاءٍ لا يصحّ.
+//
+// **ولا تُمَسّ `evidenceSentence` نفسها**: يستعملها اختيارُ هدف القراءة الجهرية
+// (`readAloudTarget`) حيث التعادلُ **غيرُ ضارّ** — أيُّ جملةٍ تصلح للقراءة بصوت،
+// والمطلوب نصٌّ بطولٍ معقول لا جملةُ دليلٍ بعينها. فالحارسُ على **العرض** وحده.
+function decisiveEvidence(text,answer){
+  const t=String(text||"");
+  const sents=t.match(/[^.!?]+[.!?]*/g)||[];
+  if(sents.length<2)return "";
+  const words=String(answer||"").toLowerCase().replace(/[^a-z0-9\s]/g," ")
+    .split(/\s+/).filter(function(w){return w.length>=4});
+  if(words.length<2)return "";
+  let best=null,bestN=0,secondN=0;
+  sents.forEach(function(s){
+    const low=s.toLowerCase();
+    const n=words.filter(function(w){return low.indexOf(w)>=0}).length;
+    if(n>bestN){secondN=bestN;bestN=n;best=s}
+    else if(n>secondN)secondN=n;
+  });
+  return (bestN>=2&&bestN>secondN&&best)?best.trim():"";
 }
 function boldEvidence(text,sentence){
   const t=String(text||"");
@@ -9358,7 +9396,7 @@ function renderListen(){
     <div style="font-size:12px;color:#64748B;margin-bottom:14px">${listenPlaysHint(it.lv)}${listenPlays?` · استمعتِ ${toAr(listenPlays)} ${listenPlays===1?"مرّة":"مرّات"}`:""}</div>
     <div class="choices">${secGateHTML()}${posConfirmHTML("listen","listenChoose")}${choices}</div>
     ${listenLocked?`<div class="explain"><div class="explain-title" style="color:${listenPicked===it.a?'#059669':'#B45309'}">${listenPicked===it.a?"✓ فهمتَ صحيحاً":"الصحيحة بالأخضر"}</div>
-      <div style="margin-top:8px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:10px;direction:ltr;text-align:left;font-family:Georgia,serif;font-size:14px;color:#334155;line-height:1.8">📝 ${boldEvidence(it.audio,evidenceSentence(it.audio,it.c[it.a]))}</div></div>`:""}
+      <div style="margin-top:8px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:10px;direction:ltr;text-align:left;font-family:Georgia,serif;font-size:14px;color:#334155;line-height:1.8">📝 ${boldEvidence(it.audio,decisiveEvidence(it.audio,it.c[it.a]))}</div></div>`:""}
   </div>
   ${listenLocked?`<button class="btn" style="background:#0284C7" onclick="listenNext()">${listenIdx+1>=listenItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`:""}`;
   if(!listenLocked&&listenPlays===0)setTimeout(function(){listenPlay()},300);
@@ -9788,10 +9826,10 @@ function renderRead(){
   <div class="meta"><span>${toAr(readIdx+1)} من ${toAr(readItems.length)}</span><span>فهم المقروء · ${it.lv}</span></div>
   <div class="card">
     <span class="tag" style="background:#F5F3FF;color:#6D28D9">📖 اقرئي</span>
-    <div style="background:#FAF5FF;border:1px solid #E9D5FF;border-radius:12px;padding:14px;margin:14px 0;font-size:16px;line-height:1.8;direction:ltr;text-align:left;color:#4C1D95;font-family:Georgia,serif">${readLocked?boldEvidence(it.passage,evidenceSentence(it.passage,it.c[it.a])):it.passage}</div>
+    <div style="background:#FAF5FF;border:1px solid #E9D5FF;border-radius:12px;padding:14px;margin:14px 0;font-size:16px;line-height:1.8;direction:ltr;text-align:left;color:#4C1D95;font-family:Georgia,serif">${readLocked?boldEvidence(it.passage,decisiveEvidence(it.passage,it.c[it.a])):it.passage}</div>
     <div class="q" style="direction:ltr;text-align:left;font-family:Georgia,serif;margin-top:12px">${it.q}</div>
     <div class="choices">${secGateHTML()}${posConfirmHTML("read","readChoose")}${choices}</div>
-    ${readLocked?`<div class="explain"><div class="explain-title" style="color:${readPicked===it.a?'#059669':'#B45309'}">${readPicked===it.a?"✓ فهمتِ صحيحاً":"الصحيحة بالأخضر — والجملة المُبرَزة أعلاه هي الدليل"}</div></div>`:""}
+    ${readLocked?`<div class="explain"><div class="explain-title" style="color:${readPicked===it.a?'#059669':'#B45309'}">${readPicked===it.a?"✓ فهمتِ صحيحاً":(decisiveEvidence(it.passage,it.c[it.a])?"الصحيحة بالأخضر — والجملة المُبرَزة أعلاه هي الدليل":"الصحيحة بالأخضر — والدليلُ موزَّعٌ في القطعة لا في جملةٍ واحدة")}</div></div>`:""}
     ${readLocked?readAloudHTML(it):""}
   </div>
   ${readLocked
@@ -14223,7 +14261,7 @@ function renderWejl(){
     <div style="font-size:12px;color:#64748B;margin-bottom:14px">استمعي مرّتين، ثم اختاري${wejlPlays?` — استمعتِ ${toAr(wejlPlays)} ${wejlPlays===1?"مرّة":"مرّات"}`:""}</div>
     <div class="choices">${secGateHTML()}${posConfirmHTML("wejl","wejlChoose")}${gateOpen()?choices:""}</div>
     ${wejlLocked?`<div class="explain"><div class="explain-title" style="color:${wejlPicked===it.a?'#059669':'#B45309'}">${wejlPicked===it.a?"✓ فهمتِ صحيحاً":"الصحيحة بالأخضر"}</div>
-      <div style="margin-top:8px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:10px;direction:ltr;text-align:left;font-family:Georgia,serif;font-size:14px;color:#334155;line-height:1.8">📝 ${boldEvidence(it.audio,evidenceSentence(it.audio,it.c[it.a]))}</div>
+      <div style="margin-top:8px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:10px;direction:ltr;text-align:left;font-family:Georgia,serif;font-size:14px;color:#334155;line-height:1.8">📝 ${boldEvidence(it.audio,decisiveEvidence(it.audio,it.c[it.a]))}</div>
       <div style="margin-top:8px;font-size:12px;color:#64748B;line-height:1.9">التفريغُ مؤلَّفٌ على صيغة أسئلة وجدان، لا منقولٌ من تسجيلاتها.</div></div>`:""}
   </div>
   ${wejlLocked?`<button class="btn" style="background:#0E7490" onclick="wejlNext()">${wejlIdx+1>=wejlItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`:""}`;
@@ -18838,6 +18876,152 @@ function placeChartSvg(kind){
 // بلا وسمٍ لا خانةَ له — ووسمُه بحدسي يخالف قرار ١٢ أكتوبر صراحةً.
 const PLACE_STRUCT_PLAN={1:5,2:3,3:2,4:2,5:2,6:3,7:2,8:2,9:2,10:2,11:2,12:1,13:2};
 const PLACE_LISTEN_LEVELS=["A1","A2","B1","B2","C1"],PLACE_LISTEN_PER=4;
+// ===== فهم المقروء بنمط STEP: الثلاثون التي كانت محبوسةً في الورقة — ١٧ أكتوبر =====
+// الأمر: «افتح كل شي». والمحبوسُ فعلاً هو هذا: أربعون سؤال قراءةٍ من نموذج وجدان ٤٩
+// بمفاتيح الدورة المصدَّقة (١٤ أكتوبر)، **تُستعمَل في ورقة تحديد المستوى وحدها** فلا
+// تُتاح للتدريب إطلاقاً. وعشرةٌ منها فُتحت في ١٥ أكتوبر قسمَ «معنى الكلمة في السياق»،
+// فالباقي **ثلاثون**.
+//
+// **ولماذا هذا بعينه**: فهمُ المقروء **٤٠٪ من وزن STEP** وأضعفُ أقسام إلياس في ورقته
+// (١٣ من ٤٠ · ٣٣٪)، فيه **٢٦٫٨ من نقاطه المفقودة الـ٤٦٫٨** — وأفقرُ بنوكنا مادّةً.
+//
+// **والكلفةُ تُقال لا تُخفى**: قسمُ القراءة في الورقة يسحب من `PLACE_READ_BANK` كلِّه
+// (أربعون عنصراً لورقةٍ من أربعين)، **فلا استبعادَ للمرئيّ ممكنٌ أصلاً** — `mockPickFrom`
+// يُستدعى بمخزونٍ فارغ `{}`. فتدريبُه عليها يعني أن قسم القراءة في ورقته القادمة يُقاس
+// على عناصرَ رآها. وهذا **ثمنٌ مقصود**: ورقةٌ واحدة نظيفة وُقِّعت بالفعل (١٤-١٥ أكتوبر)
+// وصارت خطَّ الأساس، والمتبقّي أربعةٌ وأربعون يوماً للتدريب لا للقياس المتكرّر.
+//
+// **موصولٌ لا مبنيّ من جديد**: البنكُ **نفسُ `PLACE_READ_BANK`** يُرشَّح بوسمه — لا نسخةَ
+// ثانيةٍ تنحرف عن مفتاح الدورة (نفس ما فعله `VCTX_BANK` في ١٥ أكتوبر)، والقطعُ والرسومُ
+// نفسُها، ونفس `fsrsUpdate`/`planNewMix`/`topUpPlan`، ونفس `mcOrder`/`posLog`/`posRecord`،
+// ونفس `boldEvidence`/`evidenceSentence` للإبراز بعد القفل، ونفس شكل البطاقة.
+//
+// **والبوّابةُ تستعير مفتاح `place:read` (٥ و٩)** — نفسُ المادّة ونفسُ أزمنته المقاسة
+// عليها، فلا رقمَ جديد يُخترَع. **ونطاقٌ مستقلّ `domain='wejr'`** لا `read`: ذاك مُقسَّمٌ
+// بدرجات CEFR وهذه بلا درجة، وخلطُهما يُفسد قياسَ الاثنين (درس «صفٌّ يسبق الصفَّ المقصود»).
+//
+// **ولا `planNoTwins`** — استثناءٌ مقيسٌ كاستثناء `vctx`: ثلاثون عنصراً على ثلاث عشرة
+// قطعةً، فعنصران من قطعةٍ واحدة يتقاسمان نصَّها كلَّه و`itemText` تُقدّم `passage` —
+// فأيُّ مقياس تشابهٍ يُسقط الجلسة. والحارسُ أن المعرّفات فريدة، ويُثبته الاختبار.
+//
+// **ولا قراءةً جهرية هنا**: تلك مربوطةٌ بقسم `read` وأُلزمت فيه بأمرٍ صريح (٣ أكتوبر)،
+// وقياسُ ٤ أكتوبر أظهر أنها تُثلّث كلفة العنصر وتُنزل جلسةَ المقروء من ٨ إلى ٣. وهذا
+// قسمُ تحضيرٍ لموعدٍ محدَّد، فإقحامُها يُنقص ما يُنجَز يومياً بلا أمرٍ يطلبه.
+const WEJR_N=8;
+const WEJR_SRS_KEY="mawhiba_wejr_srs_v1";
+const WEJR_BANK=PLACE_READ_BANK.filter(function(x){return x.sk!=="معنى كلمة"});
+function wejrSrsLoad(){try{return JSON.parse(lsGet(WEJR_SRS_KEY)||"{}")}catch(e){return{}}}
+function wejrSrsSave(o){try{lsSet(WEJR_SRS_KEY,JSON.stringify(o))}catch(e){}}
+function wejrSrsUpdate(id,ok){
+  const st=wejrSrsLoad(),r=st[id]||{box:0,seen:0};
+  const n=fsrsUpdate(r,ok,srsToday());
+  r.box=n.box;r.due=n.due;r.seen=n.seen;r.s=n.s;r.d=n.d;r.last=n.last;
+  st[id]=r;wejrSrsSave(st);
+}
+let wejrItems=[],wejrIdx=0,wejrPicked=-1,wejrLocked=false,wejrScore=0,
+  wejrShownAt=0,wejrDone=false,wejrOrder=[],wejrOrderId=null;
+// الترتيبُ مُعلَّقٌ على معرّف العنصر لا على لحظة الإسناد — درس ١٤ سبتمبر: مسارٌ يُبدّل
+// العنصر بغير `Next` كان يُبقي ترتيبَ عنصرٍ مضى، فيفترق المعروضُ عن المسجَّل.
+function wejrOrd(it){
+  if(!it)return [];
+  if(wejrOrderId!==it.id||wejrOrder.length!==it.c.length){wejrOrder=mcOrder(it);wejrOrderId=it.id}
+  return wejrOrder;
+}
+function buildWejrPlan(){
+  const st=wejrSrsLoad(),today=srsToday(),POOL=WEJR_BANK;
+  const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
+  const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
+  let out=planNewMix(due,fresh,WEJR_N);
+  return topUpPlan(out,POOL,WEJR_N,"wejr");
+}
+function startWejr(){
+  wejrItems=buildWejrPlan();wejrIdx=0;wejrPicked=-1;wejrLocked=false;
+  wejrScore=0;wejrDone=false;wejrOrderId=null;
+  mode="wejr";wejrShownAt=Date.now();
+  secGateStart("wejr",(wejrCur()&&(wejrCur().passage+" "+wejrCur().q))||"","place:read");
+  window.scrollTo(0,0);render();
+}
+function wejrCur(){return wejrItems[wejrIdx]}
+function wejrChoose(i){
+  if(wejrLocked||!gateOpen())return;
+  const it=wejrCur();if(!it)return;
+  if(!posConfirmOk("wejr",i,it.c[i]))return;
+  wejrLocked=true;wejrPicked=i;
+  const ok=i===it.a;if(ok)wejrScore++;
+  wejrSrsUpdate(it.id,ok);
+  const ord=wejrOrd(it);
+  posRecord("wejr",ord.indexOf(i)+1,it.c.length);
+  const shown=ord.map(function(wi,k){return (k+1)+") "+it.c[wi]+(wi===it.a?" ✓":"")}).join(" | ");
+  logAnswer("wejr",it.sk||"read",ok,posLog(ord,it,i)+posTagFor("wejr"),it.id,
+    wejrShownAt?Date.now()-wejrShownAt:null,
+    {_sk:skOf(it),q_text:(srcTag(it)+"س"+toAr(it.n)+" · "+it.q+" · "+shown).slice(0,1200)});
+  render();
+}
+function wejrNext(){
+  if(!wejrLocked)return;
+  if(wejrIdx+1>=wejrItems.length){wejrDone=true;window.scrollTo(0,0);render();return}
+  wejrIdx++;wejrPicked=-1;wejrLocked=false;wejrShownAt=Date.now();
+  secGateStart("wejr",(wejrCur()&&(wejrCur().passage+" "+wejrCur().q))||"","place:read");
+  window.scrollTo(0,0);render();
+}
+// **جملةُ الدليل تُبرَز حين تكون حاسمةً وحدها — وإلّا لم تُبرَز ولم تُدَّعَ.**
+// كشفته لقطةُ شاشةٍ لا اختبار: سؤال «ما سبب تغيّر المناخ؟» وصوابُه «The Aral Sea got
+// smaller»، فأُبرز **العنوانُ والجملةُ الأولى** بينما الدليلُ «By 1990, the Aral Sea had
+// lost 60% of its volume». والسببُ أن `evidenceSentence` تُرجّح بعدد الكلمات المشتركة،
+// فتتعادل جملٌ كثيرة عند **كلمةٍ واحدة** هي كلمةُ الموضوع المتكرّرة («Aral») — فتفوز
+// أولاها بالترتيب لا بالدلالة.
+//
+// **والقياسُ قبل العلاج**: من الثلاثين **٢٥ تُنتج جملةً، و١١ وحدها حاسمة** — أي أن
+// **١٤ من ٢٥ إبرازاً اعتباطي (٥٦٪)**، والشاشةُ تدّعي لكلٍّ منها أنها «الدليل».
+// وهذا بعينه ما يرفضه المشروع: «كاشفٌ بهذه النسبة من البلاغ الكاذب يُدرِّب على
+// تجاهله» (٢٥ أغسطس)، و«الدعم الذي يُعلّم خطأً أسوأ من غيابه».
+//
+// **وقطعُ هذا القسم هي السبب لا الدالّة**: ١٤-٥٥ جملةً للقطعة (مقابل ٣-٦ في
+// `READ_BANK`)، ومفاتيحُ STEP **إعادةُ صياغةٍ لا نقل** — فالتداخلُ اللفظي ضعيفٌ
+// والتعادلُ هو القاعدة. فالعلاجُ **محلّيٌّ هنا ولا يمسّ `evidenceSentence`** المشتركة
+// مع `read`/`listen`/`vctx` حيث القطعُ قصيرةٌ وقد عملت منذ ١ سبتمبر — علاجٌ أوسع من
+// الداء يصنع داءً ثانياً.
+//
+// **والشرطُ مقاسٌ لا مختار**: كلمتان من المفتاح على الأقلّ، **وتفوّقٌ صارم** على الجملة
+// التالية — فالتعادلُ يعني أن النصّ لا يُرجّح واحدةً، وحينها تُعرَض القطعةُ كاملةً
+// ويُقال إن الدليل موزَّعٌ فيها. والصمتُ هنا أصدقُ من إبرازٍ قد يُعلّم قراءةً خاطئة.
+function wejrEvidence(it){return it?decisiveEvidence(it.passage,it.c[it.a]):""}
+function renderWejr(){
+  if(!wejrItems.length){app.innerHTML=`<div class="card" style="text-align:center">لا شيء مستحقّ الآن — عودي لاحقاً 🌱</div><button class="link-btn" onclick="home()">→ الرئيسية</button>`;return}
+  if(wejrDone)return renderWejrResult();
+  const it=wejrCur();
+  const prog=`<div class="bar">${wejrItems.map(function(_,i){return `<div class="seg" style="background:${i<=wejrIdx?'#B45309':'#E2E8F0'};opacity:${i<=wejrIdx?1:.5}"></div>`}).join("")}</div>`;
+  const choices=wejrOrd(it).map(function(wi,k){
+    let bg="#fff",bd="#E2E8F0",col="#334155";
+    if(wejrLocked){if(wi===it.a){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(wi===wejrPicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}
+    return `<button class="choice" style="background:${bg};border-color:${bd};color:${col};direction:ltr;text-align:left;font-family:Georgia,serif" onclick="wejrChoose(${wi})" ${wejrLocked?"disabled":""}><span class="letter">${L[k]}</span>${esc(it.c[wi])}</button>`;
+  }).join("");
+  const chart=it.chart?`<div style="margin:10px 0">${placeChartSvg(it.chart)}</div>`:"";
+  app.innerHTML=`
+  <button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
+  ${prog}
+  <div class="meta"><span>${toAr(wejrIdx+1)} من ${toAr(wejrItems.length)}</span><span>مقروء وجدان</span></div>
+  <div class="card">
+    <span class="tag" style="background:#FEF3C7;color:#92400E">📖 ${esc(it.sk||"فهم المقروء")}</span>
+    ${it.passage?`<div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:12px;padding:14px;margin:14px 0;font-size:16px;line-height:1.8;direction:ltr;text-align:left;color:#78350F;font-family:Georgia,serif">${wejrLocked?boldEvidence(it.passage,wejrEvidence(it)):esc(it.passage)}</div>`:""}
+    ${chart}
+    <div class="q" style="direction:ltr;text-align:left;font-family:Georgia,serif;margin-top:12px">${esc(it.q)}</div>
+    <div class="choices">${secGateHTML()}${posConfirmHTML("wejr","wejrChoose")}${gateOpen()?choices:""}</div>
+    ${wejrLocked?`<div class="explain"><div class="explain-title" style="color:${wejrPicked===it.a?'#059669':'#B45309'}">${wejrPicked===it.a?"✓ فهمتِ صحيحاً":(wejrEvidence(it)?"الصحيحة بالأخضر — والجملة المُبرَزة أعلاه هي الدليل":"الصحيحة بالأخضر")}</div>
+      <div style="margin-top:8px;font-size:12px;color:#64748B;line-height:1.9">${wejrEvidence(it)?"":(it.passage?"والدليلُ موزَّعٌ في القطعة لا في جملةٍ واحدة، فلا تُبرَز واحدةٌ بعينها. ":"والجوابُ يُقرأ من الرسم أعلاه لا من نصّ. ")}من نموذج وجدان ٤٩ بمفتاح الدورة — ومفتاحُها لا يشرح الخيارات، فلا شرح هنا.</div></div>`:""}
+  </div>
+  ${wejrLocked?`<button class="btn" style="background:#B45309" onclick="wejrNext()">${wejrIdx+1>=wejrItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`:""}`;
+}
+function renderWejrResult(){
+  const pct=wejrItems.length?Math.round(wejrScore/wejrItems.length*100):0;
+  app.innerHTML=`
+  <div class="card">
+    <div class="score-row"><span class="score-big" style="color:${pct>=70?'#059669':pct>=50?'#D97706':'#DC2626'}">${toAr(wejrScore)}</span><span class="score-total">/ ${toAr(wejrItems.length)}</span><span class="score-pct">${toAr(pct)}%</span></div>
+    <div style="color:#64748B;font-size:15px;margin-bottom:14px">${pct>=85?"فهمُ المقروء بنمط STEP صار مألوفاً! 🌟":pct>=60?"جيّد — والأخطاء تعود للمراجعة 💪":"هذا أثقلُ أقسام STEP وزناً — ويُتقَن بالتكرار 🌱"}</div>
+    <button class="btn" style="background:#B45309" onclick="startWejr()">🔁 جلسة أخرى</button>
+    <button class="link-btn" onclick="home()">→ الرئيسية</button>
+  </div>`;
+}
 const PLACE_SECTIONS=[
   {k:"listen",t:"فهم الاستماع",    icon:"🎧",w:20,n:20,src:"مؤلَّف"},
   {k:"read",  t:"فهم المقروء",     icon:"📖",w:40,n:40,src:"وجدان"},
@@ -19503,7 +19687,7 @@ function renderKpi(){
 }
 
 // ===== العرض =====
-function render(){if(mode==="placeMenu")return renderPlaceMenu();if(mode==="place")return renderPlace();if(mode==="placeReport")return renderPlaceReport();if(mode==="vctx")return renderVctx();if(mode==="mock")return renderMock();if(mode==="seq")return renderSeq();if(mode==="kpi")return renderKpi();if(mode==="home")return renderHome();if(mode==="listen")return renderListen();if(mode==="read")return renderRead();if(mode==="write")return renderWrite();if(mode==="gram")return renderGram();if(mode==="build")return renderBuild();if(mode==="math6Menu")return renderMath6Menu();if(mode==="math6")return renderMath6();if(mode==="step")return renderStep();if(mode==="wejMenu")return renderWejMenu();if(mode==="wej")return renderWej();if(mode==="wejl")return renderWejl();if(mode==="statMenu")return renderStatMenu();if(mode==="stat")return renderStat();if(mode==="minpair")return renderMinpair();if(mode==="video")return renderVideo();if(mode==="errors")return renderErrors();if(mode==="engplan")return renderEngPlan();if(mode==="factplan")return renderFactPlan();if(mode==="vocab")return renderVocab();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="speak")return renderSpeak();if(mode==="coach")return renderCoach();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
+function render(){if(mode==="placeMenu")return renderPlaceMenu();if(mode==="place")return renderPlace();if(mode==="placeReport")return renderPlaceReport();if(mode==="vctx")return renderVctx();if(mode==="mock")return renderMock();if(mode==="seq")return renderSeq();if(mode==="kpi")return renderKpi();if(mode==="home")return renderHome();if(mode==="listen")return renderListen();if(mode==="read")return renderRead();if(mode==="write")return renderWrite();if(mode==="gram")return renderGram();if(mode==="build")return renderBuild();if(mode==="math6Menu")return renderMath6Menu();if(mode==="math6")return renderMath6();if(mode==="step")return renderStep();if(mode==="wejMenu")return renderWejMenu();if(mode==="wej")return renderWej();if(mode==="wejl")return renderWejl();if(mode==="wejr")return renderWejr();if(mode==="statMenu")return renderStatMenu();if(mode==="stat")return renderStat();if(mode==="minpair")return renderMinpair();if(mode==="video")return renderVideo();if(mode==="errors")return renderErrors();if(mode==="engplan")return renderEngPlan();if(mode==="factplan")return renderFactPlan();if(mode==="vocab")return renderVocab();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="speak")return renderSpeak();if(mode==="coach")return renderCoach();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
 
 // صفحة الأخوين قسمٌ واحد: المحادثة. بقيّة الأقسام بُنيت على أخطائها هي — بنك
 // أسئلتها، وتباعدها، ومنهج صفّها السادس — فوضعها أمام ولدٍ آخر يُشغله بما ليس له.
@@ -19621,6 +19805,8 @@ function renderHomeCoachOnly(){
       s:`استمع لمقطعٍ قصير، وأجب عن معناه — مستوى ${p.level||"A2"}`},
     {g:"eng_in",c:"#0E7490",go:"startWejl()",n:"🎧 استماع وجدان · STEP",
       s:`${toAr(WEJL_BANK.length)} مقطعاً بصيغة أسئلة استماع وجدان — والتفريغُ مؤلَّفٌ على صيغتها لا منقولٌ من تسجيلاتها`},
+    {g:"eng_in",c:"#B45309",go:"startWejr()",n:"📖 مقروء وجدان · STEP",
+      s:`${toAr(WEJR_BANK.length)} سؤال فهمٍ من نموذج وجدان ٤٩ بمفتاح الدورة — وفهمُ المقروء ٤٠٪ من وزن الاختبار`},
     {g:"eng_in",sec:"read",c:"#7C3AED",go:"startRead()",n:"📖 فهم المقروء",
       s:`اقرأ نصّاً قصيراً، وأجب عن معناه — مستوى ${p.level||"A2"}`},
     {g:"eng_in",c:"#7C3AED",go:"startVctx()",n:"🔍 معنى الكلمة في السياق",
@@ -19702,6 +19888,8 @@ function renderHome(){
       s:`استمعي لمقطعٍ قصير، وأجيبي عن معناه — مستوى ${profileOf().level||"A2"}`},
     {g:"eng_in",c:"#0E7490",go:"startWejl()",n:"🎧 استماع وجدان · STEP",
       s:`${toAr(WEJL_BANK.length)} مقطعاً بصيغة أسئلة استماع وجدان — والتفريغُ مؤلَّفٌ على صيغتها لا منقولٌ من تسجيلاتها`},
+    {g:"eng_in",c:"#B45309",go:"startWejr()",n:"📖 مقروء وجدان · STEP",
+      s:`${toAr(WEJR_BANK.length)} سؤال فهمٍ من نموذج وجدان ٤٩ بمفتاح الدورة — وفهمُ المقروء ٤٠٪ من وزن الاختبار`},
     {g:"eng_in",sec:"read",c:"#7C3AED",go:"startRead()",n:"📖 فهم المقروء",
       s:`اقرئي نصّاً قصيراً، وأجيبي عن معناه — مستوى ${profileOf().level||"A2"}`},
     // للثلاثة كقسم وجدان وورقة تحديد المستوى: **نفس المادّة** وقرارُ صاحب المشروع فيها
