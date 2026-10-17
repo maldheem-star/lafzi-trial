@@ -83,7 +83,7 @@ const banks=await page.evaluate(()=>{
   };
   const names=['LISTEN_BANK','READ_BANK','GRAM_BANK','STEP_BANK','MINPAIR_BANK','WRITE_BANK',
                'VIDEO_BANK','STAT_BANK','ENG_ITEMS','ENG_BUILD','DICTATION_A1','SPEAK_ITEMS',
-               'READING_ITEMS','COACH_SCENES','VOCAB_BANK','WEJ_BANK'];
+               'READING_ITEMS','COACH_SCENES','VOCAB_BANK','WEJ_BANK','WEJL_BANK'];
   const out={};
   names.forEach(n=>{const v=pick(n);if(v&&v.length)out[n]=v});
   return out;

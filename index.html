@@ -4727,6 +4727,9 @@ const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEn
   "quizFromCache","quizGenTopUp","quizRotNext",
   "wejCounts","wejSrsLoad","wejSrsUpdate","wejPool","buildWejPlan","goWejMenu","startWej",
   "wejCur","wejSetupRound","wejChoose","wejNext","renderWejMenu","renderWej","renderWejResult",
+  // استماع وجدان: شاشةٌ كاملة، فسقوطُ دالّةٍ منها يُفرِغ القسم كلَّه
+  "wejlId","wejlSrsLoad","wejlSrsUpdate","wejlOrd","buildWejlPlan","startWejl","wejlCur",
+  "wejlPlay","wejlChoose","wejlNext","renderWejl","renderWejlResult",
   "placeSecOf","placeLoad","placeSave","placeBankSize","placeReady","placeCoverage","placeChance",
   "placeQ","placePool","goPlaceMenu","startPlaceSec","placeCur","placePlay","placeMed","placeAgg",
   "placeChoose","placeFinish","placeAnsQ","placeCefr","renderPlaceMenu","renderPlace","renderPlaceReport",
@@ -9352,7 +9355,7 @@ function renderListen(){
     <div class="q" style="margin-top:10px;direction:ltr;text-align:center;font-family:Georgia,serif">${it.q}</div>
     ${ttsHelpHTML("هذا القسم يحتاج الصوت، ولا نصّ يُقرأ بدلاً منه. افحصي الصوت أوّلاً، أو عودي لهذا القسم لاحقاً.")}
     <div style="margin:16px 0"><button type="button" onclick="listenPlay()" style="background:#0284C7;color:#fff;border:none;border-radius:50%;width:64px;height:64px;font-size:26px;cursor:pointer">🔊</button></div>
-    <div style="font-size:12px;color:#64748B;margin-bottom:14px">${listenPlaysHint(it.lv)}${listenPlays?` · استمعتَ ${toAr(listenPlays)} ${listenPlays===1?"مرّة":"مرّات"}`:""}</div>
+    <div style="font-size:12px;color:#64748B;margin-bottom:14px">${listenPlaysHint(it.lv)}${listenPlays?` · استمعتِ ${toAr(listenPlays)} ${listenPlays===1?"مرّة":"مرّات"}`:""}</div>
     <div class="choices">${secGateHTML()}${posConfirmHTML("listen","listenChoose")}${choices}</div>
     ${listenLocked?`<div class="explain"><div class="explain-title" style="color:${listenPicked===it.a?'#059669':'#B45309'}">${listenPicked===it.a?"✓ فهمتَ صحيحاً":"الصحيحة بالأخضر"}</div>
       <div style="margin-top:8px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:10px;direction:ltr;text-align:left;font-family:Georgia,serif;font-size:14px;color:#334155;line-height:1.8">📝 ${boldEvidence(it.audio,evidenceSentence(it.audio,it.c[it.a]))}</div></div>`:""}
@@ -14013,6 +14016,230 @@ function renderWejResult(){
   </div>`;
 }
 
+// ===== استماع وجدان: تفريغاتٌ مؤلَّفة على صيغة أسئلته — ١٧ أكتوبر =====
+// الأمر: «ملف استماع وجدان في قوقل درايف،، ضفه»، ثمّ — بعد عرض الطريقين — «ب».
+//
+// **وملفّا الاستماع لم يُشحَن منهما عنصرٌ واحد، ويُقال لماذا بالرقم**: فيهما ١٣٩
+// سؤالاً مقروءاً مصنَّفاً، **وثلاثةُ حواجزَ أوّلُها ليس المفتاح** — لا تسجيلَ ولا
+// تفريغ («Recording #1…#9» عناوينُ بلا محتوى)، ولا صوتَ في درايف كلِّه (بحثٌ على
+// audio/ وvideo/)، ولا مفتاحَ في النصّ (في طبقة التظليل، والملفّان فوق حدّ التنزيل).
+// فسؤالٌ كـ«ما رقم حجز المسافر؟ ١٠٦٦/١٦٠٦/٦٦٠١/٦٦١٠» معروضاً بلا صوتٍ **تخمينٌ من
+// أربعة يُسجَّل درجةَ استماع** — فلو وصل المفتاحُ كاملاً غداً لم يُشحَن منه شيء.
+//
+// فاختار صاحب المشروع الطريق (ب): **تُؤلَّف التفريغات على صيغة أسئلته**. وهذا هو
+// نفسُ ما يفعله `LISTEN_BANK` و`MINPAIR_BANK` و`VIDEO_BANK` أصلاً («كما يؤلّف كل
+// مصدرٍ معياريّ محتواه») — والمفتاحُ هنا **صحيحٌ بالبناء لا بالاشتقاق**: التفريغُ
+// مكتوبٌ ليُجيب عن سؤاله، فلا يُصدَّق جوابٌ لم أُثبته في النصّ.
+//
+// **ولا يُوسَم `[مصدر:وجدان]` — وهذا شرطُ الطريق لا تفصيلٌ فيه**: الجوابُ الصحيح هو
+// ما أثبتُّه أنا في التفريغ لا ما يقوله تسجيلُ الدورة، فوسمُه بالمصدر كذب. يُوسَم
+// **«مؤلَّف على صيغة وجدان»** ويدخل السجلّ بذلك (`srcTag`)، وصعوبتُه صعوبتي لا
+// صعوبةَ الاختبار.
+//
+// **والمكسبُ الحقيقي شكلُ السؤال لا عددُ العناصر**: قسمُ «فهم الاستماع» القائم بصيغة
+// كامبردج (مقطعٌ ⇐ فهم)، وتصنيفُ ١٣٩ سؤال وجدان **بقواعدَ مرتَّبة من نصّ الصدر**
+// يُظهر أن STEP يسأل غيرَ ذلك: مكانَ الحديث، وهويّةَ المتحدّث، ومعنى تعبيرٍ اصطلاحي،
+// و«نستنتج أن…»، والمعلومةَ المُسنِدة، وفكرةَ محاضرة، والاستثناء. وهذا **تصنيفُ
+// المجال من المصدر نفسه** (صدقُ المحتوى — AERA/APA/NCME 2014 المعيار ٤٫٢) لا تصنيفٌ
+// اخترعتُه. وأعدادُ الأنواع هنا **متناسبةٌ مع المصدر** لا مختارة.
+//
+// **ونطاقٌ مستقلّ `domain='wejl'`** لا `listen` — وإلّا دخلت عناصرُ بلا درجة CEFR
+// مقامَ دقّةِ كل مستوًى في قسم الفهم (درس «صفٌّ يسبق الصفَّ المقصود»، ٢٢ أغسطس).
+// و`qtype` نوعُ السؤال، فتُقاس كلُّ مهارةٍ على حدة من أوّل جلسة.
+//
+// **وحدودٌ ثلاثة تُقال لا تُخفى**:
+// ١) **لا تجميع**: STEP يعلّق ١-٣ أسئلة على التسجيل الواحد، وهنا سؤالٌ واحد لكل
+//    تفريغ — فعنصرُنا أسهلُ قليلاً (تركيزٌ واحد لا ثلاثة)، وتجميعُها يحتاج شاشةً
+//    أخرى لم تُبنَ.
+// ٢) **والصوتُ مُركَّبٌ من النصّ** بـ`speakEnglish` كبقيّة أقسام الصوت، فصوتٌ واحد
+//    يقرأ دورَي الحوار («A:»/«B:») — نفس حدّ `LISTEN_BANK` القائم.
+// ٣) **وأرضيّةُ البوّابة وسقفُها مستعارانِ من `listen`** (٣ و٥ ثانية): لا بياناتٍ
+//    لهذا القسم بعد، كما استعار `wej` أرقام `step:pick` وقيل ذلك.
+//
+// **ولا توليدَ آليّ قطعاً**: رقابةُ صحّة مفتاحٍ على تفريغٍ مولَّد أصعبُ من أن
+// تُتحقَّق آلياً — نفس قرار `MINPAIR_BANK` (١٧ أغسطس) و`STAT_BANK` (٢٥ أغسطس).
+// وخطرُ التكرار الذي أوجب التوليد هناك لا يقوم هنا: ٤٧ عنصراً والجلسةُ ثمانية.
+//
+// والبنك نصٌّ مرصوص يُفكَّك مرّةً عند التحميل (نفس أسلوب `WEJ_RAW`/`VOCAB_RAW`)،
+// ومواضعُ الصواب **مُدوَّرةٌ بسكربت** (`tools/wejl_build.js`) لا مكتوبةً بيدي —
+// درس ١٣ سبتمبر، حيث كُتبت ثمانيةَ عشرَ عنصراً كلُّها `a:0` فكاد يُشحَن انحيازُ
+// موضعٍ تامّ. والسكربتُ نفسه يفحص ما يُفحَص آلياً قبل التدوير.
+const WEJL_TYPES={det:"تفصيلٌ من الحديث",num:"رقمٌ أو موعدٌ محدَّد",why:"سببٌ معلَّل",
+  place:"مكان الحديث",inf:"استنتاجٌ ممّا قيل",sup:"المعلومةُ المُسنِدة",
+  who:"هويّةُ المتحدّث ودورُه",idiom:"معنى عبارةٍ اصطلاحية",
+  main:"فكرةُ المحاضرة الرئيسة",exc:"الاستثناء — EXCEPT"};
+// type|فهرس الصواب|التفريغ|السؤال|الخيارات (ثلاثة أو أربعة — والثلاثةُ تحاكي نموذج ١٧)
+const WEJL_RAW=`place|0|A: I have a prescription here from Dr Nasser. B: Let me check — yes, we have it in stock. Take one tablet after breakfast and one after dinner. A: Should I take it with water? B: A full glass, yes. And come back in ten days if the pain is still there.|Where does this conversation most likely take place?|At a pharmacy|At a dentist's clinic|At a laboratory|At a hospital reception
+place|1|Attention, passengers. The nine-fifteen service to Dammam will now leave from platform four, not platform two. Passengers already waiting on platform two should cross the bridge. The next service to Riyadh is not affected and will leave on time.|Where would this announcement most likely be heard?|At an airport gate|At a railway station|On board a ship|At a bus company office
+place|2|A: Good morning. I would like to transfer two thousand riyals to my brother. B: Of course. Is his account with us? A: No, it is with another bank. B: Then it takes one working day and there is a small fee. Please sign here and show me your identity card.|Where does this conversation most likely take place?|At a post office|At a mobile phone shop|At a bank|At a travel agency
+place|3|A: I would like to borrow these three books. B: Two of them are fine for two weeks. The thick one is reference only, so you can read it here but you cannot take it out. A: Can I photocopy a chapter from it? B: Yes, the machine is near the stairs.|Where does this conversation most likely take place?|In a bookshop|In a classroom|In a printing office|In a library
+who|0|A: I would like to fly to Cairo on the first of March and come back a week later. B: I can see two options. The direct flight is more expensive, but the one with a stop in Jeddah saves you four hundred riyals. A: Book the cheaper one, please, and send the ticket to my email.|Who is the caller most likely speaking to?|A travel agent|A hotel receptionist|An airport security officer|A flight attendant
+who|1|A: The flat has two bedrooms and a small balcony. The rent is three thousand a month, paid every three months. B: Is water included? A: Water yes, electricity no. If you want it, I can keep it for you until Thursday.|The two people talking are most likely …|Two neighbours in the same building|A landlord and a possible tenant|An architect and a site engineer|A hotel manager and a guest
+who|2|Good morning, everyone. Before we start, please put your bags under the desks. Today we finish chapter six, and on Sunday there is a short test on it. Those of you who missed last week's lesson should see me afterwards.|What is the speaker's job?|A librarian|A bus driver|A teacher|A sports coach
+num|0|A: Your booking is confirmed, sir. The reference number is four, zero, six, one. B: Did you say four, zero, one, six? A: No — four, zero, six, one. Please keep it, you will need it at the desk.|What is the booking reference number?|4061|4016|4601|4106
+num|1|A: The bus leaves at ten past seven, so be at the stop by seven o'clock. B: I thought it was half past seven. A: That was the old timetable. They changed it last month.|What time does the bus leave?|7:00|7:10|7:30|7:40
+num|2|A: The jacket is three hundred and twenty riyals. B: And with the discount? A: The discount is fifteen per cent, so it comes to two hundred and seventy-two.|How much does the jacket cost after the discount?|285 riyals|305 riyals|272 riyals|320 riyals
+num|3|A: The conference is on the twelfth of April, not the second. B: So I have ten more days to finish the paper. A: You have until the eleventh — I want to read it the night before.|When is the conference?|2 April|11 April|20 April|12 April
+num|0|A: Did she say chapter nine or nineteen? B: Nineteen. She said we skip nine and ten because we covered them in the summer course.|Which chapter will they study?|Chapter 19|Chapter 9|Chapter 10|Chapter 20
+num|1|Final call for flight six-two-three to Abha. The gate has changed from B four to B fourteen. Passengers should go to gate B fourteen immediately, as the gate closes in ten minutes.|Which gate should passengers go to?|Gate B4|Gate B14|Gate B40|Gate B6
+det|0|A: Are you ready to order? B: Yes — the grilled chicken, please, with rice instead of potatoes. And a bottle of water, no ice. A: Any salad with that? B: Not today, thank you.|What did the man order with his chicken?|Rice and water|Potatoes and water|Rice and salad|Salad and juice
+det|1|A: I have the whole afternoon free. B: Then come with me to the market. A: I will, but I must take the car to the garage first — the brakes are making a noise. B: Fine, I will wait for you at the cafe opposite.|What will the woman do before going to the market?|Meet her friend at the cafe|Take the car to the garage|Buy new brakes|Wait for her friend at home
+det|2|Breakfast is served from six to ten and is included in the room price. The gym and the pool are free for guests. Parking is extra, at twenty riyals a night, and the laundry service is charged separately.|Which of these is included in the room price?|Parking|Laundry|Breakfast|Dinner
+det|3|A: Your English has improved a lot. Did you take a course? B: No. I watch films without subtitles, and I talk to the delivery drivers at work — most of them are from India and we have no other common language. A: So you learned by using it. B: Exactly.|How did the man improve his English?|By taking an evening course|By studying grammar books|By living in another country|By using it every day
+det|0|I have two meetings this morning, and after lunch I will drive to the warehouse to count the new stock. I was going to see the accountant today, but I moved that to Wednesday. Tonight I just want to sleep.|What will the speaker do after lunch?|Go to the warehouse|Meet the accountant|Hold two meetings|Drive home and sleep
+det|1|A: Hanan, can I borrow your chemistry notes? B: I do not take chemistry — I think you mean Sara. I have the biology ones, if that helps. A: Biology is next week. I need chemistry for tomorrow.|Whose notes does the man actually need?|Hanan's|Sara's|His own|The teacher's
+det|2|Before we begin the experiment, put on your gloves. Then read the whole instruction sheet — all of it, not only the first step. Only after that should you open the bottles. Anyone without gloves must leave the laboratory.|What should the listeners do first?|Read the instruction sheet|Open the bottles|Put on their gloves|Leave the laboratory
+det|3|A: Have you seen my car keys? B: You put them in your coat pocket when you came in. A: I have checked the coat and they are not there. B: Then look in the kitchen drawer, next to the post. That is where they usually end up.|Where does the woman suggest looking next?|In the coat pocket|Next to the car|Under the post|In the kitchen drawer
+det|0|A: Your appointment is on Tuesday at four. B: I work until six on Tuesdays. Is Thursday possible? A: Thursday is full. I can do Wednesday at five, or Tuesday next week. B: Wednesday, then.|When is the appointment now?|Wednesday at five|Tuesday at four|Thursday at five|Tuesday next week
+det|1|A: Do you have everything? Passport, ticket, charger? B: Passport yes, and the ticket is on my phone. The charger is on the desk at home. A: There is no time to go back — buy one at the airport.|What did the man leave at home?|His passport|His charger|His ticket|His phone
+det|2|A: Mr Hassan, I cannot choose a topic. B: It does not have to be unusual. It has to be close to your field of study, and you must find at least five sources for it. An interesting topic with no sources is no use to you.|What must the topic be?|Unusual and new to the field|Approved by five different teachers|Close to the student's subject|Chosen from a printed list
+det|3|A: Have you decided where to go in the summer? B: That is the problem. I have the money and I have the time — I simply cannot choose. My husband wants the mountains, the children want the sea, and I want somewhere quiet.|What is the woman's problem?|She does not have enough money|She has very little free time|Her family does not want to travel|She cannot decide where to go
+det|0|A: Standard delivery is three to five days and it is free. Express is tomorrow morning for thirty riyals. B: I need it before Friday. A: Then standard is enough — today is Monday. B: Let us be safe. Express, please.|Which delivery did the customer choose?|Express delivery|Standard delivery|Collection from the shop|Delivery on Friday
+det|1|A: How was the new restaurant? B: The food was very good and not expensive. But we waited fifty minutes for a table, and the music was so loud that we could not talk. A: So you will not go again? B: I will — but I will book first.|What did the man complain about?|The food and the price|The waiting and the noise|The service and the food|The price and the noise
+why|0|We are sorry to announce that flight two-one-four is delayed by ninety minutes. The aircraft arrived late from Dubai because of heavy fog there this morning. The weather here is clear, and all the crew are already on board.|Why is the flight delayed?|Bad weather at another airport|Bad weather at this airport|A problem with the crew|A technical fault in the aircraft
+why|1|A: You have had that cough for a month. Why do you not see a doctor? B: I know what he will say — tests, and then more tests. My father went in with a cough and stayed two weeks. A: So you are afraid of what they will find. B: Something like that.|Why has the man not seen a doctor?|He has no time to go|He is afraid of the result|He cannot afford the tests|He thinks the cough is mild
+why|2|A: You were not in the lecture yesterday. B: I was there — outside. The room had been changed to building three and nobody told me. By the time I found it, there were twenty minutes left, so I did not go in.|Why did the woman miss most of the lecture?|She woke up late|She was ill that morning|The room had been changed|She went to the wrong building deliberately
+why|3|Open your books at page sixty. We are going to leave out unit four completely. It is about business letters, and that is not part of this course. We will come back to it only if there is time at the end.|Why will they leave out unit four?|The teacher cannot find it|They have already finished it|It is too difficult for them|It is outside the course
+why|0|A: You are an hour late. B: I am sorry. I left on time, but the road to the bridge was closed and the detour took me through the old market. I sat in the car for forty minutes without moving.|Why was the man late?|A road was closed|He left home late|His car broke down|He forgot about the meeting
+inf|0|A: I have booked the small hotel by the beach. B: The beach again? A: You said you liked it last year. B: I said the children liked it. I spent the week reading in the room while you were all in the water.|What can we conclude about the second speaker?|He does not enjoy the beach|He cannot swim|He wants a bigger hotel|He did not go last year
+inf|1|A: Is Abdullah coming on the trip on Thursday? B: Abdullah? He has the presentation on Wednesday, the report on Thursday morning, and he is still collecting data for both.|What does the second speaker imply about Abdullah?|He does not like trips|He will be too busy|He has finished his work|He will come on Wednesday
+inf|2|A: Shall I ask Mr Saleh to join the committee? B: You can ask him. I asked him twice last year, and both times he was very polite about it.|What does the second speaker mean?|Mr Saleh is already on the committee|Mr Saleh is not a polite man|Mr Saleh will probably refuse|Mr Saleh has never been asked
+inf|3|A: Shall we walk? It is only twenty minutes. B: Not with the pushchair and the baby bag. And Noura gets tired after five minutes. Let us take the car.|What can we conclude about the second speaker?|She does not like walking|She lives far from the shops|She has hurt her leg|She has small children with her
+sup|0|Some of you asked why we believe the moon came from the earth. The strongest reason is not its size and not its distance. It is the rock: samples brought back from the moon have almost the same chemical make-up as rock from the earth's surface. Two separate bodies would not match so closely.|What information supports the lecturer's view?|The two kinds of rock match|The moon is smaller than the earth|The moon travels around the earth|The moon is younger than the earth
+sup|1|People imagine that athletes eat enormous meals of meat. In fact the clubs employ cooks who weigh everything, and the diet experts spend most of their time stopping the athletes from eating too much. An athlete who eats badly is slower, not stronger.|What important point does the speaker make about athletes and food?|Athletes eat mostly meat and bread|Eating badly makes an athlete slower|Athletes choose their own club cooks|Athletes need unusually large meals
+sup|2|Why do we call it a seasonal disorder? Not because patients say they feel sad — they say that at any time of year. We call it seasonal because when you count the cases, almost all of them begin in the dark months and end in spring.|What information shows that the disorder is seasonal?|Patients say that they feel sad|The treatment works best in spring|The cases begin in dark months|It is more common than other disorders
+main|0|Today I want to talk about why people become vegetarian. In the West most people give up meat for their health, or because of the animals. In India the reason is usually different: for millions of families it is a religious practice much older than any modern diet advice. The same behaviour, very different reasons.|What is the main idea of the lecture?|People become vegetarian for different reasons|Vegetarian food is healthier than meat|India has the largest number of vegetarians
+main|1|Newton gave us three laws, and I want to spend this hour on the first one only. It says that an object does nothing by itself: it stays still, or keeps moving in the same direction, until a force acts on it. The bicycle example in your book is only an illustration of that one law.|What is the main idea of the lecture?|Newton wrote three separate laws of motion|An object changes only under a force|Bicycles are a useful way to study motion
+main|2|Everyone says that people are eating less fast food now. The sales figures for hamburgers have indeed fallen. But look at chicken, at pizza, at the coffee shops: all of them are up. Add them together and the total has not fallen at all. We have changed what we buy, not how much.|What is the main idea of the lecture?|People eat fewer hamburgers than before|Coffee shops grow faster than other shops|The total amount has not fallen
+idiom|0|A: You look happy this morning. B: The scholarship letter came. It blew me away — I read it three times before I believed it. A: You deserve it. B: I have been waiting four months for that envelope.|The speaker says the letter "blew me away". She means that she felt …|Amazed|Worried|Angry|Tired
+idiom|1|A: When will the lift be repaired? B: The engineer said Sunday, then he said Tuesday, and now he does not answer the phone. Honestly, it is anyone's guess.|The phrase "it is anyone's guess" is closest in meaning to …|Everybody already knows|Nobody can be sure|Anyone can repair it|The answer is easy to find
+idiom|2|A: I heard something about the new office. B: Who told you that? A: Never mind who. Come on, do not hold out on me — is it true or not?|When the first speaker says "do not hold out on me", he is asking his friend to …|Keep the news a secret|Wait for him outside|Tell him the news now|Repeat the question slowly
+exc|0|The new online system will show you which courses still have places, it will let you register from home, and it will send you a message when a place opens. One thing it will not do is tell you which courses you still need; for that you must still see your adviser.|The new system will do all of the following EXCEPT …|tell students which courses they still need|show which courses still have places|allow students to register from home|send a message when a place opens
+exc|1|The ticket covers the museum, the garden and the short film in the hall downstairs. It does not cover the temporary exhibition on the top floor; that is a separate ticket, and it is sold only at the desk.|The ticket covers all of the following EXCEPT …|the garden|the temporary exhibition upstairs|the short film downstairs|the museum`;
+// المعرّف من **بصمة نصّ العنصر** لا من رقم سطره: إدراجُ عنصرٍ وسط البنك غداً كان
+// سيُزيح أرقامَ ما بعده فيفقد كلُّ متعلّمٍ جدولةَ FSRS لها بلا أن يقول أحد.
+function wejlId(s){let h=5381;for(let i=0;i<s.length;i++)h=((h*33)^s.charCodeAt(i))>>>0;return h.toString(36)}
+const WEJL_BANK=(function(){
+  const out=[];
+  WEJL_RAW.split("\n").forEach(function(l){
+    if(!l)return;
+    const f=l.split("|");
+    // سبعةُ حقولٍ لعنصرٍ بثلاثة خيارات وثمانيةٌ لأربعة: نوع|فهرسُ الصواب|تفريغ|سؤال|خيارات.
+    // **وكُتب هنا ٦ و٧ أوّلاً — شكلُ المرحلة الوسيطة قبل أن يُدرِج التدوير فهرسَ الصواب**،
+    // فنجا ٣ عناصر من ٤٧ (ذواتُ الثلاثة خيارات) وسقطت الأربعةُ والأربعون بصمت. ولم
+    // يكشفه فحصي بل `test_wejlisten §١` (ضِعفُ الجلسة حدّاً نسبياً) — وهذا بعينه ما
+    // يُميّز حارساً يقيس الإصلاح من حارسٍ يُصادقه.
+    if(f.length<7||f.length>8)return;
+    const a=+f[1],c=f.slice(4);
+    if(!(a>=0&&a<c.length))return;
+    out.push({id:"wl_"+f[0]+"_"+wejlId(f[3]+"|"+f[2]),t:f[0],a:a,audio:f[2],q:f[3],c:c,
+      sk:"استماع وجدان · "+(WEJL_TYPES[f[0]]||f[0]),src:"مؤلَّف على صيغة وجدان"});
+  });
+  return out;
+})();
+const WEJL_N=8;
+const WEJL_SRS_KEY="mawhiba_wejl_srs_v1";
+function wejlSrsLoad(){try{return JSON.parse(lsGet(WEJL_SRS_KEY)||"{}")}catch(e){return{}}}
+function wejlSrsSave(o){try{lsSet(WEJL_SRS_KEY,JSON.stringify(o))}catch(e){}}
+function wejlSrsUpdate(id,ok){
+  const st=wejlSrsLoad(),r=st[id]||{box:0,seen:0};
+  const n=fsrsUpdate(r,ok,srsToday());
+  r.box=n.box;r.due=n.due;r.seen=n.seen;r.s=n.s;r.d=n.d;r.last=n.last;
+  st[id]=r;wejlSrsSave(st);
+}
+let wejlItems=[],wejlIdx=0,wejlPicked=-1,wejlLocked=false,wejlScore=0,wejlPlays=0,
+  wejlShownAt=0,wejlDone=false,wejlOrder=[],wejlOrderId=null;
+// الترتيبُ يُعلَّق على العنصر لا على لحظة الإسناد — نفس `listenOrd` حرفياً، فالعرضُ
+// والسجلّ يقرآن الدالّة نفسها ولا يمكن أن يفترقا (درس `test_gen`، ١٤ سبتمبر).
+function wejlOrd(it){
+  if(!it||!it.c)return [];
+  if(wejlOrderId!==it.id||wejlOrder.length!==it.c.length){wejlOrder=mcOrder(it);wejlOrderId=it.id}
+  return wejlOrder;
+}
+function buildWejlPlan(){
+  const st=wejlSrsLoad(),today=srsToday(),POOL=WEJL_BANK;
+  const due=shuffle(POOL.filter(function(i){return st[i.id]&&st[i.id].due<=today}));
+  const fresh=shuffle(POOL.filter(function(i){return !st[i.id]}));
+  let out=planNewMix(due,fresh,WEJL_N);
+  out=topUpPlan(out,POOL,WEJL_N,"wejl");
+  return planNoTwins(out,POOL,WEJL_N,"wejl");
+}
+function startWejl(){
+  posPendClear();
+  wejlItems=buildWejlPlan();wejlIdx=0;wejlPicked=-1;wejlLocked=false;
+  wejlScore=0;wejlPlays=0;wejlDone=false;wejlOrderId=null;
+  mode="wejl";wejlShownAt=Date.now();
+  secGateStart("wejl",wejlCur()&&wejlCur().audio,"listen");
+  window.scrollTo(0,0);render();
+}
+function wejlCur(){return wejlItems[wejlIdx]}
+// العدّاد يزيد على بدء النطق فعلاً (`onstart`) لا على الطلب — وإلّا قالت الشاشة
+// «استمعتِ مرّة» وهي لم تسمع شيئاً، ودخلت الكذبةُ السجلّ (درس الاستماع، ١٦ أغسطس).
+function wejlPlay(){
+  const it=wejlCur();if(!it)return;
+  speakEnglish(it.audio,function(r){if(r&&r.ok){wejlPlays++;render()}});
+}
+function wejlChoose(i){
+  if(wejlLocked||!gateOpen())return;
+  const it=wejlCur();if(!it)return;
+  if(!posConfirmOk("wejl",i,it.c[i]))return;
+  wejlLocked=true;wejlPicked=i;
+  const ok=i===it.a;if(ok)wejlScore++;
+  wejlSrsUpdate(it.id,ok);
+  const ord=wejlOrd(it);
+  posRecord("wejl",ord.indexOf(i)+1,it.c.length);
+  const shown=ord.map(function(wi,k){return (k+1)+") "+it.c[wi]+(wi===it.a?" ✓":"")}).join(" | ");
+  logAnswer("wejl",it.t,ok,posLog(ord,it,i)+posTagFor("wejl"),it.id,
+    wejlShownAt?Date.now()-wejlShownAt:null,
+    {_sk:skOf(it),q_text:(srcTag(it)+it.q+" · "+shown+" · plays:"+wejlPlays).slice(0,1200)});
+  render();
+}
+function wejlNext(){
+  posPendClear();
+  if(wejlIdx+1>=wejlItems.length){wejlDone=true;window.scrollTo(0,0);render();return}
+  wejlIdx++;wejlPicked=-1;wejlLocked=false;wejlPlays=0;wejlShownAt=Date.now();
+  secGateStart("wejl",wejlCur()&&wejlCur().audio,"listen");render();
+  setTimeout(function(){wejlPlay()},300);
+}
+function renderWejl(){
+  if(!wejlItems.length){app.innerHTML=`<div class="card" style="text-align:center">لا شيء مستحقّ الآن — عودي لاحقاً 🌱</div><button class="link-btn" onclick="home()">→ الرئيسية</button>`;return}
+  if(wejlDone)return renderWejlResult();
+  const it=wejlCur();
+  const prog=`<div class="bar">${wejlItems.map(function(_,i){return `<div class="seg" style="background:${i<=wejlIdx?'#0E7490':'#E2E8F0'};opacity:${i<=wejlIdx?1:.5}"></div>`}).join("")}</div>`;
+  const choices=wejlOrd(it).map(function(wi,k){
+    let bg="#fff",bd="#E2E8F0",col="#334155";
+    if(wejlLocked){if(wi===it.a){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(wi===wejlPicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}
+    return `<button class="choice" style="background:${bg};border-color:${bd};color:${col};direction:ltr;text-align:left;font-family:Georgia,serif" onclick="wejlChoose(${wi})" ${wejlLocked?"disabled":""}><span class="letter">${L[k]}</span>${esc(it.c[wi])}</button>`;
+  }).join("");
+  app.innerHTML=`
+  <button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
+  ${prog}
+  <div class="meta"><span>${toAr(wejlIdx+1)} من ${toAr(wejlItems.length)}</span><span>استماع وجدان</span></div>
+  <div class="card" style="text-align:center">
+    <span class="tag" style="background:#CFFAFE;color:#155E75">🎧 ${esc(WEJL_TYPES[it.t]||it.t)}</span>
+    <div class="q" style="margin-top:10px;direction:ltr;text-align:center;font-family:Georgia,serif">${esc(it.q)}</div>
+    ${ttsHelpHTML("هذا القسم يحتاج الصوت، ولا نصّ يُقرأ بدلاً منه. افحصي الصوت أوّلاً، أو عودي لهذا القسم لاحقاً.")}
+    <div style="margin:16px 0"><button type="button" onclick="wejlPlay()" style="background:#0E7490;color:#fff;border:none;border-radius:50%;width:64px;height:64px;font-size:26px;cursor:pointer">🔊</button></div>
+    <div style="font-size:12px;color:#64748B;margin-bottom:14px">استمعي مرّتين، ثم اختاري${wejlPlays?` — استمعتِ ${toAr(wejlPlays)} ${wejlPlays===1?"مرّة":"مرّات"}`:""}</div>
+    <div class="choices">${secGateHTML()}${posConfirmHTML("wejl","wejlChoose")}${gateOpen()?choices:""}</div>
+    ${wejlLocked?`<div class="explain"><div class="explain-title" style="color:${wejlPicked===it.a?'#059669':'#B45309'}">${wejlPicked===it.a?"✓ فهمتِ صحيحاً":"الصحيحة بالأخضر"}</div>
+      <div style="margin-top:8px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:10px;direction:ltr;text-align:left;font-family:Georgia,serif;font-size:14px;color:#334155;line-height:1.8">📝 ${boldEvidence(it.audio,evidenceSentence(it.audio,it.c[it.a]))}</div>
+      <div style="margin-top:8px;font-size:12px;color:#64748B;line-height:1.9">التفريغُ مؤلَّفٌ على صيغة أسئلة وجدان، لا منقولٌ من تسجيلاتها.</div></div>`:""}
+  </div>
+  ${wejlLocked?`<button class="btn" style="background:#0E7490" onclick="wejlNext()">${wejlIdx+1>=wejlItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`:""}`;
+  if(!wejlLocked&&wejlPlays===0)setTimeout(function(){wejlPlay()},300);
+}
+function renderWejlResult(){
+  const pct=wejlItems.length?Math.round(wejlScore/wejlItems.length*100):0;
+  app.innerHTML=`
+  <div class="card">
+    <div class="score-row"><span class="score-big" style="color:${pct>=70?'#059669':pct>=50?'#D97706':'#DC2626'}">${toAr(wejlScore)}</span><span class="score-total">/ ${toAr(wejlItems.length)}</span><span class="score-pct">${toAr(pct)}%</span></div>
+    <div style="color:#64748B;font-size:15px;margin-bottom:14px">${pct>=85?"صيغةُ استماع STEP صارت مألوفة! 🌟":pct>=60?"جيّد — والأخطاء تعود للمراجعة 💪":"لا بأس — هذه صيغةُ اختبارٍ جامعي، وتُتقَن بالتكرار 🌱"}</div>
+    <button class="btn" style="background:#0E7490" onclick="startWejl()">🔁 جلسة أخرى</button>
+    <button class="link-btn" onclick="home()">→ الرئيسية</button>
+  </div>`;
+}
+
 const STEP_BANK=[
   // ============ A1 — هيا ============
   {id:"st_a1_1",lv:"A1",type:"pick",tag:"ترتيب الكلمات",c:[
@@ -17281,6 +17508,10 @@ function gateOpen(){return gateSecs===0||gateLeft<=0}
 // حرفاً شرطُ البوّابة في هذا المشروع: «تمنع النقر ولا تُعاقب إجابةً سريعةً صادقة».
 const SEC_GATE_FLOOR={listen:3,read:5,gram:4,minpair:2,video:4,math6:3,build:4,
   "vocab:recog":2,"step:pick":4,"step:gap":2,"step:order":4,"place:read":5,vctx:5};
+// و«استماع وجدان» يستعير مفتاحَ `listen` نفسه (٣ و٥) لا مفتاحاً جديداً — لا بياناتٍ
+// لهذا القسم بعد، فيُقال إنه مستعارٌ حتى يُقاس زمنُه هو (كما استعار `wej` أرقام
+// `step:pick`). والتفريغُ أطولُ ثلاث مرّاتٍ من مقطع `LISTEN_BANK`، لكن البوّابة تمنع
+// النقرَ الأعمى لا تُلزم بسماعٍ كامل — ومدّةُ الصوت نفسها هي ما يأخذ الوقت.
 // **وسقفٌ لكل قسم عند زمنها المقاس حين تنخرط فعلاً** — تصحيحٌ لعيبٍ في أوّل تصميمٍ لي:
 // حساب الطول وحده أعطى ١٨-٢٥ ثانية لعنصر قواعد (أربع جملٍ متشابهة تُجمَع كلماتها)،
 // وزمنها الوسيط المنخرط ٧٫٨ ثانية. فبوّابةٌ فوق ذلك تحبسها وهي تعمل بجدّ — والبوّابة
@@ -19272,7 +19503,7 @@ function renderKpi(){
 }
 
 // ===== العرض =====
-function render(){if(mode==="placeMenu")return renderPlaceMenu();if(mode==="place")return renderPlace();if(mode==="placeReport")return renderPlaceReport();if(mode==="vctx")return renderVctx();if(mode==="mock")return renderMock();if(mode==="seq")return renderSeq();if(mode==="kpi")return renderKpi();if(mode==="home")return renderHome();if(mode==="listen")return renderListen();if(mode==="read")return renderRead();if(mode==="write")return renderWrite();if(mode==="gram")return renderGram();if(mode==="build")return renderBuild();if(mode==="math6Menu")return renderMath6Menu();if(mode==="math6")return renderMath6();if(mode==="step")return renderStep();if(mode==="wejMenu")return renderWejMenu();if(mode==="wej")return renderWej();if(mode==="statMenu")return renderStatMenu();if(mode==="stat")return renderStat();if(mode==="minpair")return renderMinpair();if(mode==="video")return renderVideo();if(mode==="errors")return renderErrors();if(mode==="engplan")return renderEngPlan();if(mode==="factplan")return renderFactPlan();if(mode==="vocab")return renderVocab();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="speak")return renderSpeak();if(mode==="coach")return renderCoach();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
+function render(){if(mode==="placeMenu")return renderPlaceMenu();if(mode==="place")return renderPlace();if(mode==="placeReport")return renderPlaceReport();if(mode==="vctx")return renderVctx();if(mode==="mock")return renderMock();if(mode==="seq")return renderSeq();if(mode==="kpi")return renderKpi();if(mode==="home")return renderHome();if(mode==="listen")return renderListen();if(mode==="read")return renderRead();if(mode==="write")return renderWrite();if(mode==="gram")return renderGram();if(mode==="build")return renderBuild();if(mode==="math6Menu")return renderMath6Menu();if(mode==="math6")return renderMath6();if(mode==="step")return renderStep();if(mode==="wejMenu")return renderWejMenu();if(mode==="wej")return renderWej();if(mode==="wejl")return renderWejl();if(mode==="statMenu")return renderStatMenu();if(mode==="stat")return renderStat();if(mode==="minpair")return renderMinpair();if(mode==="video")return renderVideo();if(mode==="errors")return renderErrors();if(mode==="engplan")return renderEngPlan();if(mode==="factplan")return renderFactPlan();if(mode==="vocab")return renderVocab();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="speak")return renderSpeak();if(mode==="coach")return renderCoach();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
 
 // صفحة الأخوين قسمٌ واحد: المحادثة. بقيّة الأقسام بُنيت على أخطائها هي — بنك
 // أسئلتها، وتباعدها، ومنهج صفّها السادس — فوضعها أمام ولدٍ آخر يُشغله بما ليس له.
@@ -19388,6 +19619,8 @@ function renderHomeCoachOnly(){
   ${homeGroupsHTML([
     {g:"eng_in",sec:"listen",lead:1,c:"#0284C7",go:"startListen()",n:"🎧 فهم الاستماع",
       s:`استمع لمقطعٍ قصير، وأجب عن معناه — مستوى ${p.level||"A2"}`},
+    {g:"eng_in",c:"#0E7490",go:"startWejl()",n:"🎧 استماع وجدان · STEP",
+      s:`${toAr(WEJL_BANK.length)} مقطعاً بصيغة أسئلة استماع وجدان — والتفريغُ مؤلَّفٌ على صيغتها لا منقولٌ من تسجيلاتها`},
     {g:"eng_in",sec:"read",c:"#7C3AED",go:"startRead()",n:"📖 فهم المقروء",
       s:`اقرأ نصّاً قصيراً، وأجب عن معناه — مستوى ${p.level||"A2"}`},
     {g:"eng_in",c:"#7C3AED",go:"startVctx()",n:"🔍 معنى الكلمة في السياق",
@@ -19467,6 +19700,8 @@ function renderHome(){
       s:"فهرس كتابك كما هو — كل سؤال باسم درسه ونوع مهارته، وشرحٌ بالخطوات الأربع بعد كل إجابة"},
     {g:"eng_in",sec:"listen",lead:1,c:"#0284C7",go:"startListen()",n:"🎧 فهم الاستماع",
       s:`استمعي لمقطعٍ قصير، وأجيبي عن معناه — مستوى ${profileOf().level||"A2"}`},
+    {g:"eng_in",c:"#0E7490",go:"startWejl()",n:"🎧 استماع وجدان · STEP",
+      s:`${toAr(WEJL_BANK.length)} مقطعاً بصيغة أسئلة استماع وجدان — والتفريغُ مؤلَّفٌ على صيغتها لا منقولٌ من تسجيلاتها`},
     {g:"eng_in",sec:"read",c:"#7C3AED",go:"startRead()",n:"📖 فهم المقروء",
       s:`اقرئي نصّاً قصيراً، وأجيبي عن معناه — مستوى ${profileOf().level||"A2"}`},
     // للثلاثة كقسم وجدان وورقة تحديد المستوى: **نفس المادّة** وقرارُ صاحب المشروع فيها
