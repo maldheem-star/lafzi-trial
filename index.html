@@ -4746,8 +4746,8 @@ const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEn
   "vocabMastered","vocabMasterCount","vocabStageCheck","vocabSrsUpdate","startVocab","vocabSetupRound",
   "vocabChoose","vocabCheck","vocabNext","vocabHintShow","vocabHintText","vocabInput","vocabNorm",
   "vocabPasteBlock","pasteBlockCore","vocabMeterHTML","renderVocab","renderVocabResult","vocabSpeak",
-  "writeLfp","mockBand","mockLogLoad","mockLogAdd","mockSeenRecently","mockPickFrom",
-  "buildMockPaper","startMock","mockCur","mockQuestion","mockChoose","mockFinish","renderMock","renderMockResult",
+  // البادئة `mock` تاريخيّة: محرّكُ العشرين حُذف ١٨ أكتوبر وبقيت احترازاتُ قياسه
+  "writeLfp","paperLogLoad","paperLogAdd","paperLogOf","mockSeenRecently","mockPickFrom",
   "posRecord","posBiasOf","posBiasArmed","posTagFor","posConfirmOk","posConfirmHTML","posCancel","posPendClear",
   "posCxOf","posCxTake","posCxNote",
   "quizFromCache","quizGenTopUp","quizRotNext",
@@ -18477,43 +18477,51 @@ function renderSeq(){
   </div>`;
 }
 
-// ===== المحاكاة الأسبوعية: ورقةٌ كاملة بصيغة كامبردج — ٢١ أغسطس =====
-// طلبها صاحب المشروع أسبوعيةً، والفحص النقدي حذّر من عطلها المتوقَّع: «محاكاةٌ أسبوعية
-// ببنكٍ ثابت تقيس ألفة الاختبار لا القدرة» — نفس عطل التكرار المُصلَح في gram/step.
-// فبُنيت على ثلاثة احترازاتٍ صريحة، كلٌّ منها يعالج تلوّثاً معروفاً في القياس:
-//   ١) **استبعاد ما رآه مؤخراً** (MOCK_COOLDOWN يوماً): عنصرٌ أُجيب عنه أمس يقيس
-//      تذكّره لا قدرته — وهو تلوّث إعادة الاختبار (test-retest contamination) المعروف.
-//      والاستبعاد يُرخّى تلقائياً إن لم يبقَ ما يكفي، فلا تنهار الورقة إلى صفر عنصر.
-//   ٢) **توليدٌ قبل الورقة**: تُستدعى مولّدات الأقسام نفسها قبل التجميع، فالبنك ينمو
-//      بين أسبوع وأسبوع بدل أن يُعاد كما هو (نفس genTopUp القائم، لا مولّد جديد).
-//   ٣) **بلا تغذية راجعة حتى النهاية**: الامتحان يقيس ولا يُدرّس — عرض الصواب بعد كل
-//      سؤال يجعل الورقة تمريناً لا قياساً، ويُفسد استقلال الأسئلة.
-// والبنية من الورقة الحقيقية: أقسامٌ متتابعة (استماع ⇐ قراءة ⇐ قواعد ⇐ تحليل كتابي)
-// كما تُرتَّب أوراق YLE/A2 Key/B1 Preliminary، لا خلطٌ عشوائي.
-// وحدُّه المعلن: **لا كتابةَ حرّة في الورقة** — تصحيحها يحتاج نداءَ شبكةٍ لكل نصّ فيكسر
-// التوقيت، وتقديرها آليّاً بعدد الكلمات وحده كان سيُدخل في الدرجة مقياساً كذّبته
-// بياناتنا نفسها (محمد ١٠٠٪ على نصٍّ مُعاد). فالورقة تقيس الفهم والدقّة، وتُقال حدودها.
-const MOCK_COOLDOWN=3,MOCK_KEY="mawhiba_mock_v1";
-const MOCK_SECTIONS=[
-  {k:"listen",n:5,t:"فهم الاستماع",bank:function(l){return bankStretched("listen",l,listenBankFor)}},
-  {k:"read",  n:5,t:"فهم المقروء", bank:function(l){return bankStretched("read",l,readBankFor)}},
-  {k:"gram",  n:5,t:"دقّة القواعد",bank:function(l){return bankStretched("gram",l,gramBankFor)}},
-  {k:"step",  n:5,t:"التحليل الكتابي",bank:function(l){return bankStretched("step",l,stepBankFor).filter(function(x){return x.type!=="order"})}},
-];
-// درجات كامبردج التقريبية — مواءمةٌ معلنة لا تحويلٌ رسمي إلى مقياس كامبردج الرقمي
-const MOCK_BANDS=[
-  {min:90,g:"A",d:"ممتاز — أداءٌ فوق مستوى الورقة"},
-  {min:82,g:"B",d:"جيّد جداً — المستوى مُتقَن"},
-  {min:70,g:"C",d:"ناجح — المستوى مُبلَغ"},
-  {min:60,g:"—",d:"قريب — دون عتبة النجاح المعتادة"},
-  {min:0, g:"—",d:"يحتاج بناءً أوسع قبل الإعادة"},
-];
-function mockBand(pct){for(const b of MOCK_BANDS)if(pct>=b.min)return b;return MOCK_BANDS[MOCK_BANDS.length-1]}
-function mockLogLoad(){try{return JSON.parse(lsGet(MOCK_KEY)||"[]")}catch(e){return[]}}
-function mockLogAdd(rec){
-  const a=mockLogLoad();a.unshift(rec);
-  try{lsSet(MOCK_KEY,JSON.stringify(a.slice(0,20)))}catch(e){}
+// ===== ورقةُ STEP الكاملة: محاكاةٌ واحدة لا زرّان متشابهان — ١٨ أكتوبر =====
+// أكمل إلياس «محاكاة الاختبار» (١٧ أكتوبر ١٧:٣١) فكانت **عشرين عنصراً** ودرجتُه ١٠ من
+// ٢٠، فقال صاحب المشروع: «خلص إلياس ولكن عدد الاسئلة ٢٠ سؤال فقط!!». والعشرون كانت
+// بالتصميم (أربعةُ أقسام × ٥ منذ ٢١ أغسطس)، **ووصفُها على الشاشة يقول «ورقة كاملة»** —
+// فالشكوى دليلُ عيبٍ في النصّ قبل أن تكون طلبَ ميزة، بحرف «المعروض يوافق المقيس».
+//
+// **والقيدُ مقاسٌ لا مُقدَّر**: بنوك المحاكاة الأربعة عند مستواه (B1) مجموعُها ٤١ عنصراً
+// (١٠+١٠+١٠+١١)، فورقةٌ من مئة **مستحيلة منها**، وحتى أربعين تستنفد البنك كلَّه كل مرّة
+// فتصير إعادةً تامّة. وورقةُ المئة موجودةٌ أصلاً: «تحديد المستوى بنمط STEP» بأوزان
+// الاختبار نفسها من بنوك وجدان (١٢٧٤+٤٠+٤٧). فعُرض الفرقُ بأرقامه فاختار: **المحاكاة
+// تصير ورقة STEP كاملة، ويُدمَج معها زرُّ تحديد المستوى فلا يبقى زرّان متشابهان.**
+//
+// فحُذف محرّك العشرين كلُّه (`MOCK_SECTIONS`/`buildMockPaper`/`mockChoose`/`renderMock`/
+// `renderMockResult`) **ولم يُضَف محرّكٌ ثانٍ**: محرّكُ الورقة القائم هو المحاكاة،
+// وإعادتُه أسبوعياً هي ما طُلب — وكلُّ قسمٍ جلسةٌ على حدة كما يُدار STEP نفسه، لأن مئةً
+// في جلسةٍ واحدة ٣٧ دقيقة بزمنه المقاس (٢١٫٩ث للعنصر على عشرين عنصراً، ١٧ أكتوبر).
+//
+// **ونطاقاتُ كامبردج (`MOCK_BANDS`) حُذفت معه ولم تُنقَل**: إسقاطُ نطاقاتِ اختبارٍ على
+// ورقةِ اختبارٍ آخر استشهادٌ بمعيارٍ سليمٍ في غير موضعه (خطأ Hick's law، ٤ أكتوبر)،
+// ولا جدولَ مواءمةٍ منشوراً بين STEP وCEFR أصلاً (بُحث ١٣ أكتوبر فلم يوجد).
+//
+// **والاحترازان الباقيان يخصّان القياس لا عددَ الأسئلة، فبقيا بأسمائهما القديمة عمداً**
+// (`MOCK_COOLDOWN`/`mockSeenRecently`/`mockPickFrom`): تستعملها `placePool` في أربعة
+// مواضع، وإعادةُ تسميتها تغييرُ نداءاتٍ ووثيقةٍ واختبارٍ بلا مكسبٍ سلوكيّ. فالبادئة
+// **تاريخيّة** ويُقال ذلك بدل أن تُقرأ محرّكاً ما زال قائماً:
+//   ١) **استبعاد ما رآه مؤخراً** (`MOCK_COOLDOWN` يوماً): عنصرٌ أُجيب عنه أمس يقيس
+//      تذكّره لا قدرته — تلوّثُ إعادة الاختبار. ويُرخّى تلقائياً فلا تنهار الورقة.
+//   ٢) **بلا تغذيةٍ راجعة حتى نهاية القسم** — الامتحان يقيس ولا يُدرّس.
+const MOCK_COOLDOWN=3;
+// ===== سجلُّ الأوراق السابقة — شرطُ أن تكون «محاكاةً» لا قياساً مرّةً واحدة =====
+// `placeLoad` يحفظ **آخر** نتيجةٍ لكل قسم ويُطبِق عليها في الإعادة، فورقةٌ أسبوعية بلا
+// سجلٍّ لا يُرى فيها تقدّمٌ ولا تراجع. والسجلُّ هنا **عرضٌ محلّي** لا مصدرُ حقيقة:
+// الحقيقةُ في `mawhiba_answer_log` كما كانت، وهذا يُغني عن استعلامٍ ليراه هو على الشاشة.
+//
+// **ومفتاحٌ جديد لا `mawhiba_mock_v1`**: سطورُ ذاك أوراقُ كامبردج من عشرين عنصراً،
+// فخلطُها بأوراق STEP في قائمةٍ واحدة يجعل «التقدّم» كذباً — وهو نفسُ درس «حقلان
+// لمعنًى واحد» معكوساً: معنيان في حقلٍ واحد. ولا يضيع قياسٌ بترك القديم.
+const PAPER_KEY="mawhiba_paper_v1";
+function paperLogLoad(){try{return JSON.parse(lsGet(PAPER_KEY)||"[]")}catch(e){return[]}}
+function paperLogAdd(rec){
+  const a=paperLogLoad();a.unshift(rec);
+  try{lsSet(PAPER_KEY,JSON.stringify(a.slice(0,24)))}catch(e){}
 }
+// سجلُّ قسمٍ بعينه، الأحدثُ أوّلاً — فيُقرأ تقدّمُ كل قسمٍ على حدة لا الورقة جملةً
+function paperLogOf(sec){return paperLogLoad().filter(function(r){return r&&r.sec===sec})}
 // آخر ظهورٍ لكل عنصر — يُقرأ من مخزون FSRS نفسه (last) فلا سجلّ ثانٍ يُبنى
 function mockSeenRecently(srsStore,id){
   const r=srsStore&&srsStore[id];
@@ -18526,125 +18534,6 @@ function mockPickFrom(POOL,srsStore,n){
   // الاستبعاد يُرخّى بدل أن تنهار الورقة — ويُسجَّل كم عنصراً لم يُتجنَّب
   const rest=shuffle(POOL.filter(function(i){return mockSeenRecently(srsStore,i.id)}));
   return fresh.concat(rest).slice(0,n);
-}
-const MOCK_SRS={listen:function(){return listenSrsLoad()},read:function(){return readSrsLoad()},
-  gram:function(){return gramSrsLoad()},step:function(){return stepSrsLoad()}};
-function buildMockPaper(){
-  const lv=profileOf().level||"A2",out=[];let reused=0;
-  MOCK_SECTIONS.forEach(function(sec){
-    const POOL=sec.bank(lv),st=(MOCK_SRS[sec.k]||function(){return{}})();
-    const picked=mockPickFrom(POOL,st,sec.n);
-    picked.forEach(function(it){
-      if(mockSeenRecently(st,it.id))reused++;
-      out.push({sec:sec.k,secT:sec.t,it:it});
-    });
-  });
-  return{items:out,reused:reused,lv:lv};
-}
-let mockPaper=null,mockIdx=0,mockAns=[],mockDone=false,mockStart=0,mockOrder=[];
-function startMock(){
-  const p=buildMockPaper();
-  mockPaper=p;mockIdx=0;mockAns=[];mockDone=false;mockStart=Date.now();
-  // ترتيب الخيارات يُخلَط مرّةً للورقة كلّها — لا انحياز موضع، وثباتٌ داخل السؤال
-  mockOrder=p.items.map(function(x){
-    const n=(x.it.c||x.it.choices||[]).length||3;
-    return shuffle(Array.from({length:n},function(_,i){return i}));
-  });
-  mode="mock";window.scrollTo(0,0);render();
-  // البنوك تنمو للورقة القادمة لا الحالية — نفس نداءات التوليد الصامتة القائمة
-  try{const lv=p.lv;genTopUp("listen",GEN_BANK_KEY_LISTEN,lv);genTopUp("read",GEN_BANK_KEY_READ,lv);
-      gramGenTopUp(lv);stepGenTopUp(lv)}catch(e){}
-}
-function mockCur(){return mockPaper&&mockPaper.items[mockIdx]}
-// نصّ السؤال وخياراته يختلفان بحسب القسم — تُقرأ من العنصر نفسه بلا تحويله
-function mockQuestion(x){
-  const it=x.it;
-  if(x.sec==="gram"||(x.sec==="step"&&it.type==="pick"))return{q:"أيّ الجمل صحيحة؟",c:it.c.map(function(o){return o.t}),a:it.c.findIndex(function(o){return o.ok})};
-  if(x.sec==="step")return{q:it.q||"أكملي الفراغ",c:it.c,a:it.a};
-  return{q:it.q,c:it.c,a:it.a};
-}
-function mockChoose(i){
-  if(mockDone)return;
-  const x=mockCur();if(!x)return;
-  const Q=mockQuestion(x),ord=mockOrder[mockIdx],real=ord[i];
-  mockAns.push({sec:x.sec,id:x.it.id,sk:skOf(x.it),pick:real,ok:real===Q.a,pos:i+1});
-  if(mockIdx+1>=mockPaper.items.length)mockFinish();
-  else{mockIdx++;render()}
-}
-function mockFinish(){
-  mockDone=true;
-  const total=mockAns.length,right=mockAns.filter(function(a){return a.ok}).length;
-  const pct=total?Math.round(100*right/total):0,secs=Math.round((Date.now()-mockStart)/1000);
-  const per={};mockAns.forEach(function(a){const o=per[a.sec]||(per[a.sec]={n:0,ok:0});o.n++;if(a.ok)o.ok++});
-  const band=mockBand(pct);
-  mockLogAdd({d:todayStr(),pct:pct,band:band.g,lv:mockPaper.lv,secs:secs});
-  // كل عنصر يُسجَّل على حدة بقسمه وموضع اختياره — نفس أعراف التسجيل، ودرجةٌ جامعة معه
-  mockAns.forEach(function(a){
-    logAnswer("mock",a.sec,a.ok,"موضع "+a.pos,a.id,null,
-      {_sk:a.sk,q_text:("محاكاة "+mockPaper.lv+" · "+a.sec+(a.sk?" · "+a.sk:"")).slice(0,200)});
-  });
-  logAnswer("mock","paper",pct>=70,pct+"% · درجة "+band.g,null,secs*1000,
-    {score_pct:pct,q_text:("محاكاة "+mockPaper.lv+" · "+Object.keys(per).map(function(k){
-      return k+" "+per[k].ok+"/"+per[k].n}).join(" · ")+" · مُعاد:"+mockPaper.reused).slice(0,400)});
-  window.scrollTo(0,0);render();
-}
-function renderMock(){
-  if(!mockPaper){app.innerHTML=`${profileBarHTML()}<div class="card"><p class="sub">لا ورقة.</p>
-    <button class="btn" onclick="home()">رجوع</button></div>`;return}
-  if(mockDone)return renderMockResult();
-  const x=mockCur(),Q=mockQuestion(x),ord=mockOrder[mockIdx];
-  const n=mockPaper.items.length;
-  const audio=x.sec==="listen"
-    ? `<button class="btn" style="background:#7C3AED" onclick="speakEnglish(${JSON.stringify(x.it.audio||"").replace(/"/g,'&quot;')})">🔊 استمع</button>`
-    : "";
-  const passage=x.sec==="read"&&x.it.passage
-    ? `<div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:.9rem;
-        direction:ltr;text-align:left;font-family:Georgia,serif;margin-bottom:.8rem">${esc(x.it.passage)}</div>`:"";
-  app.innerHTML=`${profileBarHTML()}
-  <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:.5rem">
-      <b>📝 محاكاة الاختبار — ${esc(x.secT)}</b>
-      <span style="color:#64748B;font-size:.9em">${toAr(mockIdx+1)} من ${toAr(n)}</span>
-    </div>
-    <div style="height:6px;background:#E2E8F0;border-radius:3px;margin:.6rem 0 1rem">
-      <div style="height:100%;width:${Math.round(100*mockIdx/n)}%;background:#0F766E;border-radius:3px"></div></div>
-    <p class="sub">ورقةٌ كاملة بلا تصحيحٍ حتى النهاية — كالاختبار الحقيقي.</p>
-    ${audio}${passage}
-    <div class="q" style="direction:ltr;text-align:left;font-family:Georgia,serif">${esc(Q.q)}</div>
-    <div class="choices">${ord.map(function(real,i){
-      return `<button class="choice" style="direction:ltr;text-align:left;font-family:Georgia,serif"
-        onclick="mockChoose(${i})">${esc(Q.c[real])}</button>`}).join("")}</div>
-    <button class="btn ghost" style="margin-top:1rem" onclick="home()">إنهاء وخروج</button>
-  </div>`;
-}
-function renderMockResult(){
-  const total=mockAns.length,right=mockAns.filter(function(a){return a.ok}).length;
-  const pct=total?Math.round(100*right/total):0,band=mockBand(pct);
-  const per={};mockAns.forEach(function(a){const o=per[a.sec]||(per[a.sec]={n:0,ok:0});o.n++;if(a.ok)o.ok++});
-  const secs=Math.round((Date.now()-mockStart)/1000);
-  const hist=mockLogLoad().slice(1,6);
-  const names={listen:"فهم الاستماع",read:"فهم المقروء",gram:"دقّة القواعد",step:"التحليل الكتابي"};
-  app.innerHTML=`${profileBarHTML()}
-  <div class="card">
-    <h2>📝 نتيجة المحاكاة — مستوى ${esc(mockPaper.lv)}</h2>
-    <div style="font-size:2.2rem;font-weight:800;color:${pct>=70?"#0F766E":"#B45309"}">${toAr(pct)}%</div>
-    <div style="color:#475569;margin-bottom:.8rem">${band.g!=="—"?"درجة "+esc(band.g)+" · ":""}${esc(band.d)}
-      · ${toAr(Math.round(secs/60))} دقيقة</div>
-    ${Object.keys(per).map(function(k){
-      const o=per[k],p=Math.round(100*o.ok/o.n);
-      return `<div style="display:flex;justify-content:space-between;padding:.5rem .8rem;border-bottom:1px solid #E2E8F0">
-        <span>${esc(names[k]||k)}</span><b style="color:${p>=70?"#0F766E":"#B45309"}">${toAr(o.ok)}/${toAr(o.n)}</b></div>`}).join("")}
-    ${mockPaper.reused?`<p class="sub" style="margin-top:.7rem">⚑ ${toAr(mockPaper.reused)} عنصراً تكرّر من جلسةٍ قريبة —
-      البنك لم يكفِ لورقةٍ بكرٍ تماماً، فالدرجة أعلى ممّا تستحقّه القدرة وحدها.</p>`:""}
-    ${hist.length?`<div style="margin-top:1rem"><b style="font-size:.9em;color:#475569">أوراق سابقة</b>
-      ${hist.map(function(h){return `<div style="color:#64748B;font-size:.88em">${esc(h.d)} · ${toAr(h.pct)}%</div>`}).join("")}</div>`:""}
-    <p class="sub" style="margin-top:.8rem">تقيس هذه الورقة الفهم والدقّة. الكتابة الحرّة والنطق يُقاسان في قسميهما،
-    ولا يدخلان هذه الدرجة.</p>
-    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.8rem">
-      <button class="btn" onclick="home()">رجوع</button>
-      <button class="btn ghost" onclick="startMock()">ورقة أخرى</button>
-    </div>
-  </div>`;
 }
 
 // ===== تحديد المستوى بنمط STEP: أربعةُ أقسام بأوزان الاختبار نفسها — ١٣ أكتوبر =====
@@ -19066,6 +18955,11 @@ function placeBankSize(k){
 }
 function placeReady(k){const s=placeSecOf(k);return !!s&&placeBankSize(k)>=s.n}
 function placeCoverage(){let w=0;PLACE_SECTIONS.forEach(function(s){if(placeReady(s.k))w+=s.w});return w}
+// طولُ الورقة ومزيجُها **يُشتقّان من `PLACE_SECTIONS` لا يُكتبان رقماً** على الشاشة —
+// وهذا بعينه ما أوقعنا فيه وصفُ المحاكاة («ورقة كاملة» على عشرين عنصراً): عددٌ مكتوب
+// في النثر يُكذّبه التصميم ولا يُسقط اختباراً. فإن تغيّر وزنٌ أو طولُ قسمٍ تغيّر المعروض.
+function placeItemTotal(){let n=0;PLACE_SECTIONS.forEach(function(s){n+=s.n});return n}
+function placeMixLine(){return PLACE_SECTIONS.map(function(s){return s.t+" "+toAr(s.w)+"٪"}).join(" · ")}
 // الخياراتُ ثلاثةٌ في الاستماع وأربعةٌ في وجدان، فخطُّ الصدفة يُشتقّ من المعروض فعلاً
 function placeChance(ans){
   if(!ans||!ans.length)return 0;
@@ -19198,6 +19092,11 @@ function placeFinish(){
   st[placeSec]={n:n,ok:ok,secs:secs,d:todayStr(),medMs:med,chance:placeChance(placeAns),
     byLevel:placeAgg(placeAns,"lvl"),byRule:placeAgg(placeAns,"r"),byPos:placeAgg(placeAns,"pos")};
   placeSave(st);
+  // وسطرٌ في سجلّ الأوراق — `placeSave` يُطبِق على السابق، فبلا هذا لا تُرى إعادةٌ
+  // أسبوعية تقدّماً ولا تراجعاً. والدرجةُ تُحفظ مع **خطّ الصدفة** لا وحدها: ٤٠٪ على
+  // خياراتٍ ثلاثة ليست ٤٠٪ على أربعة، ومقابلةُ ورقتين بلا الخطّ تُقرأ خطأً.
+  paperLogAdd({d:todayStr(),sec:placeSec,n:n,ok:ok,
+    pct:n?Math.round(100*ok/n):0,chance:placeChance(placeAns),secs:secs});
   // كلُّ عنصرٍ على حدة بموضعه المعروض وزمنه — فبعد أوراقٍ عدّة تُحسب نسبُ الصواب لكل
   // عنصر، وهي **أوّلُ معايرةِ صعوبةٍ حقيقية** لهذا البنك. وبلا هذا لا تُعاير أبداً.
   placeAns.forEach(function(a){
@@ -19240,9 +19139,12 @@ function renderPlaceMenu(){
   app.innerHTML=`${profileBarHTML()}
   <button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
   <div class="card">
-    <h2>🎯 تحديد المستوى بنمط STEP</h2>
-    <p class="sub">أربعةُ أقسام بأوزان اختبار STEP نفسها، كلُّ قسمٍ جلسةٌ على حدة.
+    <h2>📝 ورقة STEP الكاملة</h2>
+    <p class="sub">${toAr(placeItemTotal())} عنصراً بأوزان اختبار STEP نفسها، كلُّ قسمٍ جلسةٌ على حدة
+    — فمئةٌ في جلسةٍ واحدة تزيد على نصف ساعة، وSTEP نفسه يُدار بأقسام.
     الأسئلة نصُّها من ملفّات وجدان، والاستماع من بنك التطبيق المؤلَّف (موسومٌ بمصدره).</p>
+    <p class="sub">وهي <b>قياسٌ ومحاكاةٌ معاً</b>: أوّلُ مرّةٍ تُحدّد المستوى، وكلُّ إعادةٍ
+    ورقةُ تدريبٍ تُستبعَد فيها عناصرُ الأيّام الأخيرة ويُحفَظ أثرُها أدناه.</p>
     <div style="background:${cov>=100?"#ECFDF5":"#FFFBEB"};border:1px solid ${cov>=100?"#10B981":"#F59E0B"};
       border-radius:10px;padding:.7rem;margin:.6rem 0;font-size:.92em;color:#334155">
       <b>التغطية الآن: ${toAr(cov)}٪ من وزن الاختبار.</b>
@@ -19259,6 +19161,25 @@ function renderPlaceMenu(){
         <div style="font-size:.85em;color:${ready?"#64748B":"#B45309"};margin-top:.1rem">${
           ready?(r&&r.n?("آخرُ محاولة "+esc(r.d)+" — النتيجة "+toAr(r.ok)+" من "+toAr(r.n)+" ("+toAr(pct)+"٪)"):"لم يُبدأ بعد"):
             ("بنكُه غيرُ جاهز: "+toAr(placeBankSize(s.k))+" عنصراً من "+toAr(s.n)+" المطلوبة")}</div>
+        ${(function(){
+          // أوراقُ هذا القسم السابقة — **الأقدمُ أوّلاً** فيُقرأ الاتّجاه كما يُقرأ أيُّ
+          // منحنى تعلّم، ومعها خطُّ الصدفة فلا تُقارَن درجةٌ من ثلاثة خيارات بأخرى من
+          // أربعة. وتظهر من **ورقتين** فأكثر: ورقةٌ واحدة ليست تقدّماً.
+          //
+          // **وصفٌّ لكلّ ورقة لا سطرٌ واحد بسهم** — قِيس موضعُ كلّ محرفٍ في أوّل لقطة
+          // فإذا السطرُ الواحد (تاريخٌ لاتينيّ + نسبةٌ هندية + سهمٌ محايد، مكرّراً) يُعرض
+          // بترتيبٍ مبعثر: نفس فخّ ٢٥ أغسطس في وسيطٍ ثالث. والعلاجُ هو المعتمَد في بطاقة
+          // التكرار (١١ سبتمبر): صفوفٌ وكلُّ نصٍّ في صندوقه، والسهمُ يُحذف لأن **الترتيب
+          // يقول ما كان يقوله**. والتاريخُ معزولٌ بـltr كما تُعزَل الأصواتُ الضعيفة.
+          const h=paperLogOf(s.k);if(h.length<2)return "";
+          return `<div style="margin-top:.45rem;font-size:.84em;color:#64748B">
+            <b style="color:#475569">أوراقُك السابقة — الأقدمُ أوّلاً:</b>
+            ${h.slice(0,6).reverse().map(function(x){
+              return `<div style="display:flex;gap:.6rem;align-items:center;margin-top:.2rem">
+                <span style="direction:ltr;display:inline-block;color:#94A3B8">${esc(x.d)}</span>
+                <b style="color:#475569">${toAr(x.pct)}٪</b></div>`}).join("")}
+            <div style="color:#94A3B8;margin-top:.2rem">خطُّ الصدفة ${toAr(h[0].chance||0)}٪</div></div>`;
+        })()}
         ${ready?`<button class="btn" style="margin-top:.5rem;padding:.6rem;font-size:.95em;background:#7C2D12"
           onclick="startPlaceSec('${s.k}')">${r&&r.n?"أعيدي هذا القسم":"ابدئي هذا القسم"}</button>`:""}
       </div>`}).join("")}
@@ -19360,7 +19281,7 @@ function renderPlaceReport(){
   app.innerHTML=`${profileBarHTML()}
   <button class="link-btn" onclick="goPlaceMenu()">→ رجوع للأقسام</button>
   <div class="card">
-    <h2>📋 تقرير تحديد المستوى</h2>
+    <h2>📋 تقرير الورقة</h2>
     <div style="font-size:2.1rem;font-weight:800;color:#7C2D12">${toAr(weighted)}%</div>
     <div style="color:#475569;margin-bottom:.6rem">موزونةً على الأقسام المكتملة
       (${toAr(wSum)}٪ من ١٠٠ من وزن الاختبار)</div>
@@ -19713,7 +19634,7 @@ function renderKpi(){
 }
 
 // ===== العرض =====
-function render(){if(mode==="placeMenu")return renderPlaceMenu();if(mode==="place")return renderPlace();if(mode==="placeReport")return renderPlaceReport();if(mode==="vctx")return renderVctx();if(mode==="mock")return renderMock();if(mode==="seq")return renderSeq();if(mode==="kpi")return renderKpi();if(mode==="home")return renderHome();if(mode==="listen")return renderListen();if(mode==="read")return renderRead();if(mode==="write")return renderWrite();if(mode==="gram")return renderGram();if(mode==="build")return renderBuild();if(mode==="math6Menu")return renderMath6Menu();if(mode==="math6")return renderMath6();if(mode==="step")return renderStep();if(mode==="wejMenu")return renderWejMenu();if(mode==="wej")return renderWej();if(mode==="wejl")return renderWejl();if(mode==="wejr")return renderWejr();if(mode==="statMenu")return renderStatMenu();if(mode==="stat")return renderStat();if(mode==="minpair")return renderMinpair();if(mode==="video")return renderVideo();if(mode==="errors")return renderErrors();if(mode==="engplan")return renderEngPlan();if(mode==="factplan")return renderFactPlan();if(mode==="vocab")return renderVocab();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="speak")return renderSpeak();if(mode==="coach")return renderCoach();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
+function render(){if(mode==="placeMenu")return renderPlaceMenu();if(mode==="place")return renderPlace();if(mode==="placeReport")return renderPlaceReport();if(mode==="vctx")return renderVctx();if(mode==="seq")return renderSeq();if(mode==="kpi")return renderKpi();if(mode==="home")return renderHome();if(mode==="listen")return renderListen();if(mode==="read")return renderRead();if(mode==="write")return renderWrite();if(mode==="gram")return renderGram();if(mode==="build")return renderBuild();if(mode==="math6Menu")return renderMath6Menu();if(mode==="math6")return renderMath6();if(mode==="step")return renderStep();if(mode==="wejMenu")return renderWejMenu();if(mode==="wej")return renderWej();if(mode==="wejl")return renderWejl();if(mode==="wejr")return renderWejr();if(mode==="statMenu")return renderStatMenu();if(mode==="stat")return renderStat();if(mode==="minpair")return renderMinpair();if(mode==="video")return renderVideo();if(mode==="errors")return renderErrors();if(mode==="engplan")return renderEngPlan();if(mode==="factplan")return renderFactPlan();if(mode==="vocab")return renderVocab();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="speak")return renderSpeak();if(mode==="coach")return renderCoach();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
 
 // صفحة الأخوين قسمٌ واحد: المحادثة. بقيّة الأقسام بُنيت على أخطائها هي — بنك
 // أسئلتها، وتباعدها، ومنهج صفّها السادس — فوضعها أمام ولدٍ آخر يُشغله بما ليس له.
@@ -19857,10 +19778,8 @@ function renderHomeCoachOnly(){
     ...(errCount()?[{g:"eng_out",c:"#DB2777",go:"startErrors()",
       n:`🎯 أخطائي · ${toAr(errCount())} مستحقّة`,
       s:"تصحيحات محادثتك السابقة — تُبنى كلمةً كلمة، وتعود عند حافّة النسيان"}]:[]),
-    {g:"exam",lead:1,c:"#7C2D12",go:"goPlaceMenu()",n:"🎯 تحديد المستوى بنمط STEP",
-      s:`أربعةُ أقسامٍ بأوزان STEP نفسها، كلُّ قسمٍ جلسة — أسئلتُه نصُّها من ملفّات وجدان، والتغطية الآن ${toAr(placeCoverage())}٪`},
-    {g:"exam",lead:1,c:"#7C2D12",go:"startMock()",n:"📝 محاكاة الاختبار",
-      s:"ورقة كاملة بصيغة كامبردج: استماع وقراءة وقواعد وتحليل كتابي — بلا تصحيحٍ حتى النهاية"},
+    {g:"exam",lead:1,c:"#7C2D12",go:"goPlaceMenu()",n:"📝 ورقة STEP الكاملة — محاكاة",
+      s:`${toAr(placeItemTotal())} عنصراً بأوزان الاختبار نفسها (${placeMixLine()}) — كلُّ قسمٍ جلسة، بلا تصحيحٍ حتى نهايته، وتُعاد بسجلّ أوراقك السابقة. والتغطية الآن ${toAr(placeCoverage())}٪`},
     ...(p.id==="mohammed"?[{g:"course",lead:1,c:"#059669",go:"goStatMenu()",n:"📊 إحصاء ١٠٢",
       s:`${toAr(STAT_BANK.length)} سؤالاً من مقرّرك: المجموعات، النزعة المركزية، التشتّت، الانحدار، العدّ، الاحتمال، المتغيّر العشوائي، التوزيع الثنائي — بحلٍّ خطوةً خطوة`}]:[]),
     {g:"meas",c:"#0F172A",go:"loadKpi()",n:"📊 لوحة القياس",
@@ -19948,10 +19867,8 @@ function renderHome(){
       s:`كلمةٌ واحدة بثلاث مهارات: معناها، ونطقها، وكتابتها — بنكٌ من ${toAr(VOCAB_BANK.length)} كلمة، والمرحلة الأولى ${toAr(VOCAB_STAGE1_MIN)}`},
     {g:"eng_out",c:"#0E7490",go:"startDictation()",n:"✍️ إملاء بالإنجليزية",
       s:"استمعي للكلمة، ثم اكتبيها — مستوى A1"},
-    {g:"exam",lead:1,c:"#7C2D12",go:"goPlaceMenu()",n:"🎯 تحديد المستوى بنمط STEP",
-      s:`أربعةُ أقسامٍ بأوزان STEP نفسها، كلُّ قسمٍ جلسة — أسئلتُه نصُّها من ملفّات وجدان، والتغطية الآن ${toAr(placeCoverage())}٪`},
-    {g:"exam",lead:1,c:"#7C2D12",go:"startMock()",n:"📝 محاكاة اختبار الإنجليزية",
-      s:"ورقة كاملة بصيغة كامبردج: استماع وقراءة وقواعد وتحليل كتابي — بلا تصحيحٍ حتى النهاية"},
+    {g:"exam",lead:1,c:"#7C2D12",go:"goPlaceMenu()",n:"📝 ورقة STEP الكاملة — محاكاة",
+      s:`${toAr(placeItemTotal())} عنصراً بأوزان الاختبار نفسها (${placeMixLine()}) — كلُّ قسمٍ جلسة، بلا تصحيحٍ حتى نهايته، وتُعاد بسجلّ أوراقك السابقة. والتغطية الآن ${toAr(placeCoverage())}٪`},
     {g:"meas",c:"#1D4ED8",go:"loadProgress()",n:"📈 متابعة التقدّم",
       s:"نتائجك السابقة وتحليل المستوى لكل مجال"},
     {g:"meas",c:"#0F172A",go:"loadKpi()",n:"📊 لوحة القياس",

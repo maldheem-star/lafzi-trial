@@ -72,29 +72,35 @@ console.log('\n٢) النصّ داخل سمة المعالج — مُهرَّب�
   const all=[];let x;
   const reAll=/on[a-z]+="[^"]*?\$\{JSON\.stringify\(([\s\S]*?)\)\s*(\.replace\([^)]*\))?\}/g;
   while((x=reAll.exec(SRC)))all.push({raw:x[0],esc:!!x[2]});
-  ok(all.length>=5,`قِيس فعلاً: ${all.length} موضعاً يُدرج نصّاً في سمة معالج`);
+  ok(all.length>=4,`قِيس فعلاً: ${all.length} موضعاً يُدرج نصّاً في سمة معالج`);
   const bare=all.filter(a=>!a.esc||!/&quot;/.test(a.raw));
   ok(bare.length===0,'وكلُّها تُهرّب التنصيص بـ`&quot;`'+(bare.length?' — '+bare.length+' عارياً':''));
-  // ومرباطان على الموضعين اللذين كانا عاريَين بأعيانهما — فلا يعودان بصمت
-  const sites=[['ورقة المحاكاة','onclick="speakEnglish(${JSON.stringify(x.it.audio||"")'],
-               ['أزواج الاستماع','onclick="speakEnglish(${JSON.stringify(minpairShowSent||it.s[minpairTarget])']];
+  // ومرباطٌ على الموضع الباقي من الاثنين اللذين كانا عاريَين — فلا يعود بصمت
+  const sites=[['أزواج الاستماع','onclick="speakEnglish(${JSON.stringify(minpairShowSent||it.s[minpairTarget])']];
   sites.forEach(function(s){
     const at=SRC.indexOf(s[1]);
     ok(at>0&&SRC.slice(at,at+s[1].length+40).indexOf("&quot;")>0,`و${s[0]}: النصُّ مُهرَّبٌ عند موضعه`);
   });
+  // **والموضعُ الثاني زال بذاته**: زرُّ استماع ورقة المحاكاة حُذف مع محرّك العشرين
+  // (١٨ أكتوبر)، وزوالُ الموضع أقوى من تهريبه. فيُحرَس ألّا يعود **عارياً** لو عاد:
+  // أيُّ `speakEnglish(${JSON.stringify(...)})` بلا `&quot;` يُسقطه السطرُ أعلاه،
+  // وهذا يُثبِّت أن الزوال مقصودٌ لا ثغرةٌ في القياس.
+  ok(SRC.indexOf('onclick="speakEnglish(${JSON.stringify(x.it.audio||"")')<0,
+    'وموضعُ ورقة المحاكاة زال مع محرّكها لا بإصلاحٍ فيه');
 }
 
-// ===== ٣) ورقة المحاكاة: الخيارات أزرارٌ كاملة العرض متتابعة لا نصٌّ مرصوص =====
-console.log('\n٣) خيارات المحاكاة — أزرارٌ لا نصّ');
+// ===== ٣) خيارات ورقة الاختبار: أزرارٌ كاملة العرض متتابعة لا نصٌّ مرصوص =====
+// **الدعوى هي هي والشاشةُ تغيّرت**: العيبُ المقيس (١٧ أكتوبر) كان في ورقة المحاكاة،
+// ومحرّكُها حُذف في ١٨ أكتوبر فصارت المحاكاةُ ورقةَ STEP نفسها. فيُقاس الباقي بنفس
+// الأرقام — ٣٤٤ بكسلاً لا ٢٧٫٥، وخطٌّ ١٦ لا ١٣٫٣، وخلفيةٌ بيضاء لا رماديُّ المتصفّح.
+console.log('\n٣) خيارات ورقة STEP — أزرارٌ لا نصّ');
 {
   const p=await mk();
   const r=await p.evaluate(()=>{
-    startMock();
-    for(let k=0;k<mockPaper.items.length;k++){if(mockPaper.items[k].sec==='listen'){mockIdx=k;break}}
-    render();
+    startPlaceSec('listen');
     const b=[...document.querySelectorAll('#app .choices .choice')];
     const cs=b.length?getComputedStyle(b[0]):null;
-    return {sec:mockCur().sec,n:b.length,
+    return {sec:placeSec,n:b.length,
       w:cs&&parseFloat(cs.width),fs:cs&&parseFloat(cs.fontSize),
       bg:cs&&cs.backgroundColor,rad:cs&&parseFloat(cs.borderRadius),pad:cs&&parseFloat(cs.paddingTop),
       sameLine:b.length>1?(b[0].getBoundingClientRect().top===b[1].getBoundingClientRect().top):null,
@@ -107,32 +113,36 @@ console.log('\n٣) خيارات المحاكاة — أزرارٌ لا نصّ');
   ok(r.bg==='rgb(255, 255, 255)'&&r.rad>0&&r.pad>0,'وله خلفيةٌ بيضاء وحوافُّ وحشو — لا مظهرُ المتصفّح الخام');
   ok(r.sameLine===false,'والخيارات متتابعةٌ لا على سطرٍ واحد');
   // والنقر يقفل ويتقدّم فعلاً
-  const adv=await p.evaluate(()=>{const i=mockIdx,c=document.querySelector('#app .choices .choice');
-    if(!c)return {none:true};c.click();return {from:i,to:mockIdx,ans:mockAns.length}});
+  const adv=await p.evaluate(()=>{const i=placeIdx,c=document.querySelector('#app .choices .choice');
+    if(!c)return {none:true};c.click();return {from:i,to:placeIdx,ans:placeAns.length}});
   ok(!adv.none&&adv.ans===1&&adv.to===adv.from+1,'والنقرُ على الزرّ المعروض يُسجّل إجابةً ويتقدّم');
   await p.context().close();
 }
 
-// ===== ٤) زرّ الاستماع في المحاكاة: معالجٌ سليم، ولا سماتٍ شاردة، ولا خطأ عند الضغط =====
-console.log('\n٤) زرّ الاستماع — معالجٌ يُترجَم');
+// ===== ٤) زرّ الاستماع في ورقة STEP: معالجٌ سليم، ولا سماتٍ شاردة، ولا خطأ عند الضغط =====
+// موضعُ المحاكاة زال مع محرّكها (§٢)، والباقي الحيُّ هو زرُّ الورقة — وهو **بلا نصٍّ
+// في سمته أصلاً**: النصُّ المنطوق يُقرأ من الحالة (`placeCur().it.audio`) لا يُهرَّب
+// في `onclick`. فالعطلُ مستحيلٌ هنا بنيويّاً لا مُصلَحٌ بتهريب، ويُقال كذلك.
+console.log('\n٤) زرّ الاستماع في الورقة — معالجٌ يُترجَم');
 {
   const p=await mk();
   const r=await p.evaluate(()=>{
-    startMock();
-    for(let k=0;k<mockPaper.items.length;k++){if(mockPaper.items[k].sec==='listen'){mockIdx=k;break}}
-    render();
-    const a=[...document.querySelectorAll('#app button')].find(x=>x.textContent.indexOf('استمع')>=0);
+    startPlaceSec('listen');
+    const a=[...document.querySelectorAll('#app button')]
+      .find(x=>(x.getAttribute('onclick')||'').indexOf('placePlay')>=0);
     if(!a)return {none:true};
     return {attrs:[...a.attributes].map(x=>x.name),handler:typeof a.onclick==='function',
-      oc:a.getAttribute('onclick')||'',audio:(mockCur().it.audio||'')};
+      oc:a.getAttribute('onclick')||'',txt:(a.textContent||'').trim(),
+      hasAudio:!!(placeCur()&&placeCur().it&&placeCur().it.audio)};
   });
-  ok(!r.none,'زرّ الاستماع معروض');
-  ok(r.handler===true,'ومعالجُه يُترجَم فعلاً (كان `false` قبل الإصلاح)');
-  ok(!r.none&&r.attrs.join(',')==='class,style,onclick',`ولا سماتٍ شاردة — ${(r.attrs||[]).join('،')}`);
-  ok(!r.none&&r.oc.indexOf(r.audio.slice(0,12))>0,'والنصّ المنطوق كاملٌ داخل السمة لا مقطوعاً');
+  ok(!r.none,'زرّ الاستماع معروضٌ في قسم الاستماع');
+  ok(r.handler===true,'ومعالجُه يُترجَم فعلاً');
+  ok(!r.none&&r.attrs.join(',')==='type,onclick,style',`ولا سماتٍ شاردة — ${(r.attrs||[]).join('،')}`);
+  ok(!r.none&&r.oc==='placePlay()','والسمةُ نداءٌ بلا نصٍّ مُهرَّب — فلا تنكسر أصلاً');
+  ok(r.hasAudio===true,'والنصُّ المنطوق في الحالة لا في السمة');
   // ضغطةٌ حقيقية: لا خطأ ولا شريطٌ أحمر (النطق نفسه لا يُفحَص — لا صوت هنا)
   await p.evaluate(()=>{const a=[...document.querySelectorAll('#app button')]
-    .find(x=>x.textContent.indexOf('استمع')>=0);a&&a.click()});
+    .find(x=>(x.getAttribute('onclick')||'').indexOf('placePlay')>=0);a&&a.click()});
   await p.waitForTimeout(250);
   const bar=await p.evaluate(()=>{const d=document.getElementById('appErrBar');return d?d.innerText:null});
   ok(bar===null,'والضغطةُ الحقيقية لا ترفع شريط الخطأ'+(bar?' — '+bar.slice(0,90):''));
@@ -162,23 +172,26 @@ console.log('\n٥) جملة أزواج الاستماع — إعادةٌ تعم�
 }
 
 // ===== ٦) والنصُّ الثانوي صار أهدأ من المتن — ولا فيضانَ أفقي =====
+// يُقاس على شاشة الورقة (`.sub` مستعملٌ فيها في ستّة مواضع) بعد أن زالت شاشةُ
+// المحاكاة. والعطلُ الأصلي أن `.sub` **بلا تعريف** فيرث حجم المتن — فالحارسُ
+// مقابلتُه بحجم `body` نفسه لا برقمٍ مكتوب: لو زال التعريف غداً تساويا فسقط السطر.
 console.log('\n٦) الهرم البصري والعرض');
 {
   const p=await mk();
   const r=await p.evaluate(()=>{
-    startMock();
-    for(let k=0;k<mockPaper.items.length;k++){if(mockPaper.items[k].sec==='listen'){mockIdx=k;break}}
-    render();
-    const s=document.querySelector('#app .sub'),q=document.querySelector('#app .q');
-    const cs=s&&getComputedStyle(s),cq=q&&getComputedStyle(q);
+    goPlaceMenu();
+    const s=document.querySelector('#app .sub'),h=document.querySelector('#app h2');
+    const cs=s&&getComputedStyle(s),ch=h&&getComputedStyle(h),cb=getComputedStyle(document.body);
     const w=document.documentElement.clientWidth,bad=[];
     document.querySelectorAll('#app *').forEach(function(e){
       const b=e.getBoundingClientRect();
       if(b.width>0&&(b.right>w+1||b.left<-1))bad.push(e.className||e.tagName)});
-    return {sub:cs&&parseFloat(cs.fontSize),col:cs&&cs.color,q:cq&&parseFloat(cq.fontSize),
+    return {sub:cs&&parseFloat(cs.fontSize),col:cs&&cs.color,
+      h2:ch&&parseFloat(ch.fontSize),body:parseFloat(cb.fontSize),
       w:w,sw:document.documentElement.scrollWidth,n:bad.length,bad:bad.slice(0,3)};
   });
-  ok(r.sub&&r.q&&r.sub<r.q,`النصُّ الثانوي ${r.sub} دون السؤال ${r.q}`);
+  ok(r.sub&&r.body&&r.sub<r.body,`النصُّ الثانوي ${r.sub} دون حجم المتن ${r.body} — فتعريفُه قائم`);
+  ok(r.sub&&r.h2&&r.sub<r.h2,`ودون العنوان ${r.h2}`);
   ok(r.col==='rgb(100, 116, 139)','ولونُه رماديٌّ هادئ لا لونَ المتن');
   ok(r.n===0&&r.sw<=r.w+1,`وصفرُ عنصرٍ يتجاوز ${r.w} بكسلاً`+(r.n?' — '+r.bad.join('، '):''));
   await p.context().close();
