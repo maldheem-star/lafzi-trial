@@ -131,18 +131,32 @@ async function mk(browser){
     ok(r.bold,'وتُبرَز بوسمٍ داخل النصّ');
 
     // القراءة: الجملة تُبرَز داخل الفقرة المرئية أصلاً بعد القفل، لا قبله
+    // ١٧ أكتوبر: صار الإبرازُ **مشروطاً بترجيحٍ حاسم** (`decisiveEvidence`) بعد أن
+    // كشفت لقطةُ شاشةٍ أنه يقع على العنوان حين تتعادل الجملُ عند كلمةِ الموضوع —
+    // و٣٨٪ من إبرازات `read` كانت اعتباطية. فكان هذا القسم يُثبّت `READ_BANK[0]`
+    // بالرقم وقد صار غيرَ حاسم. **والدعوى هي هي بحرفها** (تُبرَز بعد القفل لا قبله)،
+    // والعنصرُ يُختار بصفته لا برقمه — ويُضاف الوجهُ الآخر: ما لا يُرجَّح لا يُبرَز.
     const r2=await page.evaluate(()=>{
-      const it=READ_BANK[0];
-      readItems=[it];readIdx=0;readScore=0;readDone=false;mode="read";
-      readShownAt=Date.now();readPicked=-1;readLocked=false;
-      secGateStart("read",it.passage);gateLeft=0;gateStop();render();
-      const beforeHasBold=app.innerHTML.indexOf('<b style="background:#FEF3C7')>=0;
-      readChoose(it.a);render();
-      const afterHasBold=app.innerHTML.indexOf('<b style="background:#FEF3C7')>=0;
-      return{beforeHasBold,afterHasBold};
+      const run=function(it){
+        readItems=[it];readIdx=0;readScore=0;readDone=false;mode="read";
+        readShownAt=Date.now();readPicked=-1;readLocked=false;
+        secGateStart("read",it.passage);gateLeft=0;gateStop();render();
+        const before=app.innerHTML.indexOf('<b style="background:#FEF3C7')>=0;
+        readChoose(it.a);render();
+        return{before:before,after:app.innerHTML.indexOf('<b style="background:#FEF3C7')>=0,
+               claim:app.innerText.indexOf('الجملة المُبرَزة أعلاه هي الدليل')>=0};
+      };
+      const dec=READ_BANK.filter(function(x){return decisiveEvidence(x.passage,x.c[x.a])})[0];
+      const tie=READ_BANK.filter(function(x){return !decisiveEvidence(x.passage,x.c[x.a])})[0];
+      return{dec:dec?run(dec):null,tie:tie?run(tie):null,
+             nDec:READ_BANK.filter(function(x){return decisiveEvidence(x.passage,x.c[x.a])}).length,
+             n:READ_BANK.length};
     });
-    ok(r2.beforeHasBold===false,'لا تمييز قبل الإجابة (الفقرة نصّها العادي)');
-    ok(r2.afterHasBold===true,'وبعد القفل: جملة الدليل مُبرَزة داخل الفقرة نفسها');
+    ok(r2.dec&&r2.dec.before===false,'لا تمييز قبل الإجابة (الفقرة نصّها العادي)');
+    ok(r2.dec&&r2.dec.after===true,'وبعد القفل: جملة الدليل مُبرَزة داخل الفقرة نفسها');
+    ok(r2.nDec>0&&r2.nDec<r2.n,`والمُرجَّح حاسماً ${r2.nDec} من ${r2.n} — فلا أُلغي الإبراز ولا عُمِّم`);
+    ok(!r2.tie||r2.tie.after===false,'وما لا يُرجّحه النصّ لا يُبرَز — فلا يُوجَّه القارئ إلى جملةٍ ليست الدليل');
+    ok(!r2.tie||r2.tie.claim===false,'ولا يُدَّعى دليلٌ حيث لا إبراز');
 
     // الاستماع: النصّ المسموع يظهر الآن نصّاً بعد القفل فقط، مع تمييز جملة الدليل
     const r3=await page.evaluate(()=>{
