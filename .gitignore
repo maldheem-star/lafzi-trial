@@ -5,3 +5,4 @@
 # ولا يُلتزَم أبداً: وجودُه في المستودع يُصادم خطوة الـcheckout في deploy-pages.yml
 /preview/
 .claude/settings.local.json
+tools/quizbank.out.txt
