@@ -333,9 +333,15 @@ console.log('\n١١) الظهور والخطاب');
     await p.evaluate(()=>startPlaceSec('struct'));
     await p.waitForTimeout(500);
     const run=await p.evaluate(()=>app.innerText);
-    const r={btn:btn,menu:menu,run:run,fem:/تحديد المستوى/.test(menu)};
+    // الدعوى «الشاشةُ تُفتَح بنقرة» كانت تُقابَل بعنوانها المكتوب («تحديد المستوى»)،
+    // فكسرها تسميةُ ١٨ أكتوبر («ورقة STEP الكاملة») وهي تغييرٌ مشروع لا انحدار.
+    // فصارت تُقابَل بعناوين الأقسام **المشتقّة من `PLACE_SECTIONS` الحيّة** لا بنصٍّ
+    // مكتوب — درس «الأعداد (والأسماء) المكتوبة في الاختبارات فخّ صامت».
+    const secs=await p.evaluate(()=>PLACE_SECTIONS.map(x=>x.t));
+    const r={btn:btn,menu:menu,run:run,
+      opened:secs.length>0&&secs.every(t=>menu.indexOf(t)>=0)};
     ok(r.btn,who+': الزرُّ على رئيسيته');
-    ok(r.fem,'وشاشةُ الأقسام تُفتَح بنقرة');
+    ok(r.opened,'وشاشةُ الأقسام تُفتَح بنقرة — '+secs.join('، '));
     if(who==='هيا'){
       ok(/ابدئي|أعيدي/.test(r.menu),'وخطابُها مؤنّث');
       ok(/استمعي|اقرئي|عودي|ابدئي|أعيدي/.test(r.menu+r.run),'وصيغةُ الأمر مؤنّثة');

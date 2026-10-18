@@ -8,6 +8,9 @@ const BASE='http://127.0.0.1:8931/';
 
 // الأقسامُ التي يجب أن تبقى مبلوغةً بنقرةٍ واحدة — **بأسمائها لا بعددها**،
 // فإضافةُ زرٍّ مشروعة غداً لا تكسر الحارس، وحذفُ زرٍّ قائم يكسره (درس ١٨ أغسطس).
+// و`startMock()` خرج من القوائم الثلاث في ١٨ أكتوبر: محرّكُ العشرين حُذف وصارت
+// المحاكاةُ ورقةَ STEP نفسها (`goPlaceMenu()`) — فالدعوى «بابُ الورقة مبلوغٌ بنقرة»
+// باقيةٌ بحرفها، والمُصحَّح اسمُ الباب وحده.
 const MUST={
   haya:["start('verbal')","start('quant')","start('science')","start('flex')","start('full')",
     "goFadeMenu()","loadProgress()","loadKpi()","startBasics('mixed')","startBasics('multdiv')",
@@ -15,14 +18,14 @@ const MUST={
     // `goStatMenu()` عند محمد. والدعوى هي هي: القسم مبلوغٌ بنقرةٍ واحدة ولم يضع.
     "startFactPlan()","goMath6Menu()","startEngPlan()","startDictation()","startListen()",
     "startRead()","startWrite()","startGram()","startStep()","startMinpair()","startSeq()",
-    "startVideo()","startMock()","startPronunciation()","startCoach()","startSpeaking()",
+    "startVideo()","goPlaceMenu()","startPronunciation()","startCoach()","startSpeaking()",
     "startAudioDiag()"],
   mohammed:["startCoach()","startListen()","startRead()","startWrite()","startGram()",
     "startBuildSec()","startStep()","startMinpair()","startSeq()","startVideo()",
-    "goStatMenu()","loadKpi()","startMock()","startAudioDiag()"],
+    "goStatMenu()","loadKpi()","goPlaceMenu()","startAudioDiag()"],
   elias:["startCoach()","startListen()","startRead()","startWrite()","startGram()",
     "startBuildSec()","startStep()","startMinpair()","startSeq()","startVideo()",
-    "loadKpi()","startMock()","startAudioDiag()"]
+    "loadKpi()","goPlaceMenu()","startAudioDiag()"]
 };
 const PAGES=[['haya','index.html'],['mohammed','mohammed.html'],['elias','elias.html']];
 

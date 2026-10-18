@@ -106,28 +106,41 @@ async function mk(browser,q){
     await page.close();
   }
 
-  // ===== ٣) المحاكاة =====
-  console.log('\n٣) المحاكاة الأسبوعية');
+  // ===== ٣) ورقةُ STEP الكاملة (كانت «المحاكاة الأسبوعية» حتى ١٨ أكتوبر) =====
+  // **الدعوى رُوجعت ولم تُدهَس**: ما جاء له هذا القسم — ورقةٌ كاملة بأقسامٍ مرتَّبة،
+  // بلا تغذيةٍ راجعة حتى النهاية، تستبعد ما رآه مؤخراً، وتُسجّل كلَّ عنصرٍ بموضعه —
+  // **باقٍ بحرفه**. والذي سقط حرفُه: محرّك العشرين (`buildMockPaper`) حُذف بأمر صاحب
+  // المشروع (١٨ أكتوبر) بعد أن أكمل إلياس ورقةً من عشرين وقال «٢٠ سؤال فقط!!»،
+  // فصارت المحاكاةُ هي ورقةَ STEP نفسها (مئةُ عنصر بأوزانه، كلُّ قسمٍ جلسة).
+  // فيُقاس المحرّكُ الباقي بالدعاوى نفسها — لا تُحذَف الدعوى لأن اسمَ الدالّة تغيّر.
+  console.log('\n٣) ورقةُ STEP الكاملة');
   {
     const page=await mk(browser,'?p=elias');
     const r=await page.evaluate(()=>{
-      const p=buildMockPaper();
-      const secs={};p.items.forEach(x=>secs[x.sec]=(secs[x.sec]||0)+1);
-      return{n:p.items.length,secs:secs,lv:p.lv,reused:p.reused,
-        order:p.items.map(x=>x.sec),
-        who:profileOf().level,
-        noOrderType:p.items.filter(x=>x.sec==='step').every(x=>x.it.type!=='order')};
+      const secs=PLACE_SECTIONS.map(s=>({k:s.k,w:s.w,n:s.n,ready:placeReady(s.k)}));
+      return{secs:secs,total:placeItemTotal(),wSum:secs.reduce((a,b)=>a+b.w,0),
+        mix:placeMixLine(),cov:placeCoverage(),
+        // الورقةُ تسحب من بنوك وجدان لا من بنكِ درجةٍ واحدة — وهذا ما يجعلها بصعوبة
+        // الاختبار: بنوك المحاكاة القديمة الأربعة مجموعُها ٤١ عنصراً عند B1 (مقاسٌ
+        // ١٧ أكتوبر)، فورقةُ مئةٍ منها مستحيلة.
+        struct:placePool('struct').length,write:placePool('write').length,
+        noBand:typeof mockBand==='undefined'&&typeof MOCK_BANDS==='undefined',
+        noOldEngine:typeof buildMockPaper==='undefined'&&typeof startMock==='undefined',
+      };
     });
-    ok(r.n>0,'الورقة تُبنى — '+r.n+' عنصراً');
-    ok(Object.keys(r.secs).length===4,'أربعة أقسام — '+JSON.stringify(r.secs));
-    ok(r.order[0]==='listen','الاستماع أوّلاً كما ترتّب الورقة الحقيقية');
-    ok(r.order[r.order.length-1]==='step','التحليل الكتابي آخراً');
-    ok(r.noOrderType,'نوع الترتيب مستبعَد (لا يُجاب باختيارٍ واحد)');
-    // الدعوى: الورقة تُبنى **بمستوى المتعلّم** — لا «إلياس A2» (رُفع إلى B1 في
-    // ٨ سبتمبر). فتُقابَل بملفّه لا بدرجةٍ مكتوبة، فلا تنكسر مع أيّ رفعٍ لاحق.
-    ok(r.lv===r.who,'الورقة بمستوى المتعلّم — '+r.lv+' مقابل '+r.who);
+    ok(r.wSum===100,'الأوزان تجمع ١٠٠٪ — '+r.wSum);
+    ok(r.total===100,'وطولُ الورقة مئةُ عنصر كترقيم النموذج ٤٩ — '+r.total);
+    ok(r.secs.length===4,'أربعة أقسام — '+r.mix);
+    ok(r.secs[0].k==='listen'&&r.secs[3].k==='write',
+      'الاستماع أوّلاً والتحليل الكتابي آخراً كترتيب الورقة الحقيقية');
+    ok(r.cov===100,'التغطية مئةٌ بالمئة من وزن الاختبار — '+r.cov+'٪');
+    ok(r.struct===30&&r.write===10,'كلُّ قسمٍ يبني طولَه كاملاً — تراكيب '+r.struct+' وتحليل '+r.write);
+    // **حذفٌ مقصود يُحرَس**: نطاقاتُ كامبردج لا تُسقَط على ورقة STEP — لا جدولَ
+    // مواءمةٍ منشوراً بينهما (بُحث ١٣ أكتوبر)، فإسقاطُها استشهادٌ بمعيارٍ في غير موضعه.
+    ok(r.noBand,'لا نطاقاتِ كامبردج على ورقة STEP');
+    ok(r.noOldEngine,'ومحرّكُ العشرين محذوفٌ فلا مصدرَي حقيقةٍ للورقة');
 
-    // استبعاد ما رآه مؤخراً، وارتخاؤه بدل انهيار الورقة
+    // استبعاد ما رآه مؤخراً، وارتخاؤه بدل انهيار الورقة (الاحترازُ نفسه، بأسمائه التاريخية)
     const cd=await page.evaluate(()=>{
       const today=srsToday();
       return{
@@ -145,16 +158,12 @@ async function mk(browser,q){
     ok(cd.none===false,'عنصرٌ بلا سجلّ لا يُستبعَد');
     ok(cd.relaxed===3,'بنكٌ مستنفَد: يُرخّى الشرط ولا تنهار الورقة — '+cd.relaxed);
     ok(cd.prefersFresh==='b','البكر يُقدَّم على المُعاد');
-
-    // درجات كامبردج التقريبية
-    const bands=await page.evaluate(()=>({
-      a:mockBand(95).g,b:mockBand(85).g,c:mockBand(75).g,low:mockBand(65).g,bottom:mockBand(10).g}));
-    ok(bands.a==='A'&&bands.b==='B'&&bands.c==='C','نطاقات الدرجات — '+JSON.stringify(bands));
-    ok(bands.low==='—'&&bands.bottom==='—','ما دون النجاح بلا درجة');
     await page.close();
   }
   {
-    // جلسةٌ كاملة بنقراتٍ حقيقية: بلا تصحيحٍ أثناء الورقة، ونتيجةٌ في آخرها
+    // جلسةٌ كاملة بنقراتٍ حقيقية: بلا تصحيحٍ أثناء القسم، وتقريرٌ في آخره.
+    // والقسمُ المُختار هو التحليل الكتابي (عشرة عناصر، وبلا بوّابة تسرّعٍ فهي للمقروء
+    // وحده) — فالنقراتُ الآلية لا تُسلِّح شيئاً ولا تُقاس بوّابةٌ لم تُدَّعَ هنا.
     const page=await mk(browser,'?p=elias');
     await page.route('**/functions/v1/tutor',r=>r.fulfill({status:200,contentType:'application/json',body:'{}'}));
     const posted=[];
@@ -162,32 +171,44 @@ async function mk(browser,q){
       try{posted.push(JSON.parse(r.request().postData()||'{}'))}catch(e){}
       r.fulfill({status:201,body:''});
     });
-    await page.evaluate(()=>startMock());
-    const total=await page.evaluate(()=>mockPaper.items.length);
+    await page.evaluate(()=>startPlaceSec('write'));
+    const total=await page.evaluate(()=>placeItems.length);
     let sawFeedback=false;
     for(let i=0;i<total;i++){
       const html=await page.evaluate(()=>app.innerHTML);
-      // «صحيحة» ترد في نصّ سؤال القواعد نفسه، فالفحص على أثر التصحيح لا على الكلمة:
-      // صندوق الشرح، أو تعليم خيارٍ بصواب/خطأ، أو كشف الإجابة
+      // «صحيحة» ترد في نصّ السؤال نفسه، فالفحص على أثر التصحيح لا على الكلمة
       if(/explain-title|class="choice (ok|bad|right|wrong)|✓|✗/.test(html))sawFeedback=true;
-      // الخيارات تُختار **بحاويتها لا باسم صنفها**: كان المحدِّد `.opt` حرفياً، وهو صنفٌ
-      // بلا تعريفٍ في CSS كشفته لقطةُ جهازٍ حقيقي (١٧ أكتوبر) فاستُبدل بـ`.choice`
-      // المُجرَّب — فسقط هذا القسم بصمت (٠ من ٢٠) ودعواه صحيحةٌ لم تتغيّر. نفس درس
-      // «الأعداد المكتوبة في الاختبارات فخّ صامت» واقعاً على **اسم صنف** هذه المرّة.
+      // الخيارات تُختار **بحاويتها لا باسم صنفها** — درس ١٧ أكتوبر على اسم الصنف
       await page.evaluate(()=>{const b=document.querySelectorAll('#app .choices button');
         if(b.length)b[0].click()});
       await page.waitForTimeout(30);
     }
-    const end=await page.evaluate(()=>({done:mockDone,html:app.innerHTML,ans:mockAns.length}));
-    ok(!sawFeedback,'بلا تغذيةٍ راجعة أثناء الورقة');
-    ok(end.done===true&&end.ans===total,'كل الأسئلة أُجيبت وانتهت الورقة — '+end.ans+'/'+total);
-    ok(end.html.indexOf('نتيجة المحاكاة')>=0,'شاشة النتيجة تُعرض');
-    ok(/فهم الاستماع|دقّة القواعد/.test(end.html),'تفصيلٌ لكل قسم على حدة');
-    const paper=posted.filter(x=>x.domain==='mock'&&x.qtype==='paper');
-    const items=posted.filter(x=>x.domain==='mock'&&x.qtype!=='paper');
+    const end=await page.evaluate(()=>({done:placeDone,html:app.innerHTML,ans:placeAns.length,
+      hist:paperLogOf('write').length}));
+    ok(total===10,'قسمُ التحليل الكتابي عشرةُ عناصر — '+total);
+    ok(!sawFeedback,'بلا تغذيةٍ راجعة أثناء القسم');
+    ok(end.done===true&&end.ans===total,'كل الأسئلة أُجيبت وانتهى القسم — '+end.ans+'/'+total);
+    ok(end.html.indexOf('تقرير الورقة')>=0,'شاشة التقرير تُعرض');
+    ok(/التحليل الكتابي/.test(end.html),'تفصيلٌ لكل قسم على حدة');
+    const sec=posted.filter(x=>x.domain==='wejplace'&&x.qtype==='section');
+    const items=posted.filter(x=>x.domain==='wejplace'&&x.qtype==='write');
     ok(items.length===total,'كل عنصر يُسجَّل على حدة — '+items.length);
-    ok(paper.length===1&&typeof paper[0].score_pct==='number','ودرجةٌ جامعة للورقة — '+(paper[0]&&paper[0].score_pct));
+    ok(sec.length===1&&typeof sec[0].score_pct==='number','ودرجةٌ جامعة للقسم — '+(sec[0]&&sec[0].score_pct));
     ok(/موضع/.test(items[0].response||''),'موضع الاختيار يُسجَّل (انحياز الموضع)');
+    // **سجلُّ الأوراق** — شرطُ أن تكون «محاكاةً» لا قياساً مرّةً واحدة: `placeSave`
+    // يُطبِق على السابق، فبلا سطرٍ هنا لا يُرى تقدّمٌ بين ورقةٍ وورقة.
+    ok(end.hist===1,'ورقةٌ واحدة ⇒ سطرٌ واحد في سجلّ الأوراق — '+end.hist);
+    const again=await page.evaluate(async()=>{
+      startPlaceSec('write');
+      for(let i=0;i<placeItems.length;i++){placeChoose(0)}
+      return{hist:paperLogOf('write').length,
+        keys:Object.keys(paperLogOf('write')[0]||{}).sort().join(','),
+        shown:(function(){goPlaceMenu();return app.innerHTML.indexOf('أوراقُك السابقة')>=0})()};
+    });
+    ok(again.hist===2,'وإعادةُ القسم تُضيف سطراً لا تُطبِق عليه — '+again.hist);
+    ok(/chance/.test(again.keys)&&/pct/.test(again.keys),
+      'والسطر يحمل خطَّ الصدفة مع الدرجة فلا تُقارَن درجةٌ من ثلاثة خيارات بأخرى من أربعة');
+    ok(again.shown,'وسجلُّ الأوراق يُعرض في القائمة من ورقتين فأكثر');
     await page.close();
   }
 
@@ -198,16 +219,18 @@ async function mk(browser,q){
     await page.evaluate(()=>render());
     const r=await page.evaluate(()=>({
       missing:censusMissing(),
-      // **بالدالّة لا بنصّ الزرّ**: الدعوى «زرُّ المحاكاة مبلوغ» لا «اسمُه كذا».
-      // وقد كُسرت بإعادة تسميةٍ مشروعة (٤ أكتوبر: صار «محاكاة اختبار الإنجليزية»
-      // تمييزاً عن «محاكاة شاملة» الموهبية) — فهو درس «الأعداد المكتوبة في
-      // الاختبارات فخّ صامت» واقعاً على **النصوص** المكتوبة لا الأعداد وحدها.
+      // **بالدالّة لا بنصّ الزرّ**: الدعوى «زرُّ الورقة مبلوغ» لا «اسمُه كذا».
+      // وقد كُسرت بإعادة تسميةٍ مشروعة مرّتين (٤ أكتوبر، ثمّ ١٨ أكتوبر حين صارت
+      // المحاكاةُ ورقةَ STEP نفسها) — فهو درس «الأعداد المكتوبة في الاختبارات فخّ
+      // صامت» واقعاً على **النصوص** المكتوبة لا الأعداد وحدها.
       mock:[...document.querySelectorAll('button')]
-        .some(b=>(b.getAttribute('onclick')||'').trim()==='startMock()'),
+        .filter(b=>(b.getAttribute('onclick')||'').trim()==='goPlaceMenu()').length,
       modes:document.querySelectorAll('.mode').length,
     }));
     ok(r.missing.length===0,(q||'هيا')+': لا دالّة مفقودة — '+r.missing.join(','));
-    ok(r.mock,(q||'هيا')+': زرّ المحاكاة ظاهر');
+    // **زرٌّ واحد لا زرّان**: هذا ما أُمر به في ١٨ أكتوبر — فلو عاد زرٌّ ثانٍ للورقة
+    // (بأيّ اسم) سقط هذا السطر، وهو الحارسُ على الدمج نفسه لا على وجود الزرّ.
+    ok(r.mock===1,(q||'هيا')+': زرُّ ورقة STEP ظاهرٌ **مرّةً واحدة** — '+r.mock);
     ok(r.modes>0,(q||'هيا')+': الأزرار تُرسم ('+r.modes+')');
     await page.close();
   }
