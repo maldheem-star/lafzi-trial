@@ -116,12 +116,26 @@ console.log('\n٢) ميزانيةُ الدقيقة: النداء المحكوم 
     const after=quizBudgetOk(), left=quizBudgetLeft();
     quizWinAt=Date.now()-61000;           // انقضت النافذة
     const rolled=quizBudgetOk();
-    return{fresh,after,left,rolled,tpm:QUIZ_TPM,req:QUIZ_REQ_TOK};
+    // والحدُّ الفاصل يُقاس من الثابتين الحيَّين لا من رقمٍ مكتوب: ما يتّسع للحجز
+    // بالضبط يُسمح، ومحرفٌ واحد فوقه يُمنَع
+    quizWinAt=0;quizWinSpent=0;quizBudgetSpend(QUIZ_TPM-QUIZ_REQ_TOK);
+    const atEdge=quizBudgetOk();
+    quizWinAt=0;quizWinSpent=0;quizBudgetSpend(QUIZ_TPM-QUIZ_REQ_TOK+1);
+    const overEdge=quizBudgetOk();
+    return{fresh,after,left,rolled,atEdge,overEdge,tpm:QUIZ_TPM,req:QUIZ_REQ_TOK};
   });
-  ok(r.tpm===1000&&r.req===800,`الحدّ ${r.tpm} والحجز ${r.req} — كلاهما من ردّ المزوّد لا مختار`);
+  // **والحجزُ يُشتقّ من الثابت الحيّ لا يُكتب رقماً** — كُتب ٨٠٠ يومَ هذا الفحص، ثمّ
+  // خُفِّض إلى ٥٠٠ في ١٨ أكتوبر بقياس الشريحة ٩٥ من ٢٨ نداءً حقيقياً. فالدعوى التي
+  // جاء لها الفحصُ (نداءٌ محكومٌ بالفشل يُمنَع قبل إرساله، والنافذةُ تُفتح بانقضائها)
+  // باقيةٌ بحرفها، والرقمُ المكتوب هو ما كُسِر — درس «الأعداد المكتوبة فخّ صامت».
+  // و«من ردّ المزوّد» تصحّ على الحدّ وحده (`limit=1000` في نصّ ٤٢٩)؛ والحجزُ مقاسٌ
+  // من استهلاكنا نحن، ويُقال الفرق بدل تعميمٍ لا يصحّ على الاثنين.
+  ok(r.tpm===1000,`الحدّ ${r.tpm} من ردّ المزوّد حرفياً (\`limit=1000\`)`);
+  ok(r.req>0&&r.req<=r.tpm,`والحجزُ ${r.req} دون الحدّ — وإلّا فشل كلُّ نداءٍ أبداً`);
   ok(r.fresh===true,'نافذةٌ خالية ⇒ يُسمح');
-  ok(r.left===495,`وبعد ٥٠٥ يبقى ${r.left} رمزاً`);
-  ok(r.after===false,'و٤٩٥ لا تتّسع لحجز ٨٠٠ ⇒ يُمنَع');
+  ok(r.left===r.tpm-505,`وبعد ٥٠٥ يبقى ${r.left} رمزاً`);
+  ok(r.atEdge===true,`وما يتّسع للحجز بالضبط (أُنفق ${r.tpm-r.req}) يُسمح`);
+  ok(r.overEdge===false,`ومحرفٌ واحد فوقه (${r.tpm-r.req+1}) يُمنَع — فالحدُّ الفاصل مُشتقٌّ لا مكتوب`);
   ok(r.rolled===true,'وبانقضاء الدقيقة تُفتح النافذة من جديد — لا إقفالَ للأبد');
 }
 

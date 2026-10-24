@@ -32,7 +32,7 @@ const mk=async(q)=>{
     window.SpeechSynthesisUtterance=function(t){this.text=t};
   });
   await p.goto(BASE+(q||''));
-  await p.waitForFunction(()=>typeof posCxNote==='function'&&typeof writeCritHTML==='function');
+  await p.waitForFunction(()=>typeof posBiasArmed==='function'&&typeof writeCritHTML==='function');
   await p.waitForTimeout(250);
   return p;
 };
@@ -66,86 +66,50 @@ const clickNth=n=>p.evaluate(i=>{
 },n);
 const boxOn=()=>p.evaluate(()=>!!document.querySelector('[data-poscx="1"]'));
 
-console.log('\n٢) عرضُ الصندوق يصل السجلّ — الثغرة المُعلَنة في ١ أكتوبر');
+// ===== الأقسام ٢-٦ كانت تُثبّت بوّابة التأكيد، وقد أُسقطت بمعيارها المُعلَن — ١٨ أكتوبر =====
+// كُتب يوم بنائها (٢٥ سبتمبر) حرفاً: «فرضيّةٌ تُقاس ولا يُدَّعى أنها علاج»، والحكم:
+// «إن غلب `مباشر` فالبوّابة لا تُغيّر شيئاً وتُسقَط». والمقياسُ الذي شُحن هنا أجاب:
+// **٣٧ عرضاً · ٣٧ `مباشر` · صفر `مبدَّل` · صفر تراجع** — فأُسقطت الآلة كلُّها ولم تُترَك
+// كُرْثاً يُوهم أنه يقيس. فدعاوى «وصل صفُّ `pos_cx`» و«`تأكيد:مبدَّل`» صارت بائدةً
+// بالقياس لا بالخطأ — تُراجَع ولا تُدهَس (قاعدة ٢٢ أغسطس).
+// **وما جاءت له هذه الأقسام باقٍ بحرفه ويُثبَّت أدناه**: التسليحُ يقع، والوسمُ يصل سطر
+// الإجابة، والقفلُ من النقرة الأولى — ومعه حارسُ ارتدادٍ على الإسقاط نفسه.
+
+console.log('\n٢) مُسلَّحةٌ ⇒ الوسمُ يصل سطر الإجابة، والقفلُ من النقرة الأولى');
 {
   await openListen();clearRows();
   const c1=await clickNth(0);
   ok(c1===true,'نُقر خيارٌ معروض');
-  ok(await boxOn()===true,'وظهر صندوق التأكيد فعلاً');
-  await p.waitForTimeout(150);
-  const shown=hits(/pos_cx/);
-  ok(shown.length===1,`وصل صفُّ \`pos_cx\` واحد (${shown.length})`);
-  ok(shown.length>0&&/عُ?رض/.test(shown[0]),'ونوعُه «عُرض»');
-  ok(shown.length>0&&/listen/.test(shown[0]),'ومعه اسمُ القسم');
-}
-
-console.log('\n٣) `تأكيد:مباشر` — عُرض فأكّدت نفس الخيار (الفرضيّة لم تُغيّر شيئاً)');
-{
-  clearRows();
-  await clickNth(0);                       // النقرة الثانية على نفس الخيار = تأكيد
+  ok(await p.evaluate(()=>listenLocked)===true,'وقُفل الجواب من النقرة الأولى — لا بوّابةَ تعترض');
   await p.waitForTimeout(250);
   const ans=hits(/"domain":"listen"/);
-  ok(ans.length===1,`قُفل الجواب وسُجّل (${ans.length} صفّاً)`);
+  ok(ans.length===1,`وسُجّل صفٌّ واحد (${ans.length})`);
   const s=ans[0]||'';
-  ok(/تأكيد:مباشر/.test(s),'والسطرُ يحمل `تأكيد:مباشر`');
-  ok(/تحيّز:موضع/.test(s),'ومعه وسمُ التحيّز كما كان — لا استبدال');
-  ok(!/تراجعات/.test(s),'وبلا «تراجعات» (لم تتراجع)');
+  ok(/تحيّز:موضع/.test(s),'ويحمل وسمَ التحيّز — وهو النصفُ المعياريّ الذي بقي');
+  ok(/موضع/.test(s)&&/الصواب موضع/.test(s),'ومعه الموضعُ المعروض وموضعُ الصواب');
+  ok(!/تأكيد:/.test(s),'وبلا وسمِ تأكيدٍ — فالآلةُ أُسقطت لا عُطّلت');
 }
 
-console.log('\n٤) `تأكيد:مبدَّل` — البوّابة غيّرت جوابها فعلاً، وهذا وحده دليلُ نجاحها');
+console.log('\n٣) حارسُ ارتداد: لا صندوقَ ولا آلةَ تأكيدٍ في الصفحة إطلاقاً');
 {
-  await p.evaluate(()=>listenNext());
-  await p.evaluate(()=>{gateSecs=0;gateLeft=0;listenPlays=3;render()});
-  clearRows();
-  await clickNth(1);                       // عُرض الصندوق للخيار الثاني
-  ok(await boxOn()===true,'ظهر الصندوق للخيار الثاني');
-  await clickNth(0);                       // ثمّ اختارت غيره ⇒ يُعاد العرض له
-  ok(await boxOn()===true,'ثمّ انتقلت إلى خيارٍ آخر فأُعيد العرض');
-  await clickNth(0);                       // وأكّدت الجديد
-  await p.waitForTimeout(250);
-  const ans=hits(/"domain":"listen"/);
-  ok(ans.length===1,`قُفل الجواب (${ans.length} صفّاً)`);
-  const s=ans[0]||'';
-  ok(/تأكيد:مبدَّل/.test(s),'والسطرُ يحمل `تأكيد:مبدَّل` لا «مباشر»');
-  ok(/عرضاً/.test(s),'ومعه عددُ العروض — فلا يستوي من أكّد من أوّل عرضٍ ومن تردّد');
-}
-
-console.log('\n٥) «تراجع» يُسجَّل، ويُعدّ في سطر الإجابة بعده');
-{
-  await p.evaluate(()=>listenNext());
-  await p.evaluate(()=>{gateSecs=0;gateLeft=0;listenPlays=3;render()});
-  clearRows();
-  await clickNth(0);
-  await p.evaluate(()=>posCancel());
+  const r=await p.evaluate(()=>({
+    box:!!document.querySelector('[data-poscx="1"]'),
+    html:String(typeof posConfirmHTML==='function'?posConfirmHTML('listen','x'):'x'),
+    gone:['posCxOf','posCxTake','posCxNote','posPendOn'].filter(n=>typeof window[n]!=='undefined'),
+    okFn:typeof posConfirmOk==='function'?posConfirmOk('listen',0,'س'):null
+  }));
+  ok(r.box===false,'لا عنصرَ `data-poscx` في DOM');
+  ok(r.html==='','و`posConfirmHTML` تُعيد فراغاً');
+  ok(r.gone.length===0,`ولا بقيّةَ من آلة القياس (${r.gone.join(',')||'لا شيء'})`);
+  ok(r.okFn===true,'و`posConfirmOk` تُمرِّر دائماً — فلا تعترض نقرةً');
   await p.waitForTimeout(150);
-  ok(hits(/pos_cx/).some(x=>/تراجع/.test(x)),'وصل صفُّ `pos_cx` بنوع «تراجع»');
-  ok(await boxOn()===false,'والصندوق انطوى');
-  await p.evaluate(()=>{gateSecs=0;gateLeft=0;listenPlays=3;render()});
-  clearRows();
-  await clickNth(0);await clickNth(0);
-  await p.waitForTimeout(250);
-  const s=(hits(/"domain":"listen"/)[0])||'';
-  ok(/تراجعات:١/.test(s),`وسطرُ الإجابة يحمل «تراجعات:١» — ${(s.match(/تراجعات:\S+/)||[''])[0]}`);
+  ok(hits(/pos_cx/).length===0,'ولا صفَّ `pos_cx` يصل الجدول');
 }
 
-console.log('\n٦) سقفُ الضجيج: سطران لكل سبب في عمر الصفحة لا سطرٌ لكل عرض');
-{
-  clearRows();
-  // عروضٌ متتالية بلا تأكيد: ستٌّ منها، والمتوقَّع صفٌّ واحد (الأوّل استُهلك في القسم ٢)
-  for(let k=0;k<6;k++){
-    await p.evaluate(()=>listenNext());
-    await p.evaluate(()=>{gateSecs=0;gateLeft=0;listenPlays=3;render()});
-    await clickNth(0);await p.evaluate(()=>posCancel());
-  }
-  await p.waitForTimeout(250);
-  const n=hits(/pos_cx/).length;
-  ok(n<=2,`ستُّ عروضٍ وستُّ تراجعاتٍ ⇒ ${n} صفّاً فقط — لا إغراق`);
-  ok(n>=1,'  وليس صفراً — فالسقف يحدّ ولا يُسكت');
-}
-
-console.log('\n٧) وبلا تسليحٍ لا وسمَ ولا صندوق — فلا تُمَسّ من لا عَرَض عنده');
+console.log('\n٤) وبلا تسليحٍ لا وسمَ تحيّز — فلا تُمَسّ من لا عَرَض عنده');
 {
   const q=await mk('?p=mohammed');
+  clearRows();
   const r=await q.evaluate(()=>{
     lsSet('pos_bias_listen','[]');
     startListen();gateSecs=0;gateLeft=0;listenPlays=3;render();
@@ -158,13 +122,14 @@ console.log('\n٧) وبلا تسليحٍ لا وسمَ ولا صندوق — ف�
   ok(r.box===false,'ولا صندوق');
   ok(r.locked===true,'والجواب يُقفَل من النقرة الأولى كما كان');
   await q.waitForTimeout(250);
-  ok(!hits(/تأكيد:/).length||!hits(/"domain":"listen"/).some(x=>/تأكيد:/.test(x)&&/mohammed/.test(x)),
-     'ولا وسمَ تأكيدٍ في سطره');
+  const s=(hits(/"domain":"listen"/)[0])||'';
+  ok(!/تحيّز:موضع/.test(s),'ولا وسمَ تحيّزٍ في سطره');
+  ok(/موضع/.test(s),'  ومع ذلك يُسجَّل موضعُ اختياره — القياسُ لا يتوقّف على التسليح');
   await q.close();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-console.log('\n٨) الإملاء الصوتي لا يُنجِح — الحالة الحيّة بنصّها');
+console.log('\n٥) الإملاء الصوتي لا يُنجِح — الحالة الحيّة بنصّها');
 const w=await mk();
 // نصُّ هيا الحقيقي من سجلّ ٤ أكتوبر ١٥:٥١:٠٧ — ١٨ كلمة لهدف ١٠
 const DICT='In my family, there are I love you very family and mom or dad to Grandma your brother';
@@ -221,7 +186,7 @@ async function writeOne(page,text,inputType){
      'وصفُّ `write_dictated` صار يقول «ولم يُحتسب نجاحاً»');
 }
 
-console.log('\n٩) ولا انحدار على من يكتب بأصابعه — درس ٢٩ أغسطس');
+console.log('\n٦) ولا انحدار على من يكتب بأصابعه — درس ٢٩ أغسطس');
 {
   const w2=await mk();
   clearRows();
@@ -262,7 +227,7 @@ console.log('\n٩) ولا انحدار على من يكتب بأصابعه — �
   await w2.close();
 }
 
-console.log('\n١٠) والمعيارُ يُعلَن قبل أن يُطبَّق — ويتحوّل في الاتّجاهين');
+console.log('\n٧) والمعيارُ يُعلَن قبل أن يُطبَّق — ويتحوّل في الاتّجاهين');
 {
   const t=await w.evaluate(()=>{startWrite();render();return document.getElementById('app').textContent});
   ok(/الإملاء بالصوت لا يُحتسب/.test(t),'سطرٌ ثابت تحت الصندوق يقوله قبل المحاولة');
@@ -274,7 +239,7 @@ console.log('\n١٠) والمعيارُ يُعلَن قبل أن يُطبَّق 
   await e.close();
 }
 
-console.log('\n١١) ولا خطأ، وكلُّ الدوال معرَّفة');
+console.log('\n٨) ولا خطأ، وكلُّ الدوال معرَّفة');
 {
   ok((await p.evaluate(()=>censusMissing())).length===0,'`censusMissing()` فارغة');
   ok((await p.evaluate(()=>window.__ERRS.length))===0,'ولا خطأ في صفحة الاستماع');
