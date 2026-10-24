@@ -100,7 +100,17 @@ const first=await m.evaluate(()=>{
   // أي مرّةً كل ~١٥ جولة بحكم القرعة وحدها. والدعوى هي هي — «الصندوق يحمل حلّ هذا
   // السؤال بعينه» — فتُقابَل بما يُعرض فعلاً لا بما كُتب (درس ٥ سبتمبر: اختبارٌ
   // يتقلّب بالقرعة أسوأ من اختبارٍ يسقط).
-  return{id:it.id,sol:String(it.sol).replace(/\*\*(.+?)\*\*/g,'$1').slice(0,20)};
+  // ===== ونظيرُه بقي سنةً كاملة: فاصلُ السطر — ٢٤ أكتوبر =====
+  // `statBidi` يشطر الحلّ على `\n` ويلفّ كل سطرٍ في `span` كتلةٍ، و`textContent`
+  // يصل الأسطر **بلا فاصل**. فأوّلُ اثني عشر محرفاً من حلٍّ فيه فاصلُ سطرٍ لا تُوجد
+  // في المعروض قطّ — **عنصران من ١٥٠** (`sa_prb_15` و`sa_rv_6`)، أي سقوطٌ كل ~٧٥
+  // جولة. وأمسكته الجولةُ الكاملة لا الفحص.
+  // وإصلاحُ ١٢ أكتوبر عالج النجمتين **ولم يبحث عن نظيرهما** — نقضُ قاعدة الإصلاح
+  // الشامل. فالدعوى تُقاس الآن على **كلّ سطرٍ** لا على أوّل اثني عشر محرفاً: أمتنُ،
+  // وبلا رقمٍ مكتوب يتقلّب بالقرعة.
+  return{id:it.id,
+    lines:String(it.sol).replace(/\*\*(.+?)\*\*/g,'$1').split("\n")
+      .map(function(x){return x.trim()}).filter(function(x){return x.length>=4})};
 });
 await m.waitForTimeout(300);
 ok(await m.evaluate(()=>statScore)===1,'الإجابة الصحيحة زادت النتيجة');
@@ -108,20 +118,31 @@ ok(await m.evaluate(()=>statLocked)===true,'والسؤال أُقفل فلا ت�
 ok(await m.evaluate(()=>Object.keys(statSrsLoad()).length)>before,'ودخل مخزون التباعد FSRS');
 t=await m.textContent('#app');
 ok(t.includes('الحلّ خطوةً خطوة'),'وظهر صندوق الحلّ');
-ok(t.includes(first.sol.slice(0,12)),'وفيه نصّ حلّ هذا السؤال بعينه');
+ok(first.lines.length>0,`وحلُّ العنصر ${first.id} فيه ${first.lines.length} سطراً يُقاس`);
+{
+  const miss=first.lines.filter(function(L){return t.indexOf(L)<0});
+  ok(miss.length===0,`وكلُّ أسطر حلّ هذا السؤال بعينه معروضة (${first.lines.length} سطراً${miss.length?' — الغائب: '+miss[0].slice(0,30):''})`);
+}
 // وحارسٌ حتميّ لا يُترك للقرعة: العنصر الذي كشف التقلّب بعينه.
 // وسجلُّه يُستعاد بعده: القسمُ التالي يشترط سطراً واحداً، وهذا الفحص يُنتج ثانياً.
 {
   const keep=logs.slice();
-  const probe=await m.evaluate(()=>{
-    const it=STAT_BANK.filter(x=>x.id==='sw1_v4')[0];
-    if(!it)return null;
-    statItems=[it];statIdx=0;statSetupRound();render();
-    statChoose(it.c.findIndex(x=>x.ok));
-    return String(it.sol).replace(/\*\*(.+?)\*\*/g,'$1').slice(0,14);
-  });
-  const tp=await m.textContent('#app');
-  ok(!probe||tp.includes(probe),'وعنصرُ «كل ما يُقاس» بعينه — نجمتاه تصيران عريضاً ولا تُقارَن خاماً');
+  // الثلاثةُ التي كشفت التقلّب بأعيانها: نجمتان (`sw1_v4`) وفاصلا سطرٍ (`sa_prb_15`،
+  // `sa_rv_6`) — فلا ينتظر الحارسُ القرعةَ مرّةً كل ~٧٥ جولة.
+  for(const id of ['sw1_v4','sa_prb_15','sa_rv_6']){
+    const probe=await m.evaluate(x=>{
+      const it=STAT_BANK.filter(y=>y.id===x)[0];
+      if(!it)return null;
+      statItems=[it];statIdx=0;statSetupRound();render();
+      statChoose(it.c.findIndex(y=>y.ok));
+      return String(it.sol).replace(/\*\*(.+?)\*\*/g,'$1').split("\n")
+        .map(function(s){return s.trim()}).filter(function(s){return s.length>=4});
+    },id);
+    const tp=await m.textContent('#app');
+    const miss=(probe||[]).filter(function(L){return tp.indexOf(L)<0});
+    ok(!!probe&&probe.length>0,`  العنصر ${id} موجودٌ وحلُّه ${probe?probe.length:0} سطراً`);
+    ok(miss.length===0,`  وكلُّ أسطره معروضة${miss.length?' — الغائب: '+miss[0].slice(0,30):''}`);
+  }
   logs.length=0;keep.forEach(x=>logs.push(x));
 }
 
