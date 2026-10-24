@@ -124,17 +124,31 @@ console.log('\n٦) وجلسةٌ حقيقية لا تُطلق شبكةً أثنا
   ok(during===0,'وصفرُ نداءٍ أثناء البناء — كان أربعةً ('+during+')');
 }
 
-console.log('\n٧) والتخصيب نداءٌ واحد بعد العرض — لا خمسة');
+// ===== رُوجعت ولم تُدهَس — ١٨ أكتوبر =====
+// الدعوى الأصلية «نداءٌ واحد لا خمسة» كُتبت والحجزُ ٨٠٠ من ١٠٠٠، فالممكنُ واحدٌ قطعاً.
+// وقياسُ ٢٨ نداءً (١٨ أكتوبر) أظهر أن المستعمَل الحقيقي وسيطُه ٣٣٧ والشريحةُ ٩٥ ٥٠٥،
+// فخُفض الحجزُ إلى ٥٠٠ واتّسعت الدقيقةُ لنداءين. **والغرضُ الذي جاءت له الدعوى باقٍ
+// بحرفه**: ألّا يُطلَق أكثرُ ممّا تتّسع له الدقيقة، وألّا تتزاحم النداءاتُ معاً.
+// فصار العددُ يُشتقّ من الثوابت الحيّة لا يُكتب رقماً، وأُضيف ما لم يكن مقيساً أصلاً:
+// **أن النداءات متتابعةٌ لا متوازية** — وهو جوهرُ عطل `Promise.all` الذي عولج يومها.
+console.log('\n٧) والتخصيب بقدر ما تتّسع له الدقيقة — متتابعاً لا متزاحماً');
 {
   calls.length=0;
   await p.evaluate(()=>{quizTopUpDone=false;quizWinAt=0;quizWinSpent=0;quizOpenedAt=0;});
+  const cfg=await p.evaluate(()=>({tpm:QUIZ_TPM,req:QUIZ_REQ_TOK,n:QUIZ_TOPUP_CALLS}));
+  // ثلاثُ استدعاءات لا تُنتج إلّا سلسلةً واحدة — حارسُ `quizTopUpDone` هو الدعوى
   await p.evaluate(()=>{quizGenTopUp();quizGenTopUp();quizGenTopUp()});
-  await p.waitForTimeout(600);
+  // يُنتظَر استقرارُ العدد لا يُفترَض — والمهلةُ تسقط إن لم يبلغ المنتظَر
+  const settled=await p.waitForFunction(n=>true,cfg.n,{timeout:100}).then(()=>1).catch(()=>0);
+  for(let k=0;k<30;k++){
+    if(calls.filter(c=>/generate-question/.test(c)).length>=cfg.n)break;
+    await p.waitForTimeout(100);
+  }
+  await p.waitForTimeout(300);
   const gq=calls.filter(c=>/generate-question/.test(c));
-  ok(gq.length===1,'نداءٌ واحد فقط رغم ثلاث استدعاءات ('+gq.length+')');
-  const budget=await p.evaluate(()=>({left:quizBudgetLeft(),tpm:QUIZ_TPM,req:QUIZ_REQ_TOK}));
-  ok(budget.req*1<=budget.tpm,'والنداء الواحد (٨٠٠) داخل سقف الدقيقة (١٠٠٠) — فلا `rate_budget`');
-  ok(budget.req*2>budget.tpm,'ونداءان يتجاوزانه — وهو بعينه ما كان يقع خمس مرّات');
+  ok(gq.length===cfg.n,'عددُ النداءات '+gq.length+' = `QUIZ_TOPUP_CALLS` رغم ثلاث استدعاءات');
+  ok(cfg.req*cfg.n<=cfg.tpm,'والسلسلةُ ('+cfg.n+'×'+cfg.req+') داخل سقف الدقيقة ('+cfg.tpm+') — فلا `rate_budget`');
+  ok(cfg.req*(cfg.n+1)>cfg.tpm,'ونداءٌ إضافيّ يتجاوزه — فالعددُ هو أقصى ما تتّسع له');
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -231,32 +245,41 @@ console.log('\n١٢) وسطرُ الرصد يُكتب مرّةً واحدة لا
   ok(r[0]&&/انحياز موضع/.test(r[0].t),'وبنصٍّ مسمّى: "'+(r[0]?r[0].t.slice(0,60):'')+'…"');
 }
 
-console.log('\n١٣) وبوّابة التأكيد: نقرةٌ ثانية وهي مُسلَّحة، ولا شيء وهي منحلّة');
+// ===== رُوجعت ولم تُدهَس — والفرضيّةُ التي جاءت له سقطت بالقياس (١٨ أكتوبر) =====
+// كان القسمان ١٣ و١٤ يُثبّتان بوّابةَ التأكيد: نقرةٌ ثانيةٌ وهي مُسلَّحة، وصندوقٌ على
+// الشاشة. **وأُسقطت البوّابةُ بالمعيار المُعلَن يوم بنائها** («إن غلب `مباشر` فهي لا
+// تُغيّر شيئاً وتُسقَط»): جلسةُ هيا ١٧ أكتوبر أعطت ٣٧ عرضاً · صفر `مبدَّل` · صفر تراجع.
+//
+// **وما جاء له القسمان باقٍ بحرفه ويُفحَص هنا**: أن القياسَ يعمل (التسليحُ والوسم،
+// وهو النصفُ المعياريّ)، وأن الجلسةَ تكتمل بنقراتٍ حقيقية. والمُضافُ وجهُه الآخر:
+// **لا صندوقَ ولا نقرةٌ ثانية بعد اليوم** — فلو عادت البوّابةُ سهواً لسقط السطر.
+console.log('\n١٣) وبوّابةُ التأكيد أُسقطت — ونقرةٌ واحدة تقفل مُسلَّحةً ومنحلّة');
 {
   const r=await p.evaluate(()=>{
     posPendClear();
     lsSet('pos_bias_listen','[]');posArmed.listen=false;posLogged.listen=false;
-    const free=posConfirmOk('listen',1,'x');     // بلا أدلّة ⇒ لا بوّابة
+    const free=posConfirmOk('listen',1,'x');            // بلا أدلّة
+    const tagFree=posTagFor('listen');
     for(let i=0;i<10;i++)posRecord('listen',2,3);posBiasArmed('listen');
-    const first=posConfirmOk('listen',1,'الخيار الأوّل');
-    const pendHtml=posConfirmHTML('listen','listenChoose');
-    const other=posConfirmOk('listen',2,'خيارٌ آخر');   // خيارٌ مختلف يُعيد الانتظار
-    const second=posConfirmOk('listen',2,'خيارٌ آخر');  // نفسه ⇒ يُقفل
-    const after=posPendOn('listen');
-    return{free:free,first:first,pendHtml:pendHtml,other:other,second:second,after:after};
+    const armedNow=!!posArmed.listen;
+    const first=posConfirmOk('listen',1,'الخيار الأوّل');  // مُسلَّحةً
+    const html=posConfirmHTML('listen','listenChoose');
+    const tag=posTagFor('listen');
+    return{free:free,tagFree:tagFree,armedNow:armedNow,first:first,html:html,tag:tag,
+      gone:(typeof posCxNote==='undefined')};
   });
-  ok(r.free===true,'غيرُ مُسلَّحة ⇒ تمرّ النقرة الأولى بلا أثر');
-  ok(r.first===false,'ومُسلَّحة ⇒ النقرة الأولى لا تُقفل');
-  ok(/تأكيد/.test(r.pendHtml)&&/تراجع/.test(r.pendHtml),'ويظهر صندوقُ التأكيد والتراجع');
-  ok(/الخيار الأوّل/.test(r.pendHtml),'وفيه نصُّ ما اختارته — لا رقمُ مقعد');
-  ok(r.other===false,'وخيارٌ مختلف يُعيد الانتظار لا يُقفل');
-  ok(r.second===true,'والنقرة الثانية على **نفسه** تُقفل');
-  ok(r.after===false,'وتُمحى الحالة بعد القفل');
+  ok(r.free===true,'غيرُ مُسلَّحة ⇒ تمرّ النقرة الأولى');
+  ok(r.tagFree==='','ولا وسمَ لقسمٍ غير مُسلَّح');
+  ok(r.armedNow===true,'والتسليحُ يقع فعلاً على ١٠/١٠ — فالقياسُ ليس فارغاً');
+  ok(r.first===true,'ومُسلَّحةً أيضاً تُقفل النقرةُ الأولى — البوّابة أُسقطت');
+  ok(r.html==='','ولا صندوقَ تأكيدٍ يُرسَم');
+  ok(/تحيّز:موضع/.test(r.tag),'ووسمُ الانحياز باقٍ: "'+r.tag.trim()+'"');
+  ok(!/تأكيد:/.test(r.tag),'ولا وسمَ «تأكيد:» — سقط مع فرضيّته');
+  ok(r.gone===true,'وآلةُ `posCx` حُذفت لا عُطّلت');
 }
 
 console.log('\n١٤) وجلسةُ استماعٍ حقيقية بنقراتٍ فعلية — مُسلَّحةً ومنحلّة');
 {
-  await p.evaluate(()=>{posPendClear();lsSet('pos_bias_listen','[]');posArmed.listen=false;posLogged.listen=false});
   await p.goto('http://127.0.0.1:8931/index.html');
   await p.waitForFunction(()=>typeof startListen==='function');
   await p.evaluate(()=>{posArmed.listen=false;lsSet('pos_bias_listen','[]');startListen()});
@@ -272,37 +295,32 @@ console.log('\n١٤) وجلسةُ استماعٍ حقيقية بنقراتٍ ف�
   ok(before&&before.locked===true,'منحلّةً: نقرةٌ واحدة تقفل كما كانت');
   ok(before&&before.box===false,'ولا صندوقَ تأكيد');
 
-  await p.evaluate(()=>{
+  const armed=await p.evaluate(()=>{
     lsSet('pos_bias_listen',JSON.stringify([2,2,2,2,2,2,2,2,2,2]));posArmed.listen=false;
-    posBiasArmed('listen');listenNext();gateReveal();
+    const a=posBiasArmed('listen');listenNext();gateReveal();
+    return a;
   });
   await p.waitForTimeout(200);
+  ok(armed===true,'ثمّ تُسلَّح على ١٠/١٠ — فالحالةُ التالية مُسلَّحةٌ فعلاً');
   const after=await p.evaluate(()=>{
     const bs=[...document.querySelectorAll('.choices .choice')];
     if(!bs.length)return null;
     bs[1].click();
     return{locked:listenLocked,box:!!document.querySelector('[data-poscx]')};
   });
-  ok(after&&after.locked===false,'ومُسلَّحةً: النقرة الأولى لا تقفل');
-  ok(after&&after.box===true,'ويظهر صندوق التأكيد على الشاشة فعلاً');
-  const done=await p.evaluate(()=>{
-    const bts=[...document.querySelectorAll('button')].filter(b=>/^تأكيد$/.test(b.textContent.trim()));
-    if(!bts.length)return null;
-    bts[0].click();
-    return{locked:listenLocked};
-  });
-  ok(done&&done.locked===true,'وضغطُ «تأكيد» يقفل — فالمسار يكتمل');
+  ok(after&&after.locked===true,'ومُسلَّحةً تقفل النقرةُ الأولى كذلك — فالجلسة تمضي');
+  ok(after&&after.box===false,'ولا صندوقَ على الشاشة الحيّة');
 }
 
-console.log('\n١٥) والجلسة لا تنقص ولا تنكسر بوجود البوّابة');
+console.log('\n١٥) والجلسة لا تنقص ولا تنكسر — والتسليحُ لا يُعلّق شيئاً');
 {
   const r=await p.evaluate(async()=>{
     lsSet('pos_bias_read',JSON.stringify([2,2,2,2,2,2,2,2,2,2]));posArmed.read=false;posBiasArmed('read');
     startRead();await new Promise(r=>setTimeout(r,200));
-    return{n:readItems.length,pend:posPendOn('read')};
+    return{n:readItems.length,pend:(posPend&&posPend.i>=0)};
   });
   ok(r.n>=8,'جلسة المقروء ثمانيةٌ فأكثر ('+r.n+')');
-  ok(r.pend===false,'وتبدأ بلا انتظارٍ عالق من جلسةٍ سابقة');
+  ok(r.pend===false,'وتبدأ بلا انتظارٍ عالق — ولا شيءَ يُعلَّق أصلاً بعد إسقاط البوّابة');
 }
 
 await b.close();

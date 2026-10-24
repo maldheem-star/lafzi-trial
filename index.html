@@ -1686,20 +1686,39 @@ function qzInjectDue(list,gens,pool){
   });
   return spreadTemplates(out);
 }
+// ===== والتوزيع الزوجيّ/الفرديّ كان يضع النسختين على مسافة ٢ دائماً — ٢٤ أكتوبر =====
+// قال صاحب المشروع: «يتكرر في المحاكاة وفي الأقسام». والقياس صدّقه بلا تحفّظ: ١٧٨ من
+// ٢٠٠ جلسة كمّي و١٩٨ من ٢٠٠ مرونة و**٤٠ من ٤٠** محاكاة فيها قالبٌ مُعاد، **وأدنى
+// مسافةٍ بين نسختيه = ٢ في كل حالةٍ بلا استثناء** — لا ٣ ولا ٤ ولا مرّةً واحدة.
+// وليس حظّاً بل بصمةُ الخطوة السابقة: `flat` يُرتَّب من الأكثر تكراراً فتقع نسختا
+// القالب في أوّل خانتين زوجيّتين (٠ و٢). وجلسةُ هيا الحيّة ١١:٠٢-١١:٠٨ مطابقةٌ
+// للمتوقَّع حرفاً: الأول·محيط·الأول·بستان·وسيط·كسور·وسيط.
+// والدعوى المكتوبة فوق الشيفرة («الترتيب الأمثل») كانت عن **التجاور** وحده وهي صحيحة
+// فيه — لكن سؤالٌ يعود بعد نقرتين يُقرأ تكراراً، والتجاورُ ليس المقياس الذي يشكو منه
+// المتعلّم. فالمقياس صار **أدنى مسافة** لا مجرّد عدم التجاور.
+// والعلاج التوزيعُ الدوريّ (round-robin): جولةٌ تأخذ عنصراً واحداً من كل قالب ثمّ
+// جولةٌ ثانية — فالمسافة = حجمُ الجولة الأولى (عددُ القوالب المتمايزة) لا اثنين.
+// **وحدُّه يُقال**: لو تجاوز أكبرُ قالبٍ نصفَ العدد تجاور ذيلُه حتماً — و`drawSpread`
+// تمنع ذلك بالحصّة (أكثرُه ٢ من ١٢)، وبنوكُ اللفظي/العلمي نصوصُها متمايزة أصلاً.
 function spreadTemplates(list){
   const n=list.length;
   if(n<3)return list.slice();
-  // الأخذُ من أوّل ما يختلف يُنجح الصدر ويُكتّل العجز: القوالب الكثيرة تتبقّى في الآخر
-  // فتتجاور. فنُرتّب من الأكثر تكراراً، ونوزّع على المواضع الزوجية ثم الفردية — وهو
-  // الترتيب الأمثل: لا يتجاور متطابقان ما لم يتجاوز أكثرُها نصفَ العدد.
   const groups={};
   list.forEach(function(x){const k=tmplKey(x);(groups[k]=groups[k]||[]).push(x)});
+  // الأكثرُ تكراراً يتصدّر كلَّ جولة، فيكون ذيلُ الجولة مفرداً وصدرُ التالية مُعاداً
+  // — فلا يتلاقى متطابقان على حدّ الجولتين.
   const keys=Object.keys(groups).sort(function(a,b){return groups[b].length-groups[a].length});
-  const flat=[];keys.forEach(function(k){groups[k].forEach(function(x){flat.push(x)})});
-  const out=new Array(n);let i=0;
-  for(let p=0;p<n;p+=2)out[p]=flat[i++];
-  for(let p=1;p<n;p+=2)out[p]=flat[i++];
-  return out.every(Boolean)?out:list.slice();
+  const out=[],idx={};
+  keys.forEach(function(k){idx[k]=0});
+  for(let guard=0;guard<n+1&&out.length<n;guard++){
+    let moved=false;
+    for(let i=0;i<keys.length&&out.length<n;i++){
+      const k=keys[i];
+      if(idx[k]<groups[k].length){out.push(groups[k][idx[k]++]);moved=true}
+    }
+    if(!moved)break;
+  }
+  return out.length===n?out:list.slice();
 }
 // ===== بطاقة الخطأ المتكرّر (qzCard) ⇐ رابطٌ مباشر لشرحٍ موجودٍ أصلاً =====
 // ١٧ أغسطس: زاوية المروحة (gAngleEqualRays) أخطأتها هيا ٣ من ٣ باختيار المجموع غير
@@ -1750,16 +1769,48 @@ const CLIP_VARIANT={};
 // عشر — فستّةُ قوالبَ متمايزة لجلسةٍ من اثني عشر متاحةٌ بفارقٍ واسع.
 // **والاحتياط باقٍ بحرفه**: إن نفدت المحاولات قُبل ما جاء، فلا جلسةَ تنقص عن حدّها
 // (قاعدة ١٨ أغسطس) — مُثبَتٌ بالقياس في `test_fixes_1003`.
+// ===== والحصّةُ سُدسٌ تُجيز الإعادة حيث لا حاجة إليها — ٢٤ أكتوبر =====
+// السُّدس (٢ من ١٢) **يُجيز** نسختين من كل قالب، فتنشأ الإعادة بالتصادم وحده
+// (birthday): ٢٩ مولّداً كمّياً و١٨ مرونةً، فالمتوقَّع ٢٫٢ و٣٫٤ إعادةً في الجلسة —
+// والمقاس ١٫٦ و٢٫٥، أي أن الإعادة **تصادفٌ تُجيزه الحصّة** لا ضرورةٌ في البنك.
+// والعدد يكفي بفارقٍ واسع: ٢٩ و١٨ مولّداً لجلسةٍ من ١٢. فالحصّة تُشتقّ من حجم
+// المجمع لا من رقمٍ ثابت — `ceil(n/عدد المولّدات)`، فتكون **واحداً** حيث يتّسع
+// المجمع (فلا إعادةَ أصلاً)، وترتفع تلقائياً لو صغُر مجمعٌ آخر دون الجلسة.
+// والمحاولاتُ ٢٤ لا ١٢: مع ١٨ مولّداً و١١ مستعملاً احتمالُ فشل اثنتي عشرة محاولةٍ
+// ٠٫٣٪، وأربعٍ وعشرين ٠٫٠٠١٪ — وهي سحوبٌ محلّية بلا شبكة.
+// ===== والسحبُ كان أعمى عن سجلّ العرض العابر للأيّام — ٢٤ أكتوبر =====
+// قال صاحب المشروع «ولا تغيير حتى في الأرقام»، وهو حرفيٌّ لا مجازيّ: قياسُ فضاء
+// كل مولّدٍ (٤٠٠٠ سحبة لكلٍّ) أظهر **١٤ مولّداً من ٤٧ يُنتج نسخةً واحدة فقط** —
+// سؤالٌ واحد بأرقامه لا يتغيّر أبداً (الزوايا والمصفوفات والنرد والانعكاس وغيرها).
+// فسجلُّ العرض العابر للأيّام (`seenLoad`) **هو** العلاج لهذا النوع، وهو قائمٌ
+// يُكتَب لهذين القسمين فعلاً (`choose()` يُسجّل `item_id = tmplKey`، درس ٢٩ أغسطس)
+// — **لكنّ `drawSpread` لم تكن تقرؤه قطّ**: `uniqueFromGens` تعرف الجلسة الحاضرة
+// وحدها (مجموعةٌ في الذاكرة تُمحى بإعادة التحميل). فكُتب في ٢٩ أغسطس أن أقسام
+// القدرات «وُصلت… بترتيب `seenRank`»، والوصلُ وقع في `takeUniqueFrom` التي تخدم
+// بنكَي اللفظي/العلمي وحدهما — ونظيرُها في الكمّي/المرونة تُرك، وهو نقضُ قاعدة
+// الإصلاح الشامل.
+// **والترتيبُ لا إقصاء** بحرف قاعدة ٢٥ أغسطس: الحصّة وحدها تُقصي، وإن كان كلُّ
+// ما جاء فوق الحصّة قُبل أوّلُ ما جاء — فلا جلسةَ تنقص عن حدّها (قاعدة ١٨ أغسطس).
+// وثمانيةُ مرشّحين تكفي للترتيب، ويُقطَع الاستكشاف فوراً عند قالبٍ لم يُعرض قطّ.
 function drawSpread(gens,n){
-  const cap=Math.max(2,Math.ceil(n/6)),count={},out=[];
+  const pool=Math.max(1,(gens&&gens.length)||1);
+  const cap=Math.max(1,Math.ceil(n/pool)),count={},out=[];
+  let seen={},today=0;
+  try{seen=seenLoad();today=seenDay()}catch(e){seen={}}
   for(let i=0;i<n;i++){
-    let it=null;
-    for(let t=0;t<12;t++){
+    let it=null,best=1/0,any=null,cands=0;
+    for(let t=0;t<24;t++){
       const c=uniqueFromGens(gens);
       if(!c)break;
-      it=it||c;
-      if((count[tmplKey(c)]||0)<cap){it=c;break}
+      any=any||c;
+      const k=tmplKey(c);
+      if((count[k]||0)>=cap)continue;          // الحصّة: لا نسخةَ فوق المسموح
+      cands++;
+      let r=0;try{r=seenRank(k,seen,today)}catch(e){r=0}
+      if(r<best){best=r;it=c}
+      if(best<0||cands>=8)break;               // لم يُعرض قطّ ⇒ لا أفضلَ منه
     }
+    if(!it)it=any;                             // كلُّ ما جاء فوق الحصّة: يُقبل ولا تنقص الجلسة
     if(!it)break;
     const k=tmplKey(it);count[k]=(count[k]||0)+1;out.push(it);
   }
@@ -6452,13 +6503,20 @@ function planChoose(i){
   // للقياس في القسم الذي فيه ١٢٤٦ إجابة. وشكلُ الحقل تغيّر: `response` كان نصَّ
   // الخيار وحده وصار مسبوقاً بموضعه (كما في `gram` منذ ٢٥ أغسطس)، فأيُّ استعلامٍ
   // قديم يطابق النصَّ حرفياً يُراجَع.
-  const ord=planOrd(it),pickPos=ord.indexOf(i)+1;
-  const shown=ord.map(function(oi,k){return (k+1)+") "+String(it.c[oi])+(oi===it.a?" ✓":"")}).join(" | ");
-  posRecord("eng_plan",pickPos,it.c.length);
-  logAnswer("eng_plan",it.t,ok,"موضع "+toAr(pickPos)+" · "+(it.c?it.c[i]:null)+posTagFor("eng_plan"),
+  // **وعنصرٌ بلا خيارات يمرّ بلا موضع** — الحارسُ لازمٌ لا احتياطيّ: الخطّةُ تخلط
+  // أنواعاً بلا `c` (درس · بناءُ جملة · إملاء)، و`planChoose` يُنادى عليها من مساراتٍ
+  // أخرى. وأوّلُ صياغةٍ كتبت `it.c.length` عارياً فانهارت — **وأمسكها ثلاثةُ اختباراتٍ
+  // قائمة** (`test_gram` و`test_planread` و`test_contrast`) لا فحصي، وكلُّها يضغط
+  // `planChoose` على أيّ عنصرٍ تقع عليه القرعة. والسطرُ القديم كان محروساً
+  // (`it.c?it.c[i]:null`) فنُقل حرسُه لا أُسقط.
+  const hasC=!!(it.c&&it.c.length);
+  const ord=hasC?planOrd(it):[],pickPos=hasC?ord.indexOf(i)+1:0;
+  const shown=hasC?ord.map(function(oi,k){return (k+1)+") "+String(it.c[oi])+(oi===it.a?" ✓":"")}).join(" | "):"";
+  if(hasC)posRecord("eng_plan",pickPos,it.c.length);
+  logAnswer("eng_plan",it.t,ok,(hasC?"موضع "+toAr(pickPos)+" · ":"")+(hasC?it.c[i]:null)+posTagFor("eng_plan"),
     it.id,planShownAt?Date.now()-planShownAt:null,
     {is_new:!!it._isNew,srs_box:it._box,lesson:it.lesson||null,
-     q_text:(String(it.q||"")+" · الخيارات: "+shown).slice(0,600)});
+     q_text:(String(it.q||"")+(hasC?" · الخيارات: "+shown:"")).slice(0,600)});
   render();
 }
 function it0c(it,i){return (it&&it.c&&it.c[i]!=null)?String(it.c[i]):""}
