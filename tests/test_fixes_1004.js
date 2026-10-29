@@ -174,7 +174,12 @@ async function writeOne(page,text,inputType){
     const rows=[...document.querySelectorAll('div')]
       .filter(d=>/^[✓○⋯]/.test(d.textContent.trim())&&d.children.length===2)
       .map(d=>({mark:d.textContent.trim()[0],txt:d.textContent.trim().slice(1).trim(),
-                markX:Math.round(d.children[0].getBoundingClientRect().x)}));
+                // ===== العمودُ يمينيّ فيُقاس بحافّته اليمنى لا اليسرى =====
+                // كان القياسُ على `x` (الحافّة اليسرى)، وعرضُ المحرف يختلف بين
+                // ○ (١٢) و⋯ (١٣) و✓ (١١) — ففرقُ بكسلٍ أو اثنين **اصطفافٌ سليم**
+                // في عمودٍ محاذاتُه يمينية، لا انقلاب. الحوافُّ اليمنى ٣٦٧ في
+                // الخمسة كلِّها، وتؤكّده اللقطة. الدعوى هي هي؛ المقياسُ صُحِّح.
+                markX:Math.round(d.children[0].getBoundingClientRect().right)}));
     return {rows:rows,overflowX:document.documentElement.scrollWidth>document.documentElement.clientWidth};
   });
   const bh=cr.rows.filter(x=>/بخطّ يدك/.test(x.txt))[0];
