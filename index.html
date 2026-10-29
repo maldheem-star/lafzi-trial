@@ -586,7 +586,12 @@ function gWorkers(){const w1=rand(3,6),f=rand(2,4),d2=rand(3,6);const total=w1*d
 function gMedian(){const mid=rand(4,20),sum=5*mid;
   const o=qz("quant",`مجموع خمسة أعداد صحيحة متتالية يساوي ${toAr(sum)}. أوجد وسيطها.`,mid,[mid+1,mid-1,Math.round(sum/4)],`الوسيط = المجموع ÷ العدد = ${toAr(sum)} ÷ ٥ = ${toAr(mid)}.`);
   o.seq=[mid-2,mid-1,mid,mid+1,mid+2];o.want="mid";return o}
-function gCube(){const s=rand(2,5),v=s*s*s,nv=(2*s)**3;return qz("quant",`مكعّب حجمه ${toAr(v)} سم³. إذا ضاعفنا طول ضلعه، فما حجمه الجديد؟`,nv,[v*2,v*4,v*6],`مضاعفة الضلع تضاعف الحجم ٨ مرّات: ${toAr(v)} × ٨ = ${toAr(nv)} سم³.`)}
+// المُعامل في النصّ **رقمٌ** لا كلمة — فـ`tmplKey` يمحو الأرقام، فيبقى مفتاح القالب
+// واحداً ولا ينقطع ربطُه بمقطع «حجم المكعّب» في `QZ_CARD_FADE_LINK` (درس ٢٩ أغسطس).
+function gCube(){const s=rand(2,7),k=pick([2,3]),v=s*s*s,nv=(k*s)**3,f=k*k*k;
+  return qz("quant",`مكعّب حجمه ${toAr(v)} سم³. إذا ضُرب طول ضلعه في ${toAr(k)}، فما حجمه الجديد؟`,nv,
+    k===2?[v*2,v*4,v*6]:[v*3,v*9,v*12],
+    `ضرب الضلع في ${toAr(k)} يضرب الحجم في ${toAr(f)}: ${toAr(v)} × ${toAr(f)} = ${toAr(nv)} سم³.`)}
 function gPercent(){const rentP=pick([30,40,50]),expP=pick([20,30]),leftP=100-rentP-expP;if(leftP<=0)return gPercent();const salary=pick([6000,8000,9000,10000,12000]);const left=salary*leftP/100;if(!Number.isInteger(left))return gPercent();const onePercent=left/leftP;return qz("quant",`دفع مسفر ${toAr(rentP)}% من راتبه إيجاراً و${toAr(expP)}% مصروفات، وتبقّى له ${toAr(left)} ريال. كم راتبه؟`,salary,[salary+1000,salary-1000,left*2],`المتبقّي = ${toAr(leftP)}% من الراتب = ${toAr(left)} ريال. قيمة ١% واحد = ${toAr(left)} ÷ ${toAr(leftP)} = ${toAr(onePercent)} ريال. الراتب الكامل = ${toAr(onePercent)} × ١٠٠ = ${toAr(salary)} ريال.`)}
 function gPaths(){const p=rand(2,4),q=rand(2,4);
   return withSteps(qz("quant",`عدد الطرق من (أ) إلى (ب) ${toAr(p)}، ومن (ب) إلى (ج) ${toAr(q)}. كم عدد الطرق من (أ) إلى (ج)؟`,p*q,[p+q,p*q+1,p*q-1],`نضرب: ${toAr(p)} × ${toAr(q)} = ${toAr(p*q)} طريقاً.`),
@@ -596,10 +601,12 @@ function gPaths(){const p=rand(2,4),q=rand(2,4);
      `نضرب: ${toAr(p)} × ${toAr(q)} = ${toAr(p*q)} طريقاً`])}
 
 // ===== مولّدات المرونة والأنماط =====
-function fDouble(){const a=pick([1,2,3]);const q=[a];for(let i=0;i<4;i++)q.push(q[i]*2);const ans=q[4]*2;return withPat(qz("flex",`أكمل النمط: ${arSeq(q)} ، ...`,ans,[ans-a,q[4]+2,ans+2],`كل عدد ضعف الذي قبله: ${toAr(q[4])} × ٢ = ${toAr(ans)}.`),q,ans)}
-function fTriple(){const a=rand(1,3);const q=[a];for(let i=0;i<3;i++)q.push(q[i]*3);const ans=q[3]*3;return withPat(qz("flex",`أكمل النمط: ${arSeq(q)} ، ...`,ans,[ans-a,q[3]+3,ans+3],`كل عدد = الذي قبله × ٣: ${toAr(q[3])} × ٣ = ${toAr(ans)}.`),q,ans)}
+function fDouble(){const a=rand(1,8);const q=[a];for(let i=0;i<4;i++)q.push(q[i]*2);const ans=q[4]*2;return withPat(qz("flex",`أكمل النمط: ${arSeq(q)} ، ...`,ans,[ans-a,q[4]+2,ans+2],`كل عدد ضعف الذي قبله: ${toAr(q[4])} × ٢ = ${toAr(ans)}.`),q,ans)}
+function fTriple(){const a=rand(1,6);const q=[a];for(let i=0;i<3;i++)q.push(q[i]*3);const ans=q[3]*3;return withPat(qz("flex",`أكمل النمط: ${arSeq(q)} ، ...`,ans,[ans-a,q[3]+3,ans+3],`كل عدد = الذي قبله × ٣: ${toAr(q[3])} × ٣ = ${toAr(ans)}.`),q,ans)}
 function fFib(){let a=rand(1,4),b=rand(1,5);const q=[a,b];for(let i=0;i<4;i++)q.push(q[q.length-1]+q[q.length-2]);const ans=q[5]+q[4];return withPat(qz("flex",`أكمل النمط: ${arSeq(q)} ، ...`,ans,[ans+1,ans-1,q[5]*2],`كل عدد = مجموع العددين قبله: ${toAr(q[4])} + ${toAr(q[5])} = ${toAr(ans)}.`),q,ans)}
-function fSq(){const c=pick([0,1]);const q=[];for(let n=1;n<=4;n++)q.push(n*n+c);const ans=25+c;return withPat(qz("flex",`أكمل النمط: ${arSeq(q)} ، ...`,ans,[ans+2,ans-2,ans+5],`مربعات الأعداد${c?" + ١":""}: والتالي ٥²${c?" + ١":""} = ${toAr(ans)}.`),q,ans)}
+function fSq(){const c=rand(0,3),st=pick([1,2]);const q=[];for(let n=st;n<st+4;n++)q.push(n*n+c);const nx=st+4,ans=nx*nx+c;
+  // بدايةٌ وإزاحةٌ مُمعَّرتان: كان الناتج عنصرين لا غير (مقاسٌ على ١٥٠٠ سحبة)
+  return withPat(qz("flex",`أكمل النمط: ${arSeq(q)} ، ...`,ans,[ans+2,ans-2,ans+5],`مربعات الأعداد${c?" + "+toAr(c):""}: والتالي ${toAr(nx)}²${c?" + "+toAr(c):""} = ${toAr(ans)}.`),q,ans)}
 function fOpp(){const dict={"طويل":"قصير","كبير":"صغير","سريع":"بطيء","قوي":"ضعيف","مفتوح":"مغلق","صعب":"سهل","ثقيل":"خفيف","بعيد":"قريب","كثير":"قليل","النور":"الظلام","الفرح":"الحزن"};const keys=Object.keys(dict);const w=pick(keys);const correct=dict[w];const others=shuffle(keys.filter(k=>k!==w).map(k=>dict[k]).filter(v=>v!==correct)).slice(0,3);const opts=shuffle([correct,...others]);return{d:"flex",q:`ما ضدّ كلمة «${w}»؟`,c:opts,a:opts.indexOf(correct),w:`ضدّ «${w}» هو «${correct}».`}}
 // الهرم العددي (مُصلَح: c/a)
 function gPyramid(){const known=rand(2,12),other=rand(2,12),top=(known+other)*2;const m=mcNum(other,[other+2,other-2,Math.round(top/2)]);const knownOnLeft=Math.random()<0.5;const svg=pyramidSVG(toAr(top),knownOnLeft?toAr(known):"؟",knownOnLeft?"؟":toAr(known),knownOnLeft,!knownOnLeft);return{d:"flex",q:`هرم عددي: مجموع العددين السفليين × ٢ = العلوي. ما العدد الناقص؟`,svg,c:m.choices,a:m.answer,w:`العلوي ÷ ٢ = ${toAr(top/2)}، ثم ${toAr(top/2)} − ${toAr(known)} = ${toAr(other)}.`}}
@@ -744,35 +751,68 @@ function dotsMarkup(n){const pos=[[10,10],[25,10],[40,10],[10,25],[25,25],[40,25
 function miniDots(n){return`<svg viewBox="0 0 50 50" width="50" height="50">${dotsMarkup(n)}</svg>`}
 function gridCell(x,y,inner){return`<rect x="${x}" y="${y}" width="55" height="55" fill="#fff" stroke="#CBD5E1" stroke-width="1.5"/><g transform="translate(${x+2.5},${y+2.5})">${inner}</g>`}
 function gridQCell(x,y){return`<rect x="${x}" y="${y}" width="55" height="55" fill="#F8FAFC" stroke="#94A3B8" stroke-width="2" stroke-dasharray="4 3"/><text x="${x+27}" y="${y+35}" font-size="26" font-weight="800" fill="#D97706" text-anchor="middle">؟</text>`}
+// ===== قواعدُ المصفوفة من تصنيفٍ منشور لا من عندي =====
+// **Carpenter, Just & Shell 1990** (*Psychological Review* 97:404) حصرت قواعد مصفوفات
+// رافن في رُتَبٍ مسمّاة: التقدّمُ الكميّ، والجمع، وتوزيعُ ثلاث قيم، والثبات في الصف.
+// وكان المولّد يُنتج **عنصراً واحداً لا غير** (مقاسٌ على ١٥٠٠ سحبة): قاعدةٌ واحدة
+// بأرقامها نفسها، لا يتغيّر فيها إلّا ترتيبُ الخيارات. فمُعِّرت القاعدة لا الأرقام.
+// **وسقفُ النقاط تسعٌ بنيوياً** (`dotsMarkup` شبكةُ ٣×٣)، فكلُّ قاعدةٍ هنا لا تتجاوزه.
 function gRavenCount(){
+  const rule=pick(["seqRow","seqRow","seqCol","desc","add","add","mul"]);
+  const k=rule==="add"?rand(0,2):0;
+  const f=(r,c)=>rule==="seqRow"?r*3+c+1
+    :rule==="seqCol"?c*3+r+1
+    :rule==="desc"?9-(r*3+c)
+    :rule==="add"?(r+1)+(c+1)+k
+    :(r+1)*(c+1);
+  // ===== الشبكةُ تُرسَم من اليمين — عيبٌ كشفته اللقطة لا الاختبار =====
+  // كانت الخلية الأولى تُرسَم يساراً والأخيرةُ («؟») يميناً، والصفحةُ عربيةٌ تُقرأ من
+  // اليمين. فصفُّ ١-٢-٣ يُقرأ عندها ٣-٢-١، وشرحُنا يقول «يزيد واحداً» وهي ترى نقصاً —
+  // **ومموّهُ ٧ كان معروضاً**، أي أن القراءة الصحيحة باتّجاهها كانت تقع على مموّه.
+  // فالعمودُ الأوّل يُرسَم يميناً والخليةُ المسؤولة (الأخيرةُ في ترتيب القراءة) سفلى
+  // **يساراً** — ترتيبُ القراءة هو المعيار، لا موضعُها في أوراقٍ لاتينية.
   let cells="";
-  for(let r=0;r<3;r++)for(let c=0;c<3;c++){const i=r*3+c,x=c*65+5,y=r*65+5;cells+=(i===8)?gridQCell(x,y):gridCell(x,y,dotsMarkup(i+1))}
+  for(let r=0;r<3;r++)for(let c=0;c<3;c++){const x=(2-c)*65+5,y=r*65+5;
+    cells+=(r===2&&c===2)?gridQCell(x,y):gridCell(x,y,dotsMarkup(f(r,c)))}
   const svg=`<svg viewBox="0 0 200 200" width="200" height="200">${cells}</svg>`;
-  const ans=9,distract=shuffle([6,7,8]);
+  const ans=f(2,2);
+  const distract=shuffle([ans-1,ans+1,ans-2,ans+2,ans-3,ans+3].filter(n=>n>=1&&n<=9&&n!==ans)).slice(0,3);
   const choiceVals=shuffle([ans,...distract]);
   const c=choiceVals.map(n=>miniDots(n));
-  return{d:"flex",q:"لاحظي عدد النقاط في كل خلية من الشبكة، ما الشكل المناسب لمكان علامة الاستفهام؟",c,a:choiceVals.indexOf(ans),w:`عدد النقاط يزيد بمقدار واحد من خلية لأخرى (١ إلى ٩)؛ الخلية الأخيرة = ${toAr(ans)} نقاط.`,svg};
+  const why=rule==="seqRow"?`عدد النقاط يزيد واحداً من خلية لأخرى داخل الصف (من اليمين إلى اليسار)، ثمّ يكمل في الصف الذي بعده (١ إلى ٩)؛ فالخلية الناقصة ${toAr(ans)} نقاط.`
+   :rule==="seqCol"?`عدد النقاط يزيد واحداً **نازلاً في العمود**، ثمّ يكمل في العمود الذي يليه يساراً؛ فالخلية الناقصة ${toAr(ans)} نقاط.`
+   :rule==="desc"?`عدد النقاط ينقص واحداً من خلية لأخرى (من اليمين إلى اليسار، ٩ إلى ١)؛ فالخلية الناقصة ${toAr(ans)} نقطة.`
+   :rule==="add"?`عدد النقاط = رقمُ الصف + رقمُ العمود${k?" + "+toAr(k):""}؛ وفي الخلية الناقصة ٣ + ٣${k?" + "+toAr(k):""} = ${toAr(ans)} نقاط.`
+   :`عدد النقاط = رقمُ الصف × رقمُ العمود؛ وفي الخلية الناقصة ٣ × ٣ = ${toAr(ans)} نقاط.`;
+  return{d:"flex",q:"لاحظي عدد النقاط في كل خلية من الشبكة، ما الشكل المناسب لمكان علامة الاستفهام؟",c,a:choiceVals.indexOf(ans),w:why,svg};
 }
 const RAVEN_COLORS=["#0D9488","#7C3AED","#D97706"];
+// لوحةٌ أوسع تُسحَب منها ثلاثةٌ كل جولة — الألوان متباينةٌ بما يكفي للتمييز البصري
+const RAVEN_PALETTE=["#0D9488","#7C3AED","#D97706","#DC2626","#2563EB","#15803D"];
 function triMarkup(color,rot){return`<g transform="rotate(${rot} 25 25)"><polygon points="25,10 38,38 12,38" fill="${color}"/></g>`}
 function triSVG(color,rot){return`<svg viewBox="0 0 50 50" width="50" height="50">${triMarkup(color,rot)}</svg>`}
+// قاعدتُه «توزيعُ ثلاث قيم» المسمّاة عند Carpenter et al. 1990 — والقاعدة لم تتغيّر،
+// المُمعَّرُ أيُّ ثلاثةِ ألوانٍ تنزل على الصفوف وأيُّ ثلاثةِ اتّجاهاتٍ على الأعمدة.
+// (كان يُنتج عنصراً واحداً: نفسُ الألوان الثلاثة بنفس الترتيب ونفسُ الزوايا.)
 function gRavenRotate(){
-  const rots=[0,90,180];
+  const cols=shuffle(RAVEN_PALETTE).slice(0,3);
+  const rots=pick([[0,90,180],[0,120,240],[45,135,225],[0,90,270],[30,150,270],[90,180,270]]);
   let cells="";
-  for(let r=0;r<3;r++)for(let c=0;c<3;c++){const x=c*65+5,y=r*65+5;if(r===2&&c===2){cells+=gridQCell(x,y)}else{cells+=gridCell(x,y,triMarkup(RAVEN_COLORS[r],rots[c]))}}
+  // نفسُ اتّجاه القراءة المعتمَد في مصفوفة النقاط — العمودُ الأوّل يميناً
+  for(let r=0;r<3;r++)for(let c=0;c<3;c++){const x=(2-c)*65+5,y=r*65+5;if(r===2&&c===2){cells+=gridQCell(x,y)}else{cells+=gridCell(x,y,triMarkup(cols[r],rots[c]))}}
   const svg=`<svg viewBox="0 0 200 200" width="200" height="200">${cells}</svg>`;
-  const correct={color:RAVEN_COLORS[2],rot:rots[2]};
-  const distract=[{color:RAVEN_COLORS[2],rot:rots[0]},{color:RAVEN_COLORS[0],rot:rots[2]},{color:RAVEN_COLORS[1],rot:rots[1]}];
+  const correct={color:cols[2],rot:rots[2]};
+  const distract=[{color:cols[2],rot:rots[0]},{color:cols[0],rot:rots[2]},{color:cols[1],rot:rots[1]}];
   const all=shuffle([correct,...distract]);
   const c=all.map(o=>triSVG(o.color,o.rot));
-  return{d:"flex",q:"لاحظي أن اللون يتحدّد حسب الصف واتجاه المثلث يتحدّد حسب العمود، ما الشكل المناسب لمكان علامة الاستفهام؟",c,a:all.indexOf(correct),w:"اللون من الصف الثالث، والاتجاه من العمود الثالث (مثلث بلون الصف مُداراً ١٨٠°).",svg};
+  return{d:"flex",q:"لاحظي أن اللون يتحدّد حسب الصف واتجاه المثلث يتحدّد حسب العمود، ما الشكل المناسب لمكان علامة الاستفهام؟",c,a:all.indexOf(correct),w:`لونُ الخلية الناقصة من **صفّها** واتجاهُها من **عمودها** (مثلث بلون صفّه مُداراً ${toAr(rots[2])}°).`,svg};
 }
 
 // ===== الرسوم البيانية (سرعة/زمن) =====
 function curveSVG(kind){
   let path;
   if(kind==="accel")path="M10,50 L80,10";else if(kind==="const")path="M10,30 L80,30";else if(kind==="decel")path="M10,10 L80,50";else path="M10,50 L80,50";
-  return`<svg viewBox="0 0 90 60" width="90" height="60"><line x1="10" y1="50" x2="85" y2="50" stroke="#94A3B8" stroke-width="1.5"/><line x1="10" y1="5" x2="10" y2="50" stroke="#94A3B8" stroke-width="1.5"/><path d="${path}" fill="none" stroke="#334155" stroke-width="3"/><text x="45" y="59" font-size="7" fill="#64748B" text-anchor="middle">الزمن</text><text x="3" y="11" font-size="7" fill="#64748B">السرعة</text></svg>`;
+  return`<svg viewBox="0 0 90 60" width="90" height="60"><line x1="10" y1="50" x2="85" y2="50" stroke="#94A3B8" stroke-width="1.5"/><line x1="10" y1="5" x2="10" y2="50" stroke="#94A3B8" stroke-width="1.5"/><path d="${path}" fill="none" stroke="#334155" stroke-width="3"/><text x="45" y="59" font-size="7" fill="#64748B" text-anchor="middle">الزمن</text><text transform="translate(6,28) rotate(-90)" font-size="7" fill="#64748B" text-anchor="middle">السرعة</text></svg>`;
 }
 function gSpeedGraph(){
   const kinds=[
@@ -782,24 +822,39 @@ function gSpeedGraph(){
     {key:"stop",desc:"تبقى السيارة متوقفة في مكانها طوال الوقت",exp:"خط أفقي عند الصفر (لا حركة)."}
   ];
   const chosen=pick(kinds),order=shuffle(kinds);
+  // ===== الاتّجاهان كلاهما يُسأل — والنوعُ أربعةٌ بنيوياً =====
+  // كان يُنتج أربعة عناصر لا غير: الوصفُ يُعطى والرسمُ يُختار. والاتّجاهُ المعاكس
+  // (الرسمُ يُعطى والوصفُ يُختار) مهمّةٌ مقرَّرة في قراءة الرسوم البيانية لا اختراعاً،
+  // ويقيس الترجمةَ في الجهة التي لا يقيسها الأوّل. فصارت ثمانية بلا تأليف منحنًى جديد.
+  const steps=[`خطٌّ صاعد ⬈ = السرعة تزيد (تسارع). خطٌّ هابط ⬊ = السرعة تقلّ (تباطؤ). خطٌّ مستوٍ ➡ = السرعة ثابتة لا تتغيّر`,
+     `الوصف: «${chosen.desc}»`,
+     `<div style="margin:8px 0">${curveSVG(chosen.key)}</div>الرسم المطابق: ${chosen.exp}`];
+  if(Math.random()<0.5){
+    const c=order.map(k=>k.desc);
+    return withSteps({d:"quant",q:"الرسم البياني التالي يمثّل سرعة سيارة مع الزمن. أيُّ وصفٍ من التالي يطابقه؟",
+      svg:curveSVG(chosen.key),c,a:order.findIndex(k=>k.key===chosen.key),
+      w:`الرسم يطابق الوصف: «${chosen.desc}» — ${chosen.exp}`},
+      "🚗","قراءة الرسم البياني",steps);
+  }
   const c=order.map(k=>curveSVG(k.key));
   return withSteps({d:"quant",q:`أيّ الرسوم البيانية التالية (السرعة/الزمن) يمثّل الوصف: «${chosen.desc}»؟`,c,a:order.findIndex(k=>k.key===chosen.key),w:`الوصف يطابق النمط: ${chosen.exp}`},
-    "🚗","قراءة الرسم البياني",
-    [`خطٌّ صاعد ⬈ = السرعة تزيد (تسارع). خطٌّ هابط ⬊ = السرعة تقلّ (تباطؤ). خطٌّ مستوٍ ➡ = السرعة ثابتة لا تتغيّر`,
-     `الوصف: «${chosen.desc}»`,
-     `<div style="margin:8px 0">${curveSVG(chosen.key)}</div>الرسم المطابق: ${chosen.exp}`]);
+    "🚗","قراءة الرسم البياني",steps);
 }
 
 // ===== تدوير الأشكال في تسلسل =====
 function rtriMarkup(rot){return`<g transform="rotate(${rot} 25 25)"><polygon points="8,42 42,42 8,8" fill="#0D9488"/></g>`}
 function rtriSVG(rot){return`<svg viewBox="0 0 50 50" width="50" height="50">${rtriMarkup(rot)}</svg>`}
+// بدايةٌ واتّجاهٌ مُمعَّران: كان يبدأ من الصفر دائماً بخطوتين لا غير (عنصران مقاسان).
+// والاتّجاهُ يُقال في نصّ السؤال — فعكسُ العقارب سؤالٌ آخر لا نفسُ السؤال بأرقامٍ أخرى.
 function gShapeRotateSeq(){
-  const step=pick([45,90]),start=0,rots=[0,1,2,3].map(i=>(start+i*step)%360),nextRot=(start+4*step)%360;
+  const step=pick([45,90]),cw=Math.random()<0.5,start=pick([0,45,90,135,180,270]);
+  const at=i=>((start+(cw?1:-1)*i*step)%360+360)%360;
+  const rots=[0,1,2,3].map(at),nextRot=at(4);
   const svg=`<div style="display:flex;gap:10px;align-items:center;justify-content:center">${rots.map(r=>rtriSVG(r)).join("")}<span style="font-size:26px;font-weight:800;color:#D97706">؟</span></div>`;
   const distractRots=[90,180,270].map(d=>(nextRot+d)%360);
   const optsRots=shuffle([nextRot,...distractRots]);
   const c=optsRots.map(r=>rtriSVG(r));
-  return{d:"flex",q:"لاحظي دوران الشكل في التسلسل (باتجاه عقارب الساعة)، ما الشكل التالي؟",c,a:optsRots.indexOf(nextRot),w:`الشكل يدور ${toAr(step)}° في كل مرة؛ بعد ${toAr(rots[3])}° يأتي ${toAr(nextRot)}°.`,svg};
+  return{d:"flex",q:`لاحظي دوران الشكل في التسلسل (${cw?"باتجاه عقارب الساعة":"بعكس عقارب الساعة"})، ما الشكل التالي؟`,c,a:optsRots.indexOf(nextRot),w:`الشكل يدور ${toAr(step)}° ${cw?"باتجاه العقارب":"بعكس العقارب"} في كل مرة؛ بعد ${toAr(rots[3])}° يأتي ${toAr(nextRot)}°.`,svg};
 }
 
 // ===== نمط النرد =====
@@ -821,15 +876,19 @@ function regularPolygon(n,color){
   for(let i=0;i<n;i++){const ang=-Math.PI/2+i*2*Math.PI/n;pts.push(`${(cx+r*Math.cos(ang)).toFixed(1)},${(cy+r*Math.sin(ang)).toFixed(1)}`)}
   return`<svg viewBox="0 0 50 50" width="50" height="50"><polygon points="${pts.join(" ")}" fill="${color}" fill-opacity="0.15" stroke="${color}" stroke-width="2.5"/></svg>`;
 }
+// اتّجاهُ السلسلة ولونُها مُمعَّران، وحدُّ الأضلاع ٣-٩ بنيويّ (`regularPolygon`).
+// (كان عنصرين: بدايةٌ من ٣ أو ٤ صاعدةً بلونٍ واحد.)
 function gShapeSeries(){
-  const start=rand(3,4),seq=[start,start+1,start+2,start+3],ans=start+4;
-  if(ans>9)return gShapeSeries();
-  const svg=`<div style="display:flex;gap:10px;align-items:center;justify-content:center">${seq.map(n=>regularPolygon(n,"#0D9488")).join("")}<span style="font-size:26px;font-weight:800;color:#D97706">؟</span></div>`;
-  let distract=[ans-1,ans+1,ans-2].filter(x=>x>=3&&x!==ans);
-  while(distract.length<3){const x=rand(3,9);if(x!==ans&&!distract.includes(x))distract.push(x)}
+  const up=Math.random()<0.5,start=up?rand(3,4):rand(7,8);
+  const seq=[0,1,2,3].map(i=>up?start+i:start-i),ans=up?start+4:start-4;
+  if(ans<3||ans>9)return gShapeSeries();
+  const colQ=pick(["#0D9488","#B45309","#1D4ED8"]),colA=pick(["#7C3AED","#0F766E","#BE123C"]);
+  const svg=`<div style="display:flex;gap:10px;align-items:center;justify-content:center">${seq.map(n=>regularPolygon(n,colQ)).join("")}<span style="font-size:26px;font-weight:800;color:#D97706">؟</span></div>`;
+  let distract=[ans-1,ans+1,ans-2,ans+2].filter(x=>x>=3&&x<=8&&x!==ans);
+  while(distract.length<3){const x=rand(3,8);if(x!==ans&&!distract.includes(x))distract.push(x)}
   const optsVals=shuffle([ans,...distract.slice(0,3)]);
-  const c=optsVals.map(n=>regularPolygon(n,"#7C3AED"));
-  return{d:"flex",q:"لاحظي عدد أضلاع الأشكال في السلسلة، ما الشكل التالي؟",c,a:optsVals.indexOf(ans),w:`عدد الأضلاع يزيد بمقدار واحد في كل مرة: بعد شكل بـ ${toAr(seq[3])} أضلاع يأتي شكل بـ ${toAr(ans)} أضلاع.`,svg};
+  const c=optsVals.map(n=>regularPolygon(n,colA));
+  return{d:"flex",q:"لاحظي عدد أضلاع الأشكال في السلسلة، ما الشكل التالي؟",c,a:optsVals.indexOf(ans),w:`عدد الأضلاع ${up?"يزيد":"ينقص"} بمقدار واحد في كل مرة: بعد شكل بـ ${toAr(seq[3])} أضلاع يأتي شكل بـ ${toAr(ans)} أضلاع.`,svg};
 }
 
 // ===== مساحة الجزء المظلّل =====
@@ -872,14 +931,27 @@ function gNumberLine(){
 // ===== الانعكاس المرآتي (بصري) =====
 function mirrorFlagMarkup(color){return`<polygon points="-15,-18 -15,18 -3,18 -3,4 12,4 12,-6 -3,-6 -3,-18" fill="${color}"/>`}
 function mirrorFlagSVG(transformExtra,color){return`<svg viewBox="0 0 50 50" width="50" height="50"><g transform="translate(25,25) ${transformExtra}">${mirrorFlagMarkup(color||'#0D9488')}</g></svg>`}
+// ===== محورُ الانعكاس وجهتُه ولونُه مُمعَّرة =====
+// كان يُنتج **عنصراً واحداً لا غير** (مقاسٌ على ١٥٠٠ سحبة): محورٌ رأسيٌّ واحد، وشكلٌ
+// على يمينه دائماً، ولونٌ واحد — لا يتغيّر فيه إلّا ترتيبُ الخيارات الأربعة.
+// **والخياراتُ الأربعة هي هي في الحالين**، والمتغيّرُ أيُّها الصحيح: فالانعكاسُ حول
+// محورٍ رأسيّ قلبٌ أفقي، وحول محورٍ أفقيّ قلبٌ رأسي. فلا مموّهَ يصير صواباً ثانياً.
 function gMirrorReflect(){
-  const color="#0D9488";
-  const mainSVG=`<svg viewBox="0 0 140 90" width="140" height="90"><line x1="70" y1="5" x2="70" y2="85" stroke="#94A3B8" stroke-width="2" stroke-dasharray="4 4"/><g transform="translate(95,45) scale(0.9,0.9)">${mirrorFlagMarkup(color)}</g></svg>`;
-  const correct={t:"scale(-0.9,0.9)"};
-  const distract=[{t:"scale(0.9,0.9)"},{t:"scale(0.9,-0.9)"},{t:"rotate(180) scale(0.9,0.9)"}];
+  const color=pick(["#0D9488","#7C3AED","#B45309","#1D4ED8"]);
+  const vert=Math.random()<0.5, far=Math.random()<0.5;
+  const axis=vert
+    ?`<line x1="70" y1="5" x2="70" y2="85" stroke="#94A3B8" stroke-width="2" stroke-dasharray="4 4"/>`
+    :`<line x1="8" y1="45" x2="132" y2="45" stroke="#94A3B8" stroke-width="2" stroke-dasharray="4 4"/>`;
+  const at=vert?`translate(${far?95:45},45)`:`translate(70,${far?70:20})`;
+  const mainSVG=`<svg viewBox="0 0 140 90" width="140" height="90">${axis}<g transform="${at} scale(0.9,0.9)">${mirrorFlagMarkup(color)}</g></svg>`;
+  const correct={t:vert?"scale(-0.9,0.9)":"scale(0.9,-0.9)"};
+  const pool=["scale(-0.9,0.9)","scale(0.9,0.9)","scale(0.9,-0.9)","rotate(180) scale(0.9,0.9)"];
+  const distract=pool.filter(t=>t!==correct.t).map(t=>({t}));
   const all=shuffle([correct,...distract]);
   const c=all.map(o=>mirrorFlagSVG(o.t,color));
-  return{d:"flex",q:"الشكل يقع على يمين الخط المتقطّع (خط الانعكاس). ما انعكاسه المرآتي الصحيح على الجانب الآخر من الخط؟",c,a:all.indexOf(correct),w:"الانعكاس المرآتي يقلب الشكل أفقياً (يمين ↔ يسار) حول خط الانعكاس، دون تدويره أو قلبه رأسياً.",svg:mainSVG};
+  const where=vert?(far?"على يمين":"على يسار"):(far?"أسفل":"أعلى");
+  return{d:"flex",q:`الشكل يقع ${where} الخط المتقطّع (خط الانعكاس). ما انعكاسه المرآتي الصحيح على الجانب الآخر من الخط؟`,c,a:all.indexOf(correct),
+    w:`الانعكاس المرآتي حول خطٍّ ${vert?"رأسيّ يقلب الشكل أفقياً (يمين ↔ يسار)":"أفقيّ يقلب الشكل رأسياً (أعلى ↔ أسفل)"}، دون تدويره ولا قلبه في الاتجاه الآخر.`,svg:mainSVG};
 }
 
 // ===== أنواع مأخوذة من كراسة تدريب قدرات فعلية (لم تكن موجودة في التطبيق) =====
@@ -4741,9 +4813,50 @@ function ttsServerLog(why,detail){
     {q_text:("[صوت الخادم] "+why+" · نداءات:"+ttsServerCalls+" · محارف:"+ttsServerChars
       +(detail?" · "+String(detail).slice(0,120):"")+" · "+navigator.userAgent).slice(0,1200)})}catch(e){}
 }
+// ===== تشغيلٌ تلقائي واحدٌ لكل عنصرٍ يُعرض — لا لكل رسمة ولا مرّتان =====
+// العدّاد (`listenPlays` وأخواته) نحكم به على المستوى: يُعرض لها («استمعتِ ٣ مرّات»)
+// ويدخل السجلَّ (`plays:N` و`استماعات:N`)، وإرشادُ «استمع مرّتين» مبنيٌّ عليه. فكذبُه
+// يفسد الحكم — وكان يكذب من بابين، **قِيسا قبل الإصلاح لا افتُرضا**:
+//   (١) **على جهازٍ سليم**: `xNext` يُطلق نداءً صريحاً بعد ٣٠٠ ملّي، **ومعه** حارسٌ في
+//       الرسم (`xPlays===0`) يُطلق ثانياً في نفس الـ٣٠٠ — فقِيس `plays=2` ونطقٌ محلّيٌّ
+//       مرّتين لكل عنصرٍ بعد الأوّل. أي أن كل عنصرٍ تالٍ كان يُسمَع مرّتين ويُعَدّ اثنتين.
+//   (٢) **وعلى جهازٍ بلا واجهة نطق** (يسقط إلى صوت الخادم): كلُّ رسمةٍ تقع قبل أن ينجح
+//       أوّلُ تشغيل تجد العدّاد صفراً فتُطلق مرّةً أخرى — ورفعُ راية «لا صوت» ثمّ نزولُها
+//       بنجاح الخادم رسمتان — فقِيس `plays=3` على فتح القسم و٤ على العنصر الثاني.
+// والعلاج ترتيبٌ لا إقصاء: التشغيلُ التلقائي يُقيَّد بمفتاح العنصر المعروض فيقع مرّةً
+// واحدة مهما تعدّدت الرسمات، **وزرُّ 🔊 بيدها غيرُ مقيَّد** — هو إعادةٌ مقصودة تُعَدّ.
+// وبابٌ واحد للخمسة (استماع · وجدان المسموع · أزواج · فيديو · ورقة تحديد المستوى)
+// لا خمسُ رقعاتٍ تتباعد.
+let autoPlayKey="";
+function autoPlayArm(){autoPlayKey=""}            // فتحُ قسمٍ من جديد يُعيد التسليح
+function autoPlayOnce(key,fn){
+  if(autoPlayKey===key)return;
+  autoPlayKey=key;setTimeout(fn,300);
+}
 function speakEnglish(text,onDone){
   try{
-    if(!text||!('speechSynthesis' in window)){const i={ok:false,reason:'unsupported'};ttsMark(false,i);if(onDone)onDone(i);return}
+    // بلا نصّ لا شيء يُنطَق — ولا يُطلب له خادم (`ttsServerSpeak` تردّه `empty` أصلاً).
+    if(!text){const i={ok:false,reason:'unsupported'};ttsMark(false,i);if(onDone)onDone(i);return}
+    // ===== الشكل الثالث لعطل الصوت: الواجهةُ غائبةٌ أصلاً =====
+    // كُتب في ٣٠ أغسطس أن «كلتا الحالتين يغطّيها صوتُ الخادم — مسارُ `onerror` يلتقط
+    // الأولى ومهلةُ الصمت الثانية»، **وكان ذلك خطأً**: جهازٌ بلا `speechSynthesis`
+    // إطلاقاً (WebView، `إنجليزي:0` مقاسٌ من جهاز هيا ٢٨ أكتوبر) كان يعود من هنا
+    // **قبل فرعَي السقوط كليهما**، فلا يُطلب له الخادمُ أبداً — وهو أحوجُ الأجهزة
+    // إليه. فيمرّ على `ttsServerAllow`/`ttsServerSpeak` كأخويه، بنفس ترتيبهما:
+    // تُرفع رايةُ عطل الجهاز أوّلاً، ثمّ يُجرَّب الخادم فيُنزلها نجاحُه (`ttsMark(true)`).
+    if(!('speechSynthesis' in window)){
+      const i={ok:false,reason:'unsupported'};
+      ttsMark(false,i);
+      // حارسُ التبليغ الواحد هنا أيضاً — عدّادُ الاستماع نحكم به على المستوى، فزيادتُه
+      // مرّتين على نطقةٍ واحدة تُفسد الحكم (نفس غرض `fire` في المسار الرئيس أدناه).
+      let said=false;
+      const out=function(r){if(said)return;said=true;if(onDone)onDone(r)};
+      if(ttsServerAllow())return ttsServerSpeak(text,function(r){
+        if(r&&r.ok)return out(r);
+        out(i);
+      });
+      out(i);return;
+    }
     const synth=window.speechSynthesis;
     let triedFallback=false,started=false,retried=false,gestureRetried=false;
     // المُستدعي يُبلَّغ مرّةً واحدة مهما تعدّدت المحاولات — وإلّا زاد عدّاد الاستماع
@@ -9696,7 +9809,7 @@ function buildListenPlan(){
 // الحقيقي — صُحِّح ١٦ أغسطس. إرشادٌ نصّي لا قفل تقني: الزرّ لا يُمنع لأيّ مستوى.
 function listenPlaysHint(lv){return "استمعي مرّتين، ثم اختاري"}
 let listenItems=[],listenIdx=0,listenPicked=-1,listenLocked=false,listenScore=0,listenPlays=0,listenShownAt=0,listenDone=false;
-function startListen(){posPendClear();
+function startListen(){posPendClear();autoPlayArm();
   listenItems=buildListenPlan();listenIdx=0;listenPicked=-1;listenLocked=false;listenScore=0;listenPlays=0;listenDone=false;
   mode="listen";listenShownAt=Date.now();secGateStart("listen",listenCur()&&listenCur().audio);window.scrollTo(0,0);render();
   genTopUp("listen",GEN_BANK_KEY_LISTEN,profileOf().level||"A2");
@@ -9727,7 +9840,6 @@ function listenNext(){posPendClear();
   if(listenIdx+1>=listenItems.length){listenDone=true;window.scrollTo(0,0);render();return}
   listenIdx++;listenPicked=-1;listenLocked=false;listenPlays=0;listenShownAt=Date.now();
   secGateStart("listen",listenCur()&&listenCur().audio);render();
-  setTimeout(function(){listenPlay()},300);
 }
 function renderListen(){
   if(!listenItems.length){app.innerHTML=`<div class="card" style="text-align:center">لا شيء مستحقّ اليوم — عودي غداً 🌱</div><button class="link-btn" onclick="home()">→ الرئيسية</button>`;return}
@@ -9753,7 +9865,7 @@ function renderListen(){
       <div style="margin-top:8px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:10px;direction:ltr;text-align:left;font-family:Georgia,serif;font-size:14px;color:#334155;line-height:1.8">📝 ${boldEvidence(it.audio,decisiveEvidence(it.audio,it.c[it.a]))}</div></div>`:""}
   </div>
   ${listenLocked?`<button class="btn" style="background:#0284C7" onclick="listenNext()">${listenIdx+1>=listenItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`:""}`;
-  if(!listenLocked&&listenPlays===0)setTimeout(function(){listenPlay()},300);
+  if(!listenLocked)autoPlayOnce("listen:"+listenIdx,listenPlay);
 }
 function renderListenResult(){
   const pct=listenItems.length?Math.round(listenScore/listenItems.length*100):0;
@@ -14557,7 +14669,7 @@ function buildWejlPlan(){
   return planNoTwins(out,POOL,WEJL_N,"wejl");
 }
 function startWejl(){
-  posPendClear();
+  posPendClear();autoPlayArm();
   wejlItems=buildWejlPlan();wejlIdx=0;wejlPicked=-1;wejlLocked=false;
   wejlScore=0;wejlPlays=0;wejlDone=false;wejlOrderId=null;
   mode="wejl";wejlShownAt=Date.now();
@@ -14591,7 +14703,6 @@ function wejlNext(){
   if(wejlIdx+1>=wejlItems.length){wejlDone=true;window.scrollTo(0,0);render();return}
   wejlIdx++;wejlPicked=-1;wejlLocked=false;wejlPlays=0;wejlShownAt=Date.now();
   secGateStart("wejl",wejlCur()&&wejlCur().audio,"listen");render();
-  setTimeout(function(){wejlPlay()},300);
 }
 function renderWejl(){
   if(!wejlItems.length){app.innerHTML=`<div class="card" style="text-align:center">لا شيء مستحقّ الآن — عودي لاحقاً 🌱</div><button class="link-btn" onclick="home()">→ الرئيسية</button>`;return}
@@ -14619,7 +14730,7 @@ function renderWejl(){
       <div style="margin-top:8px;font-size:12px;color:#64748B;line-height:1.9">التفريغُ مؤلَّفٌ على صيغة أسئلة وجدان، لا منقولٌ من تسجيلاتها.</div></div>`:""}
   </div>
   ${wejlLocked?`<button class="btn" style="background:#0E7490" onclick="wejlNext()">${wejlIdx+1>=wejlItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`:""}`;
-  if(!wejlLocked&&wejlPlays===0)setTimeout(function(){wejlPlay()},300);
+  if(!wejlLocked)autoPlayOnce("wejl:"+wejlIdx,wejlPlay);
 }
 function renderWejlResult(){
   const pct=wejlItems.length?Math.round(wejlScore/wejlItems.length*100):0;
@@ -16739,6 +16850,7 @@ function buildMinpairPlan(){
 let minpairItems=[],minpairIdx=0,minpairTarget=0,minpairOrder=[0,1],minpairPicked=-1,minpairLocked=false,
   minpairScore=0,minpairPlays=0,minpairShownAt=0,minpairDone=false,minpairShowSent="";
 function startMinpair(){
+  autoPlayArm();
   minpairItems=buildMinpairPlan();minpairIdx=0;minpairScore=0;minpairDone=false;
   mode="minpair";minpairSetupRound();window.scrollTo(0,0);render();
   minpairGenTopUp(profileOf().level||"A2");
@@ -16809,7 +16921,7 @@ function renderMinpair(){
       </div>`:""}
   </div>
   ${minpairLocked?`<button class="btn" style="background:#0891B2" onclick="minpairNext()">${minpairIdx+1>=minpairItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`:""}`;
-  if(!minpairLocked&&minpairPlays===0)setTimeout(function(){minpairPlay()},300);
+  if(!minpairLocked)autoPlayOnce("minpair:"+minpairIdx,minpairPlay);
 }
 function renderMinpairResult(){
   const pct=minpairItems.length?Math.round(minpairScore/minpairItems.length*100):0;
@@ -16935,6 +17047,7 @@ function buildVideoPlan(){
 }
 let videoItems=[],videoIdx=0,videoScene=0,videoQOn=false,videoPicked=-1,videoLocked=false,videoScore=0,videoPlays=0,videoShownAt=0,videoDone=false;
 function startVideo(){
+  autoPlayArm();
   videoItems=buildVideoPlan();videoIdx=0;videoScene=0;videoQOn=false;videoPicked=-1;videoLocked=false;videoScore=0;videoDone=false;
   mode="video";videoShownAt=Date.now();window.scrollTo(0,0);render();
   videoGenTopUp(profileOf().level||"A2");
@@ -16949,7 +17062,6 @@ function videoNextScene(){
   const it=videoCur();if(!it)return;
   if(videoScene+1>=it.sc.length){videoQOn=true;secGateStart("video",it.sc.map(function(x){return x[1]}).join(" "));render();return}
   videoScene++;videoPlays=0;render();
-  setTimeout(function(){videoPlay()},300);
 }
 function videoChoose(i){
   if(videoLocked||!gateOpen())return;   // بوّابة بنيوية: لا اختيار قبل انقضاء المشاهد
@@ -16965,7 +17077,6 @@ function videoNext(){
 
   if(videoIdx+1>=videoItems.length){videoDone=true;window.scrollTo(0,0);render();return}
   videoIdx++;videoScene=0;videoQOn=false;videoPicked=-1;videoLocked=false;videoPlays=0;videoShownAt=Date.now();render();
-  setTimeout(function(){videoPlay()},300);
 }
 function renderVideo(){
   if(!videoItems.length){app.innerHTML=`<div class="card" style="text-align:center">لا شيء مستحقّ اليوم — عودي غداً 🌱</div><button class="link-btn" onclick="home()">→ الرئيسية</button>`;return}
@@ -16988,7 +17099,7 @@ function renderVideo(){
       <div style="margin:14px 0"><button type="button" onclick="videoPlay()" style="background:#DC2626;color:#fff;border:none;border-radius:50%;width:56px;height:56px;font-size:22px;cursor:pointer">🔊</button></div>
       <button class="btn" style="background:#DC2626;margin:0" onclick="videoNextScene()">${videoScene+1>=it.sc.length?"إلى السؤال ←":"المشهد التالي ←"}</button>
     </div>`;
-    if(videoPlays===0)setTimeout(function(){videoPlay()},300);
+    autoPlayOnce("video:"+videoIdx+":"+videoScene,videoPlay);
     return;
   }
   const choices=it.c.map(function(c,i){
@@ -19305,13 +19416,13 @@ function placeGateArm(){
 function goPlaceMenu(){mode="placeMenu";window.scrollTo(0,0);render()}
 function startPlaceSec(k){
   if(!placeSecOf(k)||!placeReady(k))return;
+  autoPlayArm();
   placeSec=k;placeItems=placePool(k);placeIdx=0;placeAns=[];placeDone=false;
   placeStart=Date.now();placeShownAt=Date.now();placePlays=0;
   placeRush=0;placeCalm=0;placeGateOn=false;placeRushLogged=false;
   gateStop();gateSecs=0;gateLeft=0;
   placeOrder=placeItems.map(function(x){return shuffle(placeQ(x).c.map(function(_,i){return i}))});
   mode="place";window.scrollTo(0,0);render();
-  if(k==="listen")setTimeout(function(){placePlay()},300);
 }
 function placeCur(){return placeItems[placeIdx]}
 // العدّاد يزيد عند بدء النطق فعلاً لا عند طلبه — نفس تصحيح `listenPlay`
@@ -19494,7 +19605,7 @@ function renderPlace(){
     ${audio}
     <div class="choices">${gateBox}${gOpen?choices:""}</div>
   </div>`;
-  if(placeSec==="listen"&&placePlays===0)setTimeout(function(){placePlay()},300);
+  if(placeSec==="listen")autoPlayOnce("place:"+placeIdx,placePlay);
 }
 // ===== التقريرُ نفسه يدخل السجلّ — ١٥ أكتوبر =====
 // السطورُ كانت تنتهي عند `section`، فالدرجةُ الموزونة وتقديرُ CEFR **الذي يراه المتعلّم
