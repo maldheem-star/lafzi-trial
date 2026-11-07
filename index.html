@@ -249,10 +249,23 @@ function lsDel(k){try{localStorage.removeItem(pkey(k))}catch(e){}}
 // خطأ واحد في المستوى الأعلى كان كفيلاً بإيقاف تعريف بقية الملف، فتموت كل الأزرار في كل
 // الأقسام بلا أي أثر مرئي. الآن يُعرض الخطأ باسمه وموضعه على الشاشة، فيُرى بدل أن يُخمَّن.
 window.__ERRS=[];
+// ===== عطلٌ أجنبيّ لا يرفع الشريط — قرار صاحب المشروع ٧ نوفمبر =====
+// `xbrowser is not defined` صفرُ مرّةٍ في مستودعنا: يحقنه متصفّحُ التطبيق المدمج (WebView)
+// على جهاز هيا. ظهر الشريطُ في أربع جلساتٍ من أربع منذ ٢٧ أكتوبر وكلُّها انتهت مبكراً
+// (٣ · ١١ · ٠ · ٤ إجابات) مقابل ٤٨ في الجلسة بلا شريط — ارتباطٌ لا سببيّة. فيُخفى الشريطُ
+// لهذا الخطأ **بعينه** ويبقى السطرُ في السجلّ موسوماً `مخفيّ`. والقائمة مغلقةٌ عمداً بنصّ
+// الرسالة لا بقاعدةٍ عامّة («كل خطأ في السطر ١»): إخفاءٌ واسع قد يُخفي عطلاً حقيقياً منّا.
+var APP_ERR_FOREIGN=[/\bxbrowser is not defined\b/];
+function appErrForeign(msg){
+  msg=String(msg||"");
+  for(var i=0;i<APP_ERR_FOREIGN.length;i++)if(APP_ERR_FOREIGN[i].test(msg))return true;
+  return false;
+}
 function appError(where,e){
   try{
     var msg=(e&&(e.message||e.reason&&e.reason.message))||String(e&&e.reason||e||"");
     var line=(e&&e.lineno)?(" سطر "+e.lineno):"";
+    if(appErrForeign(msg)){appErrLog(where,msg,line,true);return}
     window.__ERRS.push({where:where,msg:msg,line:line});
     var id="appErrBar",old=document.getElementById(id);
     if(old)old.parentNode.removeChild(old);
@@ -281,7 +294,7 @@ function appError(where,e){
 // و`logAnswer` مُعرَّفةٌ بعد هذا الموضع بآلاف الأسطر فيمرّ النداء عبر حارسٍ يسقط بهدوء:
 // **التسجيل لا يجوز أن يصير نقطة عطل** — وهو الدرس نفسه الذي وُصل به `quizGenFail`.
 var APP_ERR_CAP=3,appErrLogged=0,appErrSeen={};
-function appErrLog(where,msg,line){
+function appErrLog(where,msg,line,hidden){
   try{
     var key=String(msg).slice(0,60);
     if(appErrSeen[key])return; appErrSeen[key]=1;
@@ -292,7 +305,7 @@ function appErrLog(where,msg,line){
     var md="?";try{md=String(mode)}catch(_e){}
     logAnswer("gen","app_error",null,String(where)+" · "+key,null,null,
       {q_text:("[عطل تطبيق:"+where+"] "+String(msg)+String(line||"")+
-        " · وضع:"+md).slice(0,300)});
+        " · وضع:"+md+(hidden?" · مخفيّ:أجنبيّ":"")).slice(0,300)});
   }catch(_){}
 }
 // ===== جلب بمهلة =====
