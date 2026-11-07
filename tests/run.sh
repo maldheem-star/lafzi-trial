@@ -3,7 +3,8 @@
 #   python3 -m http.server 8931 --bind 127.0.0.1 &
 # ثم:  sh tests/run.sh
 #
-# كلها تعمل بمنافذ وهمية (mocked routes) — لا تلمس Supabase ولا الشبكة.
+# كلها تُحمَّل خلف tests/_netguard.js: Supabase محجوبةٌ في كل صفحة ما لم يحاكِها الاختبار
+# نفسه. (كان السطر يقول «لا تلمس Supabase» وكان كاذباً: جولة ٧ نوفمبر كتبت ٢٦ صفّاً حقيقياً.)
 # pron_bench.js يحتاج شبكة ومجموعة بيانات خارجية — يُشغَّل يدوياً لا هنا.
 #
 # ===== الحكم برمز الخروج وصيغة TAP — لا بعقدٍ مصنوعٍ باليد (١٣ سبتمبر) =====
@@ -21,6 +22,7 @@
 PW=${PW:-/opt/node22/lib/node_modules/playwright}
 export PW
 DIR=$(dirname "$0")
+NG=$(cd "$DIR" && pwd)/_netguard.js
 
 total=$(ls "$DIR"/test_*.js 2>/dev/null | wc -l | tr -d ' ')
 echo "TAP version 14"
@@ -32,7 +34,7 @@ failed=0
 for f in "$DIR"/test_*.js; do
   name=$(basename "$f" .js)
   i=$((i+1))
-  out=$(node "$f" 2>&1)
+  out=$(node -r "$NG" "$f" 2>&1)
   code=$?
   if [ "$code" -eq 0 ]; then
     echo "ok $i - $name"
