@@ -57,7 +57,7 @@ const NO_PA={"RecognitionStatus":"Success","DisplayText":"Insect.",
 (async()=>{
 
 console.log('\n٠) النسخة المُختبَرة تطابق المصدر المنشور');
-const src=fs.readFileSync('/home/user/lafzi-trial/supabase-functions-assess-azure.ts','utf8');
+const src=fs.readFileSync(require('path').join(__dirname,'..','supabase-functions-assess-azure.ts'),'utf8');
 for(const [frag,label] of [
   ['(o && (o.PronunciationAssessment as Record<string, unknown>)) || o || {}','قراءة الشكلين في paOf'],
   ['numOf(best as Record<string, unknown>, "PronScore")','درجة النطق تُقرأ مُسطَّحة أو متداخلة'],

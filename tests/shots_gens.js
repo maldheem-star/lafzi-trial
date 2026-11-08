@@ -4,7 +4,7 @@
 // التشغيل: node tests/shots_gens.js   (يحتاج الخادم على ٨٩٣١)
 const {chromium}=require(process.env.PW||'/opt/node22/lib/node_modules/playwright');
 const fs=require('fs');
-const OUT=process.env.SHOT_DIR||'/tmp/claude-0/-home-user-lafzi-trial/d5a80363-f01b-5f26-ba42-6a7c646126c1/scratchpad/shots_gens';
+const OUT=process.env.SHOT_DIR||require('path').join(require('os').tmpdir(),'hayya-shots-gens');
 let fails=0;const ok=(c,m)=>{console.log((c?'  ✓ ':'  ✗ FAIL ')+m);if(!c)fails++};
 (async()=>{
 fs.mkdirSync(OUT,{recursive:true});
