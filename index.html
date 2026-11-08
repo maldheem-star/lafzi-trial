@@ -1793,16 +1793,28 @@ function spreadTemplates(list){
   // الأكثرُ تكراراً يتصدّر كلَّ جولة، فيكون ذيلُ الجولة مفرداً وصدرُ التالية مُعاداً
   // — فلا يتلاقى متطابقان على حدّ الجولتين.
   const keys=Object.keys(groups).sort(function(a,b){return groups[b].length-groups[a].length});
-  const out=[],idx={};
-  keys.forEach(function(k){idx[k]=0});
-  for(let guard=0;guard<n+1&&out.length<n;guard++){
-    let moved=false;
-    for(let i=0;i<keys.length&&out.length<n;i++){
-      const k=keys[i];
-      if(idx[k]<groups[k].length){out.push(groups[k][idx[k]++]);moved=true}
+  // ===== الجولات تُملأ بالتوازن لا بالترتيب — ٨ نوفمبر =====
+  // كانت جولةً دوريّة: كلُّ قالبٍ في الجولة الأولى، ثمّ ما بقي. فإذا زاد قالبٌ على غيره
+  // بنسختين صارت الجولتان الأخيرتان نسخةً واحدةً منه، فتجاورتا. وقع فعلاً في المحاكاة ٤٨:
+  // «أي كلمة لا تنتمي إلى المجموعة؟» ثلاث مرّات في ٣ من ٣٠٠٠ ورقة، والأخيرتان متلاصقتان
+  // (فشل test_fixes_1024 مرّةً من ١٣). والمسافة بين نسختين في جولتين متتاليتين = طولُ
+  // الأولى منهما، فأقصى أدنى مسافة تكون بتسوية الجولات الأولى وترك الأخيرة للأكثر تكراراً
+  // وحده (مسألة إعادة الترتيب بأقصى تباعد): ثلاث نسخٍ في ٤٨ ⇐ مسافة ~٢٣ لا ١.
+  // وحين تتساوى أعداد التكرار فالناتج هو الجولة الدورية نفسها.
+  const m=groups[keys[0]].length;
+  const rows=[];for(let r=0;r<m;r++)rows.push([]);
+  keys.forEach(function(k){
+    const g=groups[k];
+    let pick=[];
+    if(g.length===m){for(let r=0;r<m;r++)pick.push(r)}
+    else{
+      const cand=[];for(let r=0;r<m-1;r++)cand.push(r);
+      cand.sort(function(a,b){return rows[a].length-rows[b].length||a-b});
+      pick=cand.slice(0,g.length).sort(function(a,b){return a-b});
     }
-    if(!moved)break;
-  }
+    pick.forEach(function(r,i){rows[r].push(g[i])});
+  });
+  const out=[].concat.apply([],rows);
   return out.length===n?out:list.slice();
 }
 // ===== بطاقة الخطأ المتكرّر (qzCard) ⇐ رابطٌ مباشر لشرحٍ موجودٍ أصلاً =====
