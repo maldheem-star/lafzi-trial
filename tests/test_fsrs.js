@@ -1,10 +1,10 @@
 const {chromium}=require('/opt/node22/lib/node_modules/playwright');
 // المكتبة المرجعية كانت تُحمَّل من مسارٍ في مجلّد المسوّدات يحمل **معرّف الجلسة نفسه** —
 // فيسقط بارتداد الحاوية (وقع فعلاً ٢٤ أغسطس) ولا يعمل في حاويةٍ أخرى إطلاقاً. تُجرَّب
-// الآن node_modules أوّلاً (`npm install ts-fsrs@5.4.1`)، ثم المسار القديم للتوافق.
+// ثم صار مساراً مطلقاً `/home/user/...` فسقط حين نُقل المستودع إلى `/workspace/` (٨ نوفمبر).
+// الآن نسبيٌّ للمستودع، والمكتبة ملتزَمةٌ فيه (node_modules/ts-fsrs).
 const CANDIDATES=[
-  '/home/user/lafzi-trial/node_modules/ts-fsrs/dist/index.cjs',
-  '/tmp/claude-0/-home-user-lafzi-trial/d5a80363-f01b-5f26-ba42-6a7c646126c1/scratchpad/package/dist/index.cjs',
+  require('path').join(__dirname,'..','node_modules','ts-fsrs'),
 ];
 let fails=0;const ok=(c,m)=>{console.log((c?'  ✓ ':'  ✗ FAIL ')+m);if(!c)fails++};
 (async()=>{
@@ -30,7 +30,7 @@ console.log('\n٢) مقابلة الصيغ بمكتبة ts-fsrs الرسمية')
 // نُقابل الصيغ نفسها لا مخرجات المُجدوِل: المكتبة تفرض ترتيباً بين الدرجات الأربع
 // (hard < good < easy) فتزيد فاصل «good» يوماً، ونحن لا نعرض إلا درجتين — أصابت أو
 // أخطأت. فالمقابلة على الرياضيات: الثبات والصعوبة والفاصل.
-if(!ref){ok(false,'تعذّر تحميل المكتبة المرجعية — لا مقابلة');}
+if(!ref){ok(false,'تعذّر تحميل المكتبة المرجعية — node_modules/ts-fsrs مفقود');}
 else{
   const {FSRS,generatorParameters}=ref;
   const alg=new FSRS(generatorParameters({enable_fuzz:false,enable_short_term:false,
