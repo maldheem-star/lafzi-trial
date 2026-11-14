@@ -146,6 +146,10 @@
   .btn{margin-top:14px;width:100%;padding:15px;border-radius:14px;border:none;background:#334155;color:#fff;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit}
   .btn.ghost{background:#fff;color:#334155;border:1.5px solid #CBD5E1}
   .link-btn{margin-top:14px;width:100%;padding:13px;border-radius:14px;border:none;background:transparent;color:#64748B;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
+  .gram-lesson{background:#EEF2FF;border-radius:12px;padding:12px 14px;margin-top:12px}
+  .gram-lesson-t{font-size:14px;font-weight:800;color:#312E81;margin-bottom:6px}
+  .gram-lesson-b{font-size:14px;line-height:1.9;color:#312E81}
+  .gram-lesson-ex{background:#F0FDF4;border-inline-start:4px solid #10B981;border-radius:10px;padding:6px 12px;margin:4px 0 8px;font-size:15px;line-height:1.9;direction:ltr;text-align:left;font-family:Georgia,serif}
   .m6-lesson-btn{margin-top:6px;background:#F0FDFA;border:1px solid #99F6E4;color:#0F766E;border-radius:10px;padding:6px 12px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit}
   .score-row{display:flex;align-items:baseline;gap:10px;margin-bottom:4px}
   .score-big{font-size:52px;font-weight:800}.score-total{font-size:22px;color:#94A3B8}
@@ -11665,6 +11669,43 @@ function gramGenTopUp(level){
       if(item)genBankAdd(GEN_BANK_KEY_GRAM,item)})}))break;
   }
 }
+// ===== دروس A1 قبل أسئلة القواعد — ١٤ نوفمبر =====
+// ١٥٤ إجابة منذ أغسطس، ٣٤ صحيحة (٢٢٪) — دون التخمين بين أربعة (٢٥٪) ولا تحسّنَ في ثلاثة
+// أشهر. و«my/me» عُرض ١٩ مرّة وأصيب مرّتين. فسطرُ `why` بعد الخطأ وحده لا يُعلّم، ودروسُ
+// `ENG_LESSONS` كلُّها A2/B1 فآليةُ إعادة التدريس لا تجد درساً تعيده هنا. فالشرحُ الصريح
+// **قبل** الأسئلة (أثر المثال المحلول، Sweller) لمهارات A1 الخمس التي أخطأتها ١٤ نوفمبر.
+// والأمثلةُ غيرُ جمل الأسئلة عمداً كي لا يكشف الدرسُ الجواب. والقياس: نسبةُ هذه المهارات
+// قبل ١٤ نوفمبر وبعده من السجلّ (item_id ثابت).
+// **وكلُّ سطرٍ لغةٌ واحدة**: أوّلُ صياغةٍ خلطت («الفاعل (he, she, it…)») فانقلب القوسُ إلى
+// «he,)» وقفزت النقطةُ أوّلَ «on Monday» — كشفته لقطةُ ٣٩٠ عرضاً. فالقاعدةُ سطرٌ عربيّ
+// خالص، ومثالُها الإنجليزيّ في سطرٍ مستقلّ LTR (عُرف المشروع: الخليطُ يُفصَل).
+const GRAM_A1_LESSONS={
+  "تصريف الغائب":{t:"الفعل مع الشخص الواحد",r:[
+    ["إذا كان الفاعل شخصاً واحداً أو شيئاً واحداً، نضيف للفعل حرف s في المضارع.","My sister <b>goes</b> · The cat <b>sleeps</b>"],
+    ["ومع الجمع، أو مع أنا وأنتِ ونحن وهم، لا نضيف شيئاً.","My sisters <b>go</b> · I <b>go</b> · They <b>go</b>"]]},
+  "الملكية":{t:"الملكية للأشخاص",r:[
+    ["لنقول إن الشيء لشخص: اسمُ الشخص ثم علامة الملكية ثم الشيء.","Sara<b>’s</b> bag · my father<b>’s</b> car"],
+    ["ولا نستعمل of مع الأشخاص.","✗ the bag of Sara  →  ✓ Sara’s bag"]]},
+  "حروف جرّ الزمن":{t:"حروف الجرّ مع الوقت",r:[
+    ["مع أيام الأسبوع:","<b>on</b> Monday · <b>on</b> Friday"],
+    ["مع الشهور والسنوات وأجزاء اليوم:","<b>in</b> May · <b>in</b> 2025 · <b>in</b> the morning"],
+    ["مع الساعة:","<b>at</b> five o’clock · <b>at</b> 7:30"]]},
+  "How many + الجمع":{t:"السؤال عن العدد والكمية",r:[
+    ["لما يُعدّ، والاسم بعده جمع:","How many <b>pens</b> do you have?"],
+    ["لما لا يُعدّ، كالماء والحليب:","How <b>much</b> milk do we need?"],
+    ["وفي السؤال يأتي الفعل المساعد قبل الفاعل:","How many sisters <b>does she</b> have?"]]},
+  "ضمير المفعول":{t:"أنا قبل الفعل وبعده",r:[
+    ["قبل الفعل، وأنا مَن يفعل:","<b>I</b> like apples."],
+    ["بعد الفعل، والفعل وقع عليّ:","My friend helped <b>me</b>."],
+    ["وللملكية، ولا تأتي إلا قبل اسم:","This is <b>my</b> pencil."]]},
+};
+function gramLessonHTML(it){
+  const L=it&&GRAM_A1_LESSONS[it.sk];if(!L)return "";
+  return `<div class="gram-lesson">
+    <div class="gram-lesson-t">📘 تذكّري القاعدة: ${L.t}</div>
+    ${L.r.map(function(x){return `<div class="gram-lesson-b">${x[0]}</div><div class="gram-lesson-ex">${x[1]}</div>`}).join("")}
+  </div>`;
+}
 const GRAM_N=5;
 function buildGramPlan(){
   const st=gramSrsLoad(),today=srsToday(),POOL=bankStretched("gram",profileOf().level,gramBankFor);
@@ -11818,6 +11859,7 @@ function renderGram(){
   <div class="card">
     <span class="tag" style="background:#CFFAFE;color:#0E7490">✍️ أيّ جملةٍ صحيحة؟</span>
     ${gramArmedHint(it)}
+    ${gramLessonHTML(it)}
     <div class="choices" style="margin-top:12px">${secGateHTML()}${posConfirmHTML("gram","gramChoose")}${choices}</div>
   </div>
   ${gramLocked?`<button class="btn" style="background:#0E7490" onclick="gramNext()">${gramIdx+1>=gramItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`:""}`;
