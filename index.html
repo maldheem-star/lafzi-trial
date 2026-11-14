@@ -11752,7 +11752,10 @@ function gramChoose(i){
   const shown=gramOrder.map(function(wi,k){return (k+1)+") "+it.c[wi].t+(it.c[wi].ok?" ✓":"")}).join(" | ");
   const pickPos=gramOrder.indexOf(i)+1;
   posRecord("gram",pickPos,it.c.length);
-  logAnswer("gram","sentence",ok,"موضع "+toAr(pickPos)+" · "+it.c[i].t+(slip?" · "+slip:"")+posTagFor("gram"),it.id,elapsed,
+  // المهارةُ وظهورُ الدرس في السطر نفسه — ١٤ نوفمبر: بلاهما لا يُقاس أثرُ `GRAM_A1_LESSONS`
+  // (أوّلُ جلسةٍ بعد الشحن ٧/١٠ ولا يُعرف أظهر درسٌ فوق أيٍّ منها، والمولَّدةُ قد تحمل `sk` آخر)
+  const gramTag=" · مهارة:"+(it.sk||"—")+(GRAM_A1_LESSONS[it.sk]?" · درس:ظهر":" · درس:لا");
+  logAnswer("gram","sentence",ok,"موضع "+toAr(pickPos)+" · "+it.c[i].t+(slip?" · "+slip:"")+posTagFor("gram")+gramTag,it.id,elapsed,
     {_sk:skOf(it),q_text:shown});
   render();
 }
