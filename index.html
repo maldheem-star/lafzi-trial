@@ -146,6 +146,7 @@
   .btn{margin-top:14px;width:100%;padding:15px;border-radius:14px;border:none;background:#334155;color:#fff;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit}
   .btn.ghost{background:#fff;color:#334155;border:1.5px solid #CBD5E1}
   .link-btn{margin-top:14px;width:100%;padding:13px;border-radius:14px;border:none;background:transparent;color:#64748B;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
+  .m6-lesson-btn{margin-top:6px;background:#F0FDFA;border:1px solid #99F6E4;color:#0F766E;border-radius:10px;padding:6px 12px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit}
   .score-row{display:flex;align-items:baseline;gap:10px;margin-bottom:4px}
   .score-big{font-size:52px;font-weight:800}.score-total{font-size:22px;color:#94A3B8}
   .score-pct{margin-inline-start:auto;font-size:20px;font-weight:700;color:#2563EB}
@@ -5147,7 +5148,7 @@ const CENSUS=["home","render","startBasics","startFade","startFactPlan","startEn
   "stepBankFor","stepSrsUpdate","buildStepPlan","startStep","stepChoose","stepSeqPick","stepSeqUnpick","stepSeqSubmit","stepNext","renderStep","fetchTutorGenStep","stepGenTopUp","fetchTutorGenVideo","videoGenTopUp",
   "videoBankFor","videoSrsUpdate","buildVideoPlan","startVideo","videoPlay","videoNextScene","videoChoose","videoNext","renderVideo",
   // رياضيات السادس: شاشةُ الفهرس هي بابُ القسم الآن، فسقوطُ دالّةٍ منها يُفرِغ القسم كلَّه
-  "math6Lessons","math6Ready","math6Pool","math6ScopePool","math6ChapterIndex","math6ChName","math6TypeOf","buildMath6Plan","goMath6Menu","startMath6","math6Choose","math6Next","renderMath6","renderMath6Menu","renderMath6Result",
+  "math6Lessons","math6Ready","math6Pool","math6ScopePool","math6ChapterIndex","math6ChName","math6TypeOf","buildMath6Plan","goMath6Menu","startMath6","startMath6Lesson","math6Choose","math6Next","renderMath6","renderMath6Menu","renderMath6Result",
   "statBidi","statBidiLine","statBankFor","statSrsUpdate","buildStatPlan","goStatMenu","startStat","startStatWs","statChoose","statNext","renderStat","renderStatMenu","renderStatResult",
   "writeTokens","writeTtr","writeSim","writePrevLoad","writePrevAdd","writeSelfSim",
   "accLoad","accSave","accRecord","accRate","stretchOn","bankStretched",
@@ -12850,6 +12851,7 @@ function math6LessonById(){
 // والنطاقُ متغيّرٌ مستقلّ لا توسيعٌ لمعنًى آخر — نفس قرار `statScope` (٥ سبتمبر):
 // خلطُ معنيين في متغيّرٍ واحد يُنتج عطلاً صامتاً.
 let math6Chapter="";          // "" = كل الفصول · رقمٌ = فصلٌ بعينه
+let math6LessonId="";         // "" = جلسة مجدولة · معرّفُ درسٍ = تدريبٌ على درسٍ بعينه
 const MATH6_CH_MIN=3;         // عتبةُ زرّ الفصل — نفس عتبة قائمة فصول الإحصاء، لا رقمٌ جديد
 function math6ScopePool(ch){
   const P=math6Pool();
@@ -12879,6 +12881,7 @@ let math6Lessons_=[],math6Items=[],math6Idx=0,math6Picked=-1,math6Locked=false,
     math6Score=0,math6ShownAt=0,math6Done=false;
 function goMath6Menu(){mode="math6Menu";window.scrollTo(0,0);render();math6BookFetch()}
 function startMath6(ch){
+  math6LessonId="";
   math6Chapter=(ch===undefined||ch===null)?"":String(ch);
   math6Lessons_=buildMath6Plan();
   // يُولَّد سؤالُ كل درسٍ مرّةً واحدة عند بدء الجلسة: لو وُلِّد عند العرض لتغيّر
@@ -12887,6 +12890,26 @@ function startMath6(ch){
   math6Idx=0;math6Score=0;math6Done=false;
   mode="math6";math6Setup();window.scrollTo(0,0);render();
   math6BookFetch();   // صامتٌ في الخلفية: يُخصِّب الجلسة القادمة لا الحالية
+}
+// ===== تدريبٌ على درسٍ بعينه — ١٤ نوفمبر =====
+// الجلسة المجدولة تختار الدروس بالتباعد (FSRS)، فلا سبيل لفتح درسٍ تحتاجه الآن: ورقة
+// المدرسة في «القسمة على كسر عشري» وصلت والدرس لم يظهر لها منذ ١٦ سبتمبر. فهنا
+// `MATH6_N` سؤالاً متمايزاً من مولّد الدرس نفسه، بالعرض والبوّابة والتسجيل كما هي.
+// **والتباعدُ يُحدَّث بأوّل إجابةٍ وحدها**: هي الاسترجاعُ الحقيقيّ، وما بعدها تمرينٌ في
+// اليوم نفسه — و`fsrsUpdate` المطبَّقة هنا بلا صيغة المراجعة القصيرة في FSRS-6، فخمسُ
+// إجاباتٍ في دقيقتين كانت ستُحسب خمسَ مراجعات وتُبعِد موعدَ الدرس بلا استحقاق.
+function startMath6Lesson(id){
+  const L=math6Pool().find(function(x){return x.id===id});
+  if(!L)return goMath6Menu();
+  const items=[],seen={};
+  for(let t=0;t<80&&items.length<MATH6_N;t++){
+    const it=L.gen();if(!it||seen[it.q])continue;
+    seen[it.q]=1;it._l=L;items.push(it);
+  }
+  math6LessonId=id;math6Chapter="";
+  math6Lessons_=items.map(function(){return L});
+  math6Items=items;math6Idx=0;math6Score=0;math6Done=false;
+  mode="math6";math6Setup();window.scrollTo(0,0);render();
 }
 function math6Setup(){
   math6Picked=-1;math6Locked=false;math6ShownAt=Date.now();
@@ -12932,7 +12955,7 @@ function math6Choose(i){
   const it=math6Cur(),ok=(i===it.a);
   it._ok=ok;it._picked=i;              // تفصيل النتيجة بالدرس يقرؤهما
   if(ok)math6Score++;
-  math6SrsUpdate(it._l.id,ok);
+  if(!math6LessonId||math6Idx===0)math6SrsUpdate(it._l.id,ok);
   // الآلية تُسمّى بمحاكاة الإجراء المكسور لا بقرب الفرق — «شكل الخطأ لا وقوعه»
   const bug=ok?null:m6BugOf(it,parseArNum(it.c[i]));
   if(bug){shapeRecord(bug,true);if(shapeArmed(bug))m6Arm(bug)}
@@ -13004,14 +13027,18 @@ function renderMath6Result(){
     // والنوعُ في سطر النتيجة كذلك: «أيّ درسٍ أخطأتُ فيه» وحدها لا تقول **أيّ نوعٍ من
     // المهارة** تعثّر، وهو ما يُجمَّع عبر الدروس (`sk` واحدٌ لعدّة دروس بتصميم الكتاب).
     const sk=math6TypeOf(it._l)?`<span style="color:#92400E;font-size:12px"> · ${esc(math6TypeOf(it._l))}</span>`:"";
-    return `<div style="display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid #F1F5F9;font-size:14px"><span style="color:#334155">${esc(it._l.no)} · ${esc(it._l.t)}${sk}</span><span>${mark}</span></div>`;
+    // وفي تدريب الدرس الواحد اسمُ الدرس مكرّرٌ في كل سطر بلا فائدة، فيُعرض السؤال نفسه
+    const label=math6LessonId?esc(String(it.q).split(": ").pop()):`${esc(it._l.no)} · ${esc(it._l.t)}${sk}`;
+    return `<div style="display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid #F1F5F9;font-size:14px"><span style="color:#334155">${label}</span><span>${mark}</span></div>`;
   }).join("");
   app.innerHTML=`
   <div class="card">
     <div class="score-row"><span class="score-big" style="color:${pct>=70?'#059669':pct>=50?'#D97706':'#DC2626'}">${toAr(math6Score)}</span><span class="score-total">/ ${toAr(math6Items.length)}</span><span class="score-pct">${toAr(pct)}%</span></div>
     <div style="color:#64748B;font-size:15px;margin-bottom:14px">${pct>=85?"ممتاز! 🌟":pct>=60?"جيّد، واصلي 💪":"لا بأس — هذه الدروس تعود للمراجعة قريباً 🌱"}</div>
     <div style="margin-bottom:14px">${rows}</div>
-    <button class="btn" style="background:#0F766E" onclick="startMath6('${esc(math6Chapter)}')">🔁 جلسة أخرى${math6Chapter?" من الفصل "+toAr(math6Chapter):""}</button>
+    ${math6LessonId
+      ?`<button class="btn" style="background:#0F766E" onclick="startMath6Lesson('${esc(math6LessonId)}')">🔁 أسئلةٌ أخرى من الدرس نفسه</button>`
+      :`<button class="btn" style="background:#0F766E" onclick="startMath6('${esc(math6Chapter)}')">🔁 جلسة أخرى${math6Chapter?" من الفصل "+toAr(math6Chapter):""}</button>`}
     <button class="link-btn" onclick="goMath6Menu()">→ فهرس الكتاب</button>
     <button class="link-btn" onclick="home()">→ الرئيسية</button>
   </div>`;
@@ -13048,7 +13075,7 @@ function renderMath6Menu(){
         gen:idx.gen.prep||0,book:idx.book.prep||0});
     }
     c.lessons.forEach(function(l){
-      rows.push({no:l.no,t:l.t,sk:l.sk,p:l.p,gen:idx.gen[l.id]||0,book:idx.book[l.id]||0});
+      rows.push({id:l.id,no:l.no,t:l.t,sk:l.sk,p:l.p,gen:idx.gen[l.id]||0,book:idx.book[l.id]||0});
     });
     const rowsHTML=rows.map(function(r){
       const has=r.gen>0||r.book>0;
@@ -13063,7 +13090,9 @@ function renderMath6Menu(){
         <div style="margin-top:3px;font-size:12px;color:#64748B;display:flex;flex-wrap:wrap;gap:6px;align-items:center">
           ${math6TypeOf(r)?`<span style="background:${has?"#FEF3C7":"#F1F5F9"};color:${has?"#92400E":"#94A3B8"};border-radius:6px;padding:2px 7px">🏷️ ${esc(math6TypeOf(r))}</span>`:""}
           <span style="color:${has?"#0F766E":"#94A3B8"}">${esc(avail)}</span>
-        </div></div>`;
+        </div>
+        ${(r.id&&r.gen>0)?`<button type="button" class="m6-lesson-btn" onclick="startMath6Lesson('${esc(r.id)}')">▶︎ تدرّبي على هذا الدرس</button>`:""}
+        </div>`;
     }).join("");
     // والعددان يُفرَّقان في النصّ كما يُفرَّقان في العدّ: «درسٌ يتولّد» ليس «سؤالاً»
     // — يُنتج واحداً في الجلسة بأرقامٍ جديدة كل مرّة، وسؤالُ الكتاب ثابتٌ بعينه.
