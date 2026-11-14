@@ -1469,10 +1469,32 @@ function quizBudgetWaitMs(){
 // يتناوب فتغطّي الأنواعُ الخمسة خمسَ جلسات — وهي تفتح يومياً، فالدورة خمسة أيّام.
 // والكاش (٤٠ عنصراً لكل نوع) هو ما يصلها فوراً، وهو قائمٌ أصلاً ولم يُمَسّ.
 const QUIZ_TYPES=["reading","logic","analogy","vocabulary","science"];
+// ===== والنصيبُ بقدر الاستهلاك لا بالتساوي — ١٤ نوفمبر =====
+// الجلسة تأخذ من العلمي `QUIZ_PER` (١٢) ومن كل نوعٍ لفظيّ نحو `QUIZ_PER/AI_VERBAL.length`
+// (٣)، والتناوب المتساوي أعطى العلمي خُمس النداءات وهو يُستهلَك أسرع بأربعة أضعاف.
+// المقيس: ٣٠ يوماً (١٥ أكتوبر–١٤ نوفمبر) فيها دفعةُ علميٍّ واحدة (٣٠ أكتوبر) وبنكه ٨٤ =
+// حدُّ «أسبوعٍ بلا تكرار» بلا هامش. فالأوزان تُشتقّ من الثوابت الحيّة (اليوم: علميّ ٤ ولكلّ
+// لفظيّ ١ ⇐ نصفُ النداءات للعلمي)، والدورة متداخلة لا كتلة. ويتجاور العلميّان عند حدّ
+// الدورة فتأخذ فتحةٌ نداءَيها علمياً أحياناً — وهو اتّجاهُ الحاجة نفسه، فتُرك.
+function quizRotOrder(){
+  const per=function(t){return t==="science"?QUIZ_PER:QUIZ_PER/AI_VERBAL.length};
+  const minW=Math.min.apply(null,QUIZ_TYPES.map(per));
+  const w={},left={};let total=0;
+  QUIZ_TYPES.forEach(function(t){w[t]=Math.max(1,Math.round(per(t)/minW));left[t]=0;total+=w[t]});
+  // توزيعٌ متناسبٌ متداخل: في كل خانةٍ النوعُ الأبعدُ عن حصّته المستحقّة حتى الآن
+  const out=[];
+  for(let k=0;k<total;k++){
+    let best=null,bv=-1/0;
+    QUIZ_TYPES.forEach(function(t){const v=w[t]*(k+1)/total-left[t];if(v>bv+1e-9){bv=v;best=t}});
+    out.push(best);left[best]++;
+  }
+  return out;
+}
 function quizRotNext(){
+  const ord=quizRotOrder();
   let i=0;try{i=parseInt(lsGet("quiz_gen_rot")||"0",10)||0}catch(e){i=0}
-  const t=QUIZ_TYPES[((i%QUIZ_TYPES.length)+QUIZ_TYPES.length)%QUIZ_TYPES.length];
-  try{lsSet("quiz_gen_rot",String((i+1)%QUIZ_TYPES.length))}catch(e){}
+  const t=ord[((i%ord.length)+ord.length)%ord.length];
+  try{lsSet("quiz_gen_rot",String((i+1)%ord.length))}catch(e){}
   return t;
 }
 // نداءٌ صامتٌ واحد بعد بدء الجلسة — لا يُنتظَر ولا يُعطّل شيئاً إن فشل، بحرف قرار

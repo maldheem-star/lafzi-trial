@@ -96,16 +96,23 @@ console.log('\n٤) وسطرُ التشخيص صار يحمل الذيل — وه
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-console.log('\n٥) تباعُد التوليد: نداءٌ واحد لكل جلسة، والأنواع تتناوب');
+console.log('\n٥) تباعُد التوليد: الأنواع تتناوب، ونصيبُ كلٍّ بقدر استهلاكه (١٤ نوفمبر)');
 {
+  // كان: خمسُ نداءاتٍ متتالية تغطّي الخمسة بالتساوي. وصار النصيبُ بقدر ما تأخذه الجلسة
+  // (العلمي QUIZ_PER، وكلُّ لفظيٍّ QUIZ_PER/AI_VERBAL.length). والغرضُ الأصلي باقٍ:
+  // كلُّ نوعٍ يُغطّى في الدورة، والدورةُ تعود ولا تعلق.
   const r=await p.evaluate(()=>{
     lsSet('quiz_gen_rot','0');
-    const seen=[];for(let i=0;i<7;i++)seen.push(quizRotNext());
-    return{seen:seen,types:QUIZ_TYPES};
+    const L=quizRotOrder().length,seen=[];for(let i=0;i<2*L;i++)seen.push(quizRotNext());
+    return{seen:seen,L:L,types:QUIZ_TYPES,per:QUIZ_PER,nv:AI_VERBAL.length};
   });
   ok(r.types.length===5,'خمسةُ أنواع: '+r.types.join('/'));
-  ok(new Set(r.seen.slice(0,5)).size===5,'وخمسُ نداءاتٍ متتالية تُغطّي الخمسة بلا تكرار');
-  ok(r.seen[5]===r.seen[0]&&r.seen[6]===r.seen[1],'ثمّ تدور من جديد — لا تعلق على نوع');
+  const cyc=r.seen.slice(0,r.L),cnt={};cyc.forEach(t=>cnt[t]=(cnt[t]||0)+1);
+  ok(r.types.every(t=>cnt[t]>=1),'والدورةُ ('+r.L+' نداءات) تغطّي الخمسة كلّها');
+  const want=Math.round(r.per/(r.per/r.nv));
+  ok(r.types.filter(t=>t!=='science').every(t=>cnt[t]===1)&&cnt.science===want,
+    'والعلمي '+cnt.science+' مقابل ١ لكلّ لفظيّ = نسبةُ الاستهلاك ('+want+')');
+  ok(r.seen.slice(r.L).join()===cyc.join(),'ثمّ تدور من جديد — لا تعلق على نوع');
 }
 
 console.log('\n٦) وجلسةٌ حقيقية لا تُطلق شبكةً أثناء البناء ولا تتجاوز الميزانية');
