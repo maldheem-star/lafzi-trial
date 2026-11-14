@@ -39,6 +39,20 @@ ok(r.notShown.length===0,'ولا يظهر فوق مهارةٍ بلا درس — 
 ok(r.leak.length===0,'والأمثلةُ ليست جملَ الأسئلة — '+r.leak.join(','));
 ok(r.mixedAr.length===0,'سطرُ القاعدة عربيّ (كلمةٌ لاتينية واحدة على الأكثر، بلا ترقيمٍ ملاصق) — '+r.mixedAr.join(' | '));
 ok(r.arInEx.length===0,'وسطرُ المثال إنجليزيّ خالص — '+r.arInEx.join(' | '));
+// ٢) السطرُ يحمل المهارةَ وظهورَ الدرس — بلاهما لا يُقاس الأثر
+{
+  const posted=[];
+  await p.route('**/rest/v1/mawhiba_answer_log**',r=>{try{posted.push(JSON.parse(r.request().postData()||'{}'))}catch(e){};r.fulfill({status:201,body:''})});
+  for(const id of ['gr_a1_1','gr_a1_2']){
+    await p.evaluate(id=>{startGram();gramItems=[gramBankFor('A1').find(x=>x.id===id)];gramIdx=0;gramSetupRound();gateLeft=0;gateStop();render();
+      document.querySelectorAll('.choice')[0].click()},id);
+    await p.waitForTimeout(150);
+  }
+  const g=posted.filter(x=>x.domain==='gram');
+  const a=g.find(x=>x.item_id==='gr_a1_1')||{},c=g.find(x=>x.item_id==='gr_a1_2')||{};
+  ok(/مهارة:تصريف الغائب · درس:ظهر/.test(a.response||''),'سطرُ مهارةٍ لها درس: '+(a.response||'—').slice(-40));
+  ok(/مهارة:الفعل be · درس:لا/.test(c.response||''),'وسطرُ مهارةٍ بلا درس: '+(c.response||'—').slice(-40));
+}
 await b.close();
 console.log(fails?'=== '+fails+' فشل ===':'=== كل الاختبارات نجحت ===');process.exit(fails?1:0);
 })();
