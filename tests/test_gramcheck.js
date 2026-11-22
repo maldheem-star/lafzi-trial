@@ -86,9 +86,11 @@ ok(await page.evaluate(()=>gramPicked)===before,'لا تغيير بعد القف
 
 console.log('\n٧) التسجيل: نصّ السؤال بكل الخيارات وموضع الصواب، والإجابة النصّية المختارة');
 logs=[];
-await page.evaluate(()=>{startGram();const i=gramCur().c.findIndex(o=>o.ok);gateLeft=0;gateStop();gramChoose(i)});
+// السطرُ يُطابَق بمعرّف السؤال لا بأوّل سطر gram: إجابةُ القسم ٥ الخاطئة قد يصل سطرُها بعد
+// `logs=[]` تحت حِمل الجولة الكاملة (فشل ٢٢ نوفمبر مرّةً من ١٣١ ونجح منفرداً) — سباقٌ في الاختبار.
+const gid=await page.evaluate(()=>{startGram();const c=gramCur(),i=c.c.findIndex(o=>o.ok);gateLeft=0;gateStop();gramChoose(i);return c.id});
 await page.waitForTimeout(300);
-const row=logs.find(l=>l.domain==='gram');
+const row=logs.find(l=>l.domain==='gram'&&l.item_id===gid);
 ok(!!row,'سطرٌ وصل الخادم');
 ok(row&&/\d\) .+ ✓/.test(row.q_text),`وموضع الصواب موسومٌ في السؤال (${row&&row.q_text&&row.q_text.slice(0,50)})`);
 ok(row&&row.qtype==='sentence','ونوع السؤال');
