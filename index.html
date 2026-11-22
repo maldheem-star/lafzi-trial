@@ -146,6 +146,8 @@
   .btn{margin-top:14px;width:100%;padding:15px;border-radius:14px;border:none;background:#334155;color:#fff;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit}
   .btn.ghost{background:#fff;color:#334155;border:1.5px solid #CBD5E1}
   .link-btn{margin-top:14px;width:100%;padding:13px;border-radius:14px;border:none;background:transparent;color:#64748B;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
+  .q-en{direction:ltr;text-align:left;font-family:Georgia,serif;margin-top:6px}
+  .q-note{font-size:13px;color:#64748B;margin-top:4px}
   .gram-lesson{background:#EEF2FF;border-radius:12px;padding:12px 14px;margin-top:12px}
   .gram-lesson-t{font-size:14px;font-weight:800;color:#312E81;margin-bottom:6px}
   .gram-lesson-b{font-size:14px;line-height:1.9;color:#312E81}
@@ -7987,7 +7989,7 @@ function renderEngPlan(){
   <div class="card">
     <span class="tag" style="background:#E0E7FF;color:#4338CA">${tag}</span>
     ${it.passage?`<div style="background:#F0FDFA;border:1px solid #99F6E4;border-radius:12px;padding:14px;margin:12px 0;font-size:16px;line-height:1.8;direction:ltr;text-align:left;color:#0F766E;font-family:Georgia,serif">${it.passage}</div>`:""}
-    <div class="q">${it.q}</div>
+    <div class="q">${qMixHTML(it.q)}</div>
     ${planArmedHint(it)}
     ${pGate}
     ${it.listen?`<button type="button" onclick="speakEnglish(planItems[${planIdx}].listen)" style="background:#ECFEFF;border:1.5px solid #A5F3FC;color:#0891B2;border-radius:10px;padding:7px 16px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:14px;font-family:inherit">🔊 استمعي</button>`:""}
@@ -9024,6 +9026,7 @@ function startErrors(){
   }
   mode="errors";errShownAt=Date.now();wbReset();
   const c=errCur();if(c&&c.kind==="fix")wbStart(c.target);
+  errGateStart();
   window.scrollTo(0,0);render();
   if(c&&c.kind==="word")setTimeout(function(){speakEnglish(c.w)},400);
 }
@@ -9045,8 +9048,23 @@ function errCheck(){
   errLocked=true;if(errOk)errScore++;
   render();
 }
+// ===== بوّابة التسرّع لبطاقات «سؤال عالق» — ٢٢ نوفمبر =====
+// ٢٢١ إجابة: ٧٩ صحيحة (٣٦٪)، ووسيطُ الزمن ١٫٢ث للخاطئة و١٫٥ث للصحيحة، و١٢٨ منها تحت ١٫٥ث.
+// فلا زمنَ انخراطٍ يُشتقّ منه رقم؛ فتُستعار أرقامُ `step:gap` (جملةٌ واحدة بفراغ — الشكلُ نفسه)
+// كما استُعيرت `read` لـ`vctx` — لا رقمٌ جديد.
+// ===== السؤالُ المخلوط يُفصَل سطرين — ٢٢ نوفمبر =====
+// «اختاري الصحيح: "We ___ the train tomorrow."» قلبت فيه العربيةُ التنصيصَ والنقطة (لقطة
+// ٣٩٠ عرضاً). وهي صيغةُ عشرات بنود الخطة وبطاقات «سؤال عالق» معاً، فالعلاجُ عامٌّ في العارض
+// لا في كل بند: البادئةُ العربية سطر، والجملةُ الإنجليزية بين التنصيص سطرٌ LTR، وما بعدها سطر.
+function qMixHTML(q){
+  const m=String(q==null?"":q).match(/^([^"“]*?)\s*["“]([^"”]+)["”]\s*(.*)$/);
+  if(!m||!/[\u0600-\u06FF]/.test(m[1]))return q;
+  const tail=m[3].trim(),punct=/^[؟?.!،]*$/.test(tail);
+  return `<div>${m[1]}${punct?tail:""}</div><div class="q-en">${m[2]}</div>${(!punct&&tail)?`<div class="q-note">${tail}</div>`:""}`;
+}
+function errGateStart(){const c=errCur();if(c&&c.kind==="item")secGateStart("errors",String(c.it.q||"")+" "+(c.it.c||[]).join(" "),"step:gap");else{gateStop();gateSecs=0;gateLeft=0}}
 function errChoose(i){
-  if(errLocked)return;
+  if(errLocked||!gateOpen())return;
   const c=errCur();if(!c||c.kind!=="item")return;
   errPicked=i;errOk=(i===c.it.a);errLocked=true;if(errOk)errScore++;
   itemErrRecord(c.key,errOk,c.it.c[i]);srsUpdate(c.key,errOk);lessonRecord(c.it.lesson,errOk);
@@ -9059,6 +9077,7 @@ function errNext(){
   errIdx++;errLocked=false;errOk=false;errPicked=null;errTyped="";errShownAt=Date.now();
   const c=errCur();
   if(c&&c.kind==="fix")wbStart(c.target);else wbReset();
+  errGateStart();
   render();
   if(c&&c.kind==="word")setTimeout(function(){speakEnglish(c.w)},300);
 }
@@ -9129,13 +9148,13 @@ function renderErrors(){
   const choices=it.c.map(function(ch,i){
     let bg="#fff",bd="#E2E8F0",col="#334155";
     if(errLocked){if(i===it.a){bg="#ECFDF5";bd="#10B981";col="#065F46"}else if(i===errPicked){bg="#FEF2F2";bd="#EF4444";col="#991B1B"}}
-    return `<button class="choice" style="background:${bg};border-color:${bd};color:${col}" onclick="errChoose(${i})" ${errLocked?"disabled":""}><span class="letter">${L[i]}</span>${ch}</button>`}).join("");
+    return `<button class="choice" style="background:${bg};border-color:${bd};color:${col}" onclick="errChoose(${i})" ${gateOpen()?"":"disabled style=\"opacity:.45;pointer-events:none\""} ${errLocked?"disabled":""}><span class="letter">${L[i]}</span>${ch}</button>`}).join("");
   app.innerHTML=`${head}
   <div class="card">
     <span class="tag" style="background:#E0E7FF;color:#4338CA">🔁 سؤال عالق</span>
     ${it.passage?`<div style="background:#F0FDFA;border:1px solid #99F6E4;border-radius:12px;padding:14px;margin:12px 0;font-size:16px;line-height:1.8;direction:ltr;text-align:left;color:#0F766E;font-family:Georgia,serif">${it.passage}</div>`:""}
-    <div class="q">${it.q}</div>
-    <div class="choices">${choices}</div>
+    <div class="q">${qMixHTML(it.q)}</div>
+    <div class="choices">${errLocked?"":secGateHTML()}${choices}</div>
     ${errLocked?`<div class="explain"><div class="explain-title" style="color:${errOk?'#059669':'#B45309'}">${errOk?"✓ إجابة صحيحة":"الصحيحة بالأخضر"}</div><div class="explain-body">${it.w||""}</div></div>`:""}
   </div>
   ${errLocked?`<button class="btn" style="background:#DB2777" onclick="errNext()">${errIdx+1>=errItems.length?"إنهاء":"التالي ←"}</button>`:""}`;
@@ -11682,7 +11701,14 @@ function gramGenTopUp(level){
 const GRAM_A1_LESSONS={
   "تصريف الغائب":{t:"الفعل مع الشخص الواحد",r:[
     ["إذا كان الفاعل شخصاً واحداً أو شيئاً واحداً، نضيف للفعل حرف s في المضارع.","My sister <b>goes</b> · The cat <b>sleeps</b>"],
-    ["ومع الجمع، أو مع أنا وأنتِ ونحن وهم، لا نضيف شيئاً.","My sisters <b>go</b> · I <b>go</b> · They <b>go</b>"]]},
+    ["ومع الجمع، أو مع أنا وأنتِ ونحن وهم، لا نضيف شيئاً.","My sisters <b>go</b> · I <b>go</b> · They <b>go</b>"],
+    // ٢٢ نوفمبر: «does not likes» و«Where does your brother works» — الـs تُعاد بعد does
+    ["وبعد الفعل المساعد في السؤال والنفي يعود الفعل بلا حرف s أبداً.","Does he <b>play</b>? · She doesn’t <b>like</b> milk."]]},
+  "الفعل be":{t:"am و is و are",r:[
+    ["مع أنا:","I <b>am</b> tired."],
+    ["مع الشخص الواحد أو الشيء الواحد:","My uncle <b>is</b> tall. · The car <b>is</b> red."],
+    ["مع الجمع، ومع أنتِ ونحن وهم:","The boys <b>are</b> here. · We <b>are</b> ready."],
+    ["وفي الماضي:","Yesterday I <b>was</b> sick. · They <b>were</b> at home."]]},
   "الملكية":{t:"الملكية للأشخاص",r:[
     ["لنقول إن الشيء لشخص: اسمُ الشخص ثم علامة الملكية ثم الشيء.","Sara<b>’s</b> bag · my father<b>’s</b> car"],
     ["ولا نستعمل of مع الأشخاص.","✗ the bag of Sara  →  ✓ Sara’s bag"]]},
@@ -11699,8 +11725,15 @@ const GRAM_A1_LESSONS={
     ["بعد الفعل، والفعل وقع عليّ:","My friend helped <b>me</b>."],
     ["وللملكية، ولا تأتي إلا قبل اسم:","This is <b>my</b> pencil."]]},
 };
+// ===== أسماءُ المهارات في المولَّد تُوحَّد — ٢٢ نوفمبر =====
+// السجلّ أظهر «الفعل be» بأربع كتابات (“be” و"be" و'be' وبلا علامات) و«اتفاق الفعل مع
+// الفاعل» و««المضارع البسيط مع -s»» — فلا يُطابق أيٌّ منها مفتاحَ درس. تُنزَع علاماتُ
+// التنصيص والمسافاتُ الزائدة، ثمّ جدولُ مرادفاتٍ لما يدرّسه الدرسُ نفسه.
+const GRAM_SK_ALIAS={"اتفاق الفعل مع الفاعل":"تصريف الغائب","المضارع البسيط مع -s":"تصريف الغائب"};
+function gramSkNorm(sk){const k=String(sk||"").replace(/[“”"'‘’«»]/g,"").replace(/\s+/g," ").trim();return GRAM_SK_ALIAS[k]||k}
+function gramLessonOf(it){return (it&&GRAM_A1_LESSONS[gramSkNorm(it.sk)])||null}
 function gramLessonHTML(it){
-  const L=it&&GRAM_A1_LESSONS[it.sk];if(!L)return "";
+  const L=gramLessonOf(it);if(!L)return "";
   return `<div class="gram-lesson">
     <div class="gram-lesson-t">📘 تذكّري القاعدة: ${L.t}</div>
     ${L.r.map(function(x){return `<div class="gram-lesson-b">${x[0]}</div><div class="gram-lesson-ex">${x[1]}</div>`}).join("")}
@@ -11754,7 +11787,7 @@ function gramChoose(i){
   posRecord("gram",pickPos,it.c.length);
   // المهارةُ وظهورُ الدرس في السطر نفسه — ١٤ نوفمبر: بلاهما لا يُقاس أثرُ `GRAM_A1_LESSONS`
   // (أوّلُ جلسةٍ بعد الشحن ٧/١٠ ولا يُعرف أظهر درسٌ فوق أيٍّ منها، والمولَّدةُ قد تحمل `sk` آخر)
-  const gramTag=" · مهارة:"+(it.sk||"—")+(GRAM_A1_LESSONS[it.sk]?" · درس:ظهر":" · درس:لا");
+  const gramTag=" · مهارة:"+(it.sk||"—")+(gramLessonOf(it)?" · درس:ظهر":" · درس:لا");
   logAnswer("gram","sentence",ok,"موضع "+toAr(pickPos)+" · "+it.c[i].t+(slip?" · "+slip:"")+posTagFor("gram")+gramTag,it.id,elapsed,
     {_sk:skOf(it),q_text:shown});
   render();
