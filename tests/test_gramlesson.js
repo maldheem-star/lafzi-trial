@@ -14,7 +14,7 @@ const r=await p.evaluate(()=>{
   localStorage.clear();startGram();
   const bank=gramBankFor('A1'),sks=Object.keys(GRAM_A1_LESSONS),out={sks:sks.length,orphan:[],shown:[],leak:[],mixedAr:[],arInEx:[],notShown:[]};
   sks.forEach(function(sk){
-    const its=bank.filter(x=>x.sk===sk);if(!its.length){out.orphan.push(sk);return}
+    const its=bank.filter(x=>gramSkNorm(x.sk)===sk);if(!its.length){out.orphan.push(sk);return}
     its.forEach(function(it){
       gramItems=[it];gramIdx=0;gramSetupRound();render();
       if(document.querySelector('.gram-lesson'))out.shown.push(it.id);
@@ -28,11 +28,14 @@ const r=await p.evaluate(()=>{
       if(/[؀-ۿ]/.test(x[1]))out.arInEx.push(sk+': '+x[1]);
     });
   });
-  bank.filter(x=>!GRAM_A1_LESSONS[x.sk]).forEach(function(it){gramItems=[it];gramIdx=0;gramSetupRound();render();
+  bank.filter(x=>!gramLessonOf(x)).forEach(function(it){gramItems=[it];gramIdx=0;gramSetupRound();render();
     if(document.querySelector('.gram-lesson'))out.notShown.push(it.id)});
+  out.norm=['الفعل “be”','الفعل "be"',"الفعل 'be'",'اتفاق الفعل مع الفاعل','«المضارع البسيط مع -s»'].every(function(k){return !!gramLessonOf({sk:k})});
+  out.normEx=gramSkNorm('الفعل “be”')+' · '+gramSkNorm('اتفاق الفعل مع الفاعل');
   return out;
 });
-ok(r.sks===5,'خمسة دروس — '+r.sks);
+ok(r.sks>=5,'دروسٌ للمهارات — '+r.sks);
+  ok(r.norm,'وأسماءُ المولَّد تُوحَّد: '+r.normEx);
 ok(r.orphan.length===0,'كلّ درسٍ له أسئلةٌ في البنك — '+r.orphan.join(','));
 ok(r.shown.length>=5,'ويظهر فوق أسئلة مهارته — '+r.shown.join(','));
 ok(r.notShown.length===0,'ولا يظهر فوق مهارةٍ بلا درس — '+r.notShown.join(','));
@@ -43,15 +46,15 @@ ok(r.arInEx.length===0,'وسطرُ المثال إنجليزيّ خالص — '+
 {
   const posted=[];
   await p.route('**/rest/v1/mawhiba_answer_log**',r=>{try{posted.push(JSON.parse(r.request().postData()||'{}'))}catch(e){};r.fulfill({status:201,body:''})});
-  for(const id of ['gr_a1_1','gr_a1_2']){
+  for(const id of ['gr_a1_1','gr_a1_13']){
     await p.evaluate(id=>{startGram();gramItems=[gramBankFor('A1').find(x=>x.id===id)];gramIdx=0;gramSetupRound();gateLeft=0;gateStop();render();
       document.querySelectorAll('.choice')[0].click()},id);
     await p.waitForTimeout(150);
   }
   const g=posted.filter(x=>x.domain==='gram');
-  const a=g.find(x=>x.item_id==='gr_a1_1')||{},c=g.find(x=>x.item_id==='gr_a1_2')||{};
+  const a=g.find(x=>x.item_id==='gr_a1_1')||{},c=g.find(x=>x.item_id==='gr_a1_13')||{};
   ok(/مهارة:تصريف الغائب · درس:ظهر/.test(a.response||''),'سطرُ مهارةٍ لها درس: '+(a.response||'—').slice(-40));
-  ok(/مهارة:الفعل be · درس:لا/.test(c.response||''),'وسطرُ مهارةٍ بلا درس: '+(c.response||'—').slice(-40));
+  ok(/مهارة:can · درس:لا/.test(c.response||''),'وسطرُ مهارةٍ بلا درس: '+(c.response||'—').slice(-40));
 }
 await b.close();
 console.log(fails?'=== '+fails+' فشل ===':'=== كل الاختبارات نجحت ===');process.exit(fails?1:0);
