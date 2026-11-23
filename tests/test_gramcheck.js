@@ -59,7 +59,8 @@ for(let i=0;i<30;i++){
 ok(firsts.size>1,'ترتيب العرض يتنوّع عبر الجولات');
 
 console.log('\n٣) قبل القفل: لا شرح ظاهر، والخيارات الأربعة معروضة');
-await page.evaluate(()=>startGram());
+// ٢٣ نوفمبر: السؤالُ ذو الدرس يُخفي خياراته حتى «فهمت» — تُفتح البوّابة ويُضغط الزرّ ليُفحَص العرض نفسه
+await page.evaluate(()=>{startGram();gateLeft=0;gateStop();gramAckLesson();render()});
 let t=await page.textContent('#app');
 const it0=await page.evaluate(()=>gramCur());
 ok(it0.c.every(o=>t.includes(o.t)),'الجمل الأربع كلّها ظاهرة');
