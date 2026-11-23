@@ -148,6 +148,7 @@
   .link-btn{margin-top:14px;width:100%;padding:13px;border-radius:14px;border:none;background:transparent;color:#64748B;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
   .q-en{direction:ltr;text-align:left;font-family:Georgia,serif;margin-top:6px}
   .q-note{font-size:13px;color:#64748B;margin-top:4px}
+  .dict-mean{display:inline-block;background:#F0FDFA;border:1px solid #99F6E4;color:#0F766E;border-radius:10px;padding:5px 12px;font-size:14px;font-weight:700;margin-bottom:14px}
   .gram-lesson{background:#EEF2FF;border-radius:12px;padding:12px 14px;margin-top:12px}
   .gram-lesson-t{font-size:14px;font-weight:800;color:#312E81;margin-bottom:6px}
   .gram-lesson-b{font-size:14px;line-height:1.9;color:#312E81}
@@ -9054,7 +9055,8 @@ function renderDictation(){
     <span class="tag" style="background:#CFFAFE;color:#0E7490">✍️ إملاء · ${info.tag}</span>
     ${ttsHelpHTML("هذا القسم يحتاج الصوت، ولا نصّ يُقرأ بدلاً منه. افحصي الصوت أوّلاً، أو عودي لهذا القسم لاحقاً.")}
     <div style="margin:18px 0"><button type="button" onclick="dictReplay()" style="background:#0E7490;color:#fff;border:none;border-radius:50%;width:64px;height:64px;font-size:26px;cursor:pointer">🔊</button></div>
-    <div style="font-size:13px;color:#64748B;margin-bottom:16px">اضغطي على السمّاعة لسماع الكلمة، ثم اكتبيها بالإنجليزي</div>
+    <div style="font-size:13px;color:#64748B;margin-bottom:${item.m?8:16}px">اضغطي على السمّاعة لسماع الكلمة، ثم اكتبيها بالإنجليزي</div>
+    ${item.m?`<div class="dict-mean">معناها: ${esc(item.m)}</div>`:""}
     ${wordCrossHTML(item.w)}
     ${hintBox}
     <input id="dictIn" ${dictLocked?"disabled":""} style="width:100%;padding:14px;border-radius:12px;border:2px solid #E2E8F0;font-size:20px;text-align:center;direction:ltr;font-family:Georgia,serif" placeholder="type here" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" onkeydown="if(event.key==='Enter')dictCheck()">
@@ -10816,6 +10818,18 @@ function writeTtr(t){
   const w=writeTokens(t);if(!w.length)return 0;
   return Math.round(100*new Set(w).size/w.length)/100;
 }
+// ===== تكرارٌ حلقيّ لا يُحتسَب — ٢٣ نوفمبر =====
+// السجلّ (٢٤ إجابة كتابة منذ أغسطس): ١٢ إجابةً منذ ١٤ نوفمبر كلّها حلقاتٌ («I love you too baby girl»
+// ثلاثاً، «get the rest of the day off» عبر أسئلةٍ مختلفة) ونالت ٥ منها صواباً، و٠ من الـ١٢ قبلها فيها
+// تكرار. والنصّ يشبه إملاءً بالمايك (Lovato وsheetal منذ أغسطس) لا نسخاً ولا لصقاً (نسخ:٠ لصق:٠).
+// **لا معيارَ منشوراً لعتبة التكرار** — فالقاعدة بنيويّة لا إحصائيّة: خمسُ كلماتٍ متتاليةٍ بعينها
+// تتكرّر مرّتين. وقِيست على السجلّ كلّه: ١٢/١٢ بعد ١٤ نوفمبر، و٠/١٢ قبلها، و٠/٣ لجملٍ مبتدئةٍ
+// مشروعة بإطارٍ متكرّر («I like to play football. I like to play tennis…» — خامسةُ الكلمات تختلف).
+function writeLoopCheck(t){
+  const w=writeTokens(t),seen={};
+  for(let i=0;i+5<=w.length;i++){const k=w.slice(i,i+5).join(" ");seen[k]=(seen[k]|0)+1;if(seen[k]>=2)return true}
+  return false;
+}
 function writeSim(a,b){
   const A=new Set(writeTokens(a)),B=new Set(writeTokens(b));
   if(!A.size||!B.size)return 0;
@@ -11268,11 +11282,11 @@ function writePasteBlock(ev){
 }
 let writeItems=[],writeIdx=0,writeDone=false,writeScore=0,writeShownAt=0,writeTyped="",
   writeSubmitted=false,writeBusy=false,writeFix=[],writeFixFail="",writeCount=0,writeLtDropped=0,writeLtJudged=0,
-  writeModelShown=false,writeModelViews=0,writeCopy=false,writeSent=0;
+  writeModelShown=false,writeModelViews=0,writeCopy=false,writeLoop=false,writeSent=0;
 function startWrite(){
   writeItems=buildWritePlan();writeIdx=0;writeDone=false;writeScore=0;
   writeSubmitted=false;writeBusy=false;writeFix=[];writeFixFail="";writeTyped="";writeCount=0;
-  writeLtDropped=0;writeLtJudged=0;writeModelShown=false;writeModelViews=0;writeCopy=false;writeSent=0;
+  writeLtDropped=0;writeLtJudged=0;writeModelShown=false;writeModelViews=0;writeCopy=false;writeLoop=false;writeSent=0;
   writeBurstReset(writeJointFor(writeItems[0]));
   mode="write";writeShownAt=Date.now();window.scrollTo(0,0);render();
   // فتحُ الجلسة يُسجَّل — بلا هذا لا يُفرَّق بين «لم يدخل» و«دخل فخرج قبل أن يكتب».
@@ -11309,7 +11323,7 @@ async function writeSubmit(){
   if(!txt||txt===writeJointFor(it).trim())return;
   // محلّيٌّ كنظيرَيه في المحادثة: النداء والتسجيل في `writeSubmit` نفسها.
   let whyRev=null;
-  writeTyped=txt;writeCount=writeWordCount(txt);writeCopy=writeCopyCheck(it,txt,it.prompt);
+  writeTyped=txt;writeCount=writeWordCount(txt);writeCopy=writeCopyCheck(it,txt,it.prompt);writeLoop=writeLoopCheck(txt);
   // هدف المنتَج صار مركّباً لا عددَ كلماتٍ وحده (Writing Next: أثر ٠٫٧٠): الكلماتُ،
   // ومعها تغطيةُ النقاط التي **تنصّ عليها التعليمة نفسها** حيث تنصّ عليها (رسائل A2
   // بنقاطها الثلاث، وأسئلة A1 الموجَّهة) — لا رقمٌ أخترعه. وB1 كتابةٌ حرّة بلا نقاطٍ
@@ -11319,7 +11333,7 @@ async function writeSubmit(){
   const lenOk=writeCount>=goals.words&&(goals.sentences?writeSent>=goals.sentences:true);
   writeFix=[];writeFixFail="";writeLtDropped=0;writeLtJudged=0;
   // نسخٌ محض لا يستحقّ مراجعة نحوية: نصّ السؤال نفسه سليمٌ نحوياً حتماً، فطلبٌ للشبكة بلا فائدة
-  if(!writeCopy){
+  if(!writeCopy&&!writeLoop){
     writeBusy=true;render();
     try{
       const lines=writeSentences(txt).map(function(s,i){return (i+1)+". "+s}).join("\n");
@@ -11364,7 +11378,7 @@ async function writeSubmit(){
   // الإشارة — ودليلُه في السجلّ نفسه: هيا ٤ سبتمبر، `insertText` ودفعاتٌ ٧-١٢ محرفاً،
   // ونصوصٌ إملاءٍ مشوّهة بيّنة («How to get a sheetal in the poor thing») نالت صواباً.
   // فهذا يسدّ المسار المرصود لا كلَّ مسار، والباقي يبقى مفتوحاً حتى تُقاس إشارةٌ تمسكه.
-  const ok=(writeCopy||writePasted||writeDictated)?false
+  const ok=(writeCopy||writePasted||writeDictated||writeLoop)?false
     :(it.type==="combine"?(lenOk&&!cf.req&&!cf.many&&(writeFixFail?true:!writeFix.length)):lenOk);
   writeSrsUpdate(it.id,ok);
   // السقالة تتلاشى بالنجاح وتعود كاملةً بالتعثّر — لا تُقاس بالزمن ولا تُطفأ يدوياً
@@ -11385,12 +11399,12 @@ async function writeSubmit(){
       // وتفصيلُ فشل المراجعة يلي حالتَها مباشرةً لا في ذيل السطر: القصّ (١٢٠٠) يبتلع الذيل
       +" · review:"+reviewState+(whyRev?"("+String(whyRev).slice(0,200)+")":"")
       +" · lt:"+writeLtJudged+"/"+writeLtDropped+" · مثال:"+writeModelViews
-      +" · نسخ:"+(writeCopy?1:0)+" · لصق:"+(writePasted?1:0)+" · إملاء:"+(writeDictated?1:0)+" · تنوّع:"+ttr+" · شبه سابق:"+selfSim+" · فوق K1:"+lfp.pct+"%"
+      +" · نسخ:"+(writeCopy?1:0)+" · لصق:"+(writePasted?1:0)+" · إملاء:"+(writeDictated?1:0)+" · تكرار:"+(writeLoop?1:0)+" · تنوّع:"+ttr+" · شبه سابق:"+selfSim+" · فوق K1:"+lfp.pct+"%"
       // سببُ السقوط يُسمّى بدل أن يُبتلع في «فرق نحوي» — عُرف «شكل الخطأ لا وقوعه»
       +(it.type==="combine"?(" · دمج:"+([cf.req?"missing_connector":"",cf.many?"not_one_sentence":""].filter(Boolean).join("+")||"ok")
         +(cf.req?("("+(it.req==="join"?"join":it.req.join("/"))+")"):"")+" · جمل:"+writeSentenceCount(txt)):"")).slice(0,1200)});
   // يُحفظ بعد التسجيل لا قبله — والنسخ المحض لا يدخل السجلّ فلا يصير أساساً يُقاس عليه
-  if(!writeCopy)writePrevAdd(txt);
+  if(!writeCopy&&!writeLoop)writePrevAdd(txt);
   // نفس مسار بطاقات تصحيح المحادثة بالضبط: بطاقةٌ مجدولة تعود عند حافّة النسيان،
   // ووضع «أخطائي» يُدرّبها بنائياً — لا مسار ثانٍ.
   //
@@ -11420,7 +11434,7 @@ function writeNext(){
   genPulseFor("write",profileOf().level||"A2",writeIdx);   // نبضةُ توليد أثناء الجلسة
 
   if(writeIdx+1>=writeItems.length){writeDone=true;window.scrollTo(0,0);render();return}
-  writeIdx++;writeSubmitted=false;writeBusy=false;writeFix=[];writeFixFail="";writeTyped="";writeCount=0;writeCopy=false;writeSent=0;
+  writeIdx++;writeSubmitted=false;writeBusy=false;writeFix=[];writeFixFail="";writeTyped="";writeCount=0;writeCopy=false;writeLoop=false;writeSent=0;
   writeBurstReset(writeJointFor(writeItems[writeIdx]));
   writeModelShown=false;writeModelViews=0;
   writeShownAt=Date.now();window.scrollTo(0,0);render();
@@ -11428,6 +11442,10 @@ function writeNext(){
 function renderWriteFeedback(it){
   // النسخ لا يُفحَص لعناصر الدمج (writeCopyCheck تُعيد false لها دائماً) — إعادة إنتاج
   // S1/S2 بالضبط هي المطلوب نفسه لا خطأ، فهذا المسار للكتابة الحرّة وحدها (٣ سبتمبر).
+  if(writeLoop&&!writeCopy){
+    return `<div class="explain"><div class="explain-title" style="color:#B45309">هذا النصّ يكرّر الكلمات نفسها — لا يُحتسب</div>
+      <div class="explain-body">اكتبي جملةً قصيرة بأصابعك، بكلماتك أنتِ: الجواب عن السؤال لا ما يلتقطه الميكروفون أو لوحة المفاتيح.</div></div>`;
+  }
   if(writeCopy){
     return `<div class="explain"><div class="explain-title" style="color:#B45309">هذا نسخٌ من نصّ السؤال، لا إجابة</div>
       <div class="explain-body">اكتبي بكلماتك أنتِ — جملة عن نفسك تجيب عن السؤال، لا نصّ السؤال نفسه.</div></div>`;
