@@ -1880,7 +1880,10 @@ const QZ_CARD_FADE_LINK={};
 // يؤكّد واحدةً بعينها — وحينئذٍ يصحّ لكل الأنواع لأنه لا يدّعي أيَّها هي.
   .forEach(function(pair){try{QZ_CARD_FADE_LINK[tmplKey(pair[0]())]=pair[1]}catch(e){}});
 // والأعمار والساعة تتغيّر أسماؤهما (لا أرقامهما) فيتغيّر المفتاح — تُسجَّل كلُّ صيغها
-[[gAgeChain,"agechain"],[gClock,"clock"]].forEach(function(pair){for(let i=0;i<(pair[1]==="agechain"?4000:200);i++){try{QZ_CARD_FADE_LINK[tmplKey(pair[0]())]=pair[1]}catch(e){}}});
+[[gAgeChain,"agechain"],[gClock,"clock"],[gShadedArea,"shaded"],[gPerim,"perim"],[gAngleTriangle,"anglesum"],[gAngleLine,"anglesum"]].forEach(function(pair){for(let i=0;i<(pair[1]==="agechain"?4000:200);i++){try{const q=pair[0]();
+  // gPerim نوعان: المحيط من الضلع (يُعلّمه الموضوع) والضلع من المحيط (عكسُه — لا يُربَط)
+  if(pair[1]==="perim"&&!/كم محيطه/.test(q.q))continue;
+  QZ_CARD_FADE_LINK[tmplKey(q)]=pair[1]}catch(e){}}});
 // النوع الفرعي للمقطع وحده: `fadeMakeSeq` تُنتج نوعين (نسبة/متتالية)، فيُطلَب المطابق
 // لسؤالها لا ما يقع عشوائياً — وإلا عُرض شرحُ الأقلام لسؤال متتالية.
 const CLIP_VARIANT={};
@@ -2009,6 +2012,10 @@ const FADE_TOPICS=[
   // ٢٣ نوفمبر: خمسُ مسائل أعمارٍ متسلسلة خاطئة في جلسةٍ واحدة (٤ بفارق −٢)، وزاويتا ساعةٍ بزيادة ٣٠° كلتاهما
   {key:"agechain",icon:"👨‍👩‍👧",label:"الأعمار المتسلسلة",sub:"أصغر وأكبر — من العمر المعلوم خطوةً خطوة"},
   {key:"clock",icon:"🕑",label:"زاوية عقربَي الساعة",sub:"نعدّ المسافات بين الأرقام: كل مسافة ٣٠°"},
+  // ٢٣ نوفمبر (السجلّ منذ ١ أكتوبر): المساحة المظلّلة ١/٨ · الزوايا على خط ٠/٤ · المحيط ١/٦ · زاوية المثلث ١/٣
+  {key:"shaded",icon:"◼️",label:"المساحة المظلّلة",sub:"الكلّ ناقص الجزء غير المظلّل"},
+  {key:"perim",icon:"📏",label:"المحيط",sub:"مجموع أطوال الأضلاع كلّها"},
+  {key:"anglesum",icon:"📐",label:"زوايا الخط والمثلث",sub:"الخط المستقيم ١٨٠° والمثلث ١٨٠°"},
 ];
 // مصطلحات مفتاحية بالإنجليزية لكل نوع تقوية — تظهر كشرائح صوتية فوق كل سؤال بغضّ النظر عن المرحلة،
 // عشان تبني مفردات إنجليزية حقيقية (رياضيات/هندسة/منطق) بدل ترجمة الجملة كاملة
@@ -2030,6 +2037,9 @@ const FADE_TERMS={
   prismsurf:[{ar:"مساحة السطح",en:"surface area"},{ar:"منشور",en:"prism"}],
   agechain:[{ar:"عمر",en:"age"},{ar:"أصغر",en:"younger"},{ar:"أكبر",en:"older"}],
   clock:[{ar:"ساعة",en:"clock"},{ar:"زاوية",en:"angle"},{ar:"عقرب",en:"hand"}],
+  shaded:[{ar:"مساحة",en:"area"},{ar:"مظلّل",en:"shaded"}],
+  perim:[{ar:"محيط",en:"perimeter"},{ar:"مستطيل",en:"rectangle"},{ar:"مربّع",en:"square"}],
+  anglesum:[{ar:"زاوية",en:"angle"},{ar:"مثلث",en:"triangle"},{ar:"خط مستقيم",en:"straight line"}],
 };
 // عرض عام لشرائح "عربي = إنجليزي 🔊" — يُستعمل بوضع التقوية وبالاختبار الرئيسي معاً
 function termsChipsHtml(terms){
@@ -2161,6 +2171,82 @@ function fadeMakeClock(){
     distractors:[ang+30,ang-30>0?ang-30:ang+60,h*5],
     svg:clockSVG(h),caption:`العقرب البرتقالي (القصير) للساعات، والرمادي (الطويل) للدقائق`,
     q:`عندما تشير الساعة إلى ${names[h]} تماماً، كم الزاوية بين عقربَيها؟`};
+}
+// ===== المساحة المظلّلة — ٢٣ نوفمبر =====
+// الخطأ المقيس ١/٨: تأخذ إحدى المساحتين أو تجمعهما. القاعدة: الظلّ = الكلّ − ما ليس مظلّلاً.
+// نوعان: مستطيلٌ كبير فيه مستطيلٌ أبيض (طرح)، ومربّعٌ فيه مربّعٌ بتوصيل المنتصفات (نصف) —
+// وهو نوع `gShadedArea` نفسه فينتقل التدريب إليه.
+function fadeMakeShaded(){
+  if(pick([0,1])){
+    const L=rand(8,14),W=rand(6,10),a=rand(2,L-4),b=rand(2,W-3),big=L*W,hole=a*b,ans=big-hole;
+    const sx=(150/L),sy=(100/W),x0=30,y0=25;
+    const svg=`<svg viewBox="0 0 210 150" width="210" height="150"><rect x="${x0}" y="${y0}" width="${L*sx}" height="${W*sy}" fill="#D97706" fill-opacity="0.35" stroke="#334155" stroke-width="2.5"/>
+      <rect x="${x0+12}" y="${y0+10}" width="${a*sx*0.9}" height="${b*sy*0.9}" fill="#fff" stroke="#334155" stroke-width="2"/>
+      <text x="${x0+L*sx/2}" y="16" font-size="12" text-anchor="middle" fill="#334155">${toAr(L)} سم</text>
+      <text x="${x0+L*sx+12}" y="${y0+W*sy/2+4}" font-size="12" text-anchor="middle" fill="#334155">${toAr(W)}</text>
+      <text x="${x0+12+a*sx*0.45}" y="${y0+10+b*sy*0.45+4}" font-size="11" text-anchor="middle" fill="#334155">${toAr(b)} × ${toAr(a)}</text></svg>`;
+    return{kind:"shaded",ans,prompt:"ما مساحة الجزء المظلّل؟",
+      steps:[`مساحة المستطيل الكبير = ${toAr(L)} × ${toAr(W)} = ${toAr(big)} سم²`,`مساحة الجزء الأبيض (غير المظلّل) = ${toAr(a)} × ${toAr(b)} = ${toAr(hole)} سم²`,`المظلّل = الكبير − الأبيض:<br>${toAr(big)} − ${toAr(hole)} = ${toAr(ans)} سم²`],
+      ruleTxt:`المساحة المظلّلة = مساحة الكلّ − مساحة الجزء غير المظلّل`,
+      distractors:[big,big+hole,hole],svg,caption:`البرتقالي مظلّل، والأبيض في الداخل ليس منه`,
+      q:`مستطيلٌ أبعاده ${toAr(L)} سم و${toAr(W)} سم، فيه مستطيلٌ أبيض أبعاده ${toAr(a)} سم و${toAr(b)} سم. ما مساحة الجزء المظلّل؟`};
+  }
+  const S=pick([4,6,8,10,12]),big=S*S,ans=big/2;
+  const svg=`<svg viewBox="0 0 200 200" width="190" height="190"><rect x="30" y="30" width="140" height="140" fill="none" stroke="#334155" stroke-width="2.5"/>
+    <polygon points="100,30 170,100 100,170 30,100" fill="#D97706" fill-opacity="0.35" stroke="#D97706" stroke-width="2.5"/>
+    <text x="100" y="22" font-size="13" text-anchor="middle" fill="#334155">${toAr(S)} سم</text></svg>`;
+  return{kind:"shaded",ans,prompt:"ما مساحة المربّع المظلّل؟",
+    steps:[`مساحة المربّع الكبير = ${toAr(S)} × ${toAr(S)} = ${toAr(big)} سم²`,`توصيل منتصفات أضلاعه يُنتج مربّعاً مساحته <b>نصف</b> الكبير دائماً`,`المظلّل = ${toAr(big)} ÷ ٢ = ${toAr(ans)} سم²`],
+    ruleTxt:`مربّع منتصفات الأضلاع مساحته نصف المربّع الكبير`,
+    distractors:[big,ans/2,ans*2],svg,caption:`رؤوس المربّع المظلّل في منتصفات أضلاع الكبير`,
+    q:`مربّعٌ طول ضلعه ${toAr(S)} سم، رُسم داخله مربّعٌ مظلّل بتوصيل منتصفات أضلاعه. ما مساحة المظلّل؟`};
+}
+// ===== المحيط — ٢٣ نوفمبر (السجلّ ١/٦: «محيط مربع ضلعه ١٢» ⇐ ٥٢ = ٤٨ + ٤) =====
+// المحيط = مجموع الأضلاع كلّها حول الشكل. والمموّهات: المساحة، وضلعان فقط، وزيادةٌ بقدر ضلع.
+function fadeMakePerim(){
+  if(pick([0,1])){
+    const s=rand(3,14),ans=4*s;
+    const svg=`<svg viewBox="0 0 160 150" width="150" height="140"><rect x="30" y="25" width="90" height="90" fill="#F0FDF4" stroke="#334155" stroke-width="2.5"/>
+      <text x="75" y="18" font-size="13" text-anchor="middle" fill="#334155">${toAr(s)}</text><text x="133" y="74" font-size="13" text-anchor="middle" fill="#334155">${toAr(s)}</text>
+      <text x="75" y="133" font-size="13" text-anchor="middle" fill="#334155">${toAr(s)}</text><text x="14" y="74" font-size="13" text-anchor="middle" fill="#334155">${toAr(s)}</text></svg>`;
+    return{kind:"perim",ans,prompt:"ما محيط المربّع؟",
+      steps:[`المربّع أضلاعه الأربعة متساوية، كلٌّ منها ${toAr(s)} سم`,`المحيط = مجموع الأضلاع الأربعة:<br>${toAr(s)} + ${toAr(s)} + ${toAr(s)} + ${toAr(s)} = ${toAr(ans)} سم`],
+      ruleTxt:`محيط المربّع = ٤ × الضلع (نجمع الأضلاع الأربعة كلّها)`,
+      distractors:[s*s,ans+4,2*s],svg,caption:`نعدّ الأضلاع الأربعة كلّها`,
+      q:`محيط مربّعٍ طول ضلعه ${toAr(s)} سم. كم محيطه؟`};
+  }
+  const L=rand(5,14),W=rand(3,L-1),ans=2*(L+W);
+  const svg=`<svg viewBox="0 0 200 140" width="200" height="130"><rect x="25" y="30" width="140" height="80" fill="#F0FDF4" stroke="#334155" stroke-width="2.5"/>
+    <text x="95" y="22" font-size="13" text-anchor="middle" fill="#334155">${toAr(L)}</text><text x="180" y="74" font-size="13" text-anchor="middle" fill="#334155">${toAr(W)}</text>
+    <text x="95" y="128" font-size="13" text-anchor="middle" fill="#334155">${toAr(L)}</text><text x="12" y="74" font-size="13" text-anchor="middle" fill="#334155">${toAr(W)}</text></svg>`;
+  return{kind:"perim",ans,prompt:"ما محيط المستطيل؟",
+    steps:[`المستطيل ضلعان طويلان (${toAr(L)}) وضلعان قصيران (${toAr(W)})`,`المحيط = ${toAr(L)} + ${toAr(W)} + ${toAr(L)} + ${toAr(W)} = ${toAr(ans)} سم`],
+    ruleTxt:`محيط المستطيل = ٢ × (الطول + العرض) — الأضلاع الأربعة كلّها`,
+    distractors:[L*W,L+W,ans+L],svg,caption:`الأضلاع المتقابلة متساوية`,
+    q:`مستطيلٌ طوله ${toAr(L)} سم وعرضه ${toAr(W)} سم. كم محيطه؟`};
+}
+// ===== زوايا الخط والمثلث — ٢٣ نوفمبر (السجلّ: الخط ٠/٤، المثلث ١/٣) =====
+// المجموعان ١٨٠°: الخطّ المستقيم (نصف دائرة) والمثلث. والمموّه: ١٨٠ − المجهول (خطأ المطروح).
+function fadeMakeAngleSum(){
+  if(pick([0,1])){
+    const a=rand(35,95),b=rand(25,80);if(a+b>=150)return fadeMakeAngleSum();
+    const ans=180-a-b,values=[a,ans,b],unknownIdx=1;
+    return{kind:"anglesum",ans,prompt:"ما قيمة الزاوية ص (°)؟",
+      steps:[`الزوايا الثلاث على خطٍّ مستقيم، ومجموعها ١٨٠°`,`نجمع المعروفتين: ${toAr(a)} + ${toAr(b)} = ${toAr(a+b)}°`,`ص = ١٨٠ − ${toAr(a+b)} = ${toAr(ans)}°`],
+      ruleTxt:`الزوايا على خطٍّ مستقيم مجموعها ١٨٠° — اطرحي المعروف من ١٨٠`,
+      distractors:[a+b,180-ans,ans+15],svg:renderSectorFan({x:100,y:150},0,values,unknownIdx),caption:`الخطّ المستقيم = نصف دائرة = ١٨٠°`,
+      q:`ثلاث زوايا على خطٍّ مستقيم، قياس اثنتين منها ${toAr(a)}° و${toAr(b)}°. ما قيمة الزاوية الثالثة ص؟`};
+  }
+  const a=rand(35,90),b=rand(35,90);if(a+b>=150||a+b<=60)return fadeMakeAngleSum();
+  const ans=180-a-b;
+  const svg=`<svg viewBox="0 0 200 160" width="200" height="150"><polygon points="30,130 170,130 105,25" fill="#F0FDF4" stroke="#334155" stroke-width="2.5"/>
+    <text x="58" y="122" font-size="13" text-anchor="middle" fill="#0F766E" font-weight="700">${toAr(a)}°</text><text x="142" y="122" font-size="13" text-anchor="middle" fill="#0F766E" font-weight="700">${toAr(b)}°</text>
+    <text x="105" y="66" font-size="15" text-anchor="middle" fill="#B45309" font-weight="800">ص</text></svg>`;
+  return{kind:"anglesum",ans,prompt:"ما قيمة الزاوية ص (°)؟",
+    steps:[`مجموع زوايا أيّ مثلث = ١٨٠°`,`نجمع المعروفتين: ${toAr(a)} + ${toAr(b)} = ${toAr(a+b)}°`,`ص = ١٨٠ − ${toAr(a+b)} = ${toAr(ans)}°`],
+    ruleTxt:`مجموع زوايا المثلث ١٨٠° — اطرحي الزاويتين المعروفتين من ١٨٠`,
+    distractors:[a+b,180-ans,ans+10],svg,caption:`الزاويتان المعروفتان على القاعدة، والمجهولة ص في الرأس`,
+    q:`في مثلثٍ زاويتان قياسهما ${toAr(a)}° و${toAr(b)}°. ما قيمة الزاوية الثالثة ص؟`};
 }
 function fadeMakeMedian(){
   const mid=rand(4,20),sum=5*mid,ans=mid;
@@ -2709,6 +2795,9 @@ function fadeMakeQuestion(){
   if(fadeTopic==="prismsurf")return fadeMakePrismSurf();
   if(fadeTopic==="agechain")return fadeMakeAgeChain();
   if(fadeTopic==="clock")return fadeMakeClock();
+  if(fadeTopic==="shaded")return fadeMakeShaded();
+  if(fadeTopic==="perim")return fadeMakePerim();
+  if(fadeTopic==="anglesum")return fadeMakeAngleSum();
   return fadeMakeSeq();
 }
 // ===== مقطعُ شرحٍ يُشاهَد خطوةً خطوة — طلب صاحب المشروع، ٢٩ أغسطس =====
@@ -2729,7 +2818,7 @@ function fadeMakeQuestion(){
 const CLIP_MAKERS={seq:fadeMakeSeq,median:fadeMakeMedian,percent:fadeMakePercent,
   cube:fadeMakeCube,pyramid:fadeMakePyramid,angles:fadeMakeAngles,
   circle:fadeMakeCircle,parallelogram:fadeMakeParallelogram,triangle:fadeMakeTriangle,
-  prismvol:fadeMakePrismVol,prismsurf:fadeMakePrismSurf,agechain:fadeMakeAgeChain,clock:fadeMakeClock};
+  prismvol:fadeMakePrismVol,prismsurf:fadeMakePrismSurf,agechain:fadeMakeAgeChain,clock:fadeMakeClock,shaded:fadeMakeShaded,perim:fadeMakePerim,anglesum:fadeMakeAngleSum};
 function clipTopicMeta(key){
   for(const t of FADE_TOPICS)if(t.key===key)return t;
   return null;
@@ -3224,7 +3313,7 @@ function renderFade(){
       <div style="background:#EEF2FF;border-inline-start:4px solid #6366F1;border-radius:10px;padding:14px;font-size:16px;line-height:1.9;color:#312E81;margin-bottom:12px">${c.passage}</div>
       <div style="font-size:15px;font-weight:700;color:#334155;text-align:center">${c.q}</div>
     </div>`;
-  } else if(c.kind==="angles"||c.kind==="mirror"||c.kind==="rotate"||c.kind==="circle"||c.kind==="parallelogram"||c.kind==="triangle"||c.kind==="prismvol"||c.kind==="prismsurf"||c.kind==="clock"){
+  } else if(c.kind==="angles"||c.kind==="mirror"||c.kind==="rotate"||c.kind==="circle"||c.kind==="parallelogram"||c.kind==="triangle"||c.kind==="prismvol"||c.kind==="prismsurf"||c.kind==="clock"||c.kind==="shaded"||c.kind==="perim"||c.kind==="anglesum"){
     const caption=c.caption?`<div style="font-size:12px;color:#64748B;margin-top:4px">${c.caption}</div>`:"";
     seqBox=`<div style="text-align:center;background:#F8FAFC;border-radius:14px;padding:16px 10px 10px;margin-bottom:16px">
       ${c.svg}
