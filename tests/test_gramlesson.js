@@ -48,13 +48,32 @@ ok(r.arInEx.length===0,'وسطرُ المثال إنجليزيّ خالص — '+
   await p.route('**/rest/v1/mawhiba_answer_log**',r=>{try{posted.push(JSON.parse(r.request().postData()||'{}'))}catch(e){};r.fulfill({status:201,body:''})});
   for(const id of ['gr_a1_1','gr_a1_13']){
     await p.evaluate(id=>{startGram();gramItems=[gramBankFor('A1').find(x=>x.id===id)];gramIdx=0;gramSetupRound();gateLeft=0;gateStop();render();
-      document.querySelectorAll('.choice')[0].click()},id);
+      gramAckLesson();document.querySelectorAll('.choice')[0].click()},id);
     await p.waitForTimeout(150);
   }
   const g=posted.filter(x=>x.domain==='gram');
   const a=g.find(x=>x.item_id==='gr_a1_1')||{},c=g.find(x=>x.item_id==='gr_a1_13')||{};
   ok(/مهارة:تصريف الغائب · درس:ظهر/.test(a.response||''),'سطرُ مهارةٍ لها درس: '+(a.response||'—').slice(-40));
   ok(/مهارة:can · درس:لا/.test(c.response||''),'وسطرُ مهارةٍ بلا درس: '+(c.response||'—').slice(-40));
+}
+// ٣) «فهمت القاعدة»: الخيارات لا تظهر قبل الضغطة، والضغطةُ لا تعمل قبل انتهاء البوّابة، وبلا درسٍ تظهر مباشرة
+{
+  const r=await p.evaluate(()=>{
+    const bank=gramBankFor('A1'),withL=bank.find(x=>x.sk==='تصريف الغائب'),noL=bank.find(x=>!gramLessonOf(x));
+    const o={};
+    startGram();gramItems=[withL];gramIdx=0;gramSetupRound();render();
+    o.noChoicesGated=document.querySelectorAll('.choice').length===0;o.btnDisabled=!!document.querySelector('button[onclick="gramAckLesson()"][disabled]');
+    gramAckLesson();o.stillHidden=document.querySelectorAll('.choice').length===0;
+    gateLeft=0;gateStop();render();o.btnEnabled=!document.querySelector('button[onclick="gramAckLesson()"][disabled]');
+    gramAckLesson();o.shownAfter=document.querySelectorAll('.choice').length===4;
+    gramItems=[noL];gramIdx=0;gramSetupRound();gateLeft=0;gateStop();render();o.noLessonDirect=document.querySelectorAll('.choice').length===4&&!document.querySelector('button[onclick="gramAckLesson()"]');
+    o.skills=['المضارع المستمرّ','there is / there are'].every(k=>!!GRAM_A1_LESSONS[k])&&!!gramLessonOf({sk:'«الفعل مع -s»'});
+    return o});
+  ok(r.noChoicesGated&&r.btnDisabled,'بدرسٍ: لا خيارات والزرّ معطَّلٌ ما دامت البوّابة');
+  ok(r.stillHidden,'والضغطةُ قبل انتهاء البوّابة لا تُظهرها');
+  ok(r.btnEnabled&&r.shownAfter,'وبعد انتهائها وضغطةِ «فهمت» تظهر الجمل الأربع');
+  ok(r.noLessonDirect,'وبلا درسٍ تظهر الخيارات مباشرة بلا زرّ');
+  ok(r.skills,'ودرسا المضارع المستمرّ وthere is/are و«الفعل مع -s» موصولة');
 }
 await b.close();
 console.log(fails?'=== '+fails+' فشل ===':'=== كل الاختبارات نجحت ===');process.exit(fails?1:0);

@@ -11844,6 +11844,13 @@ const GRAM_A1_LESSONS={
     ["ومع الجمع، أو مع أنا وأنتِ ونحن وهم، لا نضيف شيئاً.","My sisters <b>go</b> · I <b>go</b> · They <b>go</b>"],
     // ٢٢ نوفمبر: «does not likes» و«Where does your brother works» — الـs تُعاد بعد does
     ["وبعد الفعل المساعد في السؤال والنفي يعود الفعل بلا حرف s أبداً.","Does he <b>play</b>? · She doesn’t <b>like</b> milk."]]},
+  "المضارع المستمرّ":{t:"الفعل المساعد مع ing",r:[
+    ["لما يحدث الآن نضع ing في آخر الفعل، ويسبقه فعلٌ مساعد.","My mother <b>is cooking</b> rice."],
+    ["والفعل المساعد يوافق الفاعل:","I <b>am</b> writing · She <b>is</b> writing · We <b>are</b> writing"],
+    ["ولا نترك الفعل بلا ing بعد الفعل المساعد:","✗ She is write  →  ✓ She is writing"]]},
+  "there is / there are":{t:"There is و There are",r:[
+    ["للشيء الواحد، ولما لا يُعَدّ:","There <b>is</b> a pen on the desk."],
+    ["وللجمع، وبعد أيّ عددٍ أكبر من واحد:","There <b>are</b> three pens on the desk."]]},
   "الفعل be":{t:"am و is و are",r:[
     ["مع أنا:","I <b>am</b> tired."],
     ["مع الشخص الواحد أو الشيء الواحد:","My uncle <b>is</b> tall. · The car <b>is</b> red."],
@@ -11869,7 +11876,7 @@ const GRAM_A1_LESSONS={
 // السجلّ أظهر «الفعل be» بأربع كتابات (“be” و"be" و'be' وبلا علامات) و«اتفاق الفعل مع
 // الفاعل» و««المضارع البسيط مع -s»» — فلا يُطابق أيٌّ منها مفتاحَ درس. تُنزَع علاماتُ
 // التنصيص والمسافاتُ الزائدة، ثمّ جدولُ مرادفاتٍ لما يدرّسه الدرسُ نفسه.
-const GRAM_SK_ALIAS={"اتفاق الفعل مع الفاعل":"تصريف الغائب","المضارع البسيط مع -s":"تصريف الغائب"};
+const GRAM_SK_ALIAS={"اتفاق الفعل مع الفاعل":"تصريف الغائب","المضارع البسيط مع -s":"تصريف الغائب","الفعل مع -s":"تصريف الغائب"};
 function gramSkNorm(sk){const k=String(sk||"").replace(/[“”"'‘’«»]/g,"").replace(/\s+/g," ").trim();return GRAM_SK_ALIAS[k]||k}
 function gramLessonOf(it){return (it&&GRAM_A1_LESSONS[gramSkNorm(it.sk)])||null}
 function gramLessonHTML(it){
@@ -11893,7 +11900,13 @@ function startGram(){posPendClear();
   mode="gram";gramSetupRound();window.scrollTo(0,0);render();
   gramGenTopUp(profileOf().level||"A2");
 }
-function gramSetupRound(){gramOrder=shuffle([0,1,2,3]);gramPicked=-1;gramLocked=false;gramShownAt=Date.now();
+// ===== «فهمت القاعدة» قبل الخيارات — ٢٣ نوفمبر =====
+// ٢١ إجابة ٢٣ نوفمبر: الدرس ظهر فوق ٧ أسئلة فأصابت ٣، وكلُّ ما أُجيب في ٨–١٢ث (انتهاءِ البوّابة) خطأ ٠/٦،
+// وما أُجيب في ١٧ث فأكثر صواب ٤/٤. فكانت تنتظر العدّ ثم تضغط بلا قراءة. الآن الخيارات لا تظهر إلا
+// بعد ضغطةٍ فعليّة على «فهمت» وبعد انتهاء البوّابة نفسها — وصلٌ لـ`gateOpen` لا مؤقّتٌ ثانٍ.
+let gramAck=false;
+function gramAckLesson(){if(!gateOpen())return;gramAck=true;render()}
+function gramSetupRound(){gramOrder=shuffle([0,1,2,3]);gramPicked=-1;gramLocked=false;gramAck=false;gramShownAt=Date.now();
   const it=gramItems[gramIdx];secGateStart("gram",it&&it.c?it.c.map(function(x){return x.t}).join(" "):"")}
 function gramCur(){return gramItems[gramIdx]}
 function gramChoose(i){
@@ -12036,7 +12049,9 @@ function renderGram(){
     <span class="tag" style="background:#CFFAFE;color:#0E7490">✍️ أيّ جملةٍ صحيحة؟</span>
     ${gramArmedHint(it)}
     ${gramLessonHTML(it)}
-    <div class="choices" style="margin-top:12px">${secGateHTML()}${posConfirmHTML("gram","gramChoose")}${choices}</div>
+    ${(gramLessonOf(it)&&!gramAck&&!gramLocked)
+      ? `<div style="margin-top:12px">${secGateHTML("الجمل")}<button class="btn" style="background:#0E7490" onclick="gramAckLesson()" ${gateOpen()?"":"disabled style=\"opacity:.45;pointer-events:none\""}>فهمتُ القاعدة — أرني الجمل ←</button></div>`
+      : `<div class="choices" style="margin-top:12px">${secGateHTML()}${posConfirmHTML("gram","gramChoose")}${choices}</div>`}
   </div>
   ${gramLocked?`<button class="btn" style="background:#0E7490" onclick="gramNext()">${gramIdx+1>=gramItems.length?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>`:""}`;
 }
