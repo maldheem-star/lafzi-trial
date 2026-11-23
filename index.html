@@ -1879,6 +1879,8 @@ const QZ_CARD_FADE_LINK={};
 // فرُفعت الروابط الأربعة حتى يُبنى مقطعٌ يُعلّم **كيف تُكتشَف القاعدة** بدل أن
 // يؤكّد واحدةً بعينها — وحينئذٍ يصحّ لكل الأنواع لأنه لا يدّعي أيَّها هي.
   .forEach(function(pair){try{QZ_CARD_FADE_LINK[tmplKey(pair[0]())]=pair[1]}catch(e){}});
+// والأعمار والساعة تتغيّر أسماؤهما (لا أرقامهما) فيتغيّر المفتاح — تُسجَّل كلُّ صيغها
+[[gAgeChain,"agechain"],[gClock,"clock"]].forEach(function(pair){for(let i=0;i<(pair[1]==="agechain"?4000:200);i++){try{QZ_CARD_FADE_LINK[tmplKey(pair[0]())]=pair[1]}catch(e){}}});
 // النوع الفرعي للمقطع وحده: `fadeMakeSeq` تُنتج نوعين (نسبة/متتالية)، فيُطلَب المطابق
 // لسؤالها لا ما يقع عشوائياً — وإلا عُرض شرحُ الأقلام لسؤال متتالية.
 const CLIP_VARIANT={};
@@ -2004,6 +2006,9 @@ const FADE_TOPICS=[
   {key:"triangle",icon:"🔻",label:"مساحة المثلث",sub:"نصف مساحة متوازي الأضلاع المكافئ"},
   {key:"prismvol",icon:"📦",label:"حجم المنشور الرباعي",sub:"الطول × العرض × الارتفاع"},
   {key:"prismsurf",icon:"🧱",label:"مساحة سطح المنشور",sub:"مجموع مساحات الأوجه الستّة"},
+  // ٢٣ نوفمبر: خمسُ مسائل أعمارٍ متسلسلة خاطئة في جلسةٍ واحدة (٤ بفارق −٢)، وزاويتا ساعةٍ بزيادة ٣٠° كلتاهما
+  {key:"agechain",icon:"👨‍👩‍👧",label:"الأعمار المتسلسلة",sub:"أصغر وأكبر — من العمر المعلوم خطوةً خطوة"},
+  {key:"clock",icon:"🕑",label:"زاوية عقربَي الساعة",sub:"نعدّ المسافات بين الأرقام: كل مسافة ٣٠°"},
 ];
 // مصطلحات مفتاحية بالإنجليزية لكل نوع تقوية — تظهر كشرائح صوتية فوق كل سؤال بغضّ النظر عن المرحلة،
 // عشان تبني مفردات إنجليزية حقيقية (رياضيات/هندسة/منطق) بدل ترجمة الجملة كاملة
@@ -2023,6 +2028,8 @@ const FADE_TERMS={
   triangle:[{ar:"مثلث",en:"triangle"},{ar:"مساحة",en:"area"}],
   prismvol:[{ar:"منشور",en:"prism"},{ar:"حجم",en:"volume"}],
   prismsurf:[{ar:"مساحة السطح",en:"surface area"},{ar:"منشور",en:"prism"}],
+  agechain:[{ar:"عمر",en:"age"},{ar:"أصغر",en:"younger"},{ar:"أكبر",en:"older"}],
+  clock:[{ar:"ساعة",en:"clock"},{ar:"زاوية",en:"angle"},{ar:"عقرب",en:"hand"}],
 };
 // عرض عام لشرائح "عربي = إنجليزي 🔊" — يُستعمل بوضع التقوية وبالاختبار الرئيسي معاً
 function termsChipsHtml(terms){
@@ -2113,6 +2120,48 @@ function fadeMakeSeq(){
     seq:q,ans:q[4]*r,op:`${toAr(q[4])} × ${toAr(r)}`};
 }
 // ===== أنواع إضافية لوضع التقوية: الوسيط، النسبة المئوية، حجم المكعّب، الهرم العددي =====
+// ===== الأعمار المتسلسلة — ٢٣ نوفمبر =====
+// صيغة `gAgeChain` نفسها (البنك الذي أخطأت فيه) لينتقل التدريب إليه، مفكَّكةً حلقةً حلقة:
+// نبدأ من العمر المعلوم ونرجع، و«أصغر» ⇐ نطرح، «أكبر» ⇐ نجمع. والمموّهات: التوقّف حلقةً
+// قبل الأخيرة، وقلبُ الإشارة في الأخيرة، والعمرُ المعلوم نفسه.
+function fadeMakeAgeChain(){
+  const [A,B,C,D]=shuffle(AGE_NAMES).slice(0,4);
+  const p=rand(2,5),q=rand(2,6),r=rand(3,8),dAge=rand(18,30);
+  const cAge=dAge-r,bAge=cAge+q,aAge=bAge-p;
+  if(aAge<5||cAge<5)return fadeMakeAgeChain();
+  return{kind:"agechain",ans:aAge,prompt:`ما عُمر ${A}؟`,
+    steps:[`نبدأ من المعلوم: عُمر ${D} = ${toAr(dAge)}`,
+      `${C} أصغر من ${D} بـ${toAr(r)} ← نطرح:<br>${toAr(dAge)} − ${toAr(r)} = ${toAr(cAge)}`,
+      `${B} أكبر من ${C} بـ${toAr(q)} ← نجمع:<br>${toAr(cAge)} + ${toAr(q)} = ${toAr(bAge)}`,
+      `${A} أصغر من ${B} بـ${toAr(p)} ← نطرح:<br>${toAr(bAge)} − ${toAr(p)} = ${toAr(aAge)}`],
+    ruleTxt:`ابدئي من العمر المعلوم وارجعي حلقةً حلقة: «أصغر» ← اطرحي، «أكبر» ← اجمعي`,
+    distractors:[bAge,aAge+2*p,dAge],
+    q:`إذا كان ${A} أصغر من ${B} بـ(${toAr(p)}) سنوات، و${B} أكبر من ${C} بـ(${toAr(q)}) سنوات، و${C} أصغر من ${D} بـ(${toAr(r)}) سنوات. إذا كان عُمر ${D} (${toAr(dAge)}) سنة، فما عُمر ${A}؟`};
+}
+// ===== زاوية عقربَي الساعة — ٢٣ نوفمبر =====
+// صيغة `gClock` نفسها. خطؤها مرّتين +٣٠° (عدّت الأرقام لا المسافات بينها)، فالمموّهُ الأوّل
+// هو ذاك بعينه. والرسمُ عقربان على وجه ساعة: الدقائق على ١٢ والساعات على الرقم.
+function clockSVG(h){
+  const cx=90,cy=90,R=70,pt=function(k,rr){const a=(k*30-90)*Math.PI/180;return[cx+rr*Math.cos(a),cy+rr*Math.sin(a)]};
+  let t="";for(let k=1;k<=12;k++){const q=pt(k,R-14);t+=`<text x="${q[0].toFixed(1)}" y="${(q[1]+5).toFixed(1)}" font-size="13" text-anchor="middle" fill="${k===12||k===h?'#B45309':'#475569'}" font-weight="${k===12||k===h?800:500}">${toAr(k)}</text>`}
+  const hh=pt(h,42),mm=pt(12,58);
+  return `<svg viewBox="0 0 180 180" width="180" height="180"><circle cx="${cx}" cy="${cy}" r="${R}" fill="#fff" stroke="#CBD5E1" stroke-width="3"/>${t}
+    <line x1="${cx}" y1="${cy}" x2="${mm[0].toFixed(1)}" y2="${mm[1].toFixed(1)}" stroke="#334155" stroke-width="3" stroke-linecap="round"/>
+    <line x1="${cx}" y1="${cy}" x2="${hh[0].toFixed(1)}" y2="${hh[1].toFixed(1)}" stroke="#B45309" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="${cx}" cy="${cy}" r="4" fill="#334155"/></svg>`;
+}
+function fadeMakeClock(){
+  const names=["","الواحدة","الثانية","الثالثة","الرابعة","الخامسة","السادسة"];
+  const h=rand(1,6),ang=30*h;
+  return{kind:"clock",ans:ang,prompt:"كم الزاوية بين العقربين؟",
+    steps:[`الساعة دائرة (٣٦٠°) مقسومة على ١٢ رقماً، فالمسافة بين رقمين متجاورين:<br>٣٦٠ ÷ ١٢ = ٣٠°`,
+      `عقرب الدقائق على ١٢ وعقرب الساعات على ${toAr(h)}: نعدّ <b>المسافات</b> بينهما لا الأرقام = ${toAr(h)} مسافات`,
+      `الزاوية:<br>${toAr(h)} × ٣٠ = ${toAr(ang)}°`],
+    ruleTxt:`الزاوية = عدد المسافات بين ١٢ ورقم الساعة × ٣٠° — نعدّ المسافات لا الأرقام`,
+    distractors:[ang+30,ang-30>0?ang-30:ang+60,h*5],
+    svg:clockSVG(h),caption:`العقرب البرتقالي (القصير) للساعات، والرمادي (الطويل) للدقائق`,
+    q:`عندما تشير الساعة إلى ${names[h]} تماماً، كم الزاوية بين عقربَيها؟`};
+}
 function fadeMakeMedian(){
   const mid=rand(4,20),sum=5*mid,ans=mid;
   return{kind:"median",ans,prompt:"ما الوسيط؟",
@@ -2658,6 +2707,8 @@ function fadeMakeQuestion(){
   if(fadeTopic==="triangle")return fadeMakeTriangle();
   if(fadeTopic==="prismvol")return fadeMakePrismVol();
   if(fadeTopic==="prismsurf")return fadeMakePrismSurf();
+  if(fadeTopic==="agechain")return fadeMakeAgeChain();
+  if(fadeTopic==="clock")return fadeMakeClock();
   return fadeMakeSeq();
 }
 // ===== مقطعُ شرحٍ يُشاهَد خطوةً خطوة — طلب صاحب المشروع، ٢٩ أغسطس =====
@@ -2678,7 +2729,7 @@ function fadeMakeQuestion(){
 const CLIP_MAKERS={seq:fadeMakeSeq,median:fadeMakeMedian,percent:fadeMakePercent,
   cube:fadeMakeCube,pyramid:fadeMakePyramid,angles:fadeMakeAngles,
   circle:fadeMakeCircle,parallelogram:fadeMakeParallelogram,triangle:fadeMakeTriangle,
-  prismvol:fadeMakePrismVol,prismsurf:fadeMakePrismSurf};
+  prismvol:fadeMakePrismVol,prismsurf:fadeMakePrismSurf,agechain:fadeMakeAgeChain,clock:fadeMakeClock};
 function clipTopicMeta(key){
   for(const t of FADE_TOPICS)if(t.key===key)return t;
   return null;
@@ -3173,7 +3224,7 @@ function renderFade(){
       <div style="background:#EEF2FF;border-inline-start:4px solid #6366F1;border-radius:10px;padding:14px;font-size:16px;line-height:1.9;color:#312E81;margin-bottom:12px">${c.passage}</div>
       <div style="font-size:15px;font-weight:700;color:#334155;text-align:center">${c.q}</div>
     </div>`;
-  } else if(c.kind==="angles"||c.kind==="mirror"||c.kind==="rotate"||c.kind==="circle"||c.kind==="parallelogram"||c.kind==="triangle"||c.kind==="prismvol"||c.kind==="prismsurf"){
+  } else if(c.kind==="angles"||c.kind==="mirror"||c.kind==="rotate"||c.kind==="circle"||c.kind==="parallelogram"||c.kind==="triangle"||c.kind==="prismvol"||c.kind==="prismsurf"||c.kind==="clock"){
     const caption=c.caption?`<div style="font-size:12px;color:#64748B;margin-top:4px">${c.caption}</div>`:"";
     seqBox=`<div style="text-align:center;background:#F8FAFC;border-radius:14px;padding:16px 10px 10px;margin-bottom:16px">
       ${c.svg}
