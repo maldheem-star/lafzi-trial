@@ -44,7 +44,7 @@ jobs:
   deploy:
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.page_url || steps.deploy_try.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       # الجذر من `main` دائماً — أيّاً كان الفرع الذي أطلق التشغيل. فدفعُ فرع
@@ -101,6 +101,20 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: .
+      # ===== محاولةٌ ثانية بعد ٣٠ ثانية — ٢٥ نوفمبر =====
+      # فشلت ستّة تشغيلاتٍ في يومٍ واحد (٣٧٨ ٣٨٢ ٣٨٦ ٣٨٧ ٣٨٩ ٣٩٠) بالخطأ نفسه: الرفع ينجح
+      # ثم تبحث خطوة النشر بعده بثوانٍ فتجد «Found 0 artifact(s)»، ورسالة GitHub نفسها:
+      # «Please re-run the deployment at a later time». والملفّ يظهر بعدها (٣٨٩ صار
+      # Artifacts: 1). وإعادةُ تشغيل المهمّة كاملةً ترفعه ثانيةً فتفشل بـ«Multiple artifacts»
+      # (٣٨٣). فالحلّ: إعادة **خطوة النشر وحدها** بلا رفعٍ جديد، بعد انتظار.
       - name: Deploy to GitHub Pages
+        id: deploy_try
+        continue-on-error: true
+        uses: actions/deploy-pages@v4
+      - name: Wait before retry
+        if: steps.deploy_try.outcome == 'failure'
+        run: sleep 30
+      - name: Deploy to GitHub Pages (retry)
         id: deployment
+        if: steps.deploy_try.outcome == 'failure'
         uses: actions/deploy-pages@v4
