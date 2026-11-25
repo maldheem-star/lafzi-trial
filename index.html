@@ -159,8 +159,6 @@
   .tr-grid{display:inline-block;font-size:17px;font-weight:700;line-height:2.2}
   .tr-grid div{display:flex;gap:26px;justify-content:center}
   .tr-opt{flex:1}
-  .tr-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #F1F5F9;font-size:14px}
-  .tr-row.ok{color:#065F46}
   .dict-mean{display:inline-block;background:#F0FDFA;border:1px solid #99F6E4;color:#0F766E;border-radius:10px;padding:5px 12px;font-size:14px;font-weight:700;margin-bottom:14px}
   .gram-lesson{background:#EEF2FF;border-radius:12px;padding:12px 14px;margin-top:12px}
   .gram-lesson-t{font-size:14px;font-weight:800;color:#312E81;margin-bottom:6px}
@@ -20458,7 +20456,8 @@ function renderKpi(){
 // أرسلها صاحب المشروع ٢٥ نوفمبر). وكان حلّي السابق (قبل وصولها) صائباً في ٢٤ من ٢٥ — أخطأتُ ١٩ (ب «صعوبة تركيبه» لا د).
 // وحقل `unsure` يبقى آليةً لاختباراتٍ لاحقةٍ بلا مفتاح: يُعلَّم السؤال ويُعرض منفصلاً ويُوسَم سطرُه «مفتاح:اجتهاد».
 // ولا ضبط ولا بوّابات: اختبارٌ تجريبي بزمنٍ حرّ.
-// **شاشة النتيجة: الدرجة وأرقام الأخطاء فقط، بلا «الصواب» ولا «اخترتِ»** (٢٥ نوفمبر، بعد أن أفسدت المراجعةُ إعادةَ الاختبار الثاني:
+// **شاشة النتيجة: الدرجة النهائية وحدها — لا علامة لأي سؤال ولا «الصواب»** (طلب صاحب المشروع: «لا تظهر لها التصحيح نهائياً
+// إلا الدرجة النهائية، حتى إذا أعادت لا تعلم أيّ الإجابات صح أو خطأ») (٢٥ نوفمبر، بعد أن أفسدت المراجعةُ إعادةَ الاختبار الثاني:
 // ٦ ⇐ ٢٢ من ٢٥ بعد رؤية الحلول). الحلولُ في السجلّ (`q_text` بموضع ✓) لصاحب المشروع.
 function trFr(n,d){return '<span class="tr-fr"><i>'+toAr(n)+'</i><b>'+toAr(d)+'</b></span>'}
 function trFigQ3(){
@@ -20610,17 +20609,15 @@ function renderTrialMenu(){
     <span class="m-name">📝 ${e.name}</span><div class="m-sub">${toAr(e.items.length)} سؤالاً — ${e.items.filter(function(x){return x.unsure}).length?toAr(e.items.filter(function(x){return x.unsure}).length)+" منها مفتاحُه اجتهادٌ لا من الكتاب":"بمفتاح الكتاب"}</div></button>`}).join("")}</div>`;
 }
 function renderTrialResult(){
-  const ex=trialEx,sure=[],uns=[];let rows="";
+  const ex=trialEx,sure=[],uns=[];
   ex.items.forEach(function(it,i){
     const sel=trialRes[i],ok=sel===it.a;
     (it.unsure?uns:sure).push(ok?1:0);
-    rows+=`<div class="tr-row${ok?" ok":""}"><b>${toAr(i+1)}</b><span>${ok?"✅":(sel<0?"⏭️":"❌")}${it.unsure?" <small>(مفتاحٌ اجتهاد)</small>":""}</span></div>`;
   });
   const sum=function(a){return a.reduce(function(s,v){return s+v},0)};
   app.innerHTML=`<div class="card">
     <div class="score-row"><span class="score-big" style="color:#7C3AED">${toAr(sum(sure))}</span><span class="score-total">/ ${toAr(sure.length)}</span><span class="score-pct">${uns.length?"مفتاحٌ مؤكَّد":"الدرجة"}</span></div>
     ${uns.length?`<div style="color:#64748B;font-size:14px;margin-bottom:12px">والاجتهاديّة (${toAr(uns.length)}): ${toAr(sum(uns))} من ${toAr(uns.length)} — مفتاحُها من حلّي لا من الكتاب، فلا تُحتسب مؤكَّدة.</div>`:""}
-    <div style="margin-bottom:14px">${rows}</div>
     <button class="btn" style="background:#7C3AED" onclick="startTrial('${ex.id}')">🔁 أعيدي الاختبار</button>
     <button class="link-btn" onclick="goTrialMenu()">→ اختبار موهبة تجريبي</button>
     <button class="link-btn" onclick="home()">→ الرئيسية</button></div>`;
