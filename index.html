@@ -161,7 +161,6 @@
   .tr-opt{flex:1}
   .tr-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #F1F5F9;font-size:14px}
   .tr-row.ok{color:#065F46}
-  .tr-key{width:100%;font-size:13px;color:#7C2D12;background:#FFF7ED;border-radius:8px;padding:6px 10px}
   .dict-mean{display:inline-block;background:#F0FDFA;border:1px solid #99F6E4;color:#0F766E;border-radius:10px;padding:5px 12px;font-size:14px;font-weight:700;margin-bottom:14px}
   .gram-lesson{background:#EEF2FF;border-radius:12px;padding:12px 14px;margin-top:12px}
   .gram-lesson-t{font-size:14px;font-weight:800;color:#312E81;margin-bottom:6px}
@@ -20459,6 +20458,8 @@ function renderKpi(){
 // أرسلها صاحب المشروع ٢٥ نوفمبر). وكان حلّي السابق (قبل وصولها) صائباً في ٢٤ من ٢٥ — أخطأتُ ١٩ (ب «صعوبة تركيبه» لا د).
 // وحقل `unsure` يبقى آليةً لاختباراتٍ لاحقةٍ بلا مفتاح: يُعلَّم السؤال ويُعرض منفصلاً ويُوسَم سطرُه «مفتاح:اجتهاد».
 // ولا ضبط ولا بوّابات: اختبارٌ تجريبي بزمنٍ حرّ.
+// **شاشة النتيجة: الدرجة وأرقام الأخطاء فقط، بلا «الصواب» ولا «اخترتِ»** (٢٥ نوفمبر، بعد أن أفسدت المراجعةُ إعادةَ الاختبار الثاني:
+// ٦ ⇐ ٢٢ من ٢٥ بعد رؤية الحلول). الحلولُ في السجلّ (`q_text` بموضع ✓) لصاحب المشروع.
 function trFr(n,d){return '<span class="tr-fr"><i>'+toAr(n)+'</i><b>'+toAr(d)+'</b></span>'}
 function trFigQ3(){
   const box=function(x,deg,frac){return '<g transform="translate('+x+',8)"><rect width="140" height="52" fill="#fff" stroke="#334155" stroke-width="1.6"/><line x1="70" y1="0" x2="70" y2="52" stroke="#334155" stroke-width="1.6"/>'
@@ -20613,7 +20614,7 @@ function renderTrialResult(){
   ex.items.forEach(function(it,i){
     const sel=trialRes[i],ok=sel===it.a;
     (it.unsure?uns:sure).push(ok?1:0);
-    rows+=`<div class="tr-row${ok?" ok":""}"><b>${toAr(i+1)}</b><span>${ok?"✅":(sel<0?"⏭️":"❌")}${it.unsure?" <small>(مفتاحٌ اجتهاد)</small>":""}</span>${ok?"":`<div class="tr-key">الصواب: ${L[it.a]} — ${it.c[it.a]}${sel>=0?`<br>اخترتِ: ${L[sel]} — ${it.c[sel]}`:""}</div>`}</div>`;
+    rows+=`<div class="tr-row${ok?" ok":""}"><b>${toAr(i+1)}</b><span>${ok?"✅":(sel<0?"⏭️":"❌")}${it.unsure?" <small>(مفتاحٌ اجتهاد)</small>":""}</span></div>`;
   });
   const sum=function(a){return a.reduce(function(s,v){return s+v},0)};
   app.innerHTML=`<div class="card">
