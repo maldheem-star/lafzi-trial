@@ -148,6 +148,20 @@
   .link-btn{margin-top:14px;width:100%;padding:13px;border-radius:14px;border:none;background:transparent;color:#64748B;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
   .q-en{direction:ltr;text-align:left;font-family:Georgia,serif;margin-top:6px}
   .q-note{font-size:13px;color:#64748B;margin-top:4px}
+  .tr-fr{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;line-height:1.15;font-size:15px}
+  .tr-fr i{font-style:normal;border-bottom:1.5px solid currentColor;padding:0 4px}
+  .tr-fr b{font-weight:700}
+  .tr-sec{background:#FEF9C3;border:1px solid #FDE68A;color:#713F12;border-radius:12px;padding:10px 14px;font-size:14px;line-height:1.9;margin-bottom:12px}
+  .tr-num{background:#BE185D;color:#fff;border-radius:50%;min-width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:15px}
+  .tr-q{font-size:16.5px;font-weight:600;line-height:2;color:#1E293B;flex:1}
+  .tr-fig{text-align:center;margin:12px 0}
+  .tr-img{max-width:100%;height:auto;max-height:230px}
+  .tr-grid{display:inline-block;font-size:17px;font-weight:700;line-height:2.2}
+  .tr-grid div{display:flex;gap:26px;justify-content:center}
+  .tr-opt{flex:1}
+  .tr-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #F1F5F9;font-size:14px}
+  .tr-row.ok{color:#065F46}
+  .tr-key{width:100%;font-size:13px;color:#7C2D12;background:#FFF7ED;border-radius:8px;padding:6px 10px}
   .dict-mean{display:inline-block;background:#F0FDFA;border:1px solid #99F6E4;color:#0F766E;border-radius:10px;padding:5px 12px;font-size:14px;font-weight:700;margin-bottom:14px}
   .gram-lesson{background:#EEF2FF;border-radius:12px;padding:12px 14px;margin-top:12px}
   .gram-lesson-t{font-size:14px;font-weight:800;color:#312E81;margin-bottom:6px}
@@ -20394,7 +20408,130 @@ function renderKpi(){
 }
 
 // ===== العرض =====
-function render(){if(mode==="placeMenu")return renderPlaceMenu();if(mode==="place")return renderPlace();if(mode==="placeReport")return renderPlaceReport();if(mode==="vctx")return renderVctx();if(mode==="seq")return renderSeq();if(mode==="kpi")return renderKpi();if(mode==="home")return renderHome();if(mode==="listen")return renderListen();if(mode==="read")return renderRead();if(mode==="write")return renderWrite();if(mode==="gram")return renderGram();if(mode==="build")return renderBuild();if(mode==="math6Menu")return renderMath6Menu();if(mode==="math6")return renderMath6();if(mode==="step")return renderStep();if(mode==="wejMenu")return renderWejMenu();if(mode==="wej")return renderWej();if(mode==="wejl")return renderWejl();if(mode==="wejr")return renderWejr();if(mode==="statMenu")return renderStatMenu();if(mode==="stat")return renderStat();if(mode==="minpair")return renderMinpair();if(mode==="video")return renderVideo();if(mode==="errors")return renderErrors();if(mode==="engplan")return renderEngPlan();if(mode==="factplan")return renderFactPlan();if(mode==="vocab")return renderVocab();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="speak")return renderSpeak();if(mode==="coach")return renderCoach();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
+// ===== اختبار موهبة تجريبي — ٢٥ نوفمبر =====
+// طلب صاحب المشروع: قسمٌ جديد «اختبار موهبة تجريبي» يُوضَع فيه حرفياً اختبارٌ من كتاب (صور أربع صفحات)
+// تحت اسم «الاختبار الأول». **حرفياً**: نصُّ كل سؤالٍ وخياراتُه بترتيبها (أ ب ج د) كما في الكتاب بلا خلط،
+// والأشكال (٣ و٤ و٨ و١٢ و١٣ و٢٥) تُرسَم كما هي. والكتاب لم يُرفَق معه مفتاحُ إجابات، فالمفتاحُ من حلّي أنا:
+// مؤكَّدٌ حيث الحلّ حسابٌ أو استنتاجٌ لا لبس فيه، ومعلَّمٌ `unsure` حيث يحتمل أكثر من قراءة (١٢ و١٦ و١٩
+// و٢٠ و٢٢ و٢٤ و٢٥) — وتُعرض نتيجته منفصلةً ولا تُحتسب مؤكَّدة. ولا ضبط ولا بوّابات: اختبارٌ تجريبي بزمنٍ حرّ.
+function trFr(n,d){return '<span class="tr-fr"><i>'+toAr(n)+'</i><b>'+toAr(d)+'</b></span>'}
+function trFigQ3(){
+  const box=function(x,deg,frac){return '<g transform="translate('+x+',8)"><rect width="140" height="52" fill="#fff" stroke="#334155" stroke-width="1.6"/><line x1="70" y1="0" x2="70" y2="52" stroke="#334155" stroke-width="1.6"/>'
+    +'<text x="105" y="33" font-size="15" text-anchor="middle" fill="#0F172A">'+toAr(deg)+'°</text>'+frac+'</g>'};
+  const fr=function(n,d){return '<text x="35" y="22" font-size="14" text-anchor="middle" fill="#0F172A">'+toAr(n)+'</text><line x1="26" y1="27" x2="44" y2="27" stroke="#0F172A" stroke-width="1.4"/><text x="35" y="43" font-size="14" text-anchor="middle" fill="#0F172A">'+toAr(d)+'</text>'};
+  return '<svg viewBox="0 0 460 68" width="100%" style="max-width:420px">'+box(312,90,fr(1,4))+box(160,180,fr(1,2))+box(8,360,'<text x="35" y="33" font-size="17" text-anchor="middle" fill="#0F172A">؟</text>')+'</svg>';
+}
+function trFigQ4(){
+  const circ=function(cx,top,l,r){return '<g transform="translate('+cx+',74)"><circle r="62" fill="#fff" stroke="#9D174D" stroke-width="1.8"/><line x1="-62" y1="0" x2="62" y2="0" stroke="#9D174D" stroke-width="1.6"/><line x1="0" y1="0" x2="0" y2="62" stroke="#9D174D" stroke-width="1.6"/>'
+    +'<text x="0" y="-22" font-size="17" text-anchor="middle" fill="#0F172A">'+top+'</text><text x="-31" y="36" font-size="17" text-anchor="middle" fill="#0F172A">'+l+'</text><text x="31" y="36" font-size="17" text-anchor="middle" fill="#0F172A">'+r+'</text></g>'};
+  return '<svg viewBox="0 0 420 150" width="100%" style="max-width:400px">'+circ(340,toAr(2),toAr(4),toAr(1))+circ(205,toAr(16),toAr(8),toAr(4))+circ(70,toAr(36),toAr(18),'ل')+'</svg>';
+}
+function trFigQ8(){
+  return '<svg viewBox="0 0 200 200" width="190" height="190"><rect x="20" y="30" width="160" height="160" fill="none" stroke="#9D174D" stroke-width="2"/>'
+   +'<polygon points="84,30 180,94 116,190 20,126" fill="#C084FC" fill-opacity="0.45" stroke="#9D174D" stroke-width="2"/>'
+   +'<text x="52" y="22" font-size="14" text-anchor="middle" fill="#0F172A">'+toAr(4)+'</text><text x="132" y="22" font-size="14" text-anchor="middle" fill="#0F172A">'+toAr(6)+'</text></svg>';
+}
+function trGrid(rows){return '<div class="tr-grid">'+rows.map(function(r){return '<div>'+r.map(function(c){return '<span>'+c+'</span>'}).join('')+'</div>'}).join('')+'</div>'}
+const TRIAL_GEARS_IMG='<img class="tr-img" alt="حافتان مسنّنتان وأربعة تروس بينهما" src="data:image/png;base64,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">';
+const TRIAL_EXAMS=[{id:"t1",name:"الاختبار الأول",
+  intro:"تذكّري: أنّ هناك إجابةً صحيحةً واحدة عن كل سؤال، وأن تستخدمي استراتيجيةً سريعةً للحلّ بدلاً من إهدار الوقت في إجراء عملياتٍ حسابيةٍ طويلة.",
+  items:[
+  {q:"يقضي محمد ربع يومه في المدرسة، وثلث يومه في النوم، الكسر الذي يُعبر عن المتبقي من يومه هو:",c:[trFr(3,12),trFr(4,21),trFr(6,21),trFr(5,12)],a:3},
+  {q:"ستة أعداد صحيحة متتالية، مجموع الثلاثة أعداد الأخيرة منها يساوي ٣٢٤، فما مجموع الثلاثة أعداد الأولى؟",c:["٣٢١","٣١٨","٣١٥","١٠٦"],a:2},
+  {q:"املأ الفراغ بما يناسبه من الخيارات.",fig:trFigQ3(),c:["٢","١",trFr(3,4),trFr(2,3)],a:1},
+  {q:"في الأشكال الآتية: قيمة ل تساوي:",fig:trFigQ4(),c:["٩","٦","٤","٣"],a:2},
+  {q:"ذهبت إلى المزرعة فرأيت مجموعة من الخرفان، فعددت أرجلها وعيونها، فوجدت أن لها سوياً ٢٨ رجلاً و ١٤ عيناً؛ فما عدد الخرفان التي رأيتها؟",c:["٧","١٤","٢١","٤٢"],a:0},
+  {q:"إذا كان: عبد الله أطول من محمد، ومحمد أقصر من خالد وأطول من محمود، فأي الأربعة أقصر؟",c:["عبد الله","محمد","خالد","محمود"],a:3},
+  {q:"إناء على شكل مكعب طول حرفه ٦سم، سكبنا فيه ماء حتى ثلثه، سيكون حجم الماء في هذا الإناء بالسنتيمتر المكعب هو:",c:["٧٢","٨٤","١٤٤","٢١٦"],a:0},
+  {q:"في الشكل المجاور؛ مربع طول ضلعه ١٠ سم، أوجد مساحة الجزء المظلل.",fig:trFigQ8(),c:["٦٤ سم²","٥٦ سم²","٥٢ سم²","٤٨ سم²"],a:2},
+  {q:"رأى شخص قطيعاً من البقر، فقال: لو امتلكت مثله ونصفه بالإضافة للبقرة التي لديّ، لأصبح عندي مئة بقرة، كم عدد البقر في القطيع؟",c:["٦٦","٥٢","٣٨","٣٦"],a:0},
+  {q:"مستطيل محيطه ٧٢ سم، قُسم إلى ٥ مربعات متطابقة وملتصقة معاً. فما طول ضلع المربع؟",c:["١٢","٦","٥","٤"],a:1},
+  {q:"سيارة تتحرك من المدينة (أ) إلى المدينة (ب) بسرعة ٦٠كم/ساعة، وبعد ساعتين يكون المتبقي لها لتصل إلى المدينة (ب) مسافة ٨٠كم. فما المسافة بين المدينتين؟",c:["٢٠٠ كم.","١٨٠ كم.","١٦٠ كم.","١٢٠ كم."],a:0},
+  {sec:"حدّد الكلمة التي تملأ الفراغ لتعطي علاقة مشابهة.",q:"",fig:trGrid([["إنسان","تَنَفُّس","حياة"],["وردة","عطش","؟"]]),c:["قطف.","لون.","اقتلاع.","ذبول."],a:3,unsure:true},
+  {q:"",fig:trGrid([["سيارة","قطار","دراجة"],["سفينة","زورق","؟"]]),c:["طائرة.","غواصة.","مَرسى.","منطاد."],a:1},
+  {q:"العلاقة بين ريشة : محبرة مثل العلاقة بين:",c:["قراءة : كتابة","غمد : سيف","خنجر : جراب","مقبض : مفتاح"],a:2},
+  {q:"العلاقة بين هلال : بدر مثل العلاقة بين:",c:["طفل : شاب","حسام : سيف","فراشة : يرقة","شمس : نهار"],a:0},
+  {q:"«إذا كان القمر يحجب ضوء الشمس بواسطة الكسوف». نستنتج من ذلك أن:",c:["القمر يدور حول الأرض.","الشمس أكبر من القمر.","القمر أكبر من الشمس.","القمر يدور حول الشمس."],a:0,unsure:true},
+  {q:"إذا كان لديك عود ثقاب واحد، ودخلت في غرفة باردة جداً، وكان هناك مصباح يعمل بالزيت، ومدفأة خشب، ومدفأة فحم؛ فما الذي تشعله أولاً؟",c:["مدفأة الخشب.","مدفأ الفحم.","مصباح الزيت.","عود الثقاب."],a:3},
+  {q:"«الأديب الرافعي سوري الأصل، ولد في مصر وسكن فيها». نستنتج من ذلك أن الرافعي:",c:["مصري، وولد في مصر.","سوري، وولد في سوريا.","مصري، وولد في سوريا.","سوري، وولد في مصر."],a:3},
+  {q:"«لماء زمزم خصائص فريدة، فهو يشفي الكثير من الأمراض، ولم يعرف العلماء تكوين ماء مثله، رغم أن نسب مكوناته معروفة». نستنتج من ذلك أن العلماء لم يستطيعوا ذلك بسبب:",c:["عدم معرفة مكوناته.","صعوبة تركيبه.","خصائصه الفريدة.","عدم معرفة سر خلطه."],a:3,unsure:true},
+  {q:"«من أسباب تدني درجات الطلاب هو: كثرة مشاهدة التلفاز والقنوات الفضائية». نستنتج من ذلك أن سبب تدني درجاتهم هو:",c:["قلة ساعات المذاكرة.","أنها لا تشجعهم على القراءة.","أنها تشجعهم على القراءة.","غير ذلك."],a:0,unsure:true},
+  {sec:"حدّد الاختيار الذي يوصلك إلى النتيجة المنطقية الصحيحة من بين البدائل.",q:"أصدر الأب تعليماته لابنيه أحمد ومحمد بإغلاق النوافذ العشر لمنزلهم قبل خروجهم لقضاء العطلة، فذهب أحمد للطابق العلوي لإغلاق نوافذه، في حين توجه محمد لإغلاق نوافذ الطابق السفلي، لكن الأب لاحظ عقب عودتهم من العطلة بأن هناك نافذة في الطابق العلوي ما زالت مفتوحة؟",c:["عندما عاد الأب لاحظ أن تسع نوافذ مغلقة.","نسي أحمد أن يغلق كل نوافذ الطابق العلوي.","قام شخص ما بفتح نافذة الطابق العلوي أثناء عطلتهم.","يتكون هذا المنزل من طابقين على الأقل."],a:3},
+  {sec:"العبارات الآتية تحوي مقدمة غير واقعية تحتها خط، اختر الإجابة التي تكمل العبارات منطقياً.",q:"إذا كانت <u>النار باردة</u>، والصيف حاراً؛ فإن النار ........",c:["قبس","دفء","هلاك","صقيع"],a:3,unsure:true},
+  {q:"إذا كان <u>الخبز ورق</u>، وكانت الأسنان من العظم؛ فإن الخبز يستخدم لـ:",c:["الأكل","الكتابة","الزينة","اللعب"],a:1},
+  {q:"إذا كان <u>الحجر خطيباً بليغاً</u>، وإذا كانت النار ساخنة؛ فإن الحجر ........",c:["مُحدِث","ينكسر","ينصهر","يغلي"],a:0,unsure:true},
+  {q:"إذا كانت الحافة المسننة رقم (١) تتحرك إلى اليسار بسرعة ثابتة فإن الحافة المسننة رقم (٢) تتحرك:",fig:TRIAL_GEARS_IMG,c:["إلى اليمين بسرعة أقل.","إلى اليمين بنفس السرعة.","إلى اليسار بنفس السرعة.","إلى اليسار بسرعة أعلى."],a:2,unsure:true}
+]}];
+let trialEx=null,trialIdx=0,trialSel=-1,trialRes=[],trialShownAt=0,trialDone=false;
+function goTrialMenu(){mode="trialMenu";window.scrollTo(0,0);render()}
+function startTrial(id){
+  trialEx=TRIAL_EXAMS.filter(function(e){return e.id===id})[0];if(!trialEx)return goTrialMenu();
+  trialIdx=0;trialSel=-1;trialRes=[];trialDone=false;trialShownAt=Date.now();mode="trial";window.scrollTo(0,0);render();
+}
+function trialPlain(h){
+  return String(h==null?"":h).replace(/<span class="tr-fr"><i>(.*?)<\/i><b>(.*?)<\/b><\/span>/g,"$1/$2").replace(/<img[^>]*>|<svg[\s\S]*?<\/svg>|<div class="tr-grid">[\s\S]*?<\/div><\/div>/g,"[رسم]").replace(/<[^>]+>/g,"").replace(/\s+/g," ").trim();
+}
+function trialPick(i){if(trialDone)return;trialSel=i;render()}
+function trialNext(skip){
+  const ex=trialEx,it=ex.items[trialIdx],sel=skip?-1:trialSel;
+  const ok=sel===it.a,n=trialIdx+1;
+  const opts=it.c.map(function(c,k){return (k+1)+") "+trialPlain(c)+(k===it.a?" ✓":"")}).join(" | ");
+  const resp=sel<0?"تُركت بلا إجابة · الصواب موضع "+toAr(it.a+1)
+    :"موضع "+toAr(sel+1)+" · الصواب موضع "+toAr(it.a+1)+" · "+trialPlain(it.c[sel])+(it.unsure?" · مفتاح:اجتهاد":"");
+  try{logAnswer("trial",ex.id,ok,resp,ex.id+"_q"+(n<10?"0":"")+n,Date.now()-trialShownAt,
+    {q_text:("[اختبار تجريبي · "+ex.name+" · س"+toAr(n)+"] "+(it.sec?"("+it.sec+") ":"")+trialPlain(it.q)+(it.fig?" [رسم]":"")+" · الخيارات: "+opts).slice(0,900)})}catch(e){}
+  trialRes[trialIdx]=sel;
+  if(trialIdx+1>=ex.items.length){trialDone=true;window.scrollTo(0,0);return render()}
+  trialIdx++;trialSel=-1;trialShownAt=Date.now();window.scrollTo(0,0);render();
+}
+function renderTrialMenu(){
+  app.innerHTML=`
+  <button class="link-btn" onclick="home()">→ رجوع للرئيسية</button>
+  <div class="hero" style="background:linear-gradient(135deg,#7C3AED,#0F172A)">
+    <h1>اختبار موهبة تجريبي</h1>
+    <p>اختباراتٌ كاملة منقولةٌ من كتابٍ حرفياً: السؤال وخياراته بترتيبها كما في الكتاب (أ ب ج د) بلا خلط، ولا بوّابات ولا شروح أثناء الحلّ.</p>
+  </div>
+  <div class="modes">${TRIAL_EXAMS.map(function(e){return `<button class="mode full" style="background:#7C3AED;border-color:#7C3AED" onclick="startTrial('${e.id}')">
+    <span class="m-name">📝 ${e.name}</span><div class="m-sub">${toAr(e.items.length)} سؤالاً — ${e.items.filter(function(x){return x.unsure}).length?toAr(e.items.filter(function(x){return x.unsure}).length)+" منها مفتاحُه اجتهادٌ لا من الكتاب":"بمفتاحٍ مؤكَّد"}</div></button>`}).join("")}</div>`;
+}
+function renderTrialResult(){
+  const ex=trialEx,sure=[],uns=[];let rows="";
+  ex.items.forEach(function(it,i){
+    const sel=trialRes[i],ok=sel===it.a;
+    (it.unsure?uns:sure).push(ok?1:0);
+    rows+=`<div class="tr-row${ok?" ok":""}"><b>${toAr(i+1)}</b><span>${ok?"✅":(sel<0?"⏭️":"❌")}${it.unsure?" <small>(مفتاحٌ اجتهاد)</small>":""}</span>${ok?"":`<div class="tr-key">الصواب: ${L[it.a]} — ${it.c[it.a]}${sel>=0?`<br>اخترتِ: ${L[sel]} — ${it.c[sel]}`:""}</div>`}</div>`;
+  });
+  const sum=function(a){return a.reduce(function(s,v){return s+v},0)};
+  app.innerHTML=`<div class="card">
+    <div class="score-row"><span class="score-big" style="color:#7C3AED">${toAr(sum(sure))}</span><span class="score-total">/ ${toAr(sure.length)}</span><span class="score-pct">مفتاحٌ مؤكَّد</span></div>
+    ${uns.length?`<div style="color:#64748B;font-size:14px;margin-bottom:12px">والاجتهاديّة (${toAr(uns.length)}): ${toAr(sum(uns))} من ${toAr(uns.length)} — مفتاحُها من حلّي لا من الكتاب، فلا تُحتسب مؤكَّدة.</div>`:""}
+    <div style="margin-bottom:14px">${rows}</div>
+    <button class="btn" style="background:#7C3AED" onclick="startTrial('${ex.id}')">🔁 أعيدي الاختبار</button>
+    <button class="link-btn" onclick="goTrialMenu()">→ اختبار موهبة تجريبي</button>
+    <button class="link-btn" onclick="home()">→ الرئيسية</button></div>`;
+}
+function renderTrial(){
+  if(trialDone)return renderTrialResult();
+  const ex=trialEx,it=ex.items[trialIdx],n=trialIdx+1,total=ex.items.length;
+  const prog=`<div class="bar">${ex.items.map(function(_,i){return `<div class="seg" style="background:${i<=trialIdx?'#7C3AED':'#E2E8F0'};opacity:${i<=trialIdx?1:.5}"></div>`}).join("")}</div>`;
+  const choices=it.c.map(function(c,i){
+    const on=i===trialSel;
+    return `<button class="choice" style="${on?'background:#EDE9FE;border-color:#7C3AED;color:#4C1D95':''}" onclick="trialPick(${i})"><span class="letter">${L[i]}</span><span class="tr-opt">${c}</span></button>`}).join("");
+  app.innerHTML=`
+  <button class="link-btn" onclick="goTrialMenu()">→ خروج من الاختبار</button>
+  ${prog}
+  <div class="meta"><span>${toAr(n)} من ${toAr(total)}</span><span>اختبار موهبة تجريبي · ${ex.name}</span></div>
+  <div class="card">
+    ${trialIdx===0?`<div class="tr-sec">${ex.intro}</div>`:""}
+    ${it.sec?`<div class="tr-sec">${it.sec}</div>`:""}
+    <div style="display:flex;gap:10px;align-items:flex-start"><span class="tr-num">${toAr(n)}</span><div class="tr-q">${it.q}</div></div>
+    ${it.fig?`<div class="tr-fig">${it.fig}</div>`:""}
+    <div class="choices" style="margin-top:12px">${choices}</div>
+  </div>
+  <button class="btn" style="background:#7C3AED;${trialSel<0?'opacity:.45;pointer-events:none':''}" ${trialSel<0?"disabled":""} onclick="trialNext(false)">${n>=total?"إنهاء ومشاهدة النتيجة":"التالي ←"}</button>
+  <button class="link-btn" onclick="trialNext(true)">تخطّي هذا السؤال ⏭️</button>`;
+}
+function render(){if(mode==="trialMenu")return renderTrialMenu();if(mode==="trial")return renderTrial();if(mode==="placeMenu")return renderPlaceMenu();if(mode==="place")return renderPlace();if(mode==="placeReport")return renderPlaceReport();if(mode==="vctx")return renderVctx();if(mode==="seq")return renderSeq();if(mode==="kpi")return renderKpi();if(mode==="home")return renderHome();if(mode==="listen")return renderListen();if(mode==="read")return renderRead();if(mode==="write")return renderWrite();if(mode==="gram")return renderGram();if(mode==="build")return renderBuild();if(mode==="math6Menu")return renderMath6Menu();if(mode==="math6")return renderMath6();if(mode==="step")return renderStep();if(mode==="wejMenu")return renderWejMenu();if(mode==="wej")return renderWej();if(mode==="wejl")return renderWejl();if(mode==="wejr")return renderWejr();if(mode==="statMenu")return renderStatMenu();if(mode==="stat")return renderStat();if(mode==="minpair")return renderMinpair();if(mode==="video")return renderVideo();if(mode==="errors")return renderErrors();if(mode==="engplan")return renderEngPlan();if(mode==="factplan")return renderFactPlan();if(mode==="vocab")return renderVocab();if(mode==="dictation")return renderDictation();if(mode==="pron")return renderPron();if(mode==="speak")return renderSpeak();if(mode==="coach")return renderCoach();if(mode==="fadeMenu")return renderFadeMenu();if(mode==="fade")return renderFade();if(mode==="fadeDone")return renderFadeDone();if(mode==="basics")return renderBasics();if(mode==="basicsDone")return renderBasicsDone();if(mode==="audiodiag")return renderAudioDiag();if(mode==="progress")return renderProgress();if(loading)return renderLoading();if(done)return renderResult();renderQuiz()}
 
 // صفحة الأخوين قسمٌ واحد: المحادثة. بقيّة الأقسام بُنيت على أخطائها هي — بنك
 // أسئلتها، وتباعدها، ومنهج صفّها السادس — فوضعها أمام ولدٍ آخر يُشغله بما ليس له.
@@ -20482,6 +20619,7 @@ function homeGroupsHTML(items,groups){
 }
 const HOME_GROUPS=[
   {id:"qudrat",t:"🧠 القدرات — موهبة"},
+  {id:"trial",t:"🧪 اختبار موهبة تجريبي"},
   {id:"math",t:"🔢 الرياضيات والأساسيات"},
   {id:"eng_in",t:"🎧 الإنجليزية — فهم"},
   {id:"eng_acc",t:"✍️ الإنجليزية — نحوٌ ودقّة"},
@@ -20581,6 +20719,8 @@ function renderHome(){
       s:"أنماط، هرم، نرد، ترتيب، ألغاز"},
     {g:"qudrat",c:"#F59E0B",go:"goFadeMenu()",n:"🎓 وضع التقوية",
       s:"اختاري مهارة وتدرّبي عليها خطوة بخطوة — مبني على دراسات التعلّم"},
+    {g:"trial",lead:1,c:"#7C3AED",go:"goTrialMenu()",n:"📝 اختبار موهبة تجريبي",
+      s:"اختباراتٌ كاملةٌ منقولةٌ من كتابٍ حرفياً — الأول: ٢٥ سؤالاً بترتيبها وخياراتها كما هي"},
     {g:"math",lead:1,c:"#0F766E",go:"startBasics('mixed')",n:"🔀 الأساسيات متشابكة — الأربع معاً",
       s:"ضرب وقسمة وجمع وطرح مخلوطة في الجلسة الواحدة: تتدرّبين على <b>اختيار الطريقة</b> لا على تنفيذها وحده. أصعب في أثنائها وأثبت بعدها"},
     {g:"math",c:"#0D9488",go:"startBasics('multdiv')",n:"🧱 عائلات الحقائق",
