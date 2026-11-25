@@ -2027,6 +2027,8 @@ const FADE_TOPICS=[
   // ٢٣ نوفمبر: خمسُ مسائل أعمارٍ متسلسلة خاطئة في جلسةٍ واحدة (٤ بفارق −٢)، وزاويتا ساعةٍ بزيادة ٣٠° كلتاهما
   {key:"agechain",icon:"👨‍👩‍👧",label:"الأعمار المتسلسلة",sub:"أصغر وأكبر — من العمر المعلوم خطوةً خطوة"},
   {key:"clock",icon:"🕑",label:"زاوية عقربَي الساعة",sub:"نعدّ المسافات بين الأرقام: كل مسافة ٣٠°"},
+  // ٢٥ نوفمبر (اختبار موهبة تجريبي ١): ٤ أخطاء كلّها استنتاج منطقي، سؤالان منها «مقدّمة غير واقعية» أُجيبا في ١٫٨ و٢٫٨ث
+  {key:"unreal",icon:"🧩",label:"المقدّمة غير الواقعية",sub:"نقبل المقدّمة المخطوطة كأنها صحيحة ونستنتج منها"},
   // ٢٣ نوفمبر (السجلّ منذ ١ أكتوبر): المساحة المظلّلة ١/٨ · الزوايا على خط ٠/٤ · المحيط ١/٦ · زاوية المثلث ١/٣
   {key:"shaded",icon:"◼️",label:"المساحة المظلّلة",sub:"الكلّ ناقص الجزء غير المظلّل"},
   {key:"perim",icon:"📏",label:"المحيط",sub:"مجموع أطوال الأضلاع كلّها"},
@@ -2052,6 +2054,7 @@ const FADE_TERMS={
   prismsurf:[{ar:"مساحة السطح",en:"surface area"},{ar:"منشور",en:"prism"}],
   agechain:[{ar:"عمر",en:"age"},{ar:"أصغر",en:"younger"},{ar:"أكبر",en:"older"}],
   clock:[{ar:"ساعة",en:"clock"},{ar:"زاوية",en:"angle"},{ar:"عقرب",en:"hand"}],
+  unreal:[{ar:"مقدمة",en:"premise"},{ar:"نتيجة",en:"conclusion"},{ar:"منطق",en:"logic"}],
   shaded:[{ar:"مساحة",en:"area"},{ar:"مظلّل",en:"shaded"}],
   perim:[{ar:"محيط",en:"perimeter"},{ar:"مستطيل",en:"rectangle"},{ar:"مربّع",en:"square"}],
   anglesum:[{ar:"زاوية",en:"angle"},{ar:"مثلث",en:"triangle"},{ar:"خط مستقيم",en:"straight line"}],
@@ -2262,6 +2265,46 @@ function fadeMakeAngleSum(){
     ruleTxt:`مجموع زوايا المثلث ١٨٠° — اطرحي الزاويتين المعروفتين من ١٨٠`,
     distractors:[a+b,180-ans,ans+10],svg,caption:`الزاويتان المعروفتان على القاعدة، والمجهولة ص في الرأس`,
     q:`في مثلثٍ زاويتان قياسهما ${toAr(a)}° و${toAr(b)}°. ما قيمة الزاوية الثالثة ص؟`};
+}
+// ===== المقدّمة غير الواقعية — ٢٥ نوفمبر =====
+// «العباراتُ الآتية تحوي مقدّمةً غير واقعيةٍ تحتها خط، اختر الإجابة التي تكمل العبارات منطقياً.» السجلّ:
+// ٢٣ «الخبز ورق» ⇐ «اللعب» في ١٫٨ث و٢٤ «الحجر خطيباً» ⇐ «ينكسر» في ٢٫٨ث — أي أجابت بالواقع لا بالمقدّمة.
+// فالمهارة: قبولُ المقدّمة كأنها صحيحة والاستنتاجُ منها، ونسيانُ ما نعرفه. والمموّهُ الأوّل في كل بندٍ هو **جوابُ
+// الواقع** عمداً (`real`)، وبنودُها غير بنود الاختبار نفسه كي يبقى الاختبارُ قابلاً للإعادة بلا حفظ.
+// والبوّابةُ تعمل هنا (الموضوع ليس في `fadeGateTopics` المستثناة: reading/logic) — فالسرعةُ هي العيب.
+const UNREAL_BANK=[
+ {p:"الثلج ساخناً",r:"وكان الصيف حارّاً",s:"فإن الثلج",ans:"يُدفّئ اليد",real:"يُبرّد المشروب",d:["يتجمّد في الشتاء","لونه أبيض"]},
+ {p:"السمكة طائراً",r:"وكان البحر واسعاً",s:"فإن السمكة",ans:"تطير",real:"تسبح",d:["تعيش في الماء","لها خياشيم"]},
+ {p:"القطة تتكلّم",r:"وكان الكلب ينبح",s:"فإن القطة",ans:"تُحدّثنا",real:"تموء",d:["تنبح","تأكل الفأر"]},
+ {p:"الماء ناراً",r:"وكان الخشب يحترق",s:"فإن الماء",ans:"يحرق الخشب",real:"يُطفئ النار",d:["يُروي العطشان","يتجمّد في البرد"]},
+ {p:"الكتاب طعاماً",r:"وكانت المدرسة قريبة",s:"فإن الكتاب",ans:"يُؤكل",real:"يُقرأ",d:["يُكتب فيه","يُحفظ في المكتبة"]},
+ {p:"الحصان فاكهة",r:"وكان الأسد قوياً",s:"فإن الحصان",ans:"يُقطف من الشجرة",real:"يركبه الفارس",d:["يصهل","يجري في المرج"]},
+ {p:"الطائرة سلحفاة",r:"وكانت السماء زرقاء",s:"فإن الطائرة",ans:"بطيئة جداً",real:"سريعة",d:["تحمل المسافرين","تحلّق عالياً"]},
+ {p:"المطر رملاً",r:"وكان الغيم كثيفاً",s:"فإن المطر",ans:"يغطّي الأرض بالرمل",real:"يروي الزرع",d:["يملأ الأنهار","يرفع الرطوبة"]},
+ {p:"النهر حليباً",r:"وكانت الأسماك تسبح",s:"فإن ماء النهر",ans:"أبيض اللون",real:"شفّاف",d:["عذب المذاق","بارد صافٍ"]},
+ {p:"الكرة مكعّباً",r:"وكان الملعب واسعاً",s:"فإن الكرة",ans:"لا تتدحرج",real:"تتدحرج بسهولة",d:["ترتفع في الهواء","مستديرة"]},
+ {p:"الليل نهاراً",r:"وكانت الساعة منتصف الليل",s:"فإن الشمس",ans:"مشرقة",real:"غائبة",d:["نائمة","خلف القمر"]},
+ {p:"الجبل ماءً",r:"وكان الطريق طويلاً",s:"فإن الجبل",ans:"يسيل",real:"يثبت مكانه",d:["يحمل الثلج","يُصعَد إليه"]},
+ {p:"الورقة حديداً",r:"وكانت الشجرة خضراء",s:"فإن الورقة",ans:"ثقيلة",real:"خفيفة",d:["تتطاير مع الريح","تتساقط في الخريف"]},
+ {p:"الباب شجرة",r:"وكان المفتاح صغيراً",s:"فإن الباب",ans:"يُثمر",real:"يُقفل بمفتاح",d:["يُصنع من الخشب","يفتح ويغلق"]},
+ {p:"الغراب أبيض",r:"وكان الثلج أبيض",s:"فإن الغراب",ans:"يشبه الثلج في لونه",real:"أسود الريش",d:["ينعق","يخفيه الليل"]},
+ {p:"النملة أكبر من الفيل",r:"وكان البحر عميقاً",s:"فإن الفيل",ans:"أصغر من النملة",real:"أكبر من النملة",d:["بحجم الحوت","أثقل من الجمل"]},
+ {p:"الشمس باردة",r:"وكان القمر منيراً",s:"فإن الشمس",ans:"لا تُدفّئ الأرض",real:"تُدفّئ الأرض",d:["تدور حول القمر","تُنير ليلاً فقط"]},
+ {p:"الزجاج مطّاطاً",r:"وكانت النافذة كبيرة",s:"فإن الزجاج",ans:"ينثني ولا ينكسر",real:"ينكسر بسهولة",d:["شفّاف","يُصنع من الرمل"]},
+];
+let _unrealRecent=[];
+function fadeMakeUnreal(){
+  let i,guard=0;do{i=rand(0,UNREAL_BANK.length-1)}while(_unrealRecent.indexOf(i)>=0&&guard++<40);
+  _unrealRecent.push(i);if(_unrealRecent.length>8)_unrealRecent.shift();
+  const b=UNREAL_BANK[i],opts=shuffle([b.ans,b.real].concat(b.d));
+  return{kind:"logic",choiceKind:"text",opts,ai:opts.indexOf(b.ans),prompt:"أيّ إجابةٍ تُكمل العبارة منطقياً؟",
+    steps:[`العبارة المخطوطة تحتها خط <b>غير واقعية</b>: «${b.p}» — لكننا نتعامل معها كأنها حقيقة تامّة`,
+      `ننسى ما نعرفه من الواقع، ونسأل: ماذا يترتّب لو كان هذا صحيحاً؟`,
+      `أما «${b.r}» فمعلومةٌ لا علاقة لها بالسؤال. إذن: ${b.s} ${b.ans}`,
+      `وانتبهي: «${b.real}» هو جواب الواقع — وليس المطلوب`],
+    ruleTxt:`المقدّمة غير الواقعية تُعامَل كأنها صحيحة تماماً: لا تُجيبي بما تعرفين من الواقع، بل بما يترتّب على المقدّمة.`,
+    passage:`إذا كان <u>${b.p}</u>، ${b.r}؛ ${b.s} ........`,
+    q:`اختاري الإجابة التي تُكمل العبارة منطقياً.`};
 }
 function fadeMakeMedian(){
   const mid=rand(4,20),sum=5*mid,ans=mid;
@@ -2810,6 +2853,7 @@ function fadeMakeQuestion(){
   if(fadeTopic==="prismsurf")return fadeMakePrismSurf();
   if(fadeTopic==="agechain")return fadeMakeAgeChain();
   if(fadeTopic==="clock")return fadeMakeClock();
+  if(fadeTopic==="unreal")return fadeMakeUnreal();
   if(fadeTopic==="shaded")return fadeMakeShaded();
   if(fadeTopic==="perim")return fadeMakePerim();
   if(fadeTopic==="anglesum")return fadeMakeAngleSum();
@@ -2833,7 +2877,7 @@ function fadeMakeQuestion(){
 const CLIP_MAKERS={seq:fadeMakeSeq,median:fadeMakeMedian,percent:fadeMakePercent,
   cube:fadeMakeCube,pyramid:fadeMakePyramid,angles:fadeMakeAngles,
   circle:fadeMakeCircle,parallelogram:fadeMakeParallelogram,triangle:fadeMakeTriangle,
-  prismvol:fadeMakePrismVol,prismsurf:fadeMakePrismSurf,agechain:fadeMakeAgeChain,clock:fadeMakeClock,shaded:fadeMakeShaded,perim:fadeMakePerim,anglesum:fadeMakeAngleSum};
+  prismvol:fadeMakePrismVol,prismsurf:fadeMakePrismSurf,agechain:fadeMakeAgeChain,clock:fadeMakeClock,shaded:fadeMakeShaded,perim:fadeMakePerim,anglesum:fadeMakeAngleSum,unreal:fadeMakeUnreal};
 function clipTopicMeta(key){
   for(const t of FADE_TOPICS)if(t.key===key)return t;
   return null;
@@ -3124,7 +3168,7 @@ function fadeQText(c){
   if(c.kind==="seq"&&Array.isArray(c.seq))return c.seq.join(" , ")+" , ?";
   const q=String(c.q||c.prompt||"");
   // النصّ المقروء: السؤال وحده لا يكفي لتمييز الفقرة، فنُلحق بدايتها
-  if(c.passage)return (String(c.passage).slice(0,120)+" ⟵ "+q).slice(0,300);
+  if(c.passage)return (String(c.passage).replace(/<[^>]+>/g,"").slice(0,120)+" ⟵ "+q).slice(0,300);
   return q.slice(0,300)||null;
 }
 function fadeAnsText(c,i){
