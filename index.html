@@ -20478,6 +20478,46 @@ function trFigQ8(){
 }
 function trGrid(rows){return '<div class="tr-grid">'+rows.map(function(r){return '<div>'+r.map(function(c){return '<span>'+c+'</span>'}).join('')+'</div>'}).join('')+'</div>'}
 const TRIAL_GEARS_IMG='<img class="tr-img" alt="حافتان مسنّنتان وأربعة تروس بينهما" src="data:image/png;base64,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">';
+// ===== الاختبار الثاني (٢٥ نوفمبر): أشكال ٣ و١٧ و٢٤ و٢٥ — تُرسَم كما في الكتاب =====
+function trT2Q3(){
+  const T=function(x,y,s){return '<text x="'+x+'" y="'+y+'" font-size="13" text-anchor="middle" fill="#0F172A">'+s+'</text>'};
+  return '<svg viewBox="0 0 250 200" width="100%" direction="ltr" style="max-width:260px;direction:ltr"><rect x="30" y="20" width="150" height="150" fill="none" stroke="#9D174D" stroke-width="1.8"/>'
+   +'<line x1="30" y1="20" x2="180" y2="106.6" stroke="#9D174D" stroke-width="1.8"/><line x1="30" y1="20" x2="116.6" y2="170" stroke="#9D174D" stroke-width="1.8"/>'
+   +T(78,50,'س°')+T(58,62,'س°')+T(42,80,'س°')+T(150,128,'ص°')
+   +T(20,16,'د')+T(192,16,'أ')+T(192,112,'هـ')+T(192,182,'ب')+T(20,182,'ج')+'</svg>';
+}
+function trT2Hex(cx,top,bot,filled,col){
+  const TP={1:[[-22,-20]],2:[[-14,-22],[14,-22]],3:[[0,-24],[-18,-10],[18,-10]],4:[[-14,-24],[14,-24],[-14,-9],[14,-9]],5:[[-12,-25],[12,-25],[-28,-10],[0,-10],[28,-10]]};
+  const BT={1:[[0,22]],2:[[-14,22],[14,22]],3:[[-14,10],[14,10],[0,26]],4:[[-26,10],[0,10],[26,10],[0,26]],5:[[-26,10],[0,10],[26,10],[-14,26],[14,26]]};
+  const dots=function(a,f){return (a||[]).map(function(p){return '<circle cx="'+p[0]+'" cy="'+p[1]+'" r="5" '+(f?'fill="'+col+'"':'fill="#fff" stroke="#334155" stroke-width="1.3"')+'/>'}).join('')};
+  return '<g transform="translate('+cx+',44)"><polygon points="-30,-38 30,-38 58,0 30,38 -30,38 -58,0" fill="#fff" stroke="'+col+'" stroke-width="1.6"/><line x1="-58" y1="0" x2="58" y2="0" stroke="'+col+'" stroke-width="1.6"/>'
+   +dots(TP[top],filled[0])+dots(BT[bot],filled[1])+'</g>';
+}
+function trT2Q17(){
+  const c="#9D174D";
+  const q='<g transform="translate(425,44)"><polygon points="-30,-38 30,-38 58,0 30,38 -30,38 -58,0" fill="#fff" stroke="'+c+'" stroke-width="1.6"/><text x="0" y="10" font-size="30" text-anchor="middle" fill="'+c+'">؟</text></g>';
+  return '<svg viewBox="0 0 610 90" width="100%" style="max-width:520px">'+trT2Hex(65,1,5,[1,0],c)+trT2Hex(185,4,2,[0,1],c)+trT2Hex(305,3,3,[1,0],c)+q+trT2Hex(545,5,1,[1,0],c)+'</svg>';
+}
+function trT2HexOpt(top,bot,f){return '<svg viewBox="0 0 120 90" width="96" height="72" style="vertical-align:middle">'+trT2Hex(60,top,bot,f,"#111")+'</svg>'}
+function trT2Tube(){
+  return '<svg viewBox="0 0 280 120" width="100%" style="max-width:280px"><polyline points="240,30 175,85 100,85 30,30" fill="none" stroke="#CBD5E1" stroke-width="18" stroke-linejoin="round" stroke-linecap="round"/>'
+   +'<circle cx="238" cy="32" r="8" fill="#64748B"/><circle cx="137" cy="82" r="8" fill="#64748B"/><circle cx="32" cy="32" r="8" fill="#64748B"/>'
+   +'<g stroke="#64748B" stroke-width="1.6" fill="none"><path d="M215 38 L190 56"/><path d="M165 76 L120 76"/><path d="M85 76 L58 52"/></g>'
+   +['أ|252|26','ب|180|106','ج|100|106','د|14|26'].map(function(s){const a=s.split("|");return '<text x="'+a[1]+'" y="'+a[2]+'" font-size="14" text-anchor="middle" fill="#0F172A">'+a[0]+'</text>'}).join('')+'</svg>';
+}
+function trT2Graph(pts){
+  return '<svg viewBox="0 0 130 100" width="120" height="92" style="vertical-align:middle"><g stroke="#0F172A" stroke-width="1.6" fill="none"><path d="M18 84 V10"/><path d="M18 84 H120"/><path d="M14 16 L18 8 L22 16"/><path d="M112 80 L120 84 L112 88"/>'
+   +'<polyline points="'+pts+'" stroke-width="2.2"/></g><text x="6" y="48" font-size="10" text-anchor="middle" fill="#0F172A" transform="rotate(-90 8 48)">السرعة</text><text x="70" y="98" font-size="10" text-anchor="middle" fill="#0F172A">الزمن</text></svg>';
+}
+function trT2Q25(){
+  const m="#BE185D";
+  return '<svg viewBox="0 0 300 250" width="100%" style="max-width:290px"><g stroke="'+m+'" stroke-width="2" fill="none">'
+   +'<path d="M60 20 L125 4" stroke-width="5"/><path d="M165 30 L230 14" stroke-width="5"/>'
+   +'<path d="M92 12 V40"/><path d="M198 22 V50"/>'
+   +'<polygon points="62,98 112,82 112,176 62,192"/><polygon points="168,108 218,92 218,186 168,202"/><path d="M92 40 H112 V82"/><path d="M198 50 H218 V92"/></g>'
+   +'<g stroke="#94A3B8" stroke-width="2.4" fill="none"><path d="M60 232 L24 244" /><path d="M96 226 L58 238"/><path d="M130 220 L94 232"/></g>'
+   +'<text x="150" y="246" font-size="14" text-anchor="middle" fill="#0F172A">هواء</text></svg>';
+}
 const TRIAL_EXAMS=[{id:"t1",name:"الاختبار الأول",
   intro:"تذكّري: أنّ هناك إجابةً صحيحةً واحدة عن كل سؤال، وأن تستخدمي استراتيجيةً سريعةً للحلّ بدلاً من إهدار الوقت في إجراء عملياتٍ حسابيةٍ طويلة.",
   items:[
@@ -20506,6 +20546,35 @@ const TRIAL_EXAMS=[{id:"t1",name:"الاختبار الأول",
   {q:"إذا كان <u>الخبز ورق</u>، وكانت الأسنان من العظم؛ فإن الخبز يستخدم لـ:",c:["الأكل","الكتابة","الزينة","اللعب"],a:1},
   {q:"إذا كان <u>الحجر خطيباً بليغاً</u>، وإذا كانت النار ساخنة؛ فإن الحجر ........",c:["مُحدِث","ينكسر","ينصهر","يغلي"],a:0},
   {q:"إذا كانت الحافة المسننة رقم (١) تتحرك إلى اليسار بسرعة ثابتة فإن الحافة المسننة رقم (٢) تتحرك:",fig:TRIAL_GEARS_IMG,c:["إلى اليمين بسرعة أقل.","إلى اليمين بنفس السرعة.","إلى اليسار بنفس السرعة.","إلى اليسار بسرعة أعلى."],a:2}
+]}
+,{id:"t2",name:"الاختبار الثاني",
+  intro:"تذكّري: أنّ هناك إجابةً صحيحةً واحدة عن كل سؤال، وأن تستخدمي استراتيجيةً سريعةً للحلّ بدلاً من إهدار الوقت في إجراء عملياتٍ حسابيةٍ طويلة.",
+  items:[
+  {q:"إذا كان نصيب علي ضِعف نصيب أحمد، ومجموع نصيبيهما ٨٤٠٠٠ ريال، فما نصيب علي؟",c:["٢٨٠٠٠","٤٢٠٠٠","٥٦٠٠٠","٦١٠٠٠"],a:2},
+  {q:"تُنتج ٣ أبقار ٤ سطول من الحليب خلال ٥ أيام، ففي كم يومًا تُنتج ٦ أبقار ٨ سطول من الحليب؟",c:["٨","٧","٦","٥"],a:3},
+  {q:"في المربع أ ب ج د قيمة الزاوية ص تساوي:",fig:trT2Q3(),c:["١٠٠°","١٢٠°","١٣٠°","١٥٠°"],a:1},
+  {q:"دُفع سالم ٤٠٪ من راتبه إيجارًا للبيت، و٣٠٪ مصروفات، وتبقى له ٢٧٠٠ ريال. فكم راتب سالم؟",c:["٩٠٠٠ ريال","٨٠٠٠ ريال","٧٠٠٠ ريال","٧٥٠٠ ريال"],a:0},
+  {q:"إذا كنا نحتاج ٣ أعوادٍ من الكبريت لتشكيل مثلثٍ واحدًا، و٥ أعوادٍ لتشكيل مثلثين، و٧ أعوادٍ لتشكيل ٣ مثلثات. فكم عدد الأعواد اللازمة لعمل ٣٧ مثلثًا؟",c:["٧٣","٧٥","١٠٨","١١١"],a:1},
+  {q:"مجموع خمسة أعدادٍ صحيحةٍ متتالية يساوي ٣٠، أوجد وسيط هذه الأعداد.",c:["٥","٦","٨","١٥"],a:1},
+  {q:"قيمة المقدار: "+trFr("٢٤٫٥","٧٫٥")+" − "+trFr(1,15)+" − "+trFr(48,15)+" تساوي:",c:["٥","٣","٢","صفر"],a:3},
+  {q:"قال محمد: عدد إخواني الذكور مثل عدد أخواتي الإناث، وقالت أخته مريم: عدد إخواني الذكور ضعف عدد أخواتي الإناث، كم عدد الأبناء في هذه الأسرة؟",c:["٤","٥","٧","٨"],a:2},
+  {q:"إذا كانت فترة الحمل للفأر الواحد ١٦ يومًا، فكم تكون فترة الحمل لتوأمٍ من الفئران؟",c:["٦٤","٣٢","١٦","٨"],a:2},
+  {sec:"حدّد الاختيار الذي يكمل معنى الجملة إكمالاً صحيحًا.",q:"يزرع أحد الفلاحين البسطاء في مزرعته الخضروات الضرورية؛ كالباذنجان، والباميا، واللوبيا، والمبوليا؛ وعليه فإن الفلاح زرع المبوليا لغرض ........",c:["الأكل.","التخزين.","الزينة.","التقديم."],a:0},
+  {q:"يجب الابتعاد عن ثاني أكسيد الكربون والسيكونين والأبخرة المنتشرة في الجو؛ لذا فإنه يجب الابتعاد عن السيكونين لأنه ........",c:["منتشر.","حار.","معدن مشع.","غاز سام."],a:3},
+  {sec:"حدّد الكلمة التي تملأ الفراغ لتعطي علاقةً مشابهةً لما في داخل الصندوق الأيمن.",q:"",fig:trGrid([["صورة","إطار"],["بيت","؟"]]),c:["جدار.","سور.","باب.","سقف."],a:1},
+  {q:"",fig:trGrid([["أحمر","قاني"],["أسود","؟"]]),c:["فاتح.","باهت.","أبيض.","حالك."],a:3},
+  {sec:"في كل سؤال مما يأتي عبارة تحوي مقدمة غير واقعية تحتها خط، اختر الإجابة التي تكمل العبارات منطقيًا.",q:"إذا كانت <u>الشوارع من المحيطات</u>، وكانت الطائرات في الجو؛ فإن في الشوارع ........",c:["سيارات.","قطارات.","سفنًا.","شاحنات."],a:2},
+  {q:"إذا كان <u>الغصن فكرة</u>، والحليب من البقر، فإن الأغصان من ........",c:["الأشجار.","العقول.","الكتب.","السيقان."],a:1},
+  {sec:"اختر الإجابة التي تتناسب مع محتوى مقدمة السؤال.",q:"«كادت الشمس تغيب، وأخشى أن يفوتنا وقت صلاة ........»",c:["العصر.","المغرب.","العشاء.","الفجر."],a:0},
+  {q:"ما الشكل المفقود فيما يلي:",fig:trT2Q17(),c:[trT2HexOpt(2,4,[0,1]),trT2HexOpt(3,3,[1,0]),trT2HexOpt(4,2,[1,0]),trT2HexOpt(2,4,[1,0])],a:0},
+  {sec:"حدّد الاختيار الذي يُكمل معنى الجمل التالية إكمالاً صحيحًا.",q:"ذهب خالد إلى المستشفى وهو يعاني من حمى شديدة، أعطاه الطبيب على أثرها أدوية متنوعة، ونصحه بتناول <u>الفلوت</u> بعد طبخه؛ وعليه فإن <u>الفلوت</u> يُستخدم في ........",c:["التعقيم.","الوقاية.","العلاج.","الطهي."],a:2},
+  {q:"أحضر خالد إلى بيته بعضًا من أدوات المطبخ كان منها: القدر، والملعقة، والمرس، والسكين؛ وعليه فإن <u>المرس</u> يُستخدم في ........",c:["غسيل الملابس.","طهي الطعام.","تنظيف البيت.","تزيين المنزل."],a:1},
+  {q:"تطور العلم في مجال الطيران، وصنعوا الكثير من المركبات: كالطائرة، والمنطاد، والسفن الفضائية، والمكوك، والأوتوجايرو؛ وعليه فإن «الأوتوجايرو» تُستخدم في:",c:["الطيران.","السباحة.","الصناعة.","الصيد."],a:0},
+  {q:"سافرت سعاد إلى مكة بعد هالة التي سافرت بعد هند وقبل سلمى؛ فأيّ الفتيات الأربع سافرت أولاً؟",c:["سعاد.","هند.","هالة.","سلمى."],a:1},
+  {q:"أربعة أشخاص، الأول يُغني أحسن من الثاني، والثاني يُغني أسوأ من الثالث وأحسن من الرابع، أيهم أسوأ صوتًا؟",c:["الأول","الثاني","الثالث","الرابع"],a:3},
+  {q:"أي المواد الآتية تسمح للكهرباء بالمرور بين البطارية والمصباح الكهربائي:",c:["السلك النحاسي.","القضيب الخشبي.","الخيط القطني.","أنبوب المطاط."],a:0},
+  {q:"في الشكل المقابل، أي الرسوم البيانية في الاختيارات يمثل حركة الكرة المعدنية في مجرى الأنبوب من النقطة (أ) إلى النقطة (د)؟",fig:trT2Tube(),c:[trT2Graph("18,84 62,30 106,84"),trT2Graph("18,84 100,18"),trT2Graph("18,28 52,48 82,48 106,22"),trT2Graph("18,84 42,40 82,40 108,84")],a:3},
+  {q:"في الشكل الآتي، ورقتان معلقتان وحركتهما حُرّة، سحبنا الهواء بينهما بسرعة عالية، فما الذي يحدث للورقتين؟",fig:trT2Q25(),c:["تبتعدان عن بعضهما.","تقتربان من بعضهما.","تبقيان في مكانهما.","تتحرك إحداهما إلى الداخل، والأخرى إلى الخارج."],a:1}
 ]}];
 let trialEx=null,trialIdx=0,trialSel=-1,trialRes=[],trialShownAt=0,trialDone=false;
 function goTrialMenu(){mode="trialMenu";window.scrollTo(0,0);render()}
