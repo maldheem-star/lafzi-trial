@@ -57,7 +57,9 @@ const f=await p.evaluate(async()=>{
 await p.waitForTimeout(300);
 ok(f.menu&&f.first&&f.btnOff,'القائمة، وتعليمات الاختبار، و«التالي» معطَّل قبل الاختيار');
 ok(f.done&&f.res&&f.again&&f.got===25,'ينتهي بنتيجةٍ ومراجعة — '+f.got);
-ok(f.skip,'والمتروك يُعلَّم في المراجعة');
+const leak=await p.evaluate(()=>({key:/الصواب:|اخترتِ:|✅|❌|⏭️/.test(app.innerHTML),rows:document.querySelectorAll('.tr-row,.tr-key').length,score:!!document.querySelector('.score-big')}));
+ok(!leak.key&&leak.rows===0,'شاشة النتيجة لا تكشف صواب أي سؤال ولا خطأه');
+ok(leak.score,'والدرجة النهائية وحدها ظاهرة');
 ok(f.badOrder.length===0,'والخيارات تُعرض أ ب ج د بلا خلط في كل سؤال — '+f.badOrder);
 const mine=rows.filter(r=>r.domain==='trial');
 ok(mine.length===25,'سطرُ تسجيلٍ لكل سؤال — '+mine.length);
