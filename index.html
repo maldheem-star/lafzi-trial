@@ -20518,6 +20518,94 @@ function trT2Q25(){
    +'<g stroke="#94A3B8" stroke-width="2.4" fill="none"><path d="M60 232 L24 244" /><path d="M96 226 L58 238"/><path d="M130 220 L94 232"/></g>'
    +'<text x="150" y="246" font-size="14" text-anchor="middle" fill="#0F172A">هواء</text></svg>';
 }
+// ===== الاختبار الثالث (٢٧ نوفمبر): الأشكال ١ و٦ و٧ و٨ و١١ و١٣ و١٤ و٢٣ و٢٥ — تُرسَم كما في الكتاب =====
+function trT3T(x,y,s,sz,col){return '<text x="'+x+'" y="'+y+'" font-size="'+(sz||14)+'" text-anchor="middle" fill="'+(col||"#0F172A")+'">'+s+'</text>'}
+function trT3Grid(){
+  const sh={"0,4":1,"1,2":1,"1,5":1,"2,0":1,"2,3":1,"3,0":1,"3,2":1};let g="";
+  for(let r=0;r<4;r++)for(let c=0;c<6;c++)g+='<rect x="'+(4+c*34)+'" y="'+(4+r*30)+'" width="34" height="30" fill="'+(sh[r+","+c]?"#C084FC":"#fff")+'" stroke="#9D174D" stroke-width="1.4"/>';
+  return '<svg viewBox="0 0 212 128" width="100%" style="max-width:230px">'+g+'</svg>';
+}
+function trT3Roads(){
+  const m="#9D174D",arr=function(d){return '<path d="'+d+'" fill="none" stroke="'+m+'" stroke-width="1.4" marker-end="url(#t3a)"/>'};
+  return '<svg viewBox="0 0 380 110" width="100%" style="max-width:380px"><defs><marker id="t3a" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="'+m+'"/></marker></defs>'
+   +'<circle cx="330" cy="55" r="42" fill="#5EAAA8"/><circle cx="190" cy="55" r="42" fill="#D58BB3"/><circle cx="50" cy="55" r="42" fill="#9BC46B"/>'
+   +arr("M285,40 Q260,25 236,38")+arr("M285,70 Q260,85 236,72")
+   +arr("M146,38 Q120,24 96,36")+arr("M146,55 L96,55")+arr("M146,72 Q120,86 96,74")
+   +trT3T(330,60,"أ",17,"#fff")+trT3T(190,60,"ب",17,"#fff")+trT3T(50,60,"ج",17,"#fff")+'</svg>';
+}
+function trT3Spiral(x,y){return '<path transform="translate('+x+','+y+')" d="M0,0 a3,3 0 1,1 6,0 a6,6 0 1,1 -12,0 a9,9 0 1,1 18,0 a12,12 0 1,1 -24,0" fill="none" stroke="#BE185D" stroke-width="2.6"/>'}
+function trT3Star(x,y){let p=[];for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,r=i%2?7:16;p.push((x+r*Math.cos(a)).toFixed(1)+","+(y+r*Math.sin(a)).toFixed(1))}return '<polygon points="'+p.join(" ")+'" fill="#C084FC" stroke="#0F172A" stroke-width="1"/>'}
+function trT3Sym(){
+  const rows=[["x","star","sp",19],["sp","sp","sp",18],["sp","sp","star",17]];let g="";
+  rows.forEach(function(r,i){const y=8+i*56;for(let c=0;c<3;c++){const x=60+c*60;g+='<rect x="'+x+'" y="'+y+'" width="60" height="56" fill="#fff" stroke="#94A3B8"/>';
+      const cx=x+30,cy=y+28;g+=r[c]==="sp"?trT3Spiral(cx-3,cy):r[c]==="star"?trT3Star(cx,cy):trT3T(cx,cy+6,"س",18)}
+    g+=trT3T(34,y+34,"=",16)+trT3T(14,y+34,toAr(r[3]),15)});
+  return '<svg viewBox="0 0 250 180" width="100%" style="max-width:260px">'+g+'</svg>';
+}
+function trT3Y(cx,top,l,r){const m="#9D174D";return '<g transform="translate('+cx+',62)"><circle r="56" fill="#fff" stroke="'+m+'" stroke-width="1.6"/><path d="M0,0 L-40,-39 M0,0 L40,-39 M0,0 L0,56" stroke="'+m+'" stroke-width="1.6"/>'
+  +trT3T(0,-26,top,16,"#1D4ED8")+trT3T(-26,26,l,16,"#1D4ED8")+trT3T(26,26,r,16,r==="؟"?"#B91C1C":"#1D4ED8")+'</g>'}
+function trT3Circles(){return '<svg viewBox="0 0 380 126" width="100%" style="max-width:380px">'+trT3Y(318,toAr(2),toAr(3),"؟")+trT3Y(190,toAr(6),toAr(21),toAr(16))+trT3Y(62,toAr(3),toAr(7),toAr(4))+'</svg>'}
+function trT3Fib(){
+  const m="#9D174D",R=80;let g='<circle cx="90" cy="90" r="'+R+'" fill="#fff" stroke="'+m+'" stroke-width="1.6"/>';
+  for(let i=0;i<4;i++){const a=i*Math.PI/4;g+='<line x1="'+(90-R*Math.cos(a)).toFixed(1)+'" y1="'+(90-R*Math.sin(a)).toFixed(1)+'" x2="'+(90+R*Math.cos(a)).toFixed(1)+'" y2="'+(90+R*Math.sin(a)).toFixed(1)+'" stroke="'+m+'" stroke-width="1.3"/>'}
+  // عكس عقارب الساعة من أعلى اليمين: ١ ١ ٢ ٣ ٥ ٨ ص ٢١ (كما في الكتاب)
+  const lab=[[1,-67.5],[1,-22.5],[2,-112.5],[3,-157.5],[5,157.5],[8,112.5],["ص",67.5],[21,22.5]];
+  lab.forEach(function(v){const a=v[1]*Math.PI/180;g+=trT3T((90+52*Math.cos(a)).toFixed(1),(95+52*Math.sin(a)).toFixed(1),typeof v[0]==="number"?toAr(v[0]):v[0],15,v[0]==="ص"?"#B91C1C":"#0F172A")});
+  // ترتيب المواضع: ١ أعلى-يمين، ١ يمين-أعلى، ٢ أعلى-يسار، ٣ يسار-أعلى، ٥ يسار-أسفل، ٨ أسفل-يسار، ص أسفل-يمين، ٢١ يمين-أسفل
+  return '<svg viewBox="0 0 180 180" width="180" height="180">'+g+'</svg>';
+}
+function trT3Zig(x,y,w){return '<polyline points="'+x+','+(y+8)+' '+(x+w*.3)+','+y+' '+(x+w*.5)+','+(y+8)+' '+(x+w*.7)+','+y+' '+(x+w)+','+(y+8)+'" fill="none" stroke="CURCOL" stroke-width="1.8"/>'}
+function trT3Fig(x,parts,col){ // parts: L=خطّ أيسر، R=خطّ أيمن، zig ارتفاعاته
+  let g="";const w=70;
+  if(parts.L)g+='<line x1="'+x+'" y1="6" x2="'+x+'" y2="114" stroke="CURCOL" stroke-width="1.8"/>';
+  if(parts.R)g+='<line x1="'+(x+w)+'" y1="6" x2="'+(x+w)+'" y2="114" stroke="CURCOL" stroke-width="1.8"/>';
+  (parts.z||[]).forEach(function(y){g+=trT3Zig(x,y,w)});
+  return g.replace(/CURCOL/g,col);
+}
+function trT3Seq(){
+  const m="#9D174D",ar=function(x){return '<path d="M'+x+',60 h-26 m6,-5 l-6,5 l6,5" fill="none" stroke="#94A3B8" stroke-width="1.6"/>'};
+  return '<svg viewBox="0 0 420 120" width="100%" style="max-width:420px">'
+   +trT3Fig(336,{L:1,R:1,z:[6,46,96]},m)+ar(326)+trT3Fig(226,{L:1,R:1,z:[24,80]},m)+ar(216)+trT3Fig(116,{R:1,z:[24,80]},m)+ar(106)
+   +trT3T(40,66,"؟",22,"#B91C1C")+'</svg>';
+}
+function trT3SeqOpt(k){
+  const c="#111";let g="";
+  if(k===0)g='<line x1="20" y1="20" x2="20" y2="110" stroke="'+c+'" stroke-width="1.8"/>'+trT3Zig(20,14,70).replace(/CURCOL/g,c);
+  if(k===1)g=trT3Fig(10,{R:1,z:[24,80]},c);
+  if(k===2)g='<line x1="50" y1="6" x2="50" y2="114" stroke="'+c+'" stroke-width="1.8"/>';
+  if(k===3)g=trT3Fig(10,{R:1,z:[56]},c);
+  return '<svg viewBox="0 0 100 120" width="70" height="84" style="vertical-align:middle">'+g+'</svg>';
+}
+function trT3Fan(){
+  const m="#9D174D",O=[150,150],ray=function(deg,len){const a=deg*Math.PI/180;return '<line x1="150" y1="150" x2="'+(150+len*Math.cos(a)).toFixed(1)+'" y2="'+(150-len*Math.sin(a)).toFixed(1)+'" stroke="'+m+'" stroke-width="1.6"/>'};
+  let g='<line x1="6" y1="150" x2="300" y2="150" stroke="'+m+'" stroke-width="1.6"/>'+ray(90,140)+ray(135,140);
+  [18,36,54,72].forEach(function(d){g+=ray(d,140)});
+  g+='<rect x="138" y="138" width="12" height="12" fill="#E879F9" opacity=".6"/>';
+  [9,27,45,63,81].forEach(function(d){const a=d*Math.PI/180;g+=trT3T((150+95*Math.cos(a)).toFixed(1),(155-95*Math.sin(a)).toFixed(1),"س°",13,"#1D4ED8")});
+  [112.5,157.5].forEach(function(d){const a=d*Math.PI/180;g+=trT3T((150+70*Math.cos(a)).toFixed(1),(155-70*Math.sin(a)).toFixed(1),"ص°",13,"#1D4ED8")});
+  return '<svg viewBox="0 0 306 160" width="100%" direction="ltr" style="max-width:300px;direction:ltr">'+g+'</svg>';
+}
+function trT3Circ(){
+  return '<svg viewBox="0 0 160 160" width="160" height="160"><circle cx="80" cy="80" r="72" fill="#93C5FD" stroke="#9D174D" stroke-width="1.6"/>'
+   +'<circle cx="104" cy="80" r="48" fill="#fff" stroke="#9D174D" stroke-width="1.4"/><circle cx="32" cy="80" r="24" fill="#fff" stroke="#9D174D" stroke-width="1.4"/>'
+   +'<line x1="32" y1="80" x2="104" y2="80" stroke="#334155" stroke-width="1.2"/>'+trT3T(130,74,"٢ سم",12)+trT3T(32,74,"١ سم",12)+'</svg>';
+}
+function trT3Wheel(){
+  return '<svg viewBox="0 0 300 160" width="100%" style="max-width:300px"><circle cx="150" cy="78" r="66" fill="none" stroke="#BE185D" stroke-width="1.8"/>'
+   +'<circle cx="122" cy="28" r="6" fill="#E11D48"/><line x1="20" y1="144" x2="290" y2="144" stroke="#BE185D" stroke-width="1.6"/>'
+   +trT3T(92,14,"قلم",13,"#1D4ED8")+'<path d="M100,18 L116,24" stroke="#64748B" stroke-width="1.2"/>'
+   +trT3T(262,112,"عجلة",13,"#1D4ED8")+'<path d="M244,106 L214,96" stroke="#64748B" stroke-width="1.2"/>'+trT3T(10,142,"س",14)+'</svg>';
+}
+// منحنيات الخيارات تُولَّد من معادلة التروكويد (x = t − d·sin t، الارتفاع = 1 − d·cos t) فتطابق أشكال الكتاب:
+// أ حلقاتٌ في الأعلى · ب أقواسٌ نازلة برؤوسٍ في الأعلى · ج موجةٌ ناعمة · د حلقاتٌ في الأسفل.
+function trT3Curve(k){
+  const d=[1.6,1,0.45,1.6][k],flip=(k===0||k===1);let p=[];
+  for(let t=-0.3;t<=4*Math.PI+0.3;t+=0.08){const x=t-d*Math.sin(t),h=1-d*Math.cos(t);const y=flip?h:-h;p.push((14+x*7.2).toFixed(1)+","+(46+y*14).toFixed(1))}
+  return '<svg viewBox="0 0 120 92" width="110" height="84" style="vertical-align:middle"><polyline points="'+p.join(" ")+'" fill="none" stroke="#111" stroke-width="1.8"/></svg>';
+}
+const TR3_PASS='<div style="font-weight:400;line-height:1.9;background:#F8FAFC;border-radius:10px;padding:10px 12px;margin-bottom:8px">'
+ +'١. «افتخر الأرنب بسرعته بين الحيوانات وبأن أحدًا لم يسبقه أبدًا، ثم تحدى الحيوانات أن تباريه، فقالت السلحفاة: (أنا أباريك)، فضحك الأرنب، وقال مستهزئًا: (كيف أسابقك وأنتِ مضرب الأمثال في البطء؟!) أجابت السلحفاة: (أنت مصيب، ولكن انتظر حتى ترى النتيجة).<br>'
+ +'٢. وافق الأرنب، وبدأ السباق، وبعد شوط صغير من جري الأرنب السريع، نظر خلفه فلم ير خلفه السلحفاة لبطئها، فقال لنفسه: (أنام وأستيقظ قبل أن تصل) وراح في نوم عميق، وعندما أفاق الأرنب وجد السلحفاة تكاد تصل خط النهاية، فقفز كالمجنون، ولكن دون فائدة؛ لأن السلحفاة كانت قد سبقته وفازت بالسباق».</div>';
 const TRIAL_EXAMS=[{id:"t1",name:"الاختبار الأول",
   intro:"تذكّري: أنّ هناك إجابةً صحيحةً واحدة عن كل سؤال، وأن تستخدمي استراتيجيةً سريعةً للحلّ بدلاً من إهدار الوقت في إجراء عملياتٍ حسابيةٍ طويلة.",
   items:[
@@ -20575,6 +20663,35 @@ const TRIAL_EXAMS=[{id:"t1",name:"الاختبار الأول",
   {q:"أي المواد الآتية تسمح للكهرباء بالمرور بين البطارية والمصباح الكهربائي:",c:["السلك النحاسي.","القضيب الخشبي.","الخيط القطني.","أنبوب المطاط."],a:0},
   {q:"في الشكل المقابل، أي الرسوم البيانية في الاختيارات يمثل حركة الكرة المعدنية في مجرى الأنبوب من النقطة (أ) إلى النقطة (د)؟",fig:trT2Tube(),c:[trT2Graph("18,84 62,30 106,84"),trT2Graph("18,84 100,18"),trT2Graph("18,28 52,48 82,48 106,22"),trT2Graph("18,84 42,40 82,40 108,84")],a:3},
   {q:"في الشكل الآتي، ورقتان معلقتان وحركتهما حُرّة، سحبنا الهواء بينهما بسرعة عالية، فما الذي يحدث للورقتين؟",fig:trT2Q25(),c:["تبتعدان عن بعضهما.","تقتربان من بعضهما.","تبقيان في مكانهما.","تتحرك إحداهما إلى الداخل، والأخرى إلى الخارج."],a:1}
+]}
+,{id:"t3",name:"الاختبار الثالث",
+  intro:"تذكّري: أنّ هناك إجابةً صحيحةً واحدة عن كل سؤال، وأن تستخدمي استراتيجيةً سريعةً للحلّ بدلاً من إهدار الوقت في إجراء عملياتٍ حسابيةٍ طويلة.",
+  items:[
+  {q:"عدد المربعات التي يلزم تظليلها ليصبح "+trFr(3,4)+" الشكل التالي مظللًا هو:",fig:trT3Grid(),c:["٩","١٠","١١","١٣"],a:2},
+  {q:"خزان مكعب الشكل حجمه ٨ م³، إذا ضاعفنا طول ضلعه؛ فإن حجمه يساوي؟",c:["١٦ م³","٦٤ م³","٩٦ م³","٥١٢ م³"],a:1},
+  {q:"غلاية ماء سعتها ٢٫٢٥ لترًا، وكوب شاي سعته ٠٫٣ لترًا؛ فكم كوبًا ممتلئًا يمكن إعداده في المرة الواحدة؟",c:["١٠","٩","٨","٧"],a:3},
+  {q:"في صف إذا كان عدد الطلاب ٤٢ طالبًا، وكانت نسبة الناجحين إلى المجموع ٥ : ٦، فإن عدد الراسبين يساوي:",c:["٧","٨","٩","١٠"],a:0},
+  {q:"اشترت ريم جوالًا عن طريق الإنترنت ودفعت ٢١٠٠ ريال، وكان ثمن الشراء بزيادة على السعر الأصلي ٥٪ مصاريف شحن، فكم السعر الأصلي للجوال؟",c:["٢١٠٠ ريال","٢٠٠٠ ريال","١٩٥٠ ريالًا","١٩٠٠ ريال"],a:1},
+  {q:"إذا كان عدد الطرق من (أ) إلي (ب) طريقين، ومن (ب) إلي (ج) ثلاثة طرق، فكم عدد الطرق من (أ) إلى (ج)؟",fig:trT3Roads(),c:["٨","٧","٦","٥"],a:2},
+  {q:"قيمة س في الشكل المجاور تساوي:",fig:trT3Sym(),c:["٨","٧","٦","٥"],a:0},
+  {q:"أي رقم مما يلي يجب وضعه مكان علامة الاستفهام؟",fig:trT3Circles(),c:["١","٢","٣","٤"],a:3},
+  {q:"يستطيع ٤ عمال دهان بيت في ١٨ يومًا، فكم عاملًا يستطيعون دهان نفس البيت في ١٢ يومًا؟",c:["٥","٦","٧","٨"],a:1},
+  {q:"بستان مستطيل الشكل طوله ٩٦م، وعرضه ٤٢م، زرعنا على حدوده أشجارًا، بحيث كانت المسافات بينها متساوية وبأكبر طول ممكن، ما عدد الأشجار التي زرعت؟",c:["٤٢","٤٤","٤٦","١٣٨"],a:2},
+  {q:"أوجد قيمة ص في الشكل التالي:",fig:trT3Fib(),c:["١٣","١٤","١٥","١٦"],a:0},
+  {q:"مثلث يزيد طول ارتفاعه على طول قاعدته ٢سم، ومساحته ٢٤سم². فما طول قاعدته؟",c:["٥","٦","٧","٨"],a:1},
+  {q:"أكمل الشكل الناقص لسلسلة الأشكال الآتية:",fig:trT3Seq(),c:[trT3SeqOpt(0),trT3SeqOpt(1),trT3SeqOpt(2),trT3SeqOpt(3)],a:3},
+  {q:"في الشكل الآتي: ما قيمة ٤س − ص ؟",fig:trT3Fan(),c:["١٨°","٢٧°","٤٥°","٥٤°"],a:1},
+  {sec:"حدّد الاختيار الذي ترتبط فيه الكلمتان بنفس علاقة الكلمتين في رأس السؤال.",q:"ذهب : منجم",c:["سمكة : بحر","الماس : مجوهرات","ياقوت : زمرد","نحلة : عسل"],a:0},
+  {q:"ذنب : عِقاب.",c:["تبسم : تهكُّم","تبسم : غضب","تبسم : سعادة","تبسم : إثم"],a:2},
+  {q:"سمك : ماء.",c:["عصفور : حمام","تفاح : ثلاجة","كلب : حديقة","نمر : غابة"],a:3},
+  {q:"«الرأي يسد ثَلْمَ السيف، والسيف لا يسد ثلم الرأي». يُفهم من العبارة السابقة أن:",c:["الرأي الصائب يفوق القوة.","القوة تفوق الرأي.","الرأي الخاطئ يفوق القوة.","الضعف يفوق الرأي الصائب."],a:0},
+  {q:"مضاد كلمة «متكرر» هو:",c:["متجدد.","مختلف.","نادر.","عتيق."],a:2},
+  {sec:"اقرأ النص التالي للإجابة على السؤالين ٢٠ و٢١",q:TR3_PASS+"أنسب عنوان لهذا النص هو:",c:["السلحفاة البطيئة","خدعة السلحفاة","الأرنب السريع","تهاون الأرنب"],a:3},
+  {q:TR3_PASS+"يُفهم من الفقرة (٢) أن فوز السلحفاة بالسباق تحقّق:",c:["بالتهاون","بالمثابرة.","بالسرعة.","بالقوة."],a:1},
+  {q:"إذا حصل محمد على درجة أكبر من فهد الذي حصل على درجة أكبر من أحمد وأصغر من خالد؛ فإن أدناهم درجة هو:",c:["محمد.","أحمد.","فهد.","خالد."],a:1},
+  {q:"أوجد مساحة الجزء المظلل في الشكل الآتي.",fig:trT3Circ(),c:["٩ ط","٥ ط","٤ ط","٣ ط"],a:2},
+  {q:"إذا كان مجموع عمري محمد وسعد = ٤٠ عامًا، ومجموع عمري سعد وخالد = ٣٤ عامًا، ومجموع عمري خالد ومحمد = ٤٦ عامًا. ما مجموع أعمار محمد وسعد وخالد؟",c:["١٢٠","١٠٠","٨٠","٦٠"],a:3},
+  {q:"إذا وُضع قلم في ثقب العجلة، ثم دارت على سطح (س) فأي الأشكال أدناه سيرسمه القلم في سطح عمودي خلف العجلة؟",fig:trT3Wheel(),c:[trT3Curve(0),trT3Curve(1),trT3Curve(2),trT3Curve(3)],a:3}
 ]}];
 let trialEx=null,trialIdx=0,trialSel=-1,trialRes=[],trialShownAt=0,trialDone=false;
 function goTrialMenu(){mode="trialMenu";window.scrollTo(0,0);render()}
