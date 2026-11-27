@@ -19,13 +19,13 @@ const s=await p.evaluate(()=>{const ex=TRIAL_EXAMS.filter(e=>e.id==='t3')[0],it=
    q5:num(k(5))===Math.round(2100/1.05),q6:num(k(6))===2*3,q7:num(k(7))===(()=>{const sp=18/3,st=17-2*sp;return 19-sp-st})(),
    q9:num(k(9))===4*18/12,q10:num(k(10))===(()=>{const g=(a,b)=>b?g(b,a%b):a;return 2*(96+42)/g(96,42)})(),q11:num(k(11))===5+8,
    q12:num(k(12))===(()=>{for(let b=1;b<50;b++)if(b*(b+2)/2===24)return b})(),q14:num(k(14))===4*(90/5)-90/2,q23:num(k(23))===9-4-1,q24:num(k(24))===(40+34+46)/2,
-   q22:trialPlain(k(22))==="أحمد.",n13:it[12].c.length}});
+   q8:num(k(8))*4===16&&3*2===6&&7*3===21,q22:trialPlain(k(22))==="أحمد.",n13:it[12].c.length}});
 ok(s.has&&s.name==='الاختبار الثالث','الاختبار الثالث موجود باسمه');
 ok(s.n===25&&s.four,'٢٥ سؤالاً بأربعة خيارات — '+s.n);
 ok(JSON.stringify(s.key)==='[2,1,3,0,1,2,0,3,1,2,0,1,3,1,0,2,3,0,2,3,1,1,2,3,3]','المفتاح مطابقٌ لصفحة حلول الكتاب — '+s.key);
 ok(JSON.stringify(s.figs)==='[1,6,7,8,11,13,14,23,25]','الأشكال في ١ و٦ و٧ و٨ و١١ و١٣ و١٤ و٢٣ و٢٥ — '+s.figs);
 ok(!s.latin&&s.unsure===0,'بلا لاتيني ولا «اجتهاد»');
-ok(['q1','q2','q3','q4','q5','q6','q7','q9','q10','q11','q12','q14','q22','q23','q24'].every(k=>s[k]),'مفتاح ١٥ سؤالاً مؤكَّد بإعادة الحساب المستقلّ — '+JSON.stringify(s));
+ok(['q1','q2','q3','q4','q5','q6','q7','q8','q9','q10','q11','q12','q14','q22','q23','q24'].every(k=>s[k]),'مفتاح ١٦ سؤالاً مؤكَّد بإعادة الحساب المستقلّ — '+JSON.stringify(s));
 console.log('\n٢) التدفّق والتسجيل');
 rows.length=0;
 const f=await p.evaluate(async()=>{startTrial('t3');const ex=trialEx;let bad=[];
