@@ -2007,16 +2007,16 @@ const MASTERY_MAX_Q=10;
 const FADE_STUCK=4;
 const FADE_TOPICS=[
   {key:"seq",icon:"🔢",label:"المتتاليات والنسبة",sub:"متتاليات عددية + نسبة تناسبية"},
-  {key:"median",icon:"📊",label:"الوسيط",sub:"وسيط أعداد صحيحة متتالية"},
+  {key:"median",icon:"📊",label:"الوسيط",sub:"وسيط أعداد صحيحة متتالية",low:1},
   {key:"percent",icon:"٪",label:"النسبة المئوية",sub:"مسائل الراتب والنسب المئوية"},
-  {key:"cube",icon:"🧊",label:"حجم المكعّب",sub:"أثر مضاعفة الضلع على الحجم"},
+  {key:"cube",icon:"🧊",label:"حجم المكعّب",sub:"أثر مضاعفة الضلع على الحجم",low:1},
   {key:"pyramid",icon:"🔺",label:"الهرم العددي",sub:"إيجاد العدد الناقص في الهرم"},
   {key:"angles",icon:"📐",label:"الزوايا المتساوية",sub:"تقسيم زاوية كبيرة إلى أجزاء متساوية"},
   {key:"mirror",icon:"🪞",label:"الانعكاس المرآتي",sub:"إيجاد انعكاس الشكل حول خط عمودي"},
   {key:"rotate",icon:"🔄",label:"تدوير الأشكال",sub:"إكمال تسلسل شكل يدور بمقدار ثابت"},
   {key:"logic",icon:"🧠",label:"الاستدلال المنطقي",sub:"استنتاج النتيجة الصحيحة من مقدّمتين"},
   {key:"reading",icon:"📖",label:"الفهم المقروء",sub:"إيجاد الجواب داخل النص لا بالتخمين"},
-  {key:"circle",icon:"⭕",label:"محيط الدائرة",sub:"العلاقة بين نصف القطر أو القطر والمحيط"},
+  {key:"circle",icon:"⭕",label:"محيط الدائرة",sub:"العلاقة بين نصف القطر أو القطر والمحيط",low:1},
   {key:"parallelogram",icon:"▱",label:"مساحة متوازي الأضلاع",sub:"القاعدة × الارتفاع"},
   {key:"triangle",icon:"🔻",label:"مساحة المثلث",sub:"نصف مساحة متوازي الأضلاع المكافئ"},
   {key:"prismvol",icon:"📦",label:"حجم المنشور الرباعي",sub:"الطول × العرض × الارتفاع"},
@@ -2028,8 +2028,11 @@ const FADE_TOPICS=[
   {key:"unreal",icon:"🧩",label:"المقدّمة غير الواقعية",sub:"نقبل المقدّمة المخطوطة كأنها صحيحة ونستنتج منها"},
   // ٢٣ نوفمبر (السجلّ منذ ١ أكتوبر): المساحة المظلّلة ١/٨ · الزوايا على خط ٠/٤ · المحيط ١/٦ · زاوية المثلث ١/٣
   {key:"shaded",icon:"◼️",label:"المساحة المظلّلة",sub:"الكلّ ناقص الجزء غير المظلّل"},
-  {key:"perim",icon:"📏",label:"المحيط",sub:"مجموع أطوال الأضلاع كلّها"},
+  {key:"perim",icon:"📏",label:"المحيط",sub:"مجموع أطوال الأضلاع كلّها",low:1},
   {key:"anglesum",icon:"📐",label:"زوايا الخط والمثلث",sub:"الخط المستقيم ١٨٠° والمثلث ١٨٠°"},
+  // ٢٨ نوفمبر (اختبار موهبة تجريبي ٣، الجلسة الأولى ١١/٢٥، وكرّرت ١٣ إجابةً خاطئة بعينها في جلستين): النسبة ٥:٦ (س٤) والتشبيه اللفظي (س١٥–١٧)
+  {key:"ratiopart",icon:"🍰",label:"النسبة بين الأجزاء",sub:"نموذج الأشرطة: وحدة الجزء = المجموع ÷ عدد الأجزاء"},
+  {key:"analogy",icon:"🔗",label:"التشبيه اللفظي",sub:"نصف العلاقة بجملةٍ ثم نجرّبها على كل خيار"},
 ];
 // مصطلحات مفتاحية بالإنجليزية لكل نوع تقوية — تظهر كشرائح صوتية فوق كل سؤال بغضّ النظر عن المرحلة،
 // عشان تبني مفردات إنجليزية حقيقية (رياضيات/هندسة/منطق) بدل ترجمة الجملة كاملة
@@ -2052,6 +2055,8 @@ const FADE_TERMS={
   agechain:[{ar:"عمر",en:"age"},{ar:"أصغر",en:"younger"},{ar:"أكبر",en:"older"}],
   clock:[{ar:"ساعة",en:"clock"},{ar:"زاوية",en:"angle"},{ar:"عقرب",en:"hand"}],
   unreal:[{ar:"مقدمة",en:"premise"},{ar:"نتيجة",en:"conclusion"},{ar:"منطق",en:"logic"}],
+  ratiopart:[{ar:"نسبة",en:"ratio"},{ar:"جزء",en:"part"},{ar:"مجموع",en:"total"}],
+  analogy:[{ar:"تشبيه",en:"analogy"},{ar:"علاقة",en:"relationship"}],
   shaded:[{ar:"مساحة",en:"area"},{ar:"مظلّل",en:"shaded"}],
   perim:[{ar:"محيط",en:"perimeter"},{ar:"مستطيل",en:"rectangle"},{ar:"مربّع",en:"square"}],
   anglesum:[{ar:"زاوية",en:"angle"},{ar:"مثلث",en:"triangle"},{ar:"خط مستقيم",en:"straight line"}],
@@ -2302,6 +2307,78 @@ function fadeMakeUnreal(){
     ruleTxt:`المقدّمة غير الواقعية تُعامَل كأنها صحيحة تماماً: لا تُجيبي بما تعرفين من الواقع، بل بما يترتّب على المقدّمة.`,
     passage:`إذا كان <u>${b.p}</u>، ${b.r}؛ ${b.s} ........`,
     q:`اختاري الإجابة التي تُكمل العبارة منطقياً.`};
+}
+// ===== النسبة بين الأجزاء — ٢٨ نوفمبر =====
+// اختبار موهبة تجريبي ٣ س٤: «صفٌّ ٤٢ طالباً، نسبة الناجحين إلى المجموع ٥:٦، فعدد الراسبين؟» ⇐ اختارت ٩ والصواب ٧
+// بالإجابة نفسها في الجلستين (لم ترَ الحلّ بينهما). **المعيار المنشور المطبَّق:** نموذج الأشرطة (bar model) في
+// منهج Singapore Math — الكلّ شريطٌ مقسومٌ إلى أجزاءٍ متساوية، فنجد قيمة الجزء الواحد ثم نضربها. ولا أدّعي أن هذا هو سببُ
+// خطئها بعينه؛ السجلّ يُثبت الخطأ لا خطأَ التفكير.
+// نوعان: (أ) نسبة جزءٍ إلى **المجموع** ويُطلب الجزء الباقي (صيغة س٤)، (ب) نسبة جزءٍ إلى جزءٍ ويُطلب أحدهما من المجموع.
+// والأرقام لا تطابق س٤ (٥:٦ و٤٢).
+const RP_PEOPLE=[["الناجحين","الراسبين","طالباً","في صفّ"],["المحجوزة","غير المحجوزة","مقعداً","في قاعة"],["الحمراء","الزرقاء","كرة","في صندوق"],["الأولاد","البنات","طفلاً","في حيّ"]];
+function fadeMakeRatioPart(){
+  const kind=pick(["whole","part"]),pp=pick(RP_PEOPLE);
+  if(kind==="whole"){
+    const b=pick([6,8,9,10,12]),a=rand(Math.max(1,b-6),b-2),u=rand(3,9),N=b*u,ans=(b-a)*u;
+    if(a===5&&b===6&&N===42)return fadeMakeRatioPart();
+    const d=[a*u,N-a,u];if(new Set([ans].concat(d)).size!==4)return fadeMakeRatioPart();
+    return{kind:"ratiopart",ans,prompt:"كم العدد المطلوب؟",distractors:d,
+      steps:[`نرسم شريطاً مقسوماً إلى ${toAr(b)} أجزاءٍ متساوية — هذا هو <b>المجموع كلّه</b> (${toAr(N)})`,
+        `${pp[0]} = ${toAr(a)} أجزاء، إذن ${pp[1]}:<br>${toAr(b)} − ${toAr(a)} = ${toAr(b-a)} جزء`,
+        `الجزء الواحد:<br>${toAr(N)} ÷ ${toAr(b)} = ${toAr(u)}`,
+        `${pp[1]}:<br>${toAr(b-a)} × ${toAr(u)} = ${toAr(ans)}`],
+      ruleTxt:`ارسمي الشريط: عدد الأجزاء الكلّي هو العدد الثاني في النسبة. الجزء الواحد = المجموع ÷ عدد الأجزاء الكلّي، ثم اضربيه في أجزاء ما نطلبه`,
+      q:`${pp[3]} ${toAr(N)} ${pp[2]}، ونسبة ${pp[0]} إلى المجموع ${toAr(a)} : ${toAr(b)}. فكم عدد ${pp[1]}؟`};
+  }
+  const a=rand(1,5),b=rand(a+1,7),u=rand(3,9),T=(a+b)*u,askBig=pick([true,false]),k=askBig?b:a,ans=k*u,other=(askBig?a:b)*u;
+  const d=[other,k,u];if(new Set([ans].concat(d)).size!==4)return fadeMakeRatioPart();
+  return{kind:"ratiopart",ans,prompt:"كم العدد المطلوب؟",distractors:d,
+    steps:[`نرسم شريطين: ${toAr(a)} أجزاءٍ و${toAr(b)} أجزاء — فالمجموع الكلّي:<br>${toAr(a)} + ${toAr(b)} = ${toAr(a+b)} جزءاً`,
+      `الجزء الواحد:<br>${toAr(T)} ÷ ${toAr(a+b)} = ${toAr(u)}`,
+      `${askBig?pp[1]:pp[0]}:<br>${toAr(k)} × ${toAr(u)} = ${toAr(ans)}`],
+    ruleTxt:`في النسبة بين جزأين: اجمعي الجزأين لتعرفي عدد الأجزاء الكلّي، ثم الجزء الواحد = المجموع ÷ هذا العدد`,
+    q:`${pp[3]} ${toAr(T)} ${pp[2]}، ونسبة ${pp[0]} إلى ${pp[1]} ${toAr(a)} : ${toAr(b)}. فكم عدد ${askBig?pp[1]:pp[0]}؟`};
+}
+// ===== التشبيه اللفظي — ٢٨ نوفمبر =====
+// اختبار موهبة تجريبي ٣ س١٥–١٧ («ذهب : منجم»، «ذنب : عقاب»، «سمك : ماء»): الثلاثة خطأ بالإجابة نفسها في جلستين.
+// **لا معيارَ منشوراً واحداً لهذا النوع**: الطريقة المعتمدة في تدريب التناظر اللفظي هي «جملة الربط» — نصف علاقة الزوج
+// الأول بجملةٍ ثم نختبر الجملة نفسها على كل خيار (وأساسها نظرياً استدلالُ العلاقة عند Sternberg 1977). والمموّهات من ثلاثة أنواعٍ
+// معروفة في كتابة بدائل التناظر (Haladyna 2002: بدائل معقولة): (١) **عكس الترتيب** — الكلمتان نفسهما والعلاقة معكوسة،
+// (٢) **من الحقل نفسه** بعلاقةٍ أخرى، (٣) **علاقةٌ مختلفة** (تصنيف/وصف). والمموّه الأول عكسُ الترتيب دائماً.
+// وكل العلاقات هنا **غير متماثلة** كي يكون للعكس معنى (التضادّ والترادف متماثلان فلا يدخلان). ولا بندَ من الاختبار نفسه.
+const ANALOGY_BANK=[
+ {rel:"المخلوق ← موطنه",a:"طائر",b:"عُشّ",sent:"الطائر يعيش في عُشّه",ans:["نحلة","خلية"],rev:["خلية","نحلة"],fld:["نحلة","عسل"],oth:["نحلة","حشرة"]},
+ {rel:"المخلوق ← موطنه",a:"حوت",b:"بحر",sent:"الحوت يعيش في البحر",ans:["جمل","صحراء"],rev:["صحراء","جمل"],fld:["جمل","سنام"],oth:["جمل","حيوان"]},
+ {rel:"المخلوق ← موطنه",a:"دجاجة",b:"قنّ",sent:"الدجاجة تأوي إلى القنّ",ans:["فرس","إسطبل"],rev:["إسطبل","فرس"],fld:["فرس","سرج"],oth:["فرس","حيوان"]},
+ {rel:"المنتَج ← مصدره",a:"عسل",b:"نحلة",sent:"العسل تُنتجه النحلة",ans:["حليب","بقرة"],rev:["بقرة","حليب"],fld:["بقرة","مرعى"],oth:["بقرة","حيوان"]},
+ {rel:"المنتَج ← مصدره",a:"زيت",b:"زيتون",sent:"الزيت يُعصر من الزيتون",ans:["عصير","برتقال"],rev:["برتقال","عصير"],fld:["برتقال","شجرة"],oth:["برتقال","حامض"]},
+ {rel:"المنتَج ← مصدره",a:"ورق",b:"شجرة",sent:"الورق يُصنع من الشجر",ans:["تمر","نخلة"],rev:["نخلة","تمر"],fld:["نخلة","واحة"],oth:["نخلة","عالية"]},
+ {rel:"الأداة ← وظيفتها",a:"مقصّ",b:"قصّ",sent:"المقصّ أداةٌ للقصّ",ans:["منشار","نشر"],rev:["نشر","منشار"],fld:["منشار","خشب"],oth:["منشار","حادّ"]},
+ {rel:"الأداة ← وظيفتها",a:"مكنسة",b:"كنس",sent:"المكنسة أداةٌ للكنس",ans:["مطرقة","دقّ"],rev:["دقّ","مطرقة"],fld:["مطرقة","مسمار"],oth:["مطرقة","ثقيلة"]},
+ {rel:"الأداة ← وظيفتها",a:"ساعة",b:"وقت",sent:"الساعة أداةٌ لمعرفة الوقت",ans:["ميزان","وزن"],rev:["وزن","ميزان"],fld:["ميزان","سوق"],oth:["ميزان","دقيق"]},
+ {rel:"الجزء ← الكلّ",a:"أصبع",b:"كفّ",sent:"الأصبع جزءٌ من الكفّ",ans:["ورقة","شجرة"],rev:["شجرة","ورقة"],fld:["ورقة","خريف"],oth:["ورقة","خفيفة"]},
+ {rel:"الجزء ← الكلّ",a:"حرف",b:"كلمة",sent:"الحرف جزءٌ من الكلمة",ans:["نغمة","لحن"],rev:["لحن","نغمة"],fld:["نغمة","مغنٍّ"],oth:["نغمة","عذبة"]},
+ {rel:"الجزء ← الكلّ",a:"غرفة",b:"بيت",sent:"الغرفة جزءٌ من البيت",ans:["صفحة","كتاب"],rev:["كتاب","صفحة"],fld:["صفحة","قراءة"],oth:["صفحة","بيضاء"]},
+ {rel:"المهنة ← مكان العمل",a:"معلّم",b:"مدرسة",sent:"المعلّم يعمل في المدرسة",ans:["طبيب","مستشفى"],rev:["مستشفى","طبيب"],fld:["طبيب","دواء"],oth:["طبيب","ماهر"]},
+ {rel:"المهنة ← مكان العمل",a:"نجّار",b:"ورشة",sent:"النجّار يعمل في الورشة",ans:["مزارع","حقل"],rev:["حقل","مزارع"],fld:["مزارع","محصول"],oth:["مزارع","نشيط"]},
+ {rel:"المهنة ← مكان العمل",a:"ملّاح",b:"سفينة",sent:"الملّاح يعمل على السفينة",ans:["طيّار","طائرة"],rev:["طائرة","طيّار"],fld:["طيّار","سماء"],oth:["طيّار","شجاع"]},
+ {rel:"السبب ← النتيجة",a:"شمس",b:"دفء",sent:"الشمس سببُ الدفء",ans:["مطر","بلل"],rev:["بلل","مطر"],fld:["مطر","غيم"],oth:["مطر","شتاء"]},
+ {rel:"السبب ← النتيجة",a:"نوم",b:"راحة",sent:"النوم يُنتج الراحة",ans:["أكل","شبع"],rev:["شبع","أكل"],fld:["أكل","مائدة"],oth:["أكل","حارّ"]},
+ {rel:"السبب ← النتيجة",a:"اجتهاد",b:"نجاح",sent:"الاجتهاد يقود إلى النجاح",ans:["إهمال","رسوب"],rev:["رسوب","إهمال"],fld:["إهمال","واجب"],oth:["إهمال","ممتع"]},
+];
+let _analogyRecent=[];
+function fadeMakeAnalogy(){
+  let i,guard=0;do{i=rand(0,ANALOGY_BANK.length-1)}while(_analogyRecent.indexOf(i)>=0&&guard++<40);
+  _analogyRecent.push(i);if(_analogyRecent.length>8)_analogyRecent.shift();
+  const b=ANALOGY_BANK[i],P=function(x){return x[0]+" : "+x[1]},opts=shuffle([P(b.ans),P(b.rev),P(b.fld),P(b.oth)]);
+  return{kind:"logic",choiceKind:"text",opts,ai:opts.indexOf(P(b.ans)),prompt:"أيّ الأزواج ترتبط كلمتاه بالعلاقة نفسها؟",
+    steps:[`نصف العلاقة في الزوج الأول بجملة: «${b.sent}» — والعلاقة: ${b.rel}`,
+      `نجرّب الجملة نفسها على كل خيار، بالترتيب نفسه: الصحيح «${P(b.ans)}»`,
+      `وانتبهي لعكس الترتيب: «${P(b.rev)}» كلمتان من الحقل نفسه لكن العلاقة معكوسة — فهو خطأ`,
+      `و«${P(b.fld)}» و«${P(b.oth)}» بينهما علاقةٌ أخرى غير «${b.rel}»`],
+    ruleTxt:`صِفي العلاقة بين الكلمتين بجملةٍ، ثم جرّبي الجملة نفسها على كل خيار — وانتبهي للترتيب، فالعكس ليس العلاقة نفسها.`,
+    passage:`${P([b.a,b.b])}`,
+    q:`اختاري الزوج الذي تربط بين كلمتيه العلاقةُ نفسها.`};
 }
 function fadeMakeMedian(){
   const mid=rand(4,20),sum=5*mid,ans=mid;
@@ -2851,6 +2928,8 @@ function fadeMakeQuestion(){
   if(fadeTopic==="agechain")return fadeMakeAgeChain();
   if(fadeTopic==="clock")return fadeMakeClock();
   if(fadeTopic==="unreal")return fadeMakeUnreal();
+  if(fadeTopic==="ratiopart")return fadeMakeRatioPart();
+  if(fadeTopic==="analogy")return fadeMakeAnalogy();
   if(fadeTopic==="shaded")return fadeMakeShaded();
   if(fadeTopic==="perim")return fadeMakePerim();
   if(fadeTopic==="anglesum")return fadeMakeAngleSum();
@@ -2874,7 +2953,7 @@ function fadeMakeQuestion(){
 const CLIP_MAKERS={seq:fadeMakeSeq,median:fadeMakeMedian,percent:fadeMakePercent,
   cube:fadeMakeCube,pyramid:fadeMakePyramid,angles:fadeMakeAngles,
   circle:fadeMakeCircle,parallelogram:fadeMakeParallelogram,triangle:fadeMakeTriangle,
-  prismvol:fadeMakePrismVol,prismsurf:fadeMakePrismSurf,agechain:fadeMakeAgeChain,clock:fadeMakeClock,shaded:fadeMakeShaded,perim:fadeMakePerim,anglesum:fadeMakeAngleSum,unreal:fadeMakeUnreal};
+  prismvol:fadeMakePrismVol,prismsurf:fadeMakePrismSurf,agechain:fadeMakeAgeChain,clock:fadeMakeClock,shaded:fadeMakeShaded,perim:fadeMakePerim,anglesum:fadeMakeAngleSum,unreal:fadeMakeUnreal,ratiopart:fadeMakeRatioPart,analogy:fadeMakeAnalogy};
 function clipTopicMeta(key){
   for(const t of FADE_TOPICS)if(t.key===key)return t;
   return null;
@@ -3296,15 +3375,16 @@ function startFade(topic){fadeGateStop();surfClear();fadeRush=0;mode="fade";fade
 function goFadeMenu(){fadeGateStop();mode="fadeMenu";window.scrollTo(0,0);render()}
 function renderFadeMenu(){
   // نرتّب: غير المتقن أولاً، ثم المتقن المستحقّ للمراجعة، ثم المتقن الذي لم يحن موعده — فتتوجّه تلقائياً للأضعف
-  const rank=t=>{const m=fadeMasteryState(t.key);return !m.mastered?0:(m.due?1:2)};
+  const rank=t=>{const m=fadeMasteryState(t.key);return (t.low?3:0)+(!m.mastered?0:(m.due?1:2))}; // `low`: متقَنةٌ في اختبارات موهبة — تُؤخَّر في القائمة وتبقى متاحة (٢٨ نوفمبر)
   const sorted=FADE_TOPICS.map((t,i)=>({t,i})).sort((a,b)=>rank(a.t)-rank(b.t)||a.i-b.i).map(x=>x.t);
   const card=t=>{
     const m=fadeMasteryState(t.key);
     const badge=!m.mastered?""
       :m.due?`<div style="font-size:11px;font-weight:800;color:#B45309;background:#FEF3C7;border-radius:99px;padding:2px 8px;display:inline-block;margin-top:5px">🔁 حان وقت المراجعة</div>`
       :`<div style="font-size:11px;font-weight:800;color:#059669;background:#ECFDF5;border-radius:99px;padding:2px 8px;display:inline-block;margin-top:5px">✓ متقن · مراجعة بعد ${arDays(m.daysLeft)}</div>`;
-    const dim=m.mastered&&!m.due?'opacity:.62;':'';
-    return `<button class="mode" style="text-align:center;${dim}" onclick="startFade('${t.key}')"><div style="font-size:26px;margin-bottom:6px">${t.icon}</div><div class="m-name">${t.label}</div><div class="m-sub">${t.sub}</div>${badge}</button>`;
+    const dim=m.mastered&&!m.due?'opacity:.62;':(t.low?'opacity:.8;':'');
+    const lowBadge=t.low&&!m.mastered?`<div style="font-size:11px;font-weight:800;color:#0369A1;background:#E0F2FE;border-radius:99px;padding:2px 8px;display:inline-block;margin-top:5px">✅ متقنة في اختبارات موهبة · مراجعة خفيفة</div>`:"";
+    return `<button class="mode" style="text-align:center;${dim}" onclick="startFade('${t.key}')"><div style="font-size:26px;margin-bottom:6px">${t.icon}</div><div class="m-name">${t.label}</div><div class="m-sub">${t.sub}</div>${badge}${lowBadge}</button>`;
   };
   const st=fadeMasteryLoad();
   const nMast=Object.keys(st).length,nDue=FADE_TOPICS.filter(t=>fadeMasteryState(t.key).due).length;
